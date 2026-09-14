@@ -1,4 +1,4 @@
-# Darien Voss — Cuaderno de viaje
+# Darien Voss — Cuaderno de viaje · versión 2
 
 Ficha personal en español para D&D 5e **2014**, preparada para GitHub Pages y para usar desde el celular. No necesita instalación de dependencias, servidor de aplicación, cuenta ni claves.
 
@@ -37,7 +37,7 @@ Después de una primera carga completa por HTTPS, la aplicación puede volver a 
 
 ## Alcance de las reglas
 
-La automatización cubre la progresión numérica del **bardo puro, niveles 2–20**, y los rasgos de Elocuencia. El catálogo de conjuros es una selección ampliable, no todos los libros. Multiclase, otras subclases, dotes, objetos mágicos, bonificaciones especiales y Secretos mágicos elegidos como trucos necesitan ajustes manuales y revisión del DM. Agregá rasgos y recursos personalizados desde la ficha.
+La automatización cubre la progresión numérica del **bardo puro, niveles 2–20**, y los rasgos de Elocuencia. El catálogo contiene 520 conjuros de la línea 2014, 157 marcados para la lista de bardo (incluida la ampliación opcional), y 102 dotes indexadas de los libros incluidos. Contiene 319 textos completos SRD en inglés; conserva los resúmenes españoles anteriores y añade nombres españoles para muchos conjuros. Las entradas que no son SRD muestran metadatos y una referencia oficial; sus efectos completos se consultan en el libro. No incluye Unearthed Arcana, homebrew ni las revisiones de 2024. Multiclase, otras subclases, dotes, objetos mágicos y bonificaciones especiales necesitan ajustes manuales y revisión del DM. Los Secretos mágicos sí están guiados, incluidos los elegidos como trucos. Agregá rasgos y recursos personalizados desde la ficha.
 
 La aplicación registra recursos y ofrece referencias: no resuelve automáticamente alcance, objetivos, resistencia, inmunidad, ventaja/desventaja ni todas las restricciones de acciones. El efecto de los conjuros y los casos especiales de muerte se resuelven en mesa. Las condiciones se marcan como recordatorio; sus modificadores no se aplican automáticamente a las tiradas. La CA usa base + DES + bono manual.
 
@@ -47,6 +47,9 @@ La aplicación registra recursos y ofrece referencias: no resuelve automáticame
 - `style.css`: diseño adaptable a celular y escritorio.
 - `rules.js`: datos iniciales, referencias, cálculos y validación.
 - `app.js`: controles y guardado local.
+- `catalog.js`: catálogo local de conjuros, dotes y fuentes.
+- `progression.js`: reglas y validación de elecciones de la subida.
+- `wizard.js`: guía paso a paso, borradores y explorador del catálogo.
 - `sw.js`: caché para uso sin conexión, limitada a la dirección de esta aplicación.
 - `assets/`: ilustraciones e icono; sin descargas externas.
 
@@ -59,3 +62,36 @@ Referencias resumidas en español para esta mesa. Colegio de la Elocuencia: *Tas
 This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.
 
 Ilustraciones creadas para Darien Voss y su compañera. Aplicación personal no oficial, sin afiliación con Wizards of the Coast.
+
+## Actualizar una página ya publicada
+
+1. Antes de actualizar, exportá una copia JSON de tu ficha desde la página actual.
+2. Reemplazá los archivos del repositorio con **todo** el contenido de este ZIP, incluidos los tres archivos nuevos: `catalog.js`, `progression.js` y `wizard.js`.
+3. Abrí la misma dirección con conexión y recargá. Si todavía ves la versión anterior, hacé una recarga completa. La caché pasa a la versión 2 automáticamente.
+4. Los guardados y las copias JSON de la versión anterior siguen siendo compatibles. No uses «Reiniciar ficha» para actualizar.
+
+## Guía de subida de nivel
+
+«Subir de nivel» muestra solo los pasos que correspondan:
+
+- Vista previa de los aumentos automáticos y de las elecciones pendientes.
+- PG fijos o resultado de un d8 tirado en mesa.
+- Colegio en nivel 3: Elocuencia está automatizado; otros colegios conservan el modo manual.
+- Dos Pericias en niveles 3 y 10, entre tus habilidades con competencia.
+- Mejoras de características o elección de una dote, si tu DM permite dotes. El catálogo muestra requisitos; sus efectos se anotan y se aplican manualmente en la ficha.
+- Completar conjuros pendientes del nivel anterior usando el límite anterior.
+- Nuevos trucos y conjuros de niveles disponibles; búsqueda por nombre y nivel.
+- Reemplazo opcional de un conjuro de nivel 1 o mayor por otro de la lista de bardo.
+- Dos Secretos mágicos en niveles 10, 14 y 18. Un truco elegido así consume una elección de Secretos y cuenta dentro del total de conjuros conocidos, sin ocupar un truco normal.
+- Versatilidad bárdica opcional de Tasha en niveles con mejora: cambiar un truco normal o una Pericia.
+- Resumen final; la ficha solo cambia cuando confirmás.
+
+El primer paso permite habilitar las fuentes y opciones acordadas con tu DM. También podés hacerlo sin subir de nivel desde Conjuros → Fuentes y opciones. Por defecto se habilita el Manual del Jugador 2014. Para elegir Silvery Barbs, habilitá Strixhaven. Las elecciones que ya tuvieras guardadas se conservan aunque su fuente no esté marcada.
+
+Cerrar la guía guarda un borrador separado. Reabrirla recupera ese borrador si la ficha no cambió. «Descartar borrador» no modifica el personaje. Las elecciones confirmadas quedan en el historial; podés deshacer la última subida.
+
+Las dotes y los conjuros concedidos por dotes no se aplican automáticamente: registrá sus elecciones, usos gratuitos y restricciones según la dote. El requisito mostrado en el catálogo se revisa con el DM; el selector no sustituye esa revisión.
+
+Fuentes de verificación: clase de bardo Legacy en https://www.dndbeyond.com/classes/1-bard y SRD 5.1. Texto estructurado SRD de https://github.com/5e-bits/5e-database/tree/main/src/2014/en. Índices contrastados con las listas 2014 de Wikidot; se eliminaron entradas UA y duplicadas y se corrigió la inclusión opcional de Prismatic Spray.
+
+Validación de esta versión: migración de guardados anteriores; reglas de niveles 3–20 y Secretos mágicos como trucos; guía móvil en navegador para niveles 3 y 4; elecciones incompletas, búsqueda y catálogo; cierre y recuperación de borrador sin modificar la ficha; conservación de PG actuales y recursos.
