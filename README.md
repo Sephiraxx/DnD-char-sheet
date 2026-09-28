@@ -1,15 +1,38 @@
-# Cuaderno de aventura — D&D 5e 2014
+# Cuaderno de aventura — D&D 5e 2014 · versión 5.2
+
+Ficha en español para Darien y su party, preparada para GitHub Pages y celular. Aplicación estática: no necesita cuentas, servidor de aplicación, dependencias ni claves. Cada persona abre el mismo enlace y crea su propia ficha.
+
+## Actualizar la página existente
+
+1. Exportá una copia JSON de tu personaje desde la página actual.
+2. Descomprimí el ZIP y reemplazá **todo su contenido** en la raíz del repositorio. `index.html` debe quedar en la raíz; no subas solamente el ZIP. Conservá `.nojekyll`, todas las carpetas y los archivos JavaScript.
+3. Recargá la misma dirección con conexión. Si la página estaba abierta, cerrala y volvé a abrirla para activar la nueva caché `v8-skills`.
+4. No borres los datos del navegador. Tu ficha, su nivel, elecciones, PG, oro y recursos se conservan. Actualizar no concede un descanso.
+
+La actualización de razas y libros añade `campaign-data.js` y `campaign.js`, y actualiza el catálogo, los selectores, las ayudas, las reglas y el caché. Reemplazá el paquete completo.
+
+Archivos nuevos respecto de la versión de combate: `class-data.js`, `class-rules.js`, `party-store.js` y `party-ui.js`. También cambiaron `app.js`, `rules.js`, `index.html`, `style.css`, `combat-engine.js`, `combat-ui.js`, `wizard.js`, `manifest.webmanifest` y `sw.js`.
+
+Para una publicación nueva: subí el contenido a un repositorio y elegí **Settings → Pages → Deploy from a branch → main → /(root)**. No hace falta compilar. Prueba local: `python3 -m http.server 8000`, luego `http://localhost:8000`.
 
 ## Crear y cambiar de personaje
 
-Abrí **Personajes → Crear personaje**. La guía pide identidad, clase, nivel, subclase cuando corresponda, puntuaciones finales, competencias, PG, oro y equipo. Podés empezar en cualquier nivel del 1 al 20.
+En la primera visita, elegí **Crear personaje** o **Importar una ficha JSON**. Si ya tenés una abierta, usá **Personajes → Crear personaje**. La guía pide identidad, clase, nivel, subclase cuando corresponda, puntuaciones finales, competencias, PG, oro y equipo. Podés empezar en cualquier nivel del 1 al 20.
 
 - La matriz estándar es una ayuda editable: las puntuaciones finales deben incluir los bonos y mejoras de tu mesa. La aplicación no elige raza, trasfondo, dotes ni equipo por vos.
 - Hay 13 clases: artificiero, bárbaro, bardo, clérigo, druida, guerrero, monje, paladín, explorador, pícaro, hechicero, brujo y mago.
 - Cada ficha tiene guardado, respaldo, historial de la sesión y borrador de subida independientes. Crear otra nunca reemplaza a Darien.
-- El ejemplo inicial de Darien sigue disponible; las nuevas fichas empiezan sin sus objetos, conjuros ni acompañantes.
+- La primera visita muestra únicamente Crear personaje e Importar ficha. No abre a Darien ni crea un personaje de ejemplo. Si ya tenés una ficha guardada, abre la última seleccionada; los guardados antiguos de Darien se conservan.
 - Elegí si empezás con recursos completos o si necesitás confirmar los actuales. Los objetos escritos en el inventario no modifican la CA automáticamente.
 - **Personaje → Características y armadura** permite ajustar velocidad, fórmula de CA y característica de lanzamiento.
+
+## Competencias al crear una ficha
+
+El paso 1 muestra las habilidades fijas de raza y trasfondo y las suma automáticamente. El paso 2 separa las elecciones de cada origen, los reemplazos por habilidades repetidas y las habilidades de clase, con contadores independientes. Una competencia de origen no consume una elección de clase. Las concesiones de dotes, rasgos o DM tienen un apartado manual.
+
+Ejemplo: alta elfa + Noble + druida obtiene Percepción, Historia y Persuasión, y puede elegir Medicina y Naturaleza como sus dos habilidades de clase. Intimidación requiere otra fuente. Linaje personalizado y variantes con rasgos alternativos piden elegir el beneficio antes de conceder habilidades.
+
+Esta actualización agrega `creation-skills.js`. Las fichas ya guardadas conservan sus competencias; para corregir una, usá **Personaje → Competencias**. No hace falta recrearla.
 
 ## Libros, razas y trasfondos
 
@@ -78,6 +101,18 @@ Guardá copias JSON periódicas: borrar los datos del navegador elimina los guar
 
 Los avisos temporales se cierran automáticamente o con ×. Si una actualización no aparece, cerrá las pestañas de la aplicación y abrila con conexión; no borres el almacenamiento.
 
+## Archivos
+
+- `index.html`, `style.css`, `assets/`: estructura, diseño e imágenes.
+- `app.js`, `rules.js`: ficha, inventario, monedas, validación y controles comunes.
+- `party-store.js`, `party-ui.js`: fichas independientes, creador y pantallas por clase.
+- `class-data.js`, `class-rules.js`: índices 2014 y progresión de las 13 clases.
+- `campaign-data.js`, `campaign.js`: libros, razas, trasfondos, listas ampliadas y ayuda de reglas.
+- `catalog.js`: catálogo local de conjuros y dotes.
+- `progression.js`, `wizard.js`: guía detallada del bardo existente.
+- `combat-engine.js`, `combat-ui.js`: acciones, recursos y combate guiado.
+- `sw.js`, `manifest.webmanifest`: instalación y caché sin conexión.
+
 ## Verificación y fuentes
 
 Se verificaron reglas numéricas para las 13 clases en niveles 1–20; guardados antiguos; libro, preparación y rituales; espacios de pacto y Arcanum; subidas conservando recursos; creación y cambio de fichas; elecciones de invocaciones; conjuros extra ajenos a la clase; acciones de guerrero; descansos; navegación móvil y uso sin conexión. También se verificaron los dropdowns, los filtros de fuentes, la conservación de selecciones anteriores, las listas ampliadas de trasfondos y marcas, los materiales especiales y la cobertura de los 520 resúmenes. Las pruebas no certifican cada interacción especial de todas las subclases.
@@ -87,3 +122,7 @@ Fuentes: [reglas básicas 2014](https://www.dndbeyond.com/sources/dnd/basic-rule
 This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.
 
 El texto SRD está sujeto a esa licencia. La licencia de los datos estructurados de 5e-bits se incluye en `LICENSE_CATALOG.md`; no se presenta como licencia de los libros comerciales. Los demás nombres y referencias identifican su fuente y no incluyen una reproducción íntegra de esos libros. Aplicación no oficial, sin afiliación con Wizards of the Coast. Ilustraciones creadas para Darien Voss y su compañera.
+
+## Inicio sin personaje (v5.1)
+
+La pantalla inicial es genérica. Cancelar el creador o abrir un enlace directo a Combate o Conjuros no carga una ficha de ejemplo. El selector solo lista fichas realmente guardadas; las entradas vacías de versiones anteriores se ignoran. Si hay una ficha ilegible, se conserva y se ofrece descargar sus datos. Verificado el inicio nuevo, creación, importación, conservación de Darien y uso sin conexión.
