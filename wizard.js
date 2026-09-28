@@ -1,5 +1,5 @@
 /* Guía de subida: el borrador queda separado de la ficha hasta la confirmación. */
-const Learning=(()=>{'use strict';const P=Progression,DRAFT='darien-level-draft-v2';let draft,base,step=0,steps=[],search='',spellFilter='all',limit=60;
+const Learning=(()=>{'use strict';const P=Progression,DRAFT=KEY+'-level-draft';let draft,base,step=0,steps=[],search='',spellFilter='all',limit=60;
 const names=ids=>ids.map(spellName).join(', '),check=(name,label,value)=>`<label class="check"><input type="checkbox" name="${name}" ${value?'checked':''}>${label}</label>`;
 function buildSteps(){let p=P.plan(base);steps=[['overview','Antes de subir'],['hp','Puntos de golpe']];if(p.college)steps.push(['college','Elegí tu colegio']);if(p.expertise)steps.push(['expertise','Elegí dos Pericias']);if(p.asi)steps.push(['asi','Mejora o dote']);if(p.pending)steps.push(['pending','Completá tu nivel actual']);if(p.cantrips+p.pendingCantrips)steps.push(['cantrips','Elegí tus trucos']);if(p.spells)steps.push(['spells','Aprendé conjuros']);steps.push(['replace','Reemplazo opcional']);if(p.secrets)steps.push(['secrets','Secretos mágicos']);if(p.asi&&draft.config.versatility)steps.push(['versatility','Versatilidad opcional']);steps.push(['review','Revisá y confirmá']);}
 function saveDraft(){try{localStorage.setItem(DRAFT,JSON.stringify({base,draft,step}));}catch{}}

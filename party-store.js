@@ -1,0 +1,9 @@
+/* Una clave por ficha: cambiar de personaje nunca reemplaza otro. */
+(function(root){'use strict';const INDEX='dnd-party-index-v1',ACTIVE='dnd-party-active-v1',LEGACY='darien-voss-2014-v1';
+function list(){const raw=localStorage.getItem(INDEX);if(!raw)return [{id:'darien',key:LEGACY,name:'Darien Voss'}];const v=JSON.parse(raw);if(!Array.isArray(v)||v.length>100||v.some(x=>!x||typeof x.id!=='string'||typeof x.name!=='string'||!(x.key===LEGACY||/^dnd-character-[a-zA-Z0-9-]+$/.test(x.key))))throw Error('No se pudo leer la lista de personajes. Exportá tu ficha antes de continuar.');return v;}
+function activeKey(){try{const id=localStorage.getItem(ACTIVE)||'darien';return list().find(x=>x.id===id)?.key||LEGACY;}catch{return LEGACY;}}
+function add(s){const id=crypto.randomUUID(),key='dnd-character-'+id,entries=list();if(entries.length>=100)throw Error('Exportá o eliminá una ficha antes de agregar más.');localStorage.setItem(key,JSON.stringify(root.Rules.validate(s)));try{localStorage.setItem(INDEX,JSON.stringify([...entries,{id,key,name:s.name}]));}catch(e){localStorage.removeItem(key);throw e;}return id;}
+function activate(id){const entries=list();if(!entries.some(x=>x.id===id))throw Error('Personaje no encontrado.');localStorage.setItem(ACTIVE,id);location.reload();}
+function remove(id){const entries=list(),item=entries.find(x=>x.id===id);if(!item)throw Error('Personaje no encontrado.');if(item.key===activeKey())throw Error('Cambiá de personaje antes de eliminar esta ficha.');localStorage.setItem(INDEX,JSON.stringify(entries.filter(x=>x.id!==id)));localStorage.removeItem(item.key);localStorage.removeItem(item.key+'-previous');localStorage.removeItem(item.key+'-level-draft');}
+root.CharacterStorage={list,activeKey,add,activate,remove};
+})(typeof window!=='undefined'?window:globalThis);
