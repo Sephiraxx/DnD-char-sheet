@@ -1,6 +1,19 @@
-# Cuaderno de aventura — D&D 5e 2014 
+# Cuaderno de aventura — D&D 5e 2014 · versión 5
 
 Ficha en español para Darien y su party, preparada para GitHub Pages y celular. Aplicación estática: no necesita cuentas, servidor de aplicación, dependencias ni claves. Cada persona abre el mismo enlace y crea su propia ficha.
+
+## Actualizar la página existente
+
+1. Exportá una copia JSON de tu personaje desde la página actual.
+2. Descomprimí el ZIP y reemplazá **todo su contenido** en la raíz del repositorio. `index.html` debe quedar en la raíz; no subas solamente el ZIP. Conservá `.nojekyll`, todas las carpetas y los archivos JavaScript.
+3. Recargá la misma dirección con conexión. Si la página estaba abierta, cerrala y volvé a abrirla para activar la nueva caché `v6-expansions`.
+4. No borres los datos del navegador. Tu ficha, su nivel, elecciones, PG, oro y recursos se conservan. Actualizar no concede un descanso.
+
+La actualización de razas y libros añade `campaign-data.js` y `campaign.js`, y actualiza el catálogo, los selectores, las ayudas, las reglas y el caché. Reemplazá el paquete completo.
+
+Archivos nuevos respecto de la versión de combate: `class-data.js`, `class-rules.js`, `party-store.js` y `party-ui.js`. También cambiaron `app.js`, `rules.js`, `index.html`, `style.css`, `combat-engine.js`, `combat-ui.js`, `wizard.js`, `manifest.webmanifest` y `sw.js`.
+
+Para una publicación nueva: subí el contenido a un repositorio y elegí **Settings → Pages → Deploy from a branch → main → /(root)**. No hace falta compilar. Prueba local: `python3 -m http.server 8000`, luego `http://localhost:8000`.
 
 ## Crear y cambiar de personaje
 
@@ -12,6 +25,30 @@ Abrí **Personajes → Crear personaje**. La guía pide identidad, clase, nivel,
 - El ejemplo inicial de Darien sigue disponible; las nuevas fichas empiezan sin sus objetos, conjuros ni acompañantes.
 - Elegí si empezás con recursos completos o si necesitás confirmar los actuales. Los objetos escritos en el inventario no modifican la CA automáticamente.
 - **Personaje → Características y armadura** permite ajustar velocidad, fórmula de CA y característica de lanzamiento.
+
+## Libros, razas y trasfondos
+
+Por defecto están habilitados **PHB 2014, Xanathar, Tasha, Costa de la Espada, Strixhaven, Ravnica, Eberron: Rising from the Last War y Mordenkainen: Tome of Foes**. Este último no se sustituye por Monsters of the Multiverse. Cada ficha conserva su selección desde **Libros habilitados**.
+
+El creador y **Personaje → Elegir / cambiar** incluyen dropdowns con **73 razas o variantes** y **49 trasfondos** de esos libros. Incluyen Forjado, Cambiante, Kalashtar, Cambiapieles, marcas del dragón, Gith, Eladrin, Shadar-kai, variantes de tiefling, linaje personalizado de Tasha, razas de Ravnica, Owlin y los trasfondos de las cinco facultades de Strixhaven. Algunas entradas comparten reglas pero conservan la fuente. Los índices y nombres de variantes no son un recuento de 73 especies diferentes.
+
+Las tarjetas muestran fuente, tamaño, velocidad, aumentos de referencia, competencias, magia de linaje y decisiones pendientes. **Elegir una raza no suma automáticamente sus bonos a las puntuaciones o CA**: las puntuaciones ingresadas ya son finales. Por ejemplo, el +1 de CA del Forjado se registra una vez en bonos de CA. Dotes, equipo, usos de magia racial y condiciones de vuelo se completan según el rasgo. No se añaden objetos o monedas inventados.
+
+Algunos trasfondos de Strixhaven y Ravnica y las marcas de Eberron amplían la lista de la clase: esos conjuros aparecen como opciones normales al tener acceso al nivel. Esto **no significa conocerlos ni tenerlos preparados**, ni concede espacios extra. Las dotes y magia innata son elecciones separadas, con su propia característica y límites. Por ejemplo, elegí y registrá Iniciado de Strixhaven para el trasfondo que lo otorga.
+
+Los ocho libros habilitan **483 conjuros únicos** de los 520 del catálogo. Los de Costa de la Espada reeditados en Tasha se encuentran desde ambas fuentes y usan el texto corregido de la línea 2014. Un libro puede aportar razas, trasfondos o ampliar listas sin incorporar conjuros exclusivos nuevos; Tome of Foes no aporta conjuros exclusivos a este índice.
+
+Deshabilitar un libro conserva las elecciones previas. **Todo el catálogo → Extra del DM** mantiene acceso a cualquier conjuro, incluso fuera de los libros habilitados. Los nombres personalizados se pueden seguir escribiendo eligiendo la opción personalizada del selector.
+
+## Explicaciones de dados y conjuros
+
+**Dados y siglas** está disponible en Combate y Conjuros. Explica dados, modificadores, competencia, CD, salvaciones, ventaja, concentración y componentes con los valores de la ficha activa.
+
+- **1d4 + CAR** significa tirar un dado de cuatro caras y sumar el modificador de Carisma; no la puntuación. Con Carisma 17, el modificador es +3.
+- **2d6** significa tirar dos dados de seis caras y sumar ambos.
+- Un ataque de conjuro usa **1d20 + tu bono de ataque** contra la CA. Una salvación la tira el objetivo contra tu CD. El modificador no se suma al daño salvo que el efecto lo indique.
+- **Explicación y requisitos / Ver detalles** presenta materiales especiales, alcance, duración y las ayudas aplicables. Los componentes costosos o consumidos de los libros habilitados tienen referencias españolas específicas.
+- Los materiales ordinarios se resumen como sustituibles por una bolsa o foco válido cuando corresponde. Para usar el ingrediente literal, consultá la fuente. La aplicación no gasta automáticamente materiales ni monedas.
 
 ## Clase y subida de nivel
 
@@ -32,7 +69,7 @@ En **Conjuros → Agregar / preparar conjuros**:
 
 Se distinguen conjuros conocidos, preparados, libro de mago, conjuros siempre preparados por subclase, Secretos mágicos y Arcanum del brujo. El mago conserva los rituales del libro aunque no estén preparados. Los espacios de pacto tienen su nivel propio y se recuperan con descanso corto. Un conjuro extra no concede espacios adicionales.
 
-El catálogo contiene **520 conjuros** de la línea 2014: nombres, niveles, tiempos, listas y fuentes, con **319 textos SRD completos en inglés** y resúmenes españoles de las entradas principales de Darien. No es una recopilación exhaustiva de todo material publicado o casero. Los textos no SRD se consultan en su fuente; podés añadir notas propias. No se incluyen Unearthed Arcana ni las revisiones de reglas de 2024.
+El catálogo contiene **520 conjuros**, todos con nombres de referencia y resúmenes de mesa en español. Se conservan las explicaciones detalladas previas de los conjuros principales de Darien. Los resúmenes explican la función del efecto; **no son traducciones íntegras de los libros** y no sustituyen sus tablas, estadísticas de invocaciones, excepciones ni todos los aumentos por espacio. Los nombres ingleses siguen disponibles para buscar. No se incluyen Unearthed Arcana ni las revisiones de 2024. Los 319 textos SRD originales se conservan en los datos como referencia, sin mostrarlos como descripción principal.
 
 Caballero arcano y Embaucador arcano: las restricciones de escuelas y excepciones de aprendizaje se revisan en mesa. Los conjuros opcionales, reemplazos especiales y elecciones internas de listas de subclase pueden requerir registro manual.
 
@@ -56,9 +93,21 @@ Guardá copias JSON periódicas: borrar los datos del navegador elimina los guar
 
 Los avisos temporales se cierran automáticamente o con ×. Si una actualización no aparece, cerrá las pestañas de la aplicación y abrila con conexión; no borres el almacenamiento.
 
+## Archivos
+
+- `index.html`, `style.css`, `assets/`: estructura, diseño e imágenes.
+- `app.js`, `rules.js`: ficha, inventario, monedas, validación y controles comunes.
+- `party-store.js`, `party-ui.js`: fichas independientes, creador y pantallas por clase.
+- `class-data.js`, `class-rules.js`: índices 2014 y progresión de las 13 clases.
+- `campaign-data.js`, `campaign.js`: libros, razas, trasfondos, listas ampliadas y ayuda de reglas.
+- `catalog.js`: catálogo local de conjuros y dotes.
+- `progression.js`, `wizard.js`: guía detallada del bardo existente.
+- `combat-engine.js`, `combat-ui.js`: acciones, recursos y combate guiado.
+- `sw.js`, `manifest.webmanifest`: instalación y caché sin conexión.
+
 ## Verificación y fuentes
 
-Se verificaron reglas numéricas para las 13 clases en niveles 1–20; guardados antiguos; libro, preparación y rituales; espacios de pacto y Arcanum; subidas conservando recursos; creación y cambio de fichas; elecciones de invocaciones; conjuros extra ajenos a la clase; acciones de guerrero; descansos; navegación móvil y uso sin conexión. Las pruebas no certifican cada interacción especial de todas las subclases.
+Se verificaron reglas numéricas para las 13 clases en niveles 1–20; guardados antiguos; libro, preparación y rituales; espacios de pacto y Arcanum; subidas conservando recursos; creación y cambio de fichas; elecciones de invocaciones; conjuros extra ajenos a la clase; acciones de guerrero; descansos; navegación móvil y uso sin conexión. También se verificaron los dropdowns, los filtros de fuentes, la conservación de selecciones anteriores, las listas ampliadas de trasfondos y marcas, los materiales especiales y la cobertura de los 520 resúmenes. Las pruebas no certifican cada interacción especial de todas las subclases.
 
 Fuentes: [reglas básicas 2014](https://www.dndbeyond.com/sources/dnd/basic-rules-2014), SRD 5.1, [datos SRD estructurados](https://github.com/5e-bits/5e-database/tree/main/src/2014/en), [índice Wikidot 2014](https://dnd5e.wikidot.com/) y metadatos de nombres, niveles, listas y requisitos de [5etools](https://github.com/5etools-mirror-3/5etools-src/tree/main/data). Los índices mezclan distintas fuentes: se filtraron las entradas incluidas para excluir UA y 2024. Nivel20 se recibió como referencia, pero su verificación de acceso impidió contrastar el catálogo en esta revisión.
 
