@@ -1,19 +1,4 @@
-# Cuaderno de aventura — D&D 5e 2014 · versión 5
-
-Ficha en español para Darien y su party, preparada para GitHub Pages y celular. Aplicación estática: no necesita cuentas, servidor de aplicación, dependencias ni claves. Cada persona abre el mismo enlace y crea su propia ficha.
-
-## Actualizar la página existente
-
-1. Exportá una copia JSON de tu personaje desde la página actual.
-2. Descomprimí el ZIP y reemplazá **todo su contenido** en la raíz del repositorio. `index.html` debe quedar en la raíz; no subas solamente el ZIP. Conservá `.nojekyll`, todas las carpetas y los archivos JavaScript.
-3. Recargá la misma dirección con conexión. Si la página estaba abierta, cerrala y volvé a abrirla para activar la nueva caché `v6-expansions`.
-4. No borres los datos del navegador. Tu ficha, su nivel, elecciones, PG, oro y recursos se conservan. Actualizar no concede un descanso.
-
-La actualización de razas y libros añade `campaign-data.js` y `campaign.js`, y actualiza el catálogo, los selectores, las ayudas, las reglas y el caché. Reemplazá el paquete completo.
-
-Archivos nuevos respecto de la versión de combate: `class-data.js`, `class-rules.js`, `party-store.js` y `party-ui.js`. También cambiaron `app.js`, `rules.js`, `index.html`, `style.css`, `combat-engine.js`, `combat-ui.js`, `wizard.js`, `manifest.webmanifest` y `sw.js`.
-
-Para una publicación nueva: subí el contenido a un repositorio y elegí **Settings → Pages → Deploy from a branch → main → /(root)**. No hace falta compilar. Prueba local: `python3 -m http.server 8000`, luego `http://localhost:8000`.
+# Cuaderno de aventura — D&D 5e 2014
 
 ## Crear y cambiar de personaje
 
@@ -92,18 +77,6 @@ Todo se guarda **en ese navegador y dispositivo**. GitHub Pages publica la aplic
 Guardá copias JSON periódicas: borrar los datos del navegador elimina los guardados locales. Cambiar el dominio o navegador requiere exportar e importar. Después de una carga completa por HTTPS se puede volver a abrir sin conexión en navegadores compatibles. Los enlaces externos de referencia sí requieren conexión.
 
 Los avisos temporales se cierran automáticamente o con ×. Si una actualización no aparece, cerrá las pestañas de la aplicación y abrila con conexión; no borres el almacenamiento.
-
-## Archivos
-
-- `index.html`, `style.css`, `assets/`: estructura, diseño e imágenes.
-- `app.js`, `rules.js`: ficha, inventario, monedas, validación y controles comunes.
-- `party-store.js`, `party-ui.js`: fichas independientes, creador y pantallas por clase.
-- `class-data.js`, `class-rules.js`: índices 2014 y progresión de las 13 clases.
-- `campaign-data.js`, `campaign.js`: libros, razas, trasfondos, listas ampliadas y ayuda de reglas.
-- `catalog.js`: catálogo local de conjuros y dotes.
-- `progression.js`, `wizard.js`: guía detallada del bardo existente.
-- `combat-engine.js`, `combat-ui.js`: acciones, recursos y combate guiado.
-- `sw.js`, `manifest.webmanifest`: instalación y caché sin conexión.
 
 ## Verificación y fuentes
 
