@@ -9,6 +9,7 @@ function stats(s){const c=info(s),l=s.level,p=2+Math.floor((l-1)/4),m=Object.fro
  if(s.armorMode==='fixed')ac=s.acBase+s.acBonus;
  if(s.armorMode==='barbarian')ac=10+m.dex+m.con+s.acBonus;
  if(s.armorMode==='monk')ac=10+m.dex+m.wis+s.acBonus;
+ if(s.equipmentDefense&&root.Equipment)ac=root.Equipment.defense(s).total;
  return {prof:p,mods:m,maxHP:Math.max(1,s.hpBase+l*m.con),ac,dc:8+p+m[cast.ability],attack:p+m[cast.ability],inspirationMax:Math.max(1,m.cha),inspirationDie:R().die(l),hitDice:l,hitDie:c.die,slots:ss,known:cast.known+(sub(s)?.name==='College of Lore'&&l>=6?2:0),cantrips:cast.cantrips,prepared:cast.type==='prepared'||cast.type==='book'?Math.max(1,m[cast.ability]+(['artificer','paladin'].includes(id(s))?Math.floor(l/2):l)):0,initiative:m.dex+(id(s)==='bard'&&l>=2?Math.floor(p/2):0),songDie:id(s)==='bard'&&l>=2?R().song(l):0};}
 function member(sp,s){if(root.Campaign?.expanded(s).includes(sp.id)&&casting(s).type!=='none')return true;if(sp.level===0&&(s.classChoices?.['Pact Boon']||[]).includes('pact-of-the-tome-PHB'))return true;const lists=sp.classes||D.spellClasses[sp.id]||[];if(id(s)==='bard')return sp.bard&&(!sp.optionalBard||s.progression.expanded);if(['fighter','rogue'].includes(id(s))&&casting(s).caster)return lists.includes('wizard');return lists.includes(id(s));}
 const spellToken=t=>String(t).split('|')[0].toLowerCase().replace(/[^a-z0-9]/g,'');
