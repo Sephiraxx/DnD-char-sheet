@@ -65,7 +65,20 @@ function sources(){modal('Reglas y créditos',`<p>Ficha para <b>D&D 5e 2014</b>.
 const actions={
  'toast-dismiss':hideToast,
 'settings':settings,'resources':editResources,'stats':editStats,'rest':rest,'short-rest':shortRest,'long-rest':longRest,'levelup':levelup,'spell-manage':()=>PartyUI.manageSpells(),'spell-catalog':()=>Learning.catalog(),'learning-config':()=>Learning.configure(),'spell-new':()=>customSpell(),'spell-edit':e=>customSpell(e.dataset.id),'cast':e=>cast(e.dataset.id),'ritual':e=>cast(e.dataset.id,true),'sources':sources,
-'backup':()=>{download('darien-voss-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(state,null,2));toast('Copia exportada.');},
+'backup':()=>{
+  const name = state.name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-+|-+$/g, '') || 'personaje';
+
+  download(
+    name + '-' + new Date().toISOString().slice(0, 10) + '.json',
+    JSON.stringify(state, null, 2)
+  );
+  toast('Copia exportada.');
+},
 'raw-backup':()=>download('darien-datos-por-recuperar.txt',rawBroken||'','text/plain'),
 'undo':()=>{if(!history.length)throw Error('No hay cambios para deshacer en esta sesión.');let previous=history.pop(),before=clone(state);state=previous;persist(before);render();toast('Último cambio deshecho.');},
 'import':()=>$('#import-file').click(),
