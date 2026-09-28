@@ -1,19 +1,4 @@
-# Cuaderno de aventura — D&D 5e 2014 · versión 5.2
-
-Ficha en español para Darien y su party, preparada para GitHub Pages y celular. Aplicación estática: no necesita cuentas, servidor de aplicación, dependencias ni claves. Cada persona abre el mismo enlace y crea su propia ficha.
-
-## Actualizar la página existente
-
-1. Exportá una copia JSON de tu personaje desde la página actual.
-2. Descomprimí el ZIP y reemplazá **todo su contenido** en la raíz del repositorio. `index.html` debe quedar en la raíz; no subas solamente el ZIP. Conservá `.nojekyll`, todas las carpetas y los archivos JavaScript.
-3. Recargá la misma dirección con conexión. Si la página estaba abierta, cerrala y volvé a abrirla para activar la nueva caché `v8-skills`.
-4. No borres los datos del navegador. Tu ficha, su nivel, elecciones, PG, oro y recursos se conservan. Actualizar no concede un descanso.
-
-La actualización de razas y libros añade `campaign-data.js` y `campaign.js`, y actualiza el catálogo, los selectores, las ayudas, las reglas y el caché. Reemplazá el paquete completo.
-
-Archivos nuevos respecto de la versión de combate: `class-data.js`, `class-rules.js`, `party-store.js` y `party-ui.js`. También cambiaron `app.js`, `rules.js`, `index.html`, `style.css`, `combat-engine.js`, `combat-ui.js`, `wizard.js`, `manifest.webmanifest` y `sw.js`.
-
-Para una publicación nueva: subí el contenido a un repositorio y elegí **Settings → Pages → Deploy from a branch → main → /(root)**. No hace falta compilar. Prueba local: `python3 -m http.server 8000`, luego `http://localhost:8000`.
+# Cuaderno de aventura — D&D 5e 2014
 
 ## Crear y cambiar de personaje
 
@@ -25,14 +10,6 @@ En la primera visita, elegí **Crear personaje** o **Importar una ficha JSON**. 
 - La primera visita muestra únicamente Crear personaje e Importar ficha. No abre a Darien ni crea un personaje de ejemplo. Si ya tenés una ficha guardada, abre la última seleccionada; los guardados antiguos de Darien se conservan.
 - Elegí si empezás con recursos completos o si necesitás confirmar los actuales. Los objetos escritos en el inventario no modifican la CA automáticamente.
 - **Personaje → Características y armadura** permite ajustar velocidad, fórmula de CA y característica de lanzamiento.
-
-## Competencias al crear una ficha
-
-El paso 1 muestra las habilidades fijas de raza y trasfondo y las suma automáticamente. El paso 2 separa las elecciones de cada origen, los reemplazos por habilidades repetidas y las habilidades de clase, con contadores independientes. Una competencia de origen no consume una elección de clase. Las concesiones de dotes, rasgos o DM tienen un apartado manual.
-
-Ejemplo: alta elfa + Noble + druida obtiene Percepción, Historia y Persuasión, y puede elegir Medicina y Naturaleza como sus dos habilidades de clase. Intimidación requiere otra fuente. Linaje personalizado y variantes con rasgos alternativos piden elegir el beneficio antes de conceder habilidades.
-
-Esta actualización agrega `creation-skills.js`. Las fichas ya guardadas conservan sus competencias; para corregir una, usá **Personaje → Competencias**. No hace falta recrearla.
 
 ## Libros, razas y trasfondos
 
@@ -100,18 +77,6 @@ Todo se guarda **en ese navegador y dispositivo**. GitHub Pages publica la aplic
 Guardá copias JSON periódicas: borrar los datos del navegador elimina los guardados locales. Cambiar el dominio o navegador requiere exportar e importar. Después de una carga completa por HTTPS se puede volver a abrir sin conexión en navegadores compatibles. Los enlaces externos de referencia sí requieren conexión.
 
 Los avisos temporales se cierran automáticamente o con ×. Si una actualización no aparece, cerrá las pestañas de la aplicación y abrila con conexión; no borres el almacenamiento.
-
-## Archivos
-
-- `index.html`, `style.css`, `assets/`: estructura, diseño e imágenes.
-- `app.js`, `rules.js`: ficha, inventario, monedas, validación y controles comunes.
-- `party-store.js`, `party-ui.js`: fichas independientes, creador y pantallas por clase.
-- `class-data.js`, `class-rules.js`: índices 2014 y progresión de las 13 clases.
-- `campaign-data.js`, `campaign.js`: libros, razas, trasfondos, listas ampliadas y ayuda de reglas.
-- `catalog.js`: catálogo local de conjuros y dotes.
-- `progression.js`, `wizard.js`: guía detallada del bardo existente.
-- `combat-engine.js`, `combat-ui.js`: acciones, recursos y combate guiado.
-- `sw.js`, `manifest.webmanifest`: instalación y caché sin conexión.
 
 ## Verificación y fuentes
 
