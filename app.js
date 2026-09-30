@@ -313,7 +313,7 @@ function legacyCharacter() {
 function journal() {
   return (
     header('El viaje continúa.', 'Notas, compañeros e historial de cambios.', button('Exportar copia', 'backup')) +
-    `<div class="columns"><div class="stack"><section class="card"><h2>Notas de la sesión</h2><label class="field"><span class="visually-hidden">Notas</span><textarea id="journal-notes" style="min-height:230px">${esc(state.notes)}</textarea></label>${button('Guardar notas', 'notes-save', '')}</section><section class="card ${state.classId ? 'legacy-only' : ''}"><div class="card-header"><h2>Compañera de viaje</h2><button class="text-btn" data-action="companion">Editar</button></div><div class="companion"><img src="./assets/companion.webp" alt="Referencia de la esposa elfa de Darien" width="768" height="1152"><div><h3>${esc(state.companion.name)}</h3><p>${esc(state.companion.notes)}</p></div></div></section><section class="card"><h2>Progresión registrada</h2>${state.levelHistory.length ? state.levelHistory.map(x => `<div class="feature"><h3>Nivel ${x.level}</h3><p>${esc(x.note)}</p></div>`).join('') : '<p class="muted">Las próximas subidas de nivel quedarán registradas acá.</p>'}</section></div><section class="card"><div class="card-header"><h2>Últimos cambios</h2><button class="text-btn" data-action="undo">Deshacer</button></div><div class="log">${
+    `<div class="columns"><div class="stack"><section class="card"><h2>Notas de la sesión</h2><label class="field"><span class="visually-hidden">Notas</span><textarea id="journal-notes" style="min-height:230px">${esc(state.notes)}</textarea></label>${button('Guardar notas', 'notes-save', '')}</section><section class="card"><div class="card-header"><h2>Compañeros y mascotas</h2><button class="text-btn" data-action="companion">Editar</button></div><div class="companion">${state.classId ? '' : '<img src="./assets/companion.webp" alt="Retrato de la compañera de viaje" width="768" height="1152">'}<div>${state.companion.name || state.companion.notes ? `<h3>${esc(state.companion.name)}</h3><p>${esc(state.companion.notes)}</p>` : '<p class="muted">Anotá familiares, mascotas, monturas o PNJ que viajan con vos.</p>'}</div></div></section><section class="card"><h2>Progresión registrada</h2>${state.levelHistory.length ? state.levelHistory.map(x => `<div class="feature"><h3>Nivel ${x.level}</h3><p>${esc(x.note)}</p></div>`).join('') : '<p class="muted">Las próximas subidas de nivel quedarán registradas acá.</p>'}</section></div><section class="card"><div class="card-header"><h2>Últimos cambios</h2><button class="text-btn" data-action="undo">Deshacer</button></div><div class="log">${
       state.log.length
         ? state.log
             .slice(0, 40)
@@ -759,7 +759,7 @@ const actions = {
     download(name + '-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(state, null, 2));
     toast('Copia exportada.');
   },
-  'raw-backup': () => download('darien-datos-por-recuperar.txt', rawBroken || '', 'text/plain'),
+  'raw-backup': () => download('ficha-datos-por-recuperar.txt', rawBroken || '', 'text/plain'),
   undo: () => {
     if (!history.length) throw Error('No hay cambios para deshacer en esta sesión.');
     let previous = history.pop(),
@@ -983,9 +983,9 @@ const actions = {
   },
   companion: () =>
     modal(
-      'Compañera de viaje',
-      `${field('Nombre', 'nombre', state.companion.name, 'text', 'maxlength="100" required')}${area('Descripción y notas', 'notas', state.companion.notes)}`,
-      fd => commit('Compañera actualizada', s => (s.companion = { name: fd.get('nombre'), notes: fd.get('notas') })),
+      'Compañeros y mascotas',
+      `${field('Nombre', 'nombre', state.companion.name, 'text', 'maxlength="100"')}${area('Descripción y notas', 'notas', state.companion.notes)}`,
+      fd => commit('Compañeros actualizados', s => (s.companion = { name: fd.get('nombre'), notes: fd.get('notas') })),
     ),
   'feature-new': () =>
     modal(

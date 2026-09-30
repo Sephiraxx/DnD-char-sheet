@@ -243,7 +243,7 @@ const Learning = (() => {
                 'Colegio',
                 'college',
                 [
-                  ['eloquence', 'Elocuencia — plan de Darien'],
+                  ['eloquence', 'Elocuencia'],
                   ['manual', 'Otro colegio — rasgos y elecciones manuales'],
                 ],
                 draft.college,

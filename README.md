@@ -91,3 +91,16 @@ El texto SRD está sujeto a esa licencia. La licencia de los datos estructurados
 ## Inicio sin personaje (v5.1)
 
 La pantalla inicial es genérica. Cancelar el creador o abrir un enlace directo a Combate o Conjuros no carga una ficha de ejemplo. El selector solo lista fichas realmente guardadas; las entradas vacías de versiones anteriores se ignoran. Si hay una ficha ilegible, se conserva y se ofrece descargar sus datos. Verificado el inicio nuevo, creación, importación, conservación de Darien y uso sin conexión.
+
+## Desarrollo
+
+La aplicación no tiene paso de compilación: los archivos de la raíz se publican tal cual en GitHub Pages.
+
+```bash
+npm install        # instala Prettier
+npm run serve      # sirve la app en http://localhost:8080
+npm run format     # formatea el código (los archivos de datos quedan compactos)
+npm run check      # verifica formato y corre las pruebas (node --test)
+```
+
+Las pruebas cargan los scripts del navegador en Node (`test/load.js`) y usan fichas de ejemplo de `test/fixtures/`. Al cambiar los archivos precargados sin conexión, actualizá también la lista y la versión de `sw.js`.

@@ -1,5 +1,5 @@
 const PREFIX = 'darien:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v11-choices-portraits';
+const CACHE = PREFIX + 'v12-party';
 const FILES = [
   './',
   './index.html',
@@ -24,8 +24,6 @@ const FILES = [
   './wizard.js',
   './manifest.webmanifest',
   './assets/icon.svg',
-  './assets/darien.webp',
-  './assets/companion.webp',
 ];
 self.addEventListener('install', event => {
   event.waitUntil(
