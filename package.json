@@ -1,0 +1,13 @@
+{
+  "name": "dnd-char-sheet",
+  "private": true,
+  "description": "Cuaderno de aventura: fichas de D&D 5e 2014 para la party y el DM.",
+  "scripts": {
+    "serve": "npx --yes http-server -c-1 -p 8080 .",
+    "format": "prettier --write .",
+    "check": "prettier --check . && node --test"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3"
+  }
+}
