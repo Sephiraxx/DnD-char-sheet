@@ -24,6 +24,8 @@ let current = null, // id de la mesa abierta
   feed = [],
   error = '',
   unsubscribe = null,
+  online = [],
+  publishTimer,
   toastTimer;
 
 // ---------- Utilidades de interfaz ----------
@@ -114,6 +116,21 @@ function tracker() {
 function saveTracker(t) {
   t.entries.sort((a, b) => (b.init ?? -99) - (a.init ?? -99) || (b.dex ?? 0) - (a.dex ?? 0));
   localStorage.setItem(initKey(), JSON.stringify(t));
+  publishOrder();
+}
+// Los jugadores ven el orden de iniciativa (sin PG ni CA de las criaturas).
+function publishOrder() {
+  clearTimeout(publishTimer);
+  const id = current;
+  publishTimer = setTimeout(() => {
+    if (id !== current) return;
+    const t = tracker();
+    send('initiative', {
+      round: t.round,
+      turn: t.turn,
+      entries: t.entries.map(e => ({ name: e.name, init: e.init, characterId: e.characterId || null })),
+    }).catch(() => {});
+  }, 800);
 }
 const notesKey = () => 'dnd-dm-notes-' + current;
 
@@ -140,7 +157,7 @@ async function open(id) {
     [party, feed] = await Promise.all([Cloud.party(id), Cloud.events(id, 100)]);
     if (party.campaign.dm_id !== (await Cloud.user()).id) throw Error('Esta mesa la dirige otra cuenta.');
     Cloud.rememberDmTable(party.campaign);
-    unsubscribe = await Cloud.subscribe(id, onChange);
+    unsubscribe = await Cloud.subscribe(id, onChange, { role: 'dm' });
   } catch (e) {
     error = e.message;
   }
@@ -156,6 +173,11 @@ async function refresh() {
   draw();
 }
 function onChange(table, payload) {
+  if (table === 'presence') {
+    online = payload;
+    draw();
+    return;
+  }
   if (table === 'characters' && party) {
     if (payload.eventType === 'DELETE') party.characters = party.characters.filter(c => c.id !== payload.old.id);
     else {
@@ -210,7 +232,8 @@ function draw() {
             .map(({ row, x }) =>
               PV.card(x, {
                 owner: party.members.find(m => m.user_id === row.owner_id)?.display_name,
-                actions: `<div class="party-actions">${button('PG', 'hp', 'secondary', `data-id="${row.id}"`)}${button('Estados', 'conditions', 'secondary', `data-id="${row.id}"`)}${button('Tirada', 'request', 'secondary', `data-id="${row.id}"`)}${button('Dar', 'give', 'secondary', `data-id="${row.id}"`)}${button('Mensaje', 'message', 'secondary', `data-id="${row.id}"`)}${button('Más', 'more', 'secondary', `data-id="${row.id}"`)}</div>`,
+                online: online.some(p => p.characterId === row.id),
+                actions: `<div class="party-actions">${button('PG', 'hp', 'secondary', `data-id="${row.id}"`)}${button('Estados', 'conditions', 'secondary', `data-id="${row.id}"`)}${button(x.heroic ? '★ Quitar Insp.' : '★ Inspiración', 'inspire', 'secondary', `data-id="${row.id}" data-on="${x.heroic ? '' : '1'}"`)}${button('Dado', 'bonus-die', 'secondary', `data-id="${row.id}"`)}${button('Tirada', 'request', 'secondary', `data-id="${row.id}"`)}${button('Dar', 'give', 'secondary', `data-id="${row.id}"`)}${button('Mensaje', 'message', 'secondary', `data-id="${row.id}"`)}${button('Más', 'more', 'secondary', `data-id="${row.id}"`)}</div>`,
               }),
             )
             .join('')
@@ -277,6 +300,7 @@ function feedCard() {
       responses.set(e.payload.requestId, list);
     }
   const items = feed
+    .filter(e => e.kind !== 'initiative')
     .filter(e => e.kind !== 'roll-response' || !feed.some(r => r.id === e.payload.requestId))
     .slice(0, 60)
     .map(e => {
@@ -571,7 +595,49 @@ const actions = {
   'init-clear': () => {
     if (!confirm('¿Vaciar la iniciativa?')) return;
     localStorage.removeItem(initKey());
+    publishOrder();
     draw();
+  },
+  'bonus-die': e => {
+    const id = e.dataset.id;
+    modal(
+      'Dado de bonificación para ' + targetName(id),
+      `<div class="form-grid">${select(
+        'Dado',
+        'die',
+        [4, 6, 8, 10, 12].map(d => [d, 'd' + d]),
+        4,
+      )}${select(
+        'Para',
+        'kind',
+        [
+          ['check', 'Pruebas de característica'],
+          ['attack', 'Ataques'],
+          ['save', 'Salvaciones'],
+          ['any', 'Cualquier tirada'],
+        ],
+        'check',
+      )}</div>${field('Motivo', 'reason', '', 'text', 'maxlength="200" placeholder="Por distraer al guardia"')}<fieldset class="campaign-sources"><legend>Solo para estas habilidades (opcional, en pruebas)</legend><div class="source-grid">${Rules.skills.map(([k, n]) => `<label class="check"><input type="checkbox" name="skill" value="${k}">${esc(n)}</label>`).join('')}</div></fieldset><p class="small">El jugador lo ve en su ficha y lo suma cuando tira; se gasta al usarlo.</p>`,
+      fd => {
+        const kind = fd.get('kind');
+        return send(
+          'bonus-die',
+          {
+            die: int(fd, 'die', 4, 12),
+            kind,
+            skills: kind === 'check' ? fd.getAll('skill') : [],
+            reason: String(fd.get('reason')).trim(),
+          },
+          id,
+        );
+      },
+      'Dar dado',
+    );
+  },
+  inspire: async e => {
+    const on = Boolean(e.dataset.on);
+    await send('inspiration', { on }, e.dataset.id);
+    toast(on ? 'Inspiración entregada.' : 'Inspiración retirada.');
   },
 };
 async function rest(type, id) {
@@ -623,6 +689,10 @@ window.addEventListener('hashchange', () => {
   if (id && id !== current) open(id);
 });
 Cloud.onStatus(() => {});
+// Al volver a la pestaña (o desbloquear el celular), se pone al día con la mesa.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && current) refresh();
+});
 const hashId = location.hash.includes('=') ? '' : location.hash.slice(1);
 const start = hashId || localStorage.getItem('dnd-dm-last');
 if (Cloud.enabled && start) open(start);

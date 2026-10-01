@@ -247,3 +247,42 @@
   padding: 8px;
   text-align: center;
 }
+.heroic {
+  color: var(--gold);
+  font-weight: 700;
+}
+.condition-note {
+  color: var(--gold);
+}
+.online-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--teal);
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.initiative-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.initiative-strip .chip.current {
+  color: var(--bg);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.bonus-dice {
+  border: 1px solid #655137;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin: 0 0 10px;
+}
+.bonus-die {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}

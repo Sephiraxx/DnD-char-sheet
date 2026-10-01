@@ -5,7 +5,7 @@
   const enabled = Boolean(cfg.url && cfg.key);
   const DM_TABLES = 'dnd-cloud-dm-v1';
   // Órdenes que solo el DM puede publicar y que la app del jugador aplica a su ficha.
-  const COMMANDS = ['damage', 'heal', 'temp', 'condition', 'rest', 'gold', 'item', 'level'];
+  const COMMANDS = ['damage', 'heal', 'temp', 'condition', 'rest', 'gold', 'item', 'level', 'inspiration', 'bonus-die'];
   let client = null,
     loading = null,
     timer = null,
@@ -440,14 +440,18 @@
   }
 
   // Cambios en vivo de fichas, integrantes y eventos de la mesa.
-  async function subscribe(campaignId, handler) {
+  // `presence`: datos para mostrar quién tiene la aplicación abierta (por ejemplo { characterId } o { role: 'dm' }).
+  async function subscribe(campaignId, handler, presence = null) {
     const c = await api();
     await user();
     const filter = 'campaign_id=eq.' + campaignId;
     const channel = c.channel('mesa-' + campaignId);
     for (const table of ['characters', 'events', 'members'])
       channel.on('postgres_changes', { event: '*', schema: 'public', table, filter }, p => handler(table, p));
-    channel.subscribe();
+    channel.on('presence', { event: 'sync' }, () => handler('presence', Object.values(channel.presenceState()).flat()));
+    channel.subscribe(status => {
+      if (status === 'SUBSCRIBED' && presence) channel.track(presence);
+    });
     return () => c.removeChannel(channel);
   }
 

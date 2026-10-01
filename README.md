@@ -60,6 +60,10 @@ Caballero arcano y Embaucador arcano: las restricciones de escuelas y excepcione
 
 ## Combate y descansos
 
+- **Tiradas:** pruebas, salvaciones, iniciativa, ataques, conjuros, concentración y salvaciones de muerte abren un diálogo con ventaja o desventaja preseleccionada según tus condiciones, la Inspiración del DM y la opción «Uso mis propios dados» para anotar dados físicos.
+- **Conjuros:** al lanzar uno con ataque, salvación o dados se abre su tirada: ataque de conjuro, CD para los objetivos y daño o curación (trucos escalados por nivel y espacios superiores). Los dados salen del texto y se pueden corregir.
+- **Mesa:** el DM da Inspiración; los jugadores ven el orden de iniciativa y quién tiene la aplicación abierta.
+
 - **Mi turno** inicia el seguimiento y recupera acción, adicional y reacción. **Terminar turno** conserva la reacción gastada y habilita registrar reacciones durante turnos ajenos.
 - Elegí acción, adicional o reacción y filtrá por nivel de conjuro. Al lanzar, elegís el espacio disponible. Los trucos no gastan espacios.
 - La restricción de conjuros de acción adicional de 2014 se aplica en ambos órdenes durante el seguimiento.

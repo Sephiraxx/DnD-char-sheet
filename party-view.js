@@ -53,6 +53,8 @@
       concentration: spellName(s, s.concentration),
       death: s.death,
       onTurn: Boolean(c.active && c.onTurn),
+      heroic: Boolean(s.heroicInspiration),
+      bonusDice: (s.bonusDice || []).map(b => 'd' + b.die + (b.reason ? ' · ' + b.reason : '')),
       inCombat: Boolean(c.active),
       gold: s.gold,
     };
@@ -65,7 +67,7 @@
   }
 
   // Tarjeta de un integrante. `actions` es HTML extra (botones del DM).
-  function card(x, { actions = '', owner = '', mine = false } = {}) {
+  function card(x, { actions = '', owner = '', mine = false, online = false } = {}) {
     if (x.broken)
       return `<article class="card party-card"><h3>${esc(x.name)}</h3><p class="muted">No se pudo leer esta ficha.</p>${actions}</article>`;
     const hpKnown = x.hp !== null && x.hp !== undefined;
@@ -73,10 +75,12 @@
     const chips = [
       ...x.conditions.map(c => `<span class="chip warn">${esc(c)}</span>`),
       x.concentration ? `<span class="chip">Concentración: ${esc(x.concentration)}</span>` : '',
+      x.heroic ? '<span class="chip selected">★ Inspiración</span>' : '',
+      ...(x.bonusDice || []).map(b => `<span class="chip selected">+${esc(b)}</span>`),
       x.hp === 0 ? `<span class="chip warn">Salvaciones: ${x.death.success}✓ ${x.death.failure}✗</span>` : '',
     ].join('');
     return `<article class="card party-card ${hpClass(x)} ${x.onTurn ? 'on-turn' : ''} ${mine ? 'mine' : ''}">
-      <div class="party-card-head"><div><h3>${esc(x.name)}${x.onTurn ? ' <span class="chip turn">En turno</span>' : ''}</h3><p class="small muted">${esc(x.line)}${x.race ? ' · ' + esc(x.race) : ''}${owner ? ' · ' + esc(owner) : ''}</p></div>
+      <div class="party-card-head"><div><h3>${online ? '<span class="online-dot" title="Con la aplicación abierta"></span>' : ''}${esc(x.name)}${x.onTurn ? ' <span class="chip turn">En turno</span>' : ''}</h3><p class="small muted">${esc(x.line)}${x.race ? ' · ' + esc(x.race) : ''}${owner ? ' · ' + esc(owner) : ''}</p></div>
       <div class="party-ac" title="Clase de armadura"><b>${x.ac}</b><span>CA</span></div></div>
       <div class="party-hp"><div class="meter" aria-hidden="true"><span style="width:${pct}%"></span></div><p><b>${hpKnown ? x.hp : '—'}</b> / ${x.maxHP} PG${x.temp ? ` · +${x.temp} temp.` : ''}</p></div>
       <dl class="party-stats"><div><dt>Iniciativa</dt><dd>${sign(x.initiative)}</dd></div><div><dt>Percepción pasiva</dt><dd>${x.passive.perception}</dd></div><div><dt>Perspicacia pasiva</dt><dd>${x.passive.insight}</dd></div><div><dt>CD</dt><dd>${x.dc}</dd></div></dl>
@@ -119,6 +123,10 @@
         return `<b>DM</b>: ${esc(target)} recibe ${esc(goldText(p))}`;
       case 'item':
         return `<b>DM</b>: ${esc(target)} recibe ${esc(p.qty > 1 ? p.qty + ' × ' : '')}${esc(p.name)}`;
+      case 'bonus-die':
+        return `<b>DM</b>: ${esc(target)} recibe un d${esc(p.die)}${p.reason ? ' (' + esc(p.reason) + ')' : ''}`;
+      case 'inspiration':
+        return `<b>DM</b>: ${esc(target)} ${p.on === false ? 'pierde' : 'recibe'} Inspiración`;
       case 'level':
         return `<b>DM</b>: ${esc(target)} puede subir a nivel ${esc(p.level || '')}`;
       case 'turn':
@@ -138,5 +146,28 @@
     );
   }
 
-  root.PartyView = { esc, summarize, card, rollText, eventText, goldText };
+  // Orden de iniciativa publicado por el DM (el último, si el combate sigue).
+  function initiative(feed) {
+    const last = feed.find(e => e.kind === 'initiative' || e.kind === 'combat-end');
+    return last?.kind === 'initiative' && last.payload?.entries?.length ? last.payload : null;
+  }
+  function initiativeStrip(order, mineId = '') {
+    if (!order) return '';
+    return `<div class="initiative-strip"><b>Ronda ${esc(order.round || 1)}</b>${order.entries
+      .map(
+        (e, i) =>
+          `<span class="chip ${i === order.turn ? 'current' : ''}">${e.init ?? '—'} · ${esc(e.name)}${e.characterId && e.characterId === mineId ? ' (vos)' : ''}</span>`,
+      )
+      .join('')}</div>`;
+  }
+  root.PartyView = {
+    initiative,
+    initiativeStrip,
+    esc,
+    summarize,
+    card,
+    rollText,
+    eventText,
+    goldText,
+  };
 })(typeof window !== 'undefined' ? window : globalThis);

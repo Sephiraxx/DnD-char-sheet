@@ -641,6 +641,21 @@
       fail();
     if (o.inspirationSpent !== null && !int(o.inspirationSpent, 0, stats(o).inspirationMax)) fail();
     if (o.hdSpent !== null && !int(o.hdSpent, 0, totalLevel(o))) fail();
+    if (o.heroicInspiration !== undefined && typeof o.heroicInspiration !== 'boolean') fail();
+    if (
+      o.bonusDice !== undefined &&
+      (!list(o.bonusDice, 20) ||
+        o.bonusDice.some(
+          b =>
+            !txt(b.id, 100) ||
+            ![4, 6, 8, 10, 12].includes(b.die) ||
+            !txt(b.reason, 200) ||
+            !['any', 'check', 'attack', 'save'].includes(b.kind) ||
+            !list(b.skills || [], 18) ||
+            (b.skills || []).some(k => !skills.some(x => x[0] === k)),
+        ))
+    )
+      fail();
     for (let k of ['hpConfirmed', 'goldConfirmed', 'reactionUsed']) if (typeof o[k] !== 'boolean') fail();
     if (
       !list(o.conditions, 20) ||
