@@ -50,7 +50,12 @@ const AccountUI = (() => {
     const box = document.querySelector(`#account-${kind} .account-body`);
     if (!box) return;
     try {
-      const me = await Cloud.currentUser();
+      let me = await Cloud.currentUser();
+      // Un juntado que quedó a medias (se cortó la conexión después de entrar): se termina solo.
+      if (me && !me.is_anonymous && Cloud.mergePending()) {
+        await Cloud.finishMerge().catch(() => {});
+        me = await Cloud.currentUser();
+      }
       box.innerHTML = kind === 'restore' ? await restoreHtml(me) : accountHtml(me);
     } catch (e) {
       box.innerHTML = `<p class="small muted">${esc(e.message)}</p>`;
@@ -82,8 +87,35 @@ const AccountUI = (() => {
     } catch (err) {
       out.textContent = err.message;
       btn.disabled = false;
+      if (err.code === 'merge') offerMerge(f, email, password);
     }
   });
+  // El email ya tiene una cuenta (o se quiere entrar con fichas sin guardar): juntar las dos.
+  function offerMerge(f, email, password) {
+    f.parentElement.querySelector('.account-merge')?.remove();
+    const box = document.createElement('div');
+    box.className = 'banner account-merge';
+    box.innerHTML = `<div><p><b>Ya tenés un acceso con ${esc(email)}.</b> ¿Juntar las fichas y mesas de este dispositivo con esa cuenta? Después abrís todo con ese email, en cualquier dispositivo. Nada se borra.</p><label class="field">Contraseña de esa cuenta<input type="password" autocomplete="current-password" maxlength="72"></label><div class="actions"><button type="button" class="button" data-merge-go>Juntar con mi cuenta</button><button type="button" class="button secondary" data-merge-cancel>Cancelar</button></div><p class="form-error" role="alert"></p></div>`;
+    const pass = box.querySelector('input');
+    pass.value = password;
+    f.after(box);
+    box.querySelector('[data-merge-cancel]').onclick = () => box.remove();
+    box.querySelector('[data-merge-go]').onclick = async e => {
+      const out = box.querySelector('.form-error');
+      e.target.disabled = true;
+      out.textContent = 'Juntando…';
+      try {
+        const moved = await Cloud.mergeInto(email, pass.value);
+        const msg = `Listo: ahora entrás con ${email}. Se sumaron ${moved?.characters || 0} ficha(s) y ${moved?.tables || 0} mesa(s) de este dispositivo.`;
+        box.remove();
+        refill();
+        if (typeof toast === 'function') toast(msg);
+      } catch (err) {
+        out.textContent = err.message;
+        e.target.disabled = false;
+      }
+    };
+  }
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-account-restore]');
     if (!b) return;

@@ -124,7 +124,7 @@
     const r = await (await api()).auth.updateUser({ email, password });
     if (r.error)
       throw /already.*registered|already been registered|exists/i.test(r.error.message)
-        ? Error('Ese email ya tiene un acceso. Usá «Entrar» con su contraseña.')
+        ? Object.assign(Error('Ese email ya tiene un acceso.'), { code: 'merge' })
         : friendly(r.error);
     if (r.data.user?.new_email && !r.data.user?.email)
       throw Error('El servidor todavía pide confirmar el email por correo. Avisale a quien administra la mesa.');
@@ -138,10 +138,9 @@
   // En otro dispositivo: entrar con el email y la contraseña guardados.
   async function signIn(email, password) {
     const me = await currentUser();
+    // Entrar directo dejaría sin dueño las fichas de este dispositivo: se ofrece juntar las cuentas.
     if (me?.is_anonymous && hasLocalCloudData())
-      throw Error(
-        'Este dispositivo ya tiene fichas o mesas con un acceso sin email. Guardá ese acceso con tu email (Tu acceso) en vez de entrar con otro.',
-      );
+      throw Object.assign(Error('Este dispositivo tiene fichas o mesas con un acceso sin email.'), { code: 'merge' });
     const captchaToken = cfg.captchaSiteKey && !isLocal() ? await captcha() : undefined;
     const r = await (
       await api()
@@ -156,6 +155,40 @@
         : friendly(r.error);
     dispatchEvent(new CustomEvent('cloud-login', { detail: { error: '' } }));
   }
+  // Juntar cuentas: las fichas, mesas y membresías del acceso anónimo de este dispositivo pasan a la
+  // cuenta con email. El código de un solo uso se guarda hasta canjearlo, por si se corta la conexión.
+  const MERGE = 'dnd-merge-token-v1';
+  async function mergeInto(email, password) {
+    const me = await currentUser();
+    if (!me?.is_anonymous) throw Error('Este dispositivo ya usa una cuenta con email.');
+    const token = check(await (await api()).rpc('create_transfer_token'));
+    localStorage.setItem(MERGE, token);
+    const captchaToken = cfg.captchaSiteKey && !isLocal() ? await captcha() : undefined;
+    const r = await (
+      await api()
+    ).auth.signInWithPassword({
+      email,
+      password,
+      ...(captchaToken ? { options: { captchaToken } } : {}),
+    });
+    if (r.error) {
+      localStorage.removeItem(MERGE);
+      throw /invalid login|credentials/i.test(r.error.message)
+        ? Error('Email o contraseña incorrectos. Usá la contraseña de esa cuenta.')
+        : friendly(r.error);
+    }
+    return finishMerge();
+  }
+  async function finishMerge() {
+    const token = localStorage.getItem(MERGE);
+    if (!token) return null;
+    const moved = check(await (await api()).rpc('redeem_transfer_token', { p_token: token }));
+    localStorage.removeItem(MERGE);
+    dispatchEvent(new CustomEvent('cloud-login', { detail: { error: '' } }));
+    return moved;
+  }
+  const mergePending = () => !!localStorage.getItem(MERGE);
+
   // Fichas de este usuario en cualquier mesa, para traerlas a este dispositivo.
   async function myCharacters() {
     const me = await currentUser();
@@ -668,6 +701,9 @@
     saveHomebrew,
     removeHomebrew,
     cleanSettings,
+    mergeInto,
+    finishMerge,
+    mergePending,
     updateSettings,
     joinOnly,
     pendingTable,
