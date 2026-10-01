@@ -155,13 +155,25 @@ const MonsterUI = (() => {
       async fd => {
         const n = int(fd, 'count', 1, 20),
           saves = saveBonuses(m);
+        // Numeración continua: si ya hay «Goblin», pasa a «Goblin 1» y los nuevos siguen desde ahí.
+        const number = name =>
+            name === m.name
+              ? 0
+              : name.startsWith(m.name + ' ') && /^\d+$/.test(name.slice(m.name.length + 1))
+                ? Number(name.slice(m.name.length + 1))
+                : -1,
+          taken = tracker().entries.filter(e => e.kind === 'monster' && number(e.name) >= 0),
+          plain = taken.filter(e => e.name === m.name);
+        let next = Math.max(0, ...taken.map(e => number(e.name))) + 1;
+        const numbered = taken.length + n > 1;
+        if (numbered) for (const e of plain) await Cloud.updateCombatant(e.id, { name: `${m.name} ${next++}` });
         for (let i = 1; i <= n; i++) {
           const hp = fd.get('hpMode') === 'roll' ? Math.max(1, rollDice(m.hd).total) : m.hp;
           await Cloud.addCombatant(
             current,
             {
               kind: 'monster',
-              name: n > 1 ? `${m.name} ${i}` : m.name,
+              name: numbered ? `${m.name} ${next++}` : m.name,
               init: d20() + mod(m.ab[1]),
               tiebreak: mod(m.ab[1]),
             },

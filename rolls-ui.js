@@ -233,14 +233,14 @@ const RollUI = (() => {
   // ---------- Conjuros: ataque, salvación y daño o curación ----------
   function spellInfo(sp, slot) {
     const all = [sp.brief, sp.text, sp.srdOriginal].filter(Boolean).join('\n');
-    const m =
-      /(\d+)d(\d+)/.exec(sp.brief || '') ||
-      /(\d+)d(\d+)/.exec(sp.text || '') ||
-      /(\d+)d(\d+)/.exec(sp.srdOriginal || '');
+    // «1d4 + 1»: el bono fijo acompaña a los dados (no confundir con «+ 4d8» ni «+ tu modificador»).
+    const DICE = /(\d+)d(\d+)(?:\s*\+\s*(\d+)(?![\dd]))?/;
+    const m = DICE.exec(sp.brief || '') || DICE.exec(sp.text || '') || DICE.exec(sp.srdOriginal || '');
     const heal = /recupera|regains?/i.test(sp.brief || sp.text || '') && !(sp.damageTypes || []).length;
     let count = m ? Number(m[1]) : 0,
       notes = [];
     const sides = m ? Number(m[2]) : 0;
+    let flat = m ? Number(m[3] || 0) : 0;
     const total = R.totalLevel ? R.totalLevel(state) : state.level;
     if (sp.level === 0 && m) {
       const tier = 1 + (total >= 5) + (total >= 11) + (total >= 17);
@@ -249,6 +249,15 @@ const RollUI = (() => {
         count *= tier;
         notes.push(`Truco escalado por nivel de personaje ${total}.`);
       }
+    }
+    // Proyectil mágico: tres dardos y uno más por cada nivel de espacio superior.
+    if (m && /three glowing darts/i.test(sp.srdOriginal || '')) {
+      const darts = 3 + Math.max(0, slot - sp.level);
+      count *= darts;
+      flat *= darts;
+      notes.push(
+        `${darts} dardos de 1d${sides}${m[3] ? ' + ' + m[3] : ''} (todos al mismo objetivo; si los repartís, ajustá el daño).`,
+      );
     }
     const up = /increases by (\d+)d(\d+) for each slot level above/i.exec(sp.srdOriginal || '');
     if (up && slot > sp.level && Number(up[2]) === sides) {
@@ -260,7 +269,7 @@ const RollUI = (() => {
       save: ABILITY_ES[(sp.saveAbility || [])[0]] || '',
       saveName: (sp.saveAbility || [])[0] || '',
       // Solo cuentan como daño los dados de conjuros con tipo de daño (o curación): el 1d4 de Bendecir es un bono.
-      dice: m && (heal || (sp.damageTypes || []).length) ? count + 'd' + sides : '',
+      dice: m && (heal || (sp.damageTypes || []).length) ? count + 'd' + sides + (flat ? '+' + flat : '') : '',
       heal,
       addMod: /modificador de lanzamiento|spellcasting ability modifier/i.test(all),
       types: (sp.damageTypes || []).join(', '),
@@ -395,7 +404,10 @@ const RollUI = (() => {
       fd = new FormData(document.getElementById('dialog-form')),
       st = R.stats(state),
       mod = fd.has('spellMod') ? st.mods[Classes.casting(state).ability] : 0;
-    const own = fd.get('myDamage');
+    const own = fd.get('myDamage'),
+      m = /^\s*(\d+)d(\d+)\s*(?:\+\s*(\d+))?\s*$/.exec(String(fd.get('spellDice') || ''));
+    // El bono fijo de los dados («3d4+3») también se suma a los dados físicos.
+    const flat = Number(m?.[3] || 0);
     let rolls = [],
       sum;
     if (own !== null && own !== '') {
@@ -403,21 +415,22 @@ const RollUI = (() => {
       if (!Number.isInteger(sum) || sum < 0 || sum > 999) throw Error('Revisá la suma de tus dados.');
       document.querySelector('#dialog-form [name=myDamage]').value = '';
     } else {
-      const m = /^\s*(\d+)d(\d+)\s*$/.exec(String(fd.get('spellDice') || ''));
-      if (!m) throw Error('Escribí los dados como «2d8».');
+      if (!m) throw Error('Escribí los dados como «2d8» o «3d4+3».');
       const n = Number(m[1]) * (spellSession.crit ? 2 : 1);
       if (n > 60) throw Error('Demasiados dados.');
       rolls = roll(Number(m[2]), n);
       sum = rolls.reduce((a, b) => a + b, 0);
     }
+    const dice = (rolls.length ? rolls.join('+') : 'dados físicos ' + sum) + (flat ? ' + ' + flat : '');
+    sum += flat;
     const total = Math.max(0, sum + mod),
       what = info.heal ? 'Curación' : 'Daño';
-    let line = `<b>${what}${spellSession.crit ? ' crítico' : ''}:</b> ${rolls.length ? rolls.join('+') : 'dados físicos ' + sum}${mod ? ' ' + sign(mod) : ''} = <b>${total}</b>${info.types ? ' ' + esc(info.types) : ''}`;
+    let line = `<b>${what}${spellSession.crit ? ' crítico' : ''}:</b> ${dice}${mod ? ' ' + sign(mod) : ''} = <b>${total}</b>${info.types ? ' ' + esc(info.types) : ''}`;
     const landedDamage = RollFX.show({
       label: what + ' · ' + sp.name,
       total,
       face: info.heal ? '✚' : '✦',
-      detail: rolls.length ? rolls.join(' + ') + (mod ? ' ' + sign(mod) : '') : 'dados físicos',
+      detail: dice + (mod ? ' ' + sign(mod) : ''),
       crit: spellSession.crit,
     });
     const applied = applySpellResult(fd, total).catch(err => {
@@ -429,7 +442,7 @@ const RollUI = (() => {
     TableUI.shareRoll({
       label: what + ' de ' + sp.name + (spellSession.crit ? ' (crítico)' : ''),
       rolls,
-      bonus: mod,
+      bonus: mod + flat,
       total,
       physical: !rolls.length,
     });
@@ -528,7 +541,15 @@ const RollUI = (() => {
       t = TableUI.targets(),
       rounds = Effects.roundsFrom(sp.duration);
     if (!who.length) throw Error('Elegí al menos un objetivo.');
-    const names = [];
+    const names = [],
+      l = TableUI.link(),
+      // Con concentración, el efecto de los aliados queda ligado a la tuya.
+      link = l && sp.concentration ? l.characterId + ':' + sp.id : null,
+      allies = who.filter(w => w !== 'self').map(w => w.slice(3));
+    if (link && allies.length && state.concentration === sp.id)
+      commit('Concentración compartida: ' + sp.name, s => {
+        s.sharedConcentration = { spell: sp.id, name: sp.name + ' (de ' + state.name + ')', targets: allies };
+      });
     for (const w of who)
       if (w === 'self') {
         commit('Efecto: ' + sp.name, s =>
@@ -537,7 +558,12 @@ const RollUI = (() => {
         names.push('vos');
       } else {
         const id = w.slice(3);
-        await TableUI.sendTo(id, 'effect', { name: sp.name + ' (de ' + state.name + ')', rounds: rounds || null });
+        await TableUI.sendTo(id, 'effect', {
+          name: sp.name + ' (de ' + state.name + ')',
+          rounds: rounds || null,
+          from: state.name,
+          ...(link ? { link } : {}),
+        });
         names.push(t.allies.find(a => a.characterId === id)?.name || 'aliado');
       }
     logLine(

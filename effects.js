@@ -24,11 +24,19 @@
   function list(s) {
     return Array.isArray(s.timedEffects) ? s.timedEffects : [];
   }
-  function add(s, { name, rounds = null, concentration = null, from = 'self' }) {
+  // `link` identifica un efecto lanzado por otro (personaje:conjuro): relanzarlo lo reemplaza.
+  function add(s, { name, rounds = null, concentration = null, from = 'self', link = null }) {
     const id = 'fx-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     s.timedEffects = [
-      ...list(s).filter(x => !(concentration && x.concentration === concentration)),
-      { id, name: String(name).slice(0, 100), rounds, concentration, from },
+      ...list(s).filter(x => !(concentration && x.concentration === concentration) && !(link && x.link === link)),
+      {
+        id,
+        name: String(name).slice(0, 100),
+        rounds,
+        concentration,
+        from,
+        ...(link ? { link: String(link).slice(0, 120) } : {}),
+      },
     ].slice(-30);
   }
   // Al lanzar un conjuro con duración se anota su efecto, ligado a la concentración si corresponde.
@@ -76,6 +84,7 @@
             x.name.length <= 100 &&
             (x.rounds === null || (Number.isInteger(x.rounds) && x.rounds >= 0 && x.rounds <= 100000)) &&
             (x.concentration === null || typeof x.concentration === 'string') &&
+            (x.link === undefined || (typeof x.link === 'string' && x.link.length <= 120)) &&
             ['self', 'dm'].includes(x.from),
         ))
     );

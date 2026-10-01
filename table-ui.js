@@ -261,7 +261,7 @@ const TableUI = (() => {
         const amount = n(p.amount);
         if (!amount || state.hp === null) return 'Daño del DM pendiente: confirmá tus PG actuales.';
         const conc = state.concentration;
-        commit('DM: daño recibido ' + amount + (p.source ? ' (' + p.source + ')' : ''), s => {
+        commit((p.from || 'DM') + ': daño recibido ' + amount + (p.source ? ' (' + p.source + ')' : ''), s => {
           const absorbed = Math.min(s.temp, amount);
           s.temp -= absorbed;
           s.hp = Math.max(0, s.hp - (amount - absorbed));
@@ -351,8 +351,18 @@ const TableUI = (() => {
           .trim()
           .slice(0, 100);
         if (!name) return '';
+        // Fin de un efecto ajeno: el que lo lanzó perdió la concentración.
+        if (p.end) {
+          if (!p.link || !Effects.list(state).some(x => x.link === p.link)) return '';
+          commit((p.from || 'DM') + ': termina ' + name, s => {
+            s.timedEffects = Effects.list(s).filter(x => x.link !== p.link);
+          });
+          return `Terminó ${name}: ${p.from || 'el DM'} perdió la concentración.`;
+        }
         const rounds = Number.isInteger(p.rounds) && p.rounds > 0 ? Math.min(100000, p.rounds) : null;
-        commit((p.from || 'DM') + ': efecto ' + name, s => Effects.add(s, { name, rounds, from: 'dm' }));
+        commit((p.from || 'DM') + ': efecto ' + name, s =>
+          Effects.add(s, { name, rounds, from: 'dm', link: typeof p.link === 'string' ? p.link : null }),
+        );
         return `${p.from || 'El DM'} te aplicó: ${name}${rounds ? ' (' + Effects.remaining({ rounds }) + ')' : ''}.`;
       }
       case 'inspiration':
@@ -371,7 +381,7 @@ const TableUI = (() => {
     for (const ev of fresh) {
       try {
         const msg = applyCommand(ev);
-        if (msg && !msg.includes('pendiente')) ids.push(ev.id);
+        if (typeof msg === 'string' && !msg.includes('pendiente')) ids.push(ev.id);
         if (msg) messages.push(msg);
       } catch (e) {
         messages.push('No se pudo aplicar una orden del DM: ' + e.message);
@@ -393,17 +403,22 @@ const TableUI = (() => {
     }
     if (p.characterId === l.characterId) {
       let ended = [];
+      // Igual que «Mi turno»: la pantalla de combate vuelve a la pestaña de acción.
+      combatTab = 'action';
+      combatLevel = 'all';
       commit('Turno indicado por el DM (ronda ' + (p.round || 1) + ')', s => {
         Combat.start(s);
         ended = Effects.tick(s);
       });
       navigator.vibrate?.(200);
       toast('¡Es tu turno!' + (ended.length ? ' Terminó: ' + ended.join(', ') + '.' : ''));
-    } else if (state.combatState?.onTurn || !state.combatState?.active)
+    } else if (state.combatState?.onTurn || !state.combatState?.active) {
+      if (state.combatState?.onTurn) combatTab = 'reaction';
       commit('Turno de ' + (p.name || 'otro integrante'), s => {
         Combat.end(s);
         Combat.data(s).active = true;
       });
+    }
   }
 
   function onChange(table, payload) {
@@ -625,10 +640,16 @@ const TableUI = (() => {
       share: false,
       onDone: r =>
         setTimeout(() => {
-          const success = r.kept !== 1 && (r.kept === 20 || r.total >= Number(p.dc));
+          // Paralizado, aturdido, inconsciente o petrificado: falla sola las salvaciones de FUE y DES.
+          const out = RollUI.conditionMods(state, 'save', p.ability).autoFail;
+          const success = !out && r.kept !== 1 && (r.kept === 20 || r.total >= Number(p.dc));
           const amount = success ? (p.half ? Math.floor(Number(p.damage) / 2) : 0) : Number(p.damage) || 0;
-          if (amount) applyCommand({ kind: 'damage', payload: { amount, source: p.spell } });
-          toast(`${success ? 'Salvaste' : 'Fallaste'}: ${amount ? amount + ' de daño' : 'sin daño'} (${p.spell}).`);
+          const conc = state.concentration;
+          if (amount) applyCommand({ kind: 'damage', payload: { amount, source: p.spell, from: p.caster } });
+          toast(
+            `${success ? 'Salvaste' : 'Fallaste'}: ${amount ? amount + ' de daño' : 'sin daño'} (${p.spell}).` +
+              (amount && conc && state.hp > 0 ? ' Tirá la salvación de concentración.' : ''),
+          );
           if (local || !l) return;
           Cloud.post(
             l.campaignId,
@@ -654,6 +675,20 @@ const TableUI = (() => {
             .catch(e => toast(e.message));
         }),
     });
+  }
+
+  // Después de cada cambio: si terminó la concentración de un conjuro compartido, los aliados lo pierden.
+  function watch(before, after) {
+    const shared = before.sharedConcentration,
+      l = link();
+    if (!l || !shared || before.concentration !== shared.spell || after.concentration === shared.spell) return;
+    for (const id of shared.targets || [])
+      sendTo(id, 'effect', {
+        name: shared.name,
+        end: true,
+        link: l.characterId + ':' + shared.spell,
+        from: after.name,
+      }).catch(e => toast(e.message));
   }
 
   function install() {
@@ -754,6 +789,7 @@ const TableUI = (() => {
     link,
     statusLabel: st => CREATURE_STATUS[st] || st,
     areaSave,
+    watch,
     shareRoll,
     requestBanner,
     showStatus,

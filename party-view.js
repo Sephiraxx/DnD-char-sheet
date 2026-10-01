@@ -180,6 +180,8 @@
       case 'item':
         return `<b>DM</b>: ${esc(target)} recibe ${esc(p.qty > 1 ? p.qty + ' × ' : '')}${esc(p.name)}`;
       case 'effect':
+        if (p.end)
+          return `<b>${esc(p.from || 'DM')}</b> pierde la concentración: ${esc(target)} deja de tener ${esc(p.name)}`;
         return `<b>${esc(p.from || 'DM')}</b>: ${esc(target)} queda con ${esc(p.name)}${p.rounds ? ' (' + esc(p.rounds) + ' rondas)' : ''}`;
       case 'bonus-die':
         return `<b>${esc(p.from || 'DM')}</b>: ${esc(target)} recibe un d${esc(p.die)}${p.reason ? ' (' + esc(p.reason) + ')' : ''}`;

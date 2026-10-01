@@ -50,3 +50,17 @@ test('lanzar un conjuro con duración anota el efecto', () => {
   );
   assert.equal(E.list(s).length, 1);
 });
+
+test('el efecto de un aliado se reemplaza al relanzarlo y se quita por su vínculo', () => {
+  const s = sheet();
+  E.add(s, { name: 'Bendecir (de Tobías)', rounds: 6, from: 'dm', link: 'tobias:bless' });
+  E.add(s, { name: 'Bendecir (de Tobías)', rounds: 10, from: 'dm', link: 'tobias:bless' });
+  E.add(s, { name: 'Bendecir (de Ana)', rounds: 10, from: 'dm', link: 'ana:bless' });
+  assert.deepEqual(JSON.parse(JSON.stringify(E.list(s).map(x => [x.name, x.rounds]))), [
+    ['Bendecir (de Tobías)', 10],
+    ['Bendecir (de Ana)', 10],
+  ]);
+  assert.ok(E.valid(s));
+  s.timedEffects[0].link = 'x'.repeat(121);
+  assert.equal(E.valid(s), false);
+});

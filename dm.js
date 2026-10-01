@@ -322,7 +322,11 @@ async function resolveSave(req, targetId, own = null) {
   const bonus = Number(c.saves?.[p.ability] ?? 0),
     natural = own ?? d20(),
     total = natural + bonus,
-    success = natural !== 1 && (natural === 20 || total >= Number(p.dc)),
+    // Paralizada, aturdida, inconsciente o petrificada: falla sola las salvaciones de FUE y DES.
+    out =
+      ['str', 'dex'].includes(p.ability) &&
+      ['Paralizado', 'Aturdido', 'Inconsciente', 'Petrificado'].some(x => (c.conditions || []).includes(x)),
+    success = !out && natural !== 1 && (natural === 20 || total >= Number(p.dc)),
     dmg = Number(p.damage) || 0,
     damage = success ? (p.half ? Math.floor(dmg / 2) : 0) : dmg,
     hp = Math.max(0, (c.hp ?? 0) - damage);
