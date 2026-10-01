@@ -14,6 +14,7 @@ const LOGIC = [
   'party-store.js',
   'combat-engine.js',
   'rules.js',
+  'attacks.js',
   'campaign.js',
   'progression.js',
   'creation-skills.js',

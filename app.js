@@ -1061,6 +1061,7 @@ PartyUI.install();
 Campaign.install();
 EquipmentUI.install();
 TableUI.install();
+AttackUI.install();
 document.addEventListener('click', e => {
   if (e.target.closest('[data-close]')) {
     $('#modal').close();

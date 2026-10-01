@@ -681,7 +681,13 @@
         !txt(x.category, 100) ||
         !txt(x.notes) ||
         !txt(x.location, 200) ||
-        (x.weight !== null && !finite(x.weight, 0, 999999))
+        (x.weight !== null && !finite(x.weight, 0, 999999)) ||
+        (x.attack !== undefined &&
+          (!x.attack ||
+            !['auto', 'str', 'dex', 'con', 'int', 'wis', 'cha'].includes(x.attack.ability) ||
+            !['auto', true, false].includes(x.attack.proficient) ||
+            !int(x.attack.magic, -5, 10) ||
+            !txt(x.attack.extra, 60)))
       )
         fail();
     if (new Set(o.inventory.map(x => x.id)).size !== o.inventory.length) fail();

@@ -207,3 +207,35 @@
   font-size: 0.85rem;
   color: var(--muted);
 }
+
+/* Ataques */
+.attack-line {
+  margin: 4px 0;
+}
+.attack-adv {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  border: 0;
+  padding: 0;
+  margin: 0 0 10px;
+}
+.attack-log {
+  min-height: 40px;
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #0f1f24;
+}
+.attack-log p {
+  margin: 4px 0;
+}
+.attack-log .crit {
+  color: var(--gold);
+}
+.attack-log .fumble {
+  color: var(--red);
+}
+.attack-log .damage {
+  color: var(--teal);
+}
