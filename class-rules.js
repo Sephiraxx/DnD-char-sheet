@@ -1,4 +1,5 @@
-/* Personajes de una clase, D&D 5e 2014. Datos de fuentes en class-data.js. */
+/* Clases de D&D 5e 2014, con multiclase básica. Datos de fuentes en class-data.js.
+   La clase principal usa classId/level/classSubclass; las demás viven en s.multiclass. */
 (function (root) {
   'use strict';
   const D = root.ClassData,
@@ -10,6 +11,23 @@
       (id(s) === 'bard' && s.subclass === 'eloquence'
         ? D.subclasses.find(x => x.id === 'bard-college-of-eloquence')
         : null);
+  // Multiclase: cada clase secundaria se evalúa como una «vista» con su propio nivel de clase.
+  const mcList = s => (Array.isArray(s.multiclass) ? s.multiclass : []);
+  const totalLevel = s => s._total || s.level + mcList(s).reduce((a, x) => a + x.level, 0);
+  function view(s, mc) {
+    return {
+      ...s,
+      classId: mc.classId,
+      level: mc.level,
+      classSubclass: mc.subclass || '',
+      subclass: '',
+      classChoices: mc.choices || {},
+      castingAbility: undefined,
+      multiclass: [],
+      _total: totalLevel(s),
+    };
+  }
+  const views = s => [s, ...mcList(s).map(mc => view(s, mc))];
   const at = (arr, l) => arr?.[l - 1] || 0,
     mod = n => Math.floor((n - 10) / 2),
     clone = x => JSON.parse(JSON.stringify(x));
@@ -31,7 +49,7 @@
       known: at(sc?.known || c.known, s.level),
     };
   }
-  function slots(s) {
+  function ownSlots(s) {
     const c = casting(s).caster,
       l = s.level,
       t = R().slots;
@@ -47,10 +65,49 @@
     if (c === '1/3') return l < 3 ? [] : t[Math.ceil(l / 3)];
     return [];
   }
+  // Nivel de lanzador multiclase (PHB p. 164). El pacto mágico va aparte.
+  function casterLevel(v) {
+    const c = casting(v).caster,
+      l = v.level;
+    if (c === 'full') return l;
+    if (c === '1/2') return Math.floor(l / 2);
+    if (c === 'artificer') return Math.ceil(l / 2);
+    if (c === '1/3') return Math.floor(l / 3);
+    return 0;
+  }
+  const spellcasters = s => views(s).filter(v => casting(v).type !== 'none' && casting(v).caster !== 'pact');
+  // Espacios de pacto separados cuando hay multiclase con brujo (salvo brujo principal sin otros lanzadores).
+  function pact(s) {
+    if (!mcList(s).length || s._total) return null;
+    const w = views(s).find(v => id(v) === 'warlock');
+    if (!w || (w === s && !spellcasters(s).length)) return null;
+    const a = ownSlots(w);
+    return { level: a.length, max: a[a.length - 1] };
+  }
+  function slots(s) {
+    if (!mcList(s).length || s._total) return ownSlots(s);
+    const casters = spellcasters(s);
+    if (!casters.length) return id(s) === 'warlock' ? ownSlots(s) : [];
+    if (casters.length === 1) return ownSlots(casters[0]);
+    return R().slots[
+      Math.min(
+        20,
+        casters.reduce((a, v) => a + casterLevel(v), 0),
+      )
+    ];
+  }
+  function hitDiceSet(s) {
+    const out = {};
+    for (const v of views(s)) out[info(v).die] = (out[info(v).die] || 0) + v.level;
+    return Object.entries(out)
+      .map(([die, count]) => ({ die: Number(die), count }))
+      .sort((a, b) => b.die - a.die);
+  }
   function stats(s) {
     const c = info(s),
       l = s.level,
-      p = 2 + Math.floor((l - 1) / 4),
+      total = totalLevel(s),
+      p = 2 + Math.floor((total - 1) / 4),
       m = Object.fromEntries(Object.entries(s.abilities).map(([k, v]) => [k, mod(v)])),
       cast = casting(s),
       ss = slots(s);
@@ -62,22 +119,25 @@
     return {
       prof: p,
       mods: m,
-      maxHP: Math.max(1, s.hpBase + l * m.con),
+      maxHP: Math.max(1, s.hpBase + total * m.con),
       ac,
       dc: 8 + p + m[cast.ability],
       attack: p + m[cast.ability],
       inspirationMax: Math.max(1, m.cha),
       inspirationDie: R().die(l),
-      hitDice: l,
+      hitDice: total,
       hitDie: c.die,
+      hitDiceSet: hitDiceSet(s),
+      totalLevel: total,
       slots: ss,
+      pact: pact(s),
       known: cast.known + (sub(s)?.name === 'College of Lore' && l >= 6 ? 2 : 0),
       cantrips: cast.cantrips,
       prepared:
         cast.type === 'prepared' || cast.type === 'book'
           ? Math.max(1, m[cast.ability] + (['artificer', 'paladin'].includes(id(s)) ? Math.floor(l / 2) : l))
           : 0,
-      initiative: m.dex + (id(s) === 'bard' && l >= 2 ? Math.floor(p / 2) : 0),
+      initiative: m.dex + (views(s).some(v => id(v) === 'bard' && v.level >= 2) ? Math.floor(p / 2) : 0),
       songDie: id(s) === 'bard' && l >= 2 ? R().song(l) : 0,
     };
   }
@@ -184,6 +244,18 @@
     return ['bard', 'cleric', 'druid', 'artificer'].includes(c) && usable(s).includes(sp.id);
   }
   function resources(s) {
+    if (!mcList(s).length || s._total) return ownResources(s);
+    const seen = new Set(),
+      out = [];
+    for (const v of views(s))
+      for (const r of ownResources(v))
+        if (!seen.has(r.id)) {
+          seen.add(r.id);
+          out.push(v === s ? r : { ...r, name: r.name + ' · ' + info(v).name });
+        }
+    return out;
+  }
+  function ownResources(s) {
     const c = id(s),
       l = s.level,
       m = stats(s).mods,
@@ -341,7 +413,8 @@
     s.raging = false;
     s.classSpent = s.classSpent || {};
     for (const res of resources(s)) if (type === 'long' || res.reset === 'short') s.classSpent[res.id] = 0;
-    if (id(s) === 'warlock' && type === 'short') s.slotsSpent = Array(9).fill(0);
+    if (id(s) === 'warlock' && type === 'short' && !pact(s)) s.slotsSpent = Array(9).fill(0);
+    if (pact(s)) s.pactSpent = 0;
     if (id(s) === 'bard' && (type === 'long' || s.level >= 5)) s.inspirationSpent = 0;
   }
   function choices(s) {
@@ -431,6 +504,26 @@
   }
   function validate(s) {
     if (!D.classes[id(s)]) throw Error('Clase desconocida.');
+    if (s.multiclass !== undefined) {
+      if (!Array.isArray(s.multiclass) || s.multiclass.length > 12) throw Error('Multiclase inválida.');
+      const seen = new Set([id(s)]);
+      for (const mc of s.multiclass) {
+        if (!mc || !D.classes[mc.classId] || seen.has(mc.classId)) throw Error('Clase secundaria inválida.');
+        seen.add(mc.classId);
+        if (!Number.isInteger(mc.level) || mc.level < 1 || mc.level > 19) throw Error('Nivel de clase inválido.');
+        if (mc.subclass && !D.subclasses.some(x => x.id === mc.subclass && x.classId === mc.classId))
+          throw Error('Subclase secundaria incompatible.');
+        if (mc.notes !== undefined && (typeof mc.notes !== 'string' || mc.notes.length > 5000))
+          throw Error('Notas de clase inválidas.');
+      }
+      if (totalLevel(s) > 20) throw Error('El nivel total no puede superar 20.');
+    }
+    if (
+      s.pactSpent !== undefined &&
+      s.pactSpent !== null &&
+      (!Number.isInteger(s.pactSpent) || s.pactSpent < 0 || s.pactSpent > 4)
+    )
+      throw Error('Espacios de pacto inválidos.');
     if (s.castingAbility && !['str', 'dex', 'con', 'int', 'wis', 'cha'].includes(s.castingAbility))
       throw Error('Característica de lanzamiento inválida.');
     if (s.armorMode && !['normal', 'medium', 'fixed', 'barbarian', 'monk'].includes(s.armorMode))
@@ -469,7 +562,7 @@
   }
   function levelUp(s, choice) {
     const next = clone(s);
-    if (s.level >= 20) throw Error('Ya estás en nivel 20.');
+    if (totalLevel(s) >= 20) throw Error('Ya estás en nivel 20 de personaje.');
     const l = s.level + 1,
       die = info(s).die,
       roll = choice.hpMethod === 'rolled' ? Number(choice.hpRoll) : die / 2 + 1;
@@ -497,7 +590,7 @@
     if (next.hp !== null) next.hp = Math.min(next.hp, stats(next).maxHP);
     const before = slots(s),
       after = slots(next);
-    if (casting(next).caster === 'pact') {
+    if (casting(next).caster === 'pact' && !pact(next)) {
       const used = s.slotsSpent[before.length - 1];
       next.slotsSpent = Array(9).fill(0);
       next.slotsSpent[after.length - 1] = used === null ? null : Math.min(used, after[after.length - 1]);
@@ -506,7 +599,7 @@
         if (!before[i] && n) next.slotsSpent[i] = 0;
       });
     next.levelHistory.push({
-      level: l,
+      level: totalLevel(next),
       note:
         'Clase ' +
         info(s).name +
@@ -518,7 +611,79 @@
     });
     return R().validate(next);
   }
+  // Subir un nivel en una clase secundaria o empezar una nueva.
+  function levelUpSecondary(s, choice) {
+    const next = clone(s);
+    if (totalLevel(s) >= 20) throw Error('Ya estás en nivel 20 de personaje.');
+    if (!D.classes[choice.classId] || choice.classId === id(s)) throw Error('Elegí otra clase.');
+    next.multiclass = mcList(next);
+    let mc = next.multiclass.find(x => x.classId === choice.classId);
+    if (!mc) next.multiclass.push((mc = { classId: choice.classId, level: 0, subclass: '', notes: '' }));
+    mc.level++;
+    const c = D.classes[mc.classId],
+      roll = choice.hpMethod === 'rolled' ? Number(choice.hpRoll) : c.die / 2 + 1;
+    if (!Number.isInteger(roll) || roll < 1 || roll > c.die) throw Error('Tirada de PG inválida.');
+    if (choice.subclass) mc.subclass = choice.subclass;
+    if (mc.level >= c.subclassLevel && !mc.subclass) throw Error('Elegí una subclase para ' + c.name + '.');
+    next.hpBase += Math.max(1, roll + mod(next.abilities.con)) - mod(next.abilities.con);
+    if (next.hp !== null) next.hp = Math.min(next.hp, stats(next).maxHP);
+    const before = slots(s),
+      after = slots(next);
+    after.forEach((n, i) => {
+      if (!before[i] && n) next.slotsSpent[i] = 0;
+    });
+    if (pact(next) && next.pactSpent === undefined) next.pactSpent = 0;
+    const asi = asiLevels(view(next, mc)).includes(mc.level);
+    next.levelHistory.push({
+      level: totalLevel(next),
+      note:
+        c.name +
+        ' ' +
+        mc.level +
+        '. PG máximos ' +
+        stats(s).maxHP +
+        ' → ' +
+        stats(next).maxHP +
+        '.' +
+        (asi ? ' Mejora de características o dote: aplicala en Características.' : ''),
+    });
+    return R().validate(next);
+  }
+  // Requisitos de multiclase (PHB p. 163): 13 o más en la característica principal de cada clase.
+  const PREREQ = {
+    artificer: [['int']],
+    barbarian: [['str']],
+    bard: [['cha']],
+    cleric: [['wis']],
+    druid: [['wis']],
+    fighter: [['str'], ['dex']],
+    monk: [['dex', 'wis']],
+    paladin: [['str', 'cha']],
+    ranger: [['dex', 'wis']],
+    rogue: [['dex']],
+    sorcerer: [['cha']],
+    warlock: [['cha']],
+    wizard: [['int']],
+  };
+  // «Mago 3 / Guerrero 2»; con subclases si withSub.
+  function label(s, withSub = false) {
+    return views(s)
+      .map(v => {
+        const sc = withSub ? sub(v) : null;
+        return info(v).name + ' ' + v.level + (sc ? ' (' + sc.name + ')' : '');
+      })
+      .join(' / ');
+  }
+  const meetsPrereq = (s, cid) => (PREREQ[cid] || []).some(group => group.every(a => s.abilities[a] >= 13));
   root.Classes = {
+    totalLevel,
+    views,
+    label,
+    pact,
+    hitDiceSet,
+    levelUpSecondary,
+    meetsPrereq,
+    PREREQ,
     id,
     info,
     sub,

@@ -1,5 +1,5 @@
 const PREFIX = 'darien:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v13-attacks';
+const CACHE = PREFIX + 'v14-multiclass';
 const FILES = [
   './',
   './index.html',
@@ -31,6 +31,7 @@ const FILES = [
   './table-ui.js',
   './attacks.js',
   './attack-ui.js',
+  './multiclass-ui.js',
   './dm.html',
   './dm.js',
   './vendor/supabase.js',

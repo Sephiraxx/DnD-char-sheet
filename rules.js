@@ -464,17 +464,20 @@
       songDie: song(s.level),
     };
   }
+  // Nivel de personaje (suma de clases con multiclase).
+  const totalLevel = s => (root.Classes?.totalLevel ? root.Classes.totalLevel(s) : s.level);
   function skillBonus(s, id) {
     let a = skills.find(x => x[0] === id);
     if (!a) throw Error('Habilidad inválida');
-    let p = prof(s.level);
+    let p = prof(totalLevel(s));
     return (
       mod(s.abilities[a[2]]) +
       (s.expertise.includes(id)
         ? 2 * p
         : s.proficiencies.includes(id)
           ? p
-          : (s.classId || 'bard') === 'bard' && s.level >= 2
+          : ((s.classId || 'bard') === 'bard' && s.level >= 2) ||
+              (s.multiclass || []).some(x => x.classId === 'bard' && x.level >= 2)
             ? Math.floor(p / 2)
             : 0)
     );
@@ -488,7 +491,7 @@
           ? root.Classes.info(s).saves
           : ['dex', 'cha']
       ).includes(a)
-        ? prof(s.level)
+        ? prof(totalLevel(s))
         : 0)
     );
   }
@@ -637,7 +640,7 @@
     )
       fail();
     if (o.inspirationSpent !== null && !int(o.inspirationSpent, 0, stats(o).inspirationMax)) fail();
-    if (o.hdSpent !== null && !int(o.hdSpent, 0, o.level)) fail();
+    if (o.hdSpent !== null && !int(o.hdSpent, 0, totalLevel(o))) fail();
     for (let k of ['hpConfirmed', 'goldConfirmed', 'reactionUsed']) if (typeof o[k] !== 'boolean') fail();
     if (
       !list(o.conditions, 20) ||
@@ -758,6 +761,7 @@
     return JSON.parse(JSON.stringify(o));
   }
   const api = {
+    totalLevel,
     slots,
     known,
     attrs,

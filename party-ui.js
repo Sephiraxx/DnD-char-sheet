@@ -29,7 +29,7 @@ const PartyUI = (() => {
     document.title = state.name + ' · Cuaderno de aventura';
     Portrait.decorate(state);
     const foot = document.querySelector('.sidebar-foot p');
-    if (foot) foot.textContent = className(state) + ' ' + state.level;
+    if (foot) foot.textContent = MulticlassUI.label(state);
   }
   function list() {
     let items;
@@ -363,7 +363,7 @@ const PartyUI = (() => {
     return (
       header(
         'Tu clase.',
-        c.name + ' ' + state.level + (sc ? ' · ' + sc.name : ''),
+        MulticlassUI.label(state, true),
         button('Subir de nivel', 'levelup', '') + button('Resolver elecciones', 'resolve-choices'),
       ) +
       `<div class="banner"><div><b>${tasks.length ? 'Elecciones pendientes' : 'Revisá tus rasgos y opciones'}</b>${tasks.length ? pendingList() : '<p class="small">Las elecciones de rasgos, equipo y efectos especiales se registran con las reglas de la mesa.</p>'}</div><div class="actions">${button('Conjuros', 'spell-manage')}${button('Elecciones de clase', 'class-choices')}${button('Subclase y Pericias', 'class-config')}</div></div><div class="grid two"><section class="card"><h2>Progresión 1–20</h2><div class="class-timeline">${Array.from(
@@ -466,7 +466,7 @@ const PartyUI = (() => {
   }
   function levelup() {
     if (!state.classId && C.id(state) === 'bard' && state.subclass === 'eloquence') return Learning.start();
-    if (state.level >= 20) throw Error('Ya estás en nivel 20.');
+    if (R.totalLevel(state) >= 20) throw Error('Ya estás en nivel 20 de personaje.');
     const next = state.level + 1,
       c = C.info(state),
       n = { ...state, level: next },
@@ -805,13 +805,22 @@ const PartyUI = (() => {
   }
   function shortRest() {
     const d = R.stats(state),
-      die = C.info(state).die;
+      dice = d.hitDiceSet,
+      die = dice[0].die;
     if (state.hdSpent === null || state.hp === null)
       throw Error('Confirmá tus PG y Dados de Golpe antes de descansar.');
-    const max = state.level - state.hdSpent;
+    const max = R.totalLevel(state) - state.hdSpent;
     modal(
       'Descanso corto completado',
-      `<p>Podés gastar hasta ${max}d${die}. Tirás cada dado, sumás CON ${sign(d.mods.con)} y recuperás ese resultado (mínimo 0 por dado). Podés decidir gastar otro después de cada tirada.</p>${field('Cantidad de Dados de Golpe a gastar', 'count', 0, 'number', `min="0" max="${max}" required`)}${field('Resultados de los dados (separados por comas)', 'rolls', '', 'text', 'placeholder="Ejemplo: 3, 7"')}${button('Tirar la cantidad elegida', 'party-short-roll')}${field('Canción de descanso recibida (0 si no aplica)', 'song', 0, 'number', 'min="0" max="12" required')}<p class="small">Sumá Canción una sola vez si gastaste dados y escuchaste al bardo. El descanso también recupera tus recursos marcados «corto», y espacios de pacto si sos brujo. Mago: Recuperación arcana se usa aparte.</p><label class="check"><input type="checkbox" required>Completé al menos una hora de descanso y los requisitos de recuperación de mis rasgos.</label>`,
+      `<p>Podés gastar hasta ${max} Dados de Golpe (${dice.map(x => x.count + 'd' + x.die).join(' + ')} en total). Tirás cada dado, sumás CON ${sign(d.mods.con)} y recuperás ese resultado (mínimo 0 por dado). Podés decidir gastar otro después de cada tirada.</p>${
+        dice.length > 1
+          ? select(
+              'Tipo de dado',
+              'die',
+              dice.map(x => [x.die, 'd' + x.die]),
+            ) + '<p class="small">Para gastar dados de distinto tipo, hacé un descanso por cada tipo.</p>'
+          : ''
+      }${field('Cantidad de Dados de Golpe a gastar', 'count', 0, 'number', `min="0" max="${max}" required`)}${field('Resultados de los dados (separados por comas)', 'rolls', '', 'text', 'placeholder="Ejemplo: 3, 7"')}${button('Tirar la cantidad elegida', 'party-short-roll')}${field('Canción de descanso recibida (0 si no aplica)', 'song', 0, 'number', 'min="0" max="12" required')}<p class="small">Sumá Canción una sola vez si gastaste dados y escuchaste al bardo. El descanso también recupera tus recursos marcados «corto», y espacios de pacto si sos brujo. Mago: Recuperación arcana se usa aparte.</p><label class="check"><input type="checkbox" required>Completé al menos una hora de descanso y los requisitos de recuperación de mis rasgos.</label>`,
       fd => {
         const n = number(fd, 'count', 0, max),
           rolls = String(fd.get('rolls'))
@@ -820,8 +829,9 @@ const PartyUI = (() => {
             .filter(Boolean)
             .map(Number),
           song = number(fd, 'song', 0, n ? 12 : 0);
-        if (rolls.length !== n || rolls.some(x => !Number.isInteger(x) || x < 1 || x > die))
-          throw Error('Ingresá un resultado válido por cada d' + die + ' gastado.');
+        const used = Number(fd.get('die')) || die;
+        if (rolls.length !== n || rolls.some(x => !Number.isInteger(x) || x < 1 || x > used))
+          throw Error('Ingresá un resultado válido por cada d' + used + ' gastado.');
         const heal = rolls.reduce((a, n) => a + Math.max(0, n + d.mods.con), 0) + song;
         commit('Descanso corto · ' + n + ' Dados de Golpe · +' + heal + ' PG', s => {
           s.hdSpent += n;
@@ -914,11 +924,11 @@ const PartyUI = (() => {
       fd =>
         commit('Recursos actuales confirmados', s => {
           const max = number(fd, 'max', 1, 2000);
-          s.hpBase = max - s.level * d.mods.con;
+          s.hpBase = max - R.totalLevel(s) * d.mods.con;
           s.hp = number(fd, 'hp', 0, max);
           s.hpConfirmed = true;
           s.temp = number(fd, 'temp', 0, 9999);
-          s.hdSpent = s.level - number(fd, 'hd', 0, s.level);
+          s.hdSpent = R.totalLevel(s) - number(fd, 'hd', 0, R.totalLevel(s));
           if (bard) s.inspirationSpent = d.inspirationMax - number(fd, 'inspiration', 0, d.inspirationMax);
           s.slotsSpent = d.slots.map((max, i) => (max ? max - number(fd, 'slot' + i, 0, max) : 0));
           while (s.slotsSpent.length < 9) s.slotsSpent.push(0);
@@ -1135,9 +1145,10 @@ const PartyUI = (() => {
       'party-short-roll': () => {
         const form = document.getElementById('dialog-form'),
           n = Number(form.elements.namedItem('count').value);
-        if (!Number.isInteger(n) || n < 0 || n > state.level - state.hdSpent)
+        if (!Number.isInteger(n) || n < 0 || n > R.totalLevel(state) - state.hdSpent)
           throw Error('Cantidad de dados inválida.');
-        form.elements.namedItem('rolls').value = roll(C.info(state).die, n).join(', ');
+        const die = Number(form.elements.namedItem('die')?.value) || C.info(state).die;
+        form.elements.namedItem('rolls').value = roll(die, n).join(', ');
       },
       'party-identity': () =>
         modal(

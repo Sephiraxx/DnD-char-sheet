@@ -15,14 +15,8 @@
   }
   function classLine(s) {
     if (!s.classId) return 'Bardo ' + s.level;
-    const info = root.Classes.info(s);
-    let sub = '';
-    try {
-      sub = root.Classes.sub(s)?.name || '';
-    } catch {}
-    return info.name + ' ' + s.level + (sub ? ' · ' + sub : '');
+    return root.Classes.label(s, true);
   }
-
   // Datos que la mesa necesita ver de un vistazo, calculados con las mismas reglas de la ficha.
   function summarize(data) {
     let s;

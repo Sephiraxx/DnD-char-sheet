@@ -29,6 +29,8 @@
     C = () => root.Classes;
 
   const classId = s => s.classId || 'bard';
+  // Clase principal y secundarias (multiclase) como vistas de una sola clase.
+  const parts = s => (C()?.views ? C().views(s) : [s]);
   const subId = s => s.classSubclass || '';
   function styles(s) {
     return Object.values(s.classChoices || {}).flat();
@@ -37,8 +39,9 @@
     return styles(s).includes(id + '-PHB');
   }
   function martialArtsDie(s) {
-    if (classId(s) !== 'monk') return 0;
-    return s.level >= 17 ? 10 : s.level >= 11 ? 8 : s.level >= 5 ? 6 : 4;
+    const monk = parts(s).find(v => classId(v) === 'monk');
+    if (!monk) return 0;
+    return monk.level >= 17 ? 10 : monk.level >= 11 ? 8 : monk.level >= 5 ? 6 : 4;
   }
 
   // Datos del arma: catálogo de equipo o, para objetos propios, las notas «1d8 cortante · propiedades».
@@ -69,7 +72,18 @@
     };
   }
 
+  // Competencias por multiclase (PHB p. 164): solo algunas clases dan armas al sumarse después.
   function proficient(s, w) {
+    return parts(s).some((v, i) => (i === 0 ? classProficient(s, w) : multiclassProficient(v, w)));
+  }
+  function multiclassProficient(v, w) {
+    const c = classId(v);
+    if (MARTIAL.includes(c)) return true;
+    if (c === 'monk') return !w.martial || w.id === 'shortsword';
+    if (c === 'warlock' && !w.martial) return true;
+    return w.martial && /hexblade|war-domain|tempest|twilight/.test(subId(v));
+  }
+  function classProficient(s, w) {
     const c = classId(s),
       sub = subId(s);
     if (MARTIAL.includes(c)) return true;
@@ -149,6 +163,9 @@
   }
 
   function attacksPerAction(s) {
+    return Math.max(...parts(s).map(classAttacks));
+  }
+  function classAttacks(s) {
     const c = classId(s),
       sc = C()?.sub?.(s)?.name || '';
     if (c === 'fighter') return s.level >= 20 ? 4 : s.level >= 11 ? 3 : s.level >= 5 ? 2 : 1;

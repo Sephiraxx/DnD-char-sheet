@@ -179,6 +179,7 @@ function poolValue(s, type, index) {
   if (type === 'slot') return s.slotsSpent[index];
   if (type === 'inspiration') return s.inspirationSpent;
   if (type === 'hd') return s.hdSpent;
+  if (type === 'pact') return s.pactSpent ?? 0;
   if (type === 'universal') return s.universalSpent;
   if (type === 'infectious') return s.infectiousSpent;
   return s.extraResources.find(x => x.id === index)?.spent;
@@ -190,15 +191,18 @@ function poolMax(s, type, index) {
     : type === 'inspiration' || type === 'infectious'
       ? d.inspirationMax
       : type === 'hd'
-        ? s.level
-        : type === 'universal'
-          ? 1
-          : s.extraResources.find(x => x.id === index)?.max || 0;
+        ? R.totalLevel(s)
+        : type === 'pact'
+          ? R.stats(s).pact?.max || 0
+          : type === 'universal'
+            ? 1
+            : s.extraResources.find(x => x.id === index)?.max || 0;
 }
 function setPool(s, type, index, value) {
   if (type === 'slot') s.slotsSpent[index] = value;
   else if (type === 'inspiration') s.inspirationSpent = value;
   else if (type === 'hd') s.hdSpent = value;
+  else if (type === 'pact') s.pactSpent = value;
   else if (type === 'universal') s.universalSpent = value;
   else if (type === 'infectious') s.infectiousSpent = value;
   else s.extraResources.find(x => x.id === index).spent = value;
@@ -348,8 +352,15 @@ function render() {
     (storageIssue ? `<div class="banner"><p>${esc(storageIssue)}</p>${button('Mi ficha', 'settings')}</div>` : '') +
     (view === 'combat' ? `<div id="table-requests">${TableUI.requestBanner()}</div>` : '') +
     (
-      { combat, spells: spellPage, gear, character, journal, class: PartyUI.classPage, table: TableUI.page }[view] ||
-      combat
+      {
+        combat,
+        spells: spellPage,
+        gear,
+        character,
+        journal,
+        class: () => PartyUI.classPage() + MulticlassUI.section(),
+        table: TableUI.page,
+      }[view] || combat
     )();
   scrollTo(0, y);
 }
@@ -366,17 +377,17 @@ function editResources() {
   let d = R.stats(state);
   modal(
     'Recursos actuales',
-    `<p class="small">Ingresá lo que te queda ahora. El máximo de PG sugerido (${d.maxHP}) usa los aumentos fijos hasta nivel ${state.level} salvo ajustes previos.</p><div class="form-grid">${field('PG máximos', 'máximo', d.maxHP, 'number', 'min="1" max="2000" required')}${field('PG actuales', 'PG', state.hp ?? '', 'number', 'min="0" max="2000" required')}${field('PG temporales', 'temporales', state.temp, 'number', 'min="0" max="9999" required')}${field('Inspiraciones disponibles', 'inspiración', state.inspirationSpent === null ? '' : d.inspirationMax - state.inspirationSpent, 'number', `min="0" max="${d.inspirationMax}" required`)}${field('Dados de Golpe disponibles', 'dados', state.hdSpent === null ? '' : state.level - state.hdSpent, 'number', `min="0" max="${state.level}" required`)}${d.slots.map((max, i) => (max ? field('Espacios disponibles de nivel ' + (i + 1), 'slot' + i, state.slotsSpent[i] === null ? '' : max - state.slotsSpent[i], 'number', `min="0" max="${max}" required`) : '')).join('')}</div>`,
+    `<p class="small">Ingresá lo que te queda ahora. El máximo de PG sugerido (${d.maxHP}) usa los aumentos fijos hasta nivel ${state.level} salvo ajustes previos.</p><div class="form-grid">${field('PG máximos', 'máximo', d.maxHP, 'number', 'min="1" max="2000" required')}${field('PG actuales', 'PG', state.hp ?? '', 'number', 'min="0" max="2000" required')}${field('PG temporales', 'temporales', state.temp, 'number', 'min="0" max="9999" required')}${field('Inspiraciones disponibles', 'inspiración', state.inspirationSpent === null ? '' : d.inspirationMax - state.inspirationSpent, 'number', `min="0" max="${d.inspirationMax}" required`)}${field('Dados de Golpe disponibles', 'dados', state.hdSpent === null ? '' : R.totalLevel(state) - state.hdSpent, 'number', `min="0" max="${R.totalLevel(state)}" required`)}${d.slots.map((max, i) => (max ? field('Espacios disponibles de nivel ' + (i + 1), 'slot' + i, state.slotsSpent[i] === null ? '' : max - state.slotsSpent[i], 'number', `min="0" max="${max}" required`) : '')).join('')}</div>`,
     fd => {
       const max = number(fd, 'máximo', 1, 2000),
         hp = number(fd, 'PG', 0, max);
       commit('Ajuste de recursos actuales', s => {
-        s.hpBase = max - s.level * d.mods.con;
+        s.hpBase = max - R.totalLevel(s) * d.mods.con;
         s.hp = hp;
         s.hpConfirmed = true;
         s.temp = number(fd, 'temporales', 0, 9999);
         s.inspirationSpent = d.inspirationMax - number(fd, 'inspiración', 0, d.inspirationMax);
-        s.hdSpent = s.level - number(fd, 'dados', 0, s.level);
+        s.hdSpent = R.totalLevel(s) - number(fd, 'dados', 0, R.totalLevel(s));
         d.slots.forEach((n, i) => (s.slotsSpent[i] = n ? n - number(fd, 'slot' + i, 0, n) : 0));
       });
     },
@@ -580,11 +591,11 @@ function longRest() {
   let d = R.stats(state);
   modal(
     'Descanso largo completado',
-    `<p>Recuperás todos tus PG, espacios y recursos de clase con recuperación por descanso. Recuperás hasta <b>${Math.max(1, Math.floor(state.level / 2))} Dados de Golpe gastados</b>.</p>${state.hdSpent === null ? field('Dados de Golpe disponibles antes del descanso', 'dados', '', 'number', `min="0" max="${state.level}" required`) : ''}<label class="check"><input name="completo" type="checkbox" required>Confirmo que completé un descanso válido y lo inicié con al menos 1 PG.</label><p class="small">Se limpian PG temporales y concentración. Las condiciones se conservan para que revises su duración.</p>`,
+    `<p>Recuperás todos tus PG, espacios y recursos de clase con recuperación por descanso. Recuperás hasta <b>${Math.max(1, Math.floor(R.totalLevel(state) / 2))} Dados de Golpe gastados</b>.</p>${state.hdSpent === null ? field('Dados de Golpe disponibles antes del descanso', 'dados', '', 'number', `min="0" max="${R.totalLevel(state)}" required`) : ''}<label class="check"><input name="completo" type="checkbox" required>Confirmo que completé un descanso válido y lo inicié con al menos 1 PG.</label><p class="small">Se limpian PG temporales y concentración. Las condiciones se conservan para que revises su duración.</p>`,
     fd =>
       commit('Descanso largo completado', s => {
-        if (s.hdSpent === null) s.hdSpent = s.level - number(fd, 'dados', 0, s.level);
-        s.hdSpent = Math.max(0, s.hdSpent - Math.max(1, Math.floor(s.level / 2)));
+        if (s.hdSpent === null) s.hdSpent = R.totalLevel(s) - number(fd, 'dados', 0, R.totalLevel(s));
+        s.hdSpent = Math.max(0, s.hdSpent - Math.max(1, Math.floor(R.totalLevel(s) / 2)));
         s.hp = d.maxHP;
         s.temp = 0;
         s.inspirationSpent = 0;
@@ -1062,6 +1073,7 @@ Campaign.install();
 EquipmentUI.install();
 TableUI.install();
 AttackUI.install();
+MulticlassUI.install();
 document.addEventListener('click', e => {
   if (e.target.closest('[data-close]')) {
     $('#modal').close();
