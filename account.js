@@ -1,4 +1,5 @@
-/* Acceso con email: guardar el acceso de este dispositivo y abrir las mismas fichas en otro. */
+/* Acceso con email y contraseña: guardar el acceso de este dispositivo y abrir las mismas fichas en otro.
+   No se envían correos; si alguien olvida la contraseña, se la reinicia desde el panel de Supabase. */
 const AccountUI = (() => {
   'use strict';
   const esc = PartyView.esc;
@@ -9,16 +10,19 @@ const AccountUI = (() => {
     const title = kind === 'restore' ? '¿Ya tenés una ficha en una mesa?' : 'Tu acceso';
     return `<section class="card account-card section-space" id="account-${kind}"><h2>${title}</h2><div class="account-body"><p class="small muted">Cargando…</p></div></section>`;
   }
-  const emailForm = (mode, label, placeholder = 'tu@email.com') =>
-    `<form class="account-form" data-account="${mode}"><label class="field">Email<input type="email" name="email" required maxlength="200" autocomplete="email" placeholder="${placeholder}"></label><div class="actions"><button class="button" type="submit">${label}</button></div><p class="form-error" role="alert"></p></form>`;
+  const form = (mode, label, { newPassword = false } = {}) =>
+    `<form class="account-form" data-account="${mode}"><div class="form-grid">${mode === 'password' ? '' : `<label class="field">Email<input type="email" name="email" required maxlength="200" autocomplete="email" placeholder="tu@email.com"></label>`}<label class="field">Contraseña<input type="password" name="password" required minlength="6" maxlength="72" autocomplete="${newPassword ? 'new-password' : 'current-password'}"></label></div><div class="actions"><button class="button" type="submit">${label}</button></div><p class="form-error" role="alert"></p></form>`;
+  const loginBlock = intro =>
+    `<p>${intro}</p>${form('login', 'Entrar')}<p class="small muted">Si no te acordás de la contraseña, pedile a quien administra la mesa que la reinicie.</p>`;
 
   function accountHtml(me) {
-    if (!me) return '<p class="small muted">Todavía no te conectaste a una mesa desde este dispositivo.</p>';
-    if (me.is_anonymous && me.new_email)
-      return `<p>Te mandamos un correo a <b>${esc(me.new_email)}</b>. Tocá el enlace para confirmar tu acceso.</p><p class="small muted">¿No llegó? Revisá el correo no deseado o pedilo de nuevo.</p>${emailForm('link', 'Reenviar')}`;
+    if (!me)
+      return loginBlock(
+        'Todavía no te conectaste a una mesa desde este dispositivo. Si ya guardaste tu acceso en otro, entrá con tu email y contraseña.',
+      );
     if (me.is_anonymous)
-      return `<p>Tu acceso a la mesa vive solo en este navegador. Guardalo con tu email para abrir tus fichas y mesas en otro dispositivo, o recuperarlas si se borran los datos del navegador.</p>${emailForm('link', 'Guardar acceso')}`;
-    return `<p>Acceso guardado: <b>${esc(me.email)}</b>.</p><p class="small">En otro dispositivo: abrí la aplicación, elegí «¿Ya tenés una ficha en una mesa?» y escribí este email.</p>`;
+      return `<p>Tu acceso a la mesa vive solo en este navegador. Guardalo con un email y una contraseña para abrir tus fichas y mesas en otro dispositivo, o recuperarlas si se borran los datos del navegador. No te llega ningún correo.</p>${form('link', 'Guardar acceso', { newPassword: true })}<details class="battle-rule"><summary>Ya guardé mi acceso en otro dispositivo</summary>${loginBlock('Entrá con ese email y contraseña.')}</details>`;
+    return `<p>Acceso guardado: <b>${esc(me.email)}</b>.</p><p class="small">En otro dispositivo: abrí la aplicación, buscá «¿Ya tenés una ficha en una mesa?» (o «Tu acceso» en la pantalla del DM) y entrá con este email y tu contraseña.</p><details class="battle-rule"><summary>Cambiar contraseña</summary>${form('password', 'Cambiar', { newPassword: true })}</details>`;
   }
   async function restoreHtml(me) {
     if (me && !me.is_anonymous) {
@@ -39,7 +43,7 @@ const AccountUI = (() => {
           : '<p class="muted">No tenés fichas en ninguna mesa con este acceso.</p>'
       }<p class="small section-space"><a href="./dm.html">Pantalla del DM</a>: tus mesas aparecen ahí.</p>`;
     }
-    return `<p>Escribí el email con el que guardaste tu acceso y te mandamos un enlace para entrar en este dispositivo. Abrilo acá mismo.</p>${emailForm('login', 'Enviarme el enlace')}`;
+    return loginBlock('Entrá con el email y la contraseña con los que guardaste tu acceso.');
   }
 
   async function fill(kind) {
@@ -55,22 +59,26 @@ const AccountUI = (() => {
   const refill = () => ['account', 'restore'].forEach(k => document.getElementById('account-' + k) && fill(k));
 
   document.addEventListener('submit', async e => {
-    const form = e.target.closest('form[data-account]');
-    if (!form) return;
+    const f = e.target.closest('form[data-account]');
+    if (!f) return;
     e.preventDefault();
-    const out = form.querySelector('.form-error'),
-      btn = form.querySelector('button[type=submit]'),
-      email = String(new FormData(form).get('email')).trim();
+    const out = f.querySelector('.form-error'),
+      btn = f.querySelector('button[type=submit]'),
+      fd = new FormData(f),
+      email = String(fd.get('email') || '').trim(),
+      password = String(fd.get('password') || '');
     btn.disabled = true;
-    out.textContent = 'Enviando…';
+    out.textContent = 'Un momento…';
     try {
-      if (form.dataset.account === 'link') {
-        await Cloud.linkEmail(email);
-        refill();
-      } else {
-        await Cloud.sendLoginLink(email);
-        form.outerHTML = `<p>Te mandamos un enlace a <b>${esc(email)}</b>. Abrilo en este dispositivo para entrar.</p>`;
+      if (f.dataset.account === 'link') await Cloud.linkEmail(email, password);
+      else if (f.dataset.account === 'login') await Cloud.signIn(email, password);
+      else {
+        await Cloud.changePassword(password);
+        out.textContent = 'Contraseña cambiada.';
+        btn.disabled = false;
+        return;
       }
+      refill();
     } catch (err) {
       out.textContent = err.message;
       btn.disabled = false;
@@ -87,19 +95,19 @@ const AccountUI = (() => {
       b.textContent = err.message;
     }
   });
+  // Al volver de un enlace viejo por correo, o al entrar/guardar desde otra tarjeta.
   addEventListener('cloud-login', e => {
-    const msg = e.detail?.error
-      ? 'No se pudo completar el ingreso: ' + e.detail.error
-      : 'Listo: tu acceso está confirmado en este dispositivo.';
-    const t = document.getElementById('toast');
-    if (t) {
-      t.textContent = msg;
-      t.hidden = false;
-      t.classList.add('visible');
-      setTimeout(() => {
-        t.classList.remove('visible');
-        t.hidden = true;
-      }, 5000);
+    if (e.detail?.error) {
+      const t = document.getElementById('toast');
+      if (t) {
+        t.textContent = 'No se pudo completar el ingreso: ' + e.detail.error;
+        t.hidden = false;
+        t.classList.add('visible');
+        setTimeout(() => {
+          t.classList.remove('visible');
+          t.hidden = true;
+        }, 5000);
+      }
     }
     refill();
   });

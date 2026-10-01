@@ -14,6 +14,9 @@ const AttackUI = (() => {
   const dmgText = p =>
     `${/d/.test(p.dice) ? p.dice + (p.dmgMod ? ' ' + sign(p.dmgMod) : '') : Math.max(0, Number(p.dice) + p.dmgMod)} ${esc(p.type)}${p.extra ? ' + ' + esc(p.extra) : ''}`;
 
+  const dmgDice = p =>
+    /d/.test(p.dice) ? p.dice + (p.dmgMod ? ' ' + sign(p.dmgMod) : '') : String(Math.max(0, Number(p.dice) + p.dmgMod));
+
   function eligible(item, mode) {
     const w = item.unarmed ? item.weapon : A.weaponOf(item);
     if (mode === 'bonus') return !item.unarmed && w.light && !w.ranged;
@@ -40,7 +43,7 @@ const AttackUI = (() => {
           w.versatile ? 'Versátil ' + w.versatile : '',
           ...(w.props || []).filter(x => !['Versátil', 'Arrojadiza', 'Alcance'].includes(x) && x),
         ].filter(Boolean);
-        return `<article class="battle-choice attack-choice"><div><span class="eyebrow">${MODES[tab]}${tab === 'action' && n > 1 ? ' · ' + n + ' ataques' : ''}</span><h3>${esc(item.name)}</h3><p class="attack-line"><b>${sign(p.toHit)}</b> para impactar · <b>${dmgText(p)}</b></p>${meta.length ? `<p class="small">${esc(meta.join(' · '))}</p>` : ''}${p.notes.length ? `<p class="small muted">${esc(p.notes.join(' · '))}</p>` : ''}</div><div class="choice-bottom">${why ? `<p class="choice-reason">${esc(why)}</p>` : ''}<div class="actions">${item.unarmed ? '' : button('Ajustes', 'attack-settings', 'secondary', `data-id="${esc(item.id)}"`)}${button('Atacar', 'attack-open', '', `data-id="${esc(item.id)}" data-mode="${tab}" ${why ? 'disabled' : ''}`)}</div></div></article>`;
+        return `<article class="battle-choice attack-choice"><div><span class="eyebrow">${MODES[tab]}${tab === 'action' && n > 1 ? ' · ' + n + ' ataques' : ''}</span><h3>${esc(item.name)}</h3><div class="attack-stats"><span><small>Impacto</small><b>${sign(p.toHit)}</b></span><span><small>Daño</small><b>${dmgDice(p)}</b><em>${esc(p.type)}${p.extra ? ' + ' + esc(p.extra) : ''}</em></span></div>${meta.length ? `<p class="small">${esc(meta.join(' · '))}</p>` : ''}${p.notes.length ? `<p class="small muted">${esc(p.notes.join(' · '))}</p>` : ''}</div><div class="choice-bottom">${why ? `<p class="choice-reason">${esc(why)}</p>` : ''}<div class="actions">${item.unarmed ? '' : button('Ajustes', 'attack-settings', 'secondary', `data-id="${esc(item.id)}"`)}${button('Atacar', 'attack-open', '', `data-id="${esc(item.id)}" data-mode="${tab}" ${why ? 'disabled' : ''}`)}</div></div></article>`;
       })
       .join('');
   }
@@ -124,9 +127,20 @@ const AttackUI = (() => {
       (r.rolls.length > 1 ? `d20 ${r.rolls.join(' / ')} → ${r.kept}` : `d20 ${r.kept}`) +
       (r.physical ? ' (dado físico)' : '') +
       extra.text;
-    session.log.unshift({
+    const entry = {
       html: `<b>${label}:</b> ${dice} ${sign(p.toHit)} = <b>${r.total}</b>${r.crit ? ' · <b>¡Crítico!</b>' : r.fumble ? ' · Pifia: falla automáticamente' : ''}${session.attacks > n ? ' <span class="muted">(más ataques que los de tu acción: confirmalo con el DM)</span>' : ''}`,
       cls: r.crit ? 'crit' : r.fumble ? 'fumble' : '',
+    };
+    RollFX.show({
+      label: label + ' · ' + item.name,
+      total: r.total,
+      face: r.kept,
+      detail: dice + ' ' + sign(p.toHit),
+      crit: r.crit,
+      fumble: r.fumble,
+    }).then(() => {
+      session.log.unshift(entry);
+      drawLog();
     });
     commit(
       `${item.name}: ataque ${dice} ${sign(p.toHit)} = ${r.total}${r.crit ? ' (crítico)' : ''}${heroic ? ' (Inspiración)' : ''}`,
@@ -145,7 +159,6 @@ const AttackUI = (() => {
       total: r.total,
       physical: Boolean(r.physical),
     });
-    drawLog();
   }
 
   function damage() {
@@ -163,10 +176,16 @@ const AttackUI = (() => {
           .filter(x => x.rolls.length)
           .map(x => `${x.rolls.join('+')} ${esc(x.label)}`)
           .join(' · ');
-    session.log.unshift({
+    const entry = {
       html: `<b>Daño${crit ? ' crítico' : ''}:</b> ${parts || 'fijo'}${p.dmgMod ? ' ' + sign(p.dmgMod) : ''} = <b>${dmg.total}</b>`,
       cls: 'damage',
-    });
+    };
+    RollFX.show({ label: 'Daño · ' + item.name, total: dmg.total, face: '⚔', detail: parts || 'fijo', crit }).then(
+      () => {
+        session.log.unshift(entry);
+        drawLog();
+      },
+    );
     session.last = null;
     commit(`${item.name}: daño ${dmg.total}${crit ? ' (crítico)' : ''}`, () => {});
     TableUI.shareRoll({
@@ -176,7 +195,8 @@ const AttackUI = (() => {
       total: dmg.total,
       physical: Boolean(dmg.physical),
     });
-    drawLog();
+    const btn = document.querySelector('[data-action=attack-damage]');
+    if (btn) btn.disabled = true;
   }
 
   // Lee y vacía un campo de dado físico; null si quedó vacío.

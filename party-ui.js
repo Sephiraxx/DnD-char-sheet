@@ -67,8 +67,16 @@ const PartyUI = (() => {
     } catch (e) {
       storageIssue = e.message;
     }
+    // Portada: tres caminos (crear ficha, unirse a una mesa, dirigir) y las fichas guardadas.
     document.getElementById('main').innerHTML =
-      `<section class="welcome-card card"><p class="eyebrow">TU MESA · TUS PERSONAJES · REGLAS 2014</p><h1>Creá tu personaje.</h1><p>Un cuaderno para tus aventuras: conjuros, combate, equipo y subidas de nivel, todo en tu propia ficha.</p><div class="welcome-actions">${button('Crear personaje', 'party-create', '')}${button('Importar una ficha JSON', 'party-import')}<a class="button secondary" href="./dm.html">Soy el DM</a></div><p class="small">Elegí tu clase, raza y trasfondo. Si ya tenés una copia de tu ficha, podés importarla y seguir jugando.</p>${items.length ? `<div class="divider"></div><h2>Fichas guardadas</h2><div class="party-list">${items.map(x => `<div class="list-row"><div class="party-person">${Portrait.savedThumb(x.key, x.name)}<b>${esc(x.name)}</b></div>${button('Abrir', 'party-open', 'secondary', `data-id="${esc(x.id)}"`)}</div>`).join('')}</div>` : ''}${storageIssue ? `<div class="banner"><p>${esc(storageIssue)}</p>${rawBroken ? button('Descargar datos guardados', 'raw-backup') : ''}</div>` : ''}<div class="welcome-note"><b>Tu ficha se guarda en este dispositivo.</b><p class="small">Cada integrante de la party crea la suya. Después, en <b>Mesa</b>, se une con el código del DM para compartirla en vivo.</p></div></section>`;
+      `<section class="welcome-hero"><p class="eyebrow">D&D 5E · REGLAS 2014 · PARA JUGAR EN LA MESA</p><h1>Tu cuaderno de aventura.</h1><p>Fichas completas, tiradas con dados digitales o físicos, y una mesa compartida para que el DM y la party jueguen en vivo.</p></section>
+      <div class="paths">
+        <section class="card path-card"><span class="path-icon" aria-hidden="true">✦</span><h2>Creá tu personaje</h2><p>Clase, raza, trasfondo, conjuros y equipo, paso a paso. Se guarda en este dispositivo.</p><div class="actions">${button('Crear personaje', 'party-create', '')}${button('Importar ficha', 'party-import')}</div></section>
+        <div id="path-join" class="path-slot"></div>
+        <section class="card path-card"><span class="path-icon" aria-hidden="true">⚑</span><h2>Dirigí la partida</h2><p>Creá una mesa, compartí el código y seguí a la party: PG, iniciativa, monstruos, botín y pedidos de tirada.</p><div class="actions"><a class="button secondary" href="./dm.html">Soy el DM</a></div></section>
+      </div>
+      ${items.length ? `<section class="card section-space"><h2>Tus fichas</h2><div class="party-list saved-list">${items.map(x => `<div class="list-row"><div class="party-person">${Portrait.savedThumb(x.key, x.name)}<b>${esc(x.name)}</b></div>${button('Abrir', 'party-open', 'secondary', `data-id="${esc(x.id)}"`)}</div>`).join('')}</div></section>` : ''}
+      ${storageIssue ? `<div class="banner"><p>${esc(storageIssue)}</p>${rawBroken ? button('Descargar datos guardados', 'raw-backup') : ''}</div>` : ''}`;
   }
   function startCreate() {
     createDraft = {

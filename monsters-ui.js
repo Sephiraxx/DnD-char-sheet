@@ -269,9 +269,18 @@ const MonsterUI = (() => {
       crit = kept === 20,
       hit = crit || (kept !== 1 && t && total >= t.x.ac);
     panel.last = { crit, hit };
-    logLine(
-      `<b>${esc(e.name)} → ${esc(t?.name || '¿?')}:</b> d20 ${rolls.join(' / ')}${physical ? ' (físico)' : ''} ${sign(a.atk)} = <b>${total}</b> ${t ? (hit ? (crit ? '· <b>¡Crítico!</b>' : '· impacta (CA ' + t.x.ac + ')') : '· falla (CA ' + t.x.ac + ')') : ''}`,
-      crit ? 'crit' : hit ? '' : 'fumble',
+    RollFX.show({
+      label: e.name + ' · ' + a.n,
+      total,
+      face: kept,
+      detail: t ? (hit ? 'impacta a ' + t.name : 'falla contra ' + t.name) : '',
+      crit,
+      fumble: kept === 1,
+    }).then(() =>
+      logLine(
+        `<b>${esc(e.name)} → ${esc(t?.name || '¿?')}:</b> d20 ${rolls.join(' / ')}${physical ? ' (físico)' : ''} ${sign(a.atk)} = <b>${total}</b> ${t ? (hit ? (crit ? '· <b>¡Crítico!</b>' : '· impacta (CA ' + t.x.ac + ')') : '· falla (CA ' + t.x.ac + ')') : ''}`,
+        crit ? 'crit' : hit ? '' : 'fumble',
+      ),
     );
   }
   function rollDamage() {
@@ -295,11 +304,13 @@ const MonsterUI = (() => {
       text = parts.map(p => `${p.rolls.join('+') || '—'}${p.mod ? ' ' + sign(p.mod) : ''} ${p.type}`).join(' · ');
     }
     panel.damage = total;
-    const amountField = document.getElementById('monster-amount');
-    if (amountField) amountField.value = total;
-    logLine(`<b>Daño${crit ? ' crítico' : ''}:</b> ${esc(text)} = <b>${total}</b>`, 'damage');
-    const btn = document.getElementById('monster-apply');
-    if (btn) btn.disabled = false;
+    RollFX.show({ label: 'Daño · ' + panel.name, total, face: '⚔', detail: text, crit: Boolean(crit) }).then(() => {
+      const amountField = document.getElementById('monster-amount');
+      if (amountField) amountField.value = total;
+      logLine(`<b>Daño${crit ? ' crítico' : ''}:</b> ${esc(text)} = <b>${total}</b>`, 'damage');
+      const btn = document.getElementById('monster-apply');
+      if (btn) btn.disabled = false;
+    });
   }
   async function apply() {
     const fd = formData(),

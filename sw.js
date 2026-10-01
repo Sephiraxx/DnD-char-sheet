@@ -1,5 +1,5 @@
 const PREFIX = 'darien:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v20-origin-card';
+const CACHE = PREFIX + 'v22-polish-login';
 const FILES = [
   './',
   './index.html',
@@ -26,6 +26,8 @@ const FILES = [
   './manifest.webmanifest',
   './assets/icon.svg',
   './party.css',
+  './polish.css',
+  './fx.js',
   './config.js',
   './cloud.js',
   './party-view.js',
