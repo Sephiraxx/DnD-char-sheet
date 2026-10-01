@@ -665,6 +665,22 @@ async function rest(type, id) {
   toast(`Descanso ${type === 'long' ? 'largo' : 'corto'} anunciado.`);
 }
 
+// El menú de la mesa se abre hacia el lado con espacio (en celulares quedaba fuera de la pantalla).
+document.addEventListener(
+  'toggle',
+  e => {
+    const menu = e.target;
+    if (!menu.classList?.contains('dm-menu') || !menu.open) return;
+    const list = menu.querySelector('.dm-menu-list');
+    list.style.left = '0';
+    list.style.right = 'auto';
+    if (list.getBoundingClientRect().right > innerWidth - 8) {
+      list.style.left = 'auto';
+      list.style.right = '0';
+    }
+  },
+  true,
+);
 document.addEventListener('click', async e => {
   document.querySelectorAll('.dm-menu[open]').forEach(m => {
     if (!m.contains(e.target) || e.target.closest('.dm-menu-list')) m.open = false;
