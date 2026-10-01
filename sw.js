@@ -1,5 +1,5 @@
 const PREFIX = 'darien:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v17-quick-wins';
+const CACHE = PREFIX + 'v18-table-tools';
 const FILES = [
   './',
   './index.html',
@@ -17,6 +17,7 @@ const FILES = [
   './party-ui.js',
   './portrait.js',
   './combat-engine.js',
+  './effects.js',
   './combat-ui.js',
   './app.js',
   './catalog.js',
@@ -28,6 +29,7 @@ const FILES = [
   './config.js',
   './cloud.js',
   './party-view.js',
+  './table-extras.js',
   './account.js',
   './table-ui.js',
   './attacks.js',

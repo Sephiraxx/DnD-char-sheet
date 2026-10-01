@@ -160,7 +160,7 @@ const TableUI = (() => {
       (PV.initiative(feed)
         ? `<section class="card section-space"><h2>Iniciativa</h2>${PV.initiativeStrip(PV.initiative(feed), mine)}</section>`
         : '') +
-      `<div class="party-grid">${cards}</div><section class="card section-space"><div class="card-header"><h2>En la mesa</h2>${button('Tirar dados', 'dice')}</div><div class="log table-feed">${
+      `<div class="party-grid">${cards}</div>${party ? TableExtras.playerHtml(party, mine) : ''}<section class="card section-space"><div class="card-header"><h2>En la mesa</h2>${button('Tirar dados', 'dice')}</div><div class="log table-feed">${
         feed.length
           ? feed
               .filter(e => e.kind !== 'initiative')
@@ -286,6 +286,15 @@ const TableUI = (() => {
         });
         return `El DM te dio un d${die}${p.reason ? ' (' + p.reason + ')' : ''} para ${RollUI.bonusScope({ kind, skills })}.`;
       }
+      case 'effect': {
+        const name = String(p.name || '')
+          .trim()
+          .slice(0, 100);
+        if (!name) return '';
+        const rounds = Number.isInteger(p.rounds) && p.rounds > 0 ? Math.min(100000, p.rounds) : null;
+        commit('DM: efecto ' + name, s => Effects.add(s, { name, rounds, from: 'dm' }));
+        return `El DM te aplicó: ${name}${rounds ? ' (' + Effects.remaining({ rounds }) + ')' : ''}.`;
+      }
       case 'inspiration':
         commit(p.on === false ? 'DM: Inspiración retirada' : 'DM: Inspiración recibida', s => {
           s.heroicInspiration = p.on !== false;
@@ -323,9 +332,13 @@ const TableUI = (() => {
       return;
     }
     if (p.characterId === l.characterId) {
-      commit('Turno indicado por el DM (ronda ' + (p.round || 1) + ')', s => Combat.start(s));
+      let ended = [];
+      commit('Turno indicado por el DM (ronda ' + (p.round || 1) + ')', s => {
+        Combat.start(s);
+        ended = Effects.tick(s);
+      });
       navigator.vibrate?.(200);
-      toast('¡Es tu turno!');
+      toast('¡Es tu turno!' + (ended.length ? ' Terminó: ' + ended.join(', ') + '.' : ''));
     } else if (state.combatState?.onTurn || !state.combatState?.active)
       commit('Turno de ' + (p.name || 'otro integrante'), s => {
         Combat.end(s);
@@ -518,6 +531,11 @@ const TableUI = (() => {
   }
 
   function install() {
+    TableExtras.install({
+      refresh: () => refresh(),
+      campaignId: () => link()?.campaignId,
+      characterId: () => link()?.characterId,
+    });
     Object.assign(actions, {
       'table-refresh': () => refresh(),
       'table-leave': () =>

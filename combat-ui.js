@@ -170,7 +170,16 @@ function combatView() {
  }
  <div class="actions section-space">${button('Otra opción del DM', 'combat-custom')}${button('Gestionar conjuros', 'spell-manage')}</div></section>
  <aside class="stack"><section class="card"><div class="card-header"><h2>Tus recursos</h2>${button('Ajustar', 'resources')}</div>${d.slots.map((max, i) => (max ? pool((Classes.id(state) === 'warlock' ? 'Pacto · ' : '') + 'Espacios de nivel ' + (i + 1), 'slot', i) : '')).join('')}<p class="small">Los trucos (nivel 0) no gastan espacios.</p>${Classes.id(state) === 'bard' ? pool('Inspiración bárdica · d' + d.inspirationDie, 'inspiration', '', state.level >= 5 ? 'Recuperás usos con descanso corto o largo.' : 'Recuperás usos con descanso largo.') + `<button class="text-btn" data-action="combat-help" data-topic="inspiration">¿Cómo uso la Inspiración?</button>` : ''}${PartyUI.resourceCards()}${pool('Dados de Golpe · ' + d.hitDiceSet.map(x => x.count + 'd' + x.die).join(' + '), 'hd')}${d.pact ? pool('Pacto mágico · espacios de nivel ' + d.pact.level, 'pact', '', 'Se recuperan con descanso corto o largo.') : ''}<button class="text-btn" data-action="combat-help" data-topic="hd">¿Para qué sirven los Dados de Golpe?</button>${state.level >= 6 && state.subclass === 'eloquence' ? pool('Discurso universal', 'universal') : ''}${state.level >= 14 && state.subclass === 'eloquence' ? pool('Inspiración contagiosa', 'infectious') : ''}${state.extraResources.map(x => pool(esc(x.name), 'extra', x.id)).join('')}<p class="small section-space">Los símbolos ajustan recursos manualmente; no ejecutan acciones. «Elegir» o «Lanzar» registra ambos juntos.</p></section>
- <section class="card" id="combat-ongoing"><h2>En curso</h2><h3>Concentración</h3><p>${state.concentration ? esc(spellName(state.concentration)) : 'Ningún conjuro activo.'}</p>${state.concentration ? button('Terminar concentración', 'concentration-end') : ''}${c.checks.length && state.concentration ? `<div class="concentration-alert"><b>Salvación pendiente: CON ${sign(R.saveBonus(state, 'con'))} contra CD ${c.checks[0]}</b><p class="small">Una salvación por cada fuente de daño. Pendientes: ${c.checks.length}. No gasta reacción.</p>${button('Tirar salvación', 'concentration-roll', '')}${button('La superé', 'combat-concentration-pass', 'secondary')}${button('Fallé', 'combat-concentration-fail', 'danger')}</div>` : ''}${(state.bonusDice || []).length ? `<h3 class="section-space">Dados del DM</h3>${state.bonusDice.map(b => `<div class="effect-note"><b>d${b.die}${b.reason ? ' · ' + esc(b.reason) : ''}</b><p>Para ${esc(RollUI.bonusScope(b))}. Se ofrece al tirar.</p>${button('Descartar', 'bonus-discard', 'secondary', `data-id="${esc(b.id)}"`)}</div>`).join('')}` : ''}<h3 class="section-space">Efectos que recordar</h3>${c.effects.length ? c.effects.map(x => `<div class="effect-note"><b>${esc(x.target)}</b><p>${x.kind === 'inspired' ? 'Inspiración: d' + x.value + ' · 10 minutos' : x.kind === 'unsettling' ? 'Resta ' + x.value + ' a la próxima salvación · hasta tu próximo turno' : x.kind === 'advantage' ? 'Silvery Barbs: ventaja en la próxima prueba, ataque o salvación · 1 minuto' : 'Acción preparada · hasta tu próximo turno'}</p>${button('Usado / terminado', 'combat-effect-remove', 'secondary', `data-id="${esc(x.id)}"`)}</div>`).join('') : '<p class="small">Al inspirar o usar Palabras perturbadoras, el objetivo aparece acá. Las duraciones en minutos se controlan en mesa.</p>'}
+ <section class="card" id="combat-ongoing"><h2>En curso</h2><h3>Concentración</h3><p>${state.concentration ? esc(spellName(state.concentration)) : 'Ningún conjuro activo.'}</p>${state.concentration ? button('Terminar concentración', 'concentration-end') : ''}${c.checks.length && state.concentration ? `<div class="concentration-alert"><b>Salvación pendiente: CON ${sign(R.saveBonus(state, 'con'))} contra CD ${c.checks[0]}</b><p class="small">Una salvación por cada fuente de daño. Pendientes: ${c.checks.length}. No gasta reacción.</p>${button('Tirar salvación', 'concentration-roll', '')}${button('La superé', 'combat-concentration-pass', 'secondary')}${button('Fallé', 'combat-concentration-fail', 'danger')}</div>` : ''}${(state.bonusDice || []).length ? `<h3 class="section-space">Dados del DM</h3>${state.bonusDice.map(b => `<div class="effect-note"><b>d${b.die}${b.reason ? ' · ' + esc(b.reason) : ''}</b><p>Para ${esc(RollUI.bonusScope(b))}. Se ofrece al tirar.</p>${button('Descartar', 'bonus-discard', 'secondary', `data-id="${esc(b.id)}"`)}</div>`).join('')}` : ''}<div class="card-header section-space"><h3>Efectos con duración</h3>${button('Agregar', 'effect-new', 'text-btn')}</div>${
+   Effects.list(state).length
+     ? Effects.list(state)
+         .map(
+           x =>
+             `<div class="effect-note"><b>${esc(x.name)}</b><p>${esc(Effects.remaining(x))}${x.concentration ? ' · concentración' : ''}${x.from === 'dm' ? ' · del DM' : ''}</p>${button('Terminar', 'effect-end', 'secondary', `data-id="${esc(x.id)}"`)}</div>`,
+         )
+         .join('')
+     : '<p class="small">Los conjuros con duración se anotan al lanzarlos y descuentan una ronda al empezar tu turno.</p>'
+ }<h3 class="section-space">Efectos que recordar</h3>${c.effects.length ? c.effects.map(x => `<div class="effect-note"><b>${esc(x.target)}</b><p>${x.kind === 'inspired' ? 'Inspiración: d' + x.value + ' · 10 minutos' : x.kind === 'unsettling' ? 'Resta ' + x.value + ' a la próxima salvación · hasta tu próximo turno' : x.kind === 'advantage' ? 'Silvery Barbs: ventaja en la próxima prueba, ataque o salvación · 1 minuto' : 'Acción preparada · hasta tu próximo turno'}</p>${button('Usado / terminado', 'combat-effect-remove', 'secondary', `data-id="${esc(x.id)}"`)}</div>`).join('') : '<p class="small">Al inspirar o usar Palabras perturbadoras, el objetivo aparece acá. Las duraciones en minutos se controlan en mesa.</p>'}
  <details class="battle-rule"><summary>Condiciones ${state.conditions.length ? '(' + state.conditions.length + ')' : ''}</summary><div class="chips section-space">${['Derribado', 'Asustado', 'Hechizado', 'Envenenado', 'Incapacitado', 'Inconsciente', 'Agarrado', 'Restringido', 'Cegado', 'Ensordecido', 'Paralizado', 'Aturdido', 'Invisible', 'Petrificado'].map(c => `<button class="chip ${state.conditions.includes(c) ? 'selected' : ''}" data-action="condition" data-condition="${c}" aria-pressed="${state.conditions.includes(c)}">${c}</button>`).join('')}</div></details>${state.conditions.length ? `<p class="small">${state.conditions.map(esc).join(' · ')}</p>` : ''}</section></aside></div>`
   );
 }
@@ -278,11 +287,18 @@ function installCombatActions() {
     },
     turn: () => {
       const start = () => {
-        commit('Inicio de mi turno: acción, adicional y reacción disponibles', s => Combat.start(s));
+        let ended = [];
+        commit('Inicio de mi turno: acción, adicional y reacción disponibles', s => {
+          Combat.start(s);
+          ended = Effects.tick(s);
+        });
         combatTab = 'action';
         combatLevel = 'all';
         render();
-        toast('Nuevo turno: acción, adicional y reacción disponibles.');
+        toast(
+          'Nuevo turno: acción, adicional y reacción disponibles.' +
+            (ended.length ? ' Terminó: ' + ended.join(', ') + '.' : ''),
+        );
       };
       if (Combat.data(state).active && Combat.data(state).onTurn)
         confirmAction(
@@ -312,6 +328,34 @@ function installCombatActions() {
       commit('Efecto usado o terminado', s => {
         Combat.data(s).effects = Combat.data(s).effects.filter(x => x.id !== e.dataset.id);
       }),
+    'effect-end': e =>
+      commit('Efecto terminado', s => {
+        s.timedEffects = Effects.list(s).filter(x => x.id !== e.dataset.id);
+      }),
+    'effect-new': () =>
+      modal(
+        'Efecto con duración',
+        `${field('Nombre', 'name', '', 'text', 'required maxlength="100" placeholder="Bendición, Furia, Hechizado…"')}<div class="form-grid">${field('Duración', 'amount', 10, 'number', 'min="1" max="999" required')}${select(
+          'Unidad',
+          'unit',
+          [
+            ['1', 'Rondas'],
+            ['10', 'Minutos'],
+            ['600', 'Horas'],
+            ['0', 'Sin duración fija'],
+          ],
+          '1',
+        )}</div>${state.concentration ? `<label class="check"><input type="checkbox" name="conc">Termina si pierdo la concentración en ${esc(spellName(state.concentration))}</label>` : ''}`,
+        fd =>
+          commit('Efecto agregado: ' + fd.get('name'), s => {
+            const unit = Number(fd.get('unit'));
+            Effects.add(s, {
+              name: String(fd.get('name')).trim(),
+              rounds: unit ? number(fd, 'amount', 1, 999) * unit : null,
+              concentration: fd.has('conc') ? s.concentration : null,
+            });
+          }),
+      ),
     'combat-concentration-pass': () =>
       commit('Salvación de concentración superada', s => Combat.data(s).checks.shift()),
     'combat-concentration-fail': () =>

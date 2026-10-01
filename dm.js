@@ -242,6 +242,7 @@ function draw() {
     ${feedCard()}
   </div><div class="stack">
     ${initiativeCard(t)}
+    ${TableExtras.dmHtml(party)}
     <section class="card"><div class="card-header"><h2>Notas del DM</h2></div><label class="field"><span class="visually-hidden">Notas privadas</span><textarea id="dm-notes" style="min-height:160px" placeholder="Solo se guardan en este dispositivo.">${esc(localStorage.getItem(notesKey()) || '')}</textarea></label></section>
   </div></div>`;
 }
@@ -391,12 +392,14 @@ const actions = {
       x = PV.summarize(characterById(id).data);
     modal(
       'Estados de ' + targetName(id),
-      `<div class="chips">${CONDITIONS.map(c => `<label class="check"><input type="checkbox" name="c" value="${c}" ${x.conditions?.includes(c) ? 'checked' : ''}>${c}</label>`).join('')}</div>`,
+      `<div class="chips">${CONDITIONS.map(c => `<label class="check"><input type="checkbox" name="c" value="${c}" ${x.conditions?.includes(c) ? 'checked' : ''}>${c}</label>`).join('')}</div><h3 class="section-space">Efecto con duración (opcional)</h3><div class="form-grid">${field('Nombre', 'fxName', '', 'text', 'maxlength="100" placeholder="Hechizado por la dríada"')}${field('Rondas (10 = 1 minuto)', 'fxRounds', 10, 'number', 'min="1" max="9999"')}</div><p class="small">El efecto descuenta una ronda al empezar cada turno del jugador y termina solo.</p>`,
       async fd => {
         const next = fd.getAll('c'),
           now = x.conditions || [];
         for (const c of CONDITIONS)
           if (next.includes(c) !== now.includes(c)) await send('condition', { name: c, on: next.includes(c) }, id);
+        const fx = String(fd.get('fxName') || '').trim();
+        if (fx) await send('effect', { name: fx, rounds: int(fd, 'fxRounds', 1, 9999, 10) }, id);
       },
       'Aplicar',
     );
@@ -689,6 +692,7 @@ window.addEventListener('hashchange', () => {
   if (id && id !== current) open(id);
 });
 Cloud.onStatus(() => {});
+TableExtras.install({ refresh: () => refresh(), campaignId: () => current, characterId: () => null });
 // Al volver a la pestaña (o desbloquear el celular), se pone al día con la mesa.
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && current) refresh();
