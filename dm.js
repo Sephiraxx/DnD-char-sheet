@@ -224,7 +224,7 @@ function draw() {
   const list = summaries();
   const t = tracker();
   $('#main').innerHTML =
-    `<div class="heading"><div><p class="eyebrow">MESA EN VIVO</p><h1>${esc(party.campaign.name)}</h1><p>Código para unirse: <b class="table-code">${esc(party.campaign.code)}</b> · ${list.length} ficha${list.length === 1 ? '' : 's'}</p><p class="small">${settingsSummary(Cloud.cleanSettings(party.campaign.settings))}</p></div><div class="actions">${button('Pedir tirada a todos', 'request')}${button('Descanso corto', 'rest-short')}${button('Descanso largo', 'rest-long')}${button('Mensaje a todos', 'message')}${button('Ajustes de la mesa', 'settings')}${button('Mis mesas', 'home')}${button('Eliminar mesa', 'delete-table', 'danger', `data-id="${esc(party.campaign.id)}" data-name="${esc(party.campaign.name)}"`)}</div></div>
+    `<div class="dm-head"><div><p class="eyebrow">MESA EN VIVO · ${list.length} ficha${list.length === 1 ? '' : 's'}</p><h1>${esc(party.campaign.name)}</h1><p class="small muted">${settingsSummary(Cloud.cleanSettings(party.campaign.settings))}</p></div><div class="dm-code"><span>CÓDIGO</span><b>${esc(party.campaign.code)}</b>${button('Copiar', 'copy-code', 'secondary', `data-code="${esc(party.campaign.code)}"`)}</div><div class="dm-toolbar">${button('Pedir tirada a todos', 'request', '')}${button('Mensaje a todos', 'message')}${button('Descanso corto', 'rest-short')}${button('Descanso largo', 'rest-long')}<details class="dm-menu"><summary class="button secondary">Mesa ▾</summary><div class="dm-menu-list">${button('Ajustes de la mesa', 'settings')}${button('Mis mesas', 'home')}${button('Eliminar mesa', 'delete-table', 'danger', `data-id="${esc(party.campaign.id)}" data-name="${esc(party.campaign.name)}"`)}</div></details></div></div>
   ${error ? `<div class="banner"><p>${esc(error)}</p>${button('Reintentar', 'refresh')}</div>` : ''}
   <div class="dm-layout"><div class="stack">
     <div class="party-grid">${
@@ -235,7 +235,7 @@ function draw() {
                 owner: party.members.find(m => m.user_id === row.owner_id)?.display_name,
                 showGold: true,
                 online: online.some(p => p.characterId === row.id),
-                actions: `<div class="party-actions">${button('PG', 'hp', 'secondary', `data-id="${row.id}"`)}${button('Estados', 'conditions', 'secondary', `data-id="${row.id}"`)}${button(x.heroic ? '★ Quitar Insp.' : '★ Inspiración', 'inspire', 'secondary', `data-id="${row.id}" data-on="${x.heroic ? '' : '1'}"`)}${button('Dado', 'bonus-die', 'secondary', `data-id="${row.id}"`)}${button('Tirada', 'request', 'secondary', `data-id="${row.id}"`)}${button('Oro y objetos', 'give', 'secondary', `data-id="${row.id}"`)}${button('Mensaje', 'message', 'secondary', `data-id="${row.id}"`)}${button('Más', 'more', 'secondary', `data-id="${row.id}"`)}</div>`,
+                actions: `<div class="party-actions">${button('PG', 'hp', 'secondary', `data-id="${row.id}"`)}${button('Estados', 'conditions', 'secondary', `data-id="${row.id}"`)}${button(x.heroic ? '★ Quitar' : '★ Insp.', 'inspire', 'secondary', `data-id="${row.id}" data-on="${x.heroic ? '' : '1'}"`)}${button('Tirada', 'request', 'secondary', `data-id="${row.id}"`)}${button('Más ▾', 'more', 'secondary', `data-id="${row.id}"`)}</div>`,
               }),
             )
             .join('')
@@ -279,7 +279,7 @@ function initiativeCard(t) {
         x = pc ? PV.summarize(pc.data) : null;
       const sub = x
         ? `${x.hp ?? '—'}/${x.maxHP} PG · CA ${x.ac}${x.conditions.length ? ' · ' + esc(x.conditions.join(', ')) : ''}`
-        : `CA ${e.ac ?? '—'}`;
+        : `CA ${e.ac ?? '—'}${e.max ? `<span class="monster-hpbar" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Math.round(((e.hp ?? e.max) / e.max) * 100)))}%"></i></span>` : ''}`;
       const down = x ? x.hp === 0 : e.hp === 0;
       return `<li class="${i === t.turn ? 'current' : ''} ${down ? 'down' : ''}"><span class="init">${e.init ?? '—'}</span><span class="who"><b>${e.monsterId ? `<button type="button" class="text-btn monster-name" data-action="monster-open" data-entry="${e.id}">${esc(e.name)}</button>` : esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
         e.characterId
@@ -289,7 +289,7 @@ function initiativeCard(t) {
     })
     .join('');
   return `<section class="card"><div class="card-header"><h2>Iniciativa${t.round ? ' · ronda ' + t.round : ''}</h2></div>
-  <div class="actions">${button('Agregar party', 'init-party')}${button('Pedir iniciativa', 'init-request')}${button('Monstruo del SRD', 'init-monster-srd')}${button('Criatura propia', 'init-monster')}</div>
+  <div class="initiative-tools">${button('Agregar party', 'init-party')}${button('Pedir iniciativa', 'init-request')}${button('Monstruo del SRD', 'init-monster-srd')}${button('Criatura propia', 'init-monster')}</div>
   ${typeof MonsterUI !== 'undefined' ? MonsterUI.difficultyLine(t) : ''}${items ? `<ol class="initiative-list section-space">${items}</ol>` : '<p class="muted section-space">Agregá a la party y a las criaturas. Las tiradas de iniciativa de los jugadores se completan solas.</p>'}
   ${t.entries.length ? `<div class="actions section-space">${button(t.turn < 0 ? 'Empezar combate' : 'Siguiente turno', 'init-next', '')}${t.turn >= 0 ? button('Terminar combate', 'init-end') : ''}${button('Vaciar', 'init-clear')}</div>` : ''}</section>`;
 }
@@ -471,10 +471,18 @@ const actions = {
       row = characterById(id);
     modal(
       targetName(id),
-      `<div class="actions">${button('Descanso corto', 'rest-short', 'secondary', `data-id="${id}"`)}${button('Descanso largo', 'rest-long', 'secondary', `data-id="${id}"`)}${button('Habilitar subida de nivel', 'level', 'secondary', `data-id="${id}"`)}</div><div class="divider"></div><p class="small">Quitar la ficha de la mesa no la borra del dispositivo del jugador.</p>${button('Quitar de la mesa', 'kick', 'secondary', `data-id="${id}"`)}<p class="small muted section-space">Última actualización: ${esc(new Date(row.updated_at).toLocaleString('es-AR'))}</p>`,
+      `<div class="actions">${button('Dado del DM', 'bonus-die', 'secondary', `data-id="${id}"`)}${button('Oro y objetos', 'give', 'secondary', `data-id="${id}"`)}${button('Mensaje privado', 'message', 'secondary', `data-id="${id}"`)}</div><div class="actions section-space">${button('Descanso corto', 'rest-short', 'secondary', `data-id="${id}"`)}${button('Descanso largo', 'rest-long', 'secondary', `data-id="${id}"`)}${button('Habilitar subida de nivel', 'level', 'secondary', `data-id="${id}"`)}</div><div class="divider"></div><p class="small">Quitar la ficha de la mesa no la borra del dispositivo del jugador.</p>${button('Quitar de la mesa', 'kick', 'secondary', `data-id="${id}"`)}<p class="small muted section-space">Última actualización: ${esc(new Date(row.updated_at).toLocaleString('es-AR'))}</p>`,
       () => true,
       'Cerrar',
     );
+  },
+  'copy-code': async e => {
+    try {
+      await navigator.clipboard.writeText(e.dataset.code);
+      toast('Código copiado: ' + e.dataset.code);
+    } catch {
+      toast('Código: ' + e.dataset.code);
+    }
   },
   'rest-short': e => rest('short', e.dataset.id),
   'rest-long': e => rest('long', e.dataset.id),
@@ -511,7 +519,16 @@ const actions = {
           return (x % die) + 1;
         });
         const total = rolls.reduce((a, b) => a + b, 0) + mod;
-        toast(`${total} (${rolls.join(', ')} ${sign(mod)})`);
+        setTimeout(() =>
+          RollFX.show({
+            label: String(fd.get('label')).trim() || n + 'd' + die,
+            total,
+            face: n === 1 ? rolls[0] : 'd' + die,
+            detail: rolls.join(' + ') + (mod ? ' ' + sign(mod) : ''),
+            crit: die === 20 && n === 1 && rolls[0] === 20,
+            fumble: die === 20 && n === 1 && rolls[0] === 1,
+          }),
+        );
         return send(
           'roll',
           { character: 'DM', label: String(fd.get('label')).trim() || n + 'd' + die, rolls, bonus: mod, total },
@@ -661,6 +678,9 @@ async function rest(type, id) {
 }
 
 document.addEventListener('click', async e => {
+  document.querySelectorAll('.dm-menu[open]').forEach(m => {
+    if (!m.contains(e.target) || e.target.closest('.dm-menu-list')) m.open = false;
+  });
   if (e.target.closest('[data-close]')) return $('#modal').close();
   const el = e.target.closest('[data-action]');
   if (!el || !actions[el.dataset.action]) return;

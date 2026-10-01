@@ -156,7 +156,16 @@ const RollUI = (() => {
             physical: r.physical,
             inspiration: r.heroic,
           });
-        toast(`${label}: ${r.kept} ${sign(bonus)}${extra.text} = ${total}`);
+        setTimeout(() =>
+          RollFX.show({
+            label,
+            total,
+            face: r.kept,
+            detail: `${diceText(r)} ${sign(bonus)}${extra.text}`,
+            crit: r.kept === 20,
+            fumble: r.kept === 1,
+          }),
+        );
         onDone?.({ ...r, total });
       },
       'Tirar',
@@ -305,6 +314,14 @@ const RollUI = (() => {
       `<b>Ataque:</b> ${diceText(r)} ${sign(st.attack)}${extra.text} = <b>${total}</b>${crit ? ' · <b>¡Crítico!</b> (el daño duplica dados)' : miss ? ' · Pifia: falla' : ''}`,
       crit ? 'crit' : miss ? 'fumble' : '',
     );
+    RollFX.show({
+      label: 'Ataque · ' + sp.name,
+      total,
+      face: r.kept,
+      detail: diceText(r) + ' ' + sign(st.attack) + extra.text,
+      crit,
+      fumble: miss,
+    });
     commit(`${sp.name}: ataque ${diceText(r)} ${sign(st.attack)}${extra.text} = ${total}`, s => {
       if (r.heroic) s.heroicInspiration = false;
       spendBonus(s, extra.ids);
@@ -344,6 +361,13 @@ const RollUI = (() => {
       `<b>${what}${spellSession.crit ? ' crítico' : ''}:</b> ${rolls.length ? rolls.join('+') : 'dados físicos ' + sum}${mod ? ' ' + sign(mod) : ''} = <b>${total}</b>${info.types ? ' ' + esc(info.types) : ''}`,
       'damage',
     );
+    RollFX.show({
+      label: what + ' · ' + sp.name,
+      total,
+      face: info.heal ? '✚' : '✦',
+      detail: rolls.length ? rolls.join(' + ') + (mod ? ' ' + sign(mod) : '') : 'dados físicos',
+      crit: spellSession.crit,
+    });
     commit(`${sp.name}: ${what.toLowerCase()} ${total}${rolls.length ? '' : ' (dados físicos)'}`, () => {});
     TableUI.shareRoll({
       label: what + ' de ' + sp.name + (spellSession.crit ? ' (crítico)' : ''),

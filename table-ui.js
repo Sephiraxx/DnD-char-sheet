@@ -65,6 +65,8 @@ const TableUI = (() => {
       document.getElementById('save-status').after(el);
     }
     el.textContent = STATUS[s] || STATUS.synced;
+    el.title = el.textContent;
+    el.setAttribute('aria-label', el.textContent);
     el.dataset.state = s;
   }
 
@@ -110,8 +112,8 @@ const TableUI = (() => {
   function welcomeCard() {
     const t = Cloud.pendingTable();
     if (t)
-      return `<section class="card section-space"><h2>Mesa «${PV.esc(t.name)}»</h2><p>Ya estás en la mesa. Creá tu personaje: el creador usa los libros que eligió el DM (${PV.esc(t.settings.sources.join(', '))}) y empieza en nivel ${t.settings.startLevel}. Al terminar, la ficha se comparte con la mesa.</p>${t.settings.rules ? `<p class="small"><b>Reglas de la casa:</b> ${PV.esc(t.settings.rules)}</p>` : ''}<div class="actions">${button('Crear personaje para esta mesa', 'party-create', '')}${button('Cancelar', 'table-pending-cancel')}</div></section>`;
-    return `<section class="card section-space"><h2>¿Tu DM ya creó la mesa?</h2><p>Unite con el código y después creá tu personaje con las reglas de esa mesa.</p><form id="table-prejoin-form" class="stack">${field('Código de la mesa', 'code', '', 'text', 'required minlength="6" maxlength="6" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.2em"')}${field('Tu nombre (jugador)', 'display', '', 'text', 'maxlength="100" placeholder="Opcional"')}<div class="actions"><button class="button" type="submit">Unirme a la mesa</button></div><p class="form-error" id="table-prejoin-error" role="alert"></p></form></section>`;
+      return `<section class="card path-card path-ready"><span class="path-icon" aria-hidden="true">⚔</span><h2>Mesa «${PV.esc(t.name)}»</h2><p>Ya estás en la mesa. Creá tu personaje: el creador usa los libros que eligió el DM (${PV.esc(t.settings.sources.join(', '))}) y empieza en nivel ${t.settings.startLevel}. Al terminar, la ficha se comparte con la mesa.</p>${t.settings.rules ? `<p class="small"><b>Reglas de la casa:</b> ${PV.esc(t.settings.rules)}</p>` : ''}<div class="actions">${button('Crear personaje para esta mesa', 'party-create', '')}${button('Cancelar', 'table-pending-cancel')}</div></section>`;
+    return `<section class="card path-card"><span class="path-icon" aria-hidden="true">⚔</span><h2>Unite a una mesa</h2><p>¿Tu DM ya creó la mesa? Escribí su código y creá tu personaje con sus reglas.</p><form id="table-prejoin-form" class="stack">${field('Código de la mesa', 'code', '', 'text', 'required minlength="6" maxlength="6" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.2em"')}${field('Tu nombre (jugador)', 'display', '', 'text', 'maxlength="100" placeholder="Opcional"')}<div class="actions"><button class="button" type="submit">Unirme a la mesa</button></div><p class="form-error" id="table-prejoin-error" role="alert"></p></form></section>`;
   }
   // Libros y reglas de la mesa aplicados a una ficha que se une.
   function applySettings(settings) {

@@ -339,10 +339,15 @@ function render() {
   document.body.classList.toggle('no-character', !state);
   if (!state) {
     PartyUI.welcome();
-    if (Cloud.enabled) $('#main').insertAdjacentHTML('beforeend', TableUI.welcomeCard() + AccountUI.card('restore'));
+    if (Cloud.enabled) {
+      $('#path-join').outerHTML = TableUI.welcomeCard();
+      $('#main').insertAdjacentHTML('beforeend', AccountUI.card('restore'));
+    } else $('#path-join')?.remove();
     return;
   }
   PartyUI.decorate();
+  if ($('#save-status').textContent === 'Sin personaje abierto')
+    $('#save-status').textContent = 'Guardado en este dispositivo';
   $('#nav').innerHTML = navs
     .map(
       ([id, icon, label]) =>
@@ -959,7 +964,16 @@ const actions = {
           { label: n + 'd' + die, rolls: a, bonus: b, total: sum, physical },
           fd.has('secreta') ? 'dm' : 'all',
         );
-        toast('Resultado: ' + sum + ' (' + a.join(', ') + ' ' + sign(b) + ')');
+        setTimeout(() =>
+          RollFX.show({
+            label: n + 'd' + die,
+            total: sum,
+            face: n === 1 && !physical ? a[0] : 'd' + die,
+            detail: (physical ? 'dados físicos ' : a.join(' + ')) + (b ? ' ' + sign(b) : ''),
+            crit: die === 20 && n === 1 && a[0] === 20,
+            fumble: die === 20 && n === 1 && a[0] === 1,
+          }),
+        );
       },
       'Tirar',
     ),

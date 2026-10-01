@@ -124,6 +124,14 @@ const AttackUI = (() => {
       (r.rolls.length > 1 ? `d20 ${r.rolls.join(' / ')} → ${r.kept}` : `d20 ${r.kept}`) +
       (r.physical ? ' (dado físico)' : '') +
       extra.text;
+    RollFX.show({
+      label: label + ' · ' + item.name,
+      total: r.total,
+      face: r.kept,
+      detail: dice + ' ' + sign(p.toHit),
+      crit: r.crit,
+      fumble: r.fumble,
+    });
     session.log.unshift({
       html: `<b>${label}:</b> ${dice} ${sign(p.toHit)} = <b>${r.total}</b>${r.crit ? ' · <b>¡Crítico!</b>' : r.fumble ? ' · Pifia: falla automáticamente' : ''}${session.attacks > n ? ' <span class="muted">(más ataques que los de tu acción: confirmalo con el DM)</span>' : ''}`,
       cls: r.crit ? 'crit' : r.fumble ? 'fumble' : '',
@@ -163,6 +171,7 @@ const AttackUI = (() => {
           .filter(x => x.rolls.length)
           .map(x => `${x.rolls.join('+')} ${esc(x.label)}`)
           .join(' · ');
+    RollFX.show({ label: 'Daño · ' + item.name, total: dmg.total, face: '⚔', detail: parts || 'fijo', crit });
     session.log.unshift({
       html: `<b>Daño${crit ? ' crítico' : ''}:</b> ${parts || 'fijo'}${p.dmgMod ? ' ' + sign(p.dmgMod) : ''} = <b>${dmg.total}</b>`,
       cls: 'damage',
