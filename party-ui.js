@@ -527,7 +527,7 @@ const PartyUI = (() => {
     return (
       header(
         esc(state.name),
-        `${esc(state.race || (!state.classId ? 'Semielfo' : 'Linaje por registrar'))} · ${c.name} ${state.level}${C.sub(state) ? ' · ' + C.sub(state).name : ''}`,
+        `${esc(state.race || (!state.classId ? 'Semielfo' : 'Linaje por registrar'))} · ${MulticlassUI.label(state, true)}`,
         button('Características y armadura', 'stats') +
           button('Competencias', 'class-config') +
           button('Subir de nivel', 'levelup', '') +
@@ -546,11 +546,11 @@ const PartyUI = (() => {
       )
         .map(
           ([k, n]) =>
-            `<div class="list-row"><span>${n}</span><button class="roll-button" data-action="roll" data-label="Salvación de ${n}" data-bonus="${R.saveBonus(state, k)}">${sign(R.saveBonus(state, k))}</button></div>`,
+            `<div class="list-row"><span>${n}</span><button class="roll-button" data-action="roll-save" data-ability="${k}">${sign(R.saveBonus(state, k))}</button></div>`,
         )
         .join(
           '',
-        )}<p class="small section-space">Competencia de clase: ${c.saves.map(k => R.attrs[k]).join(', ')}.</p></section><section class="card"><h2>Identidad y competencias</h2><p>${esc(state.background || (!state.classId ? 'Comerciante gremial' : ''))}</p><p>Idiomas: ${esc(state.languages || (!state.classId ? 'Común, Élfico, Enano, Gnómico' : 'Por registrar'))}</p><p class="small">Armaduras: ${esc(c.armor || 'Ninguna')}<br>Armas: ${esc(c.weapons || 'Consultar clase')}<br>Herramientas: ${esc(c.tools || 'Consultar elecciones de clase, raza y trasfondo')}<br>Velocidad base registrada: ${state.speed ?? 30} pies.</p>${button('Editar identidad', 'party-identity')}</section></div></div>${EquipmentUI.panel(state)}${Campaign.sheetOrigins()}<section class="card section-space"><h2>Rasgos y notas</h2>${
+        )}<p class="small section-space">Competencia de clase: ${c.saves.map(k => R.attrs[k]).join(', ')}.</p></section></div></div>${EquipmentUI.panel(state)}${Campaign.sheetOrigins()}<section class="card section-space"><h2>Rasgos y notas</h2>${
         !state.classId
           ? R.features(state)
               .map(([n, t]) => `<div class="feature"><h3>${esc(n)}</h3><p>${esc(t)}</p></div>`)

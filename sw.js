@@ -1,5 +1,5 @@
 const PREFIX = 'darien:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v19-monsters';
+const CACHE = PREFIX + 'v20-origin-card';
 const FILES = [
   './',
   './index.html',

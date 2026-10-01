@@ -247,8 +247,36 @@ const Campaign = (() => {
       },
     );
   }
+  // Competencias de armas y armaduras calculadas (clase, subclase, raza y multiclase).
+  function proficiencyText(s) {
+    const armor = [
+      ['light', 'ligera'],
+      ['medium', 'media'],
+      ['heavy', 'pesada'],
+    ]
+      .filter(([t]) => Equipment.proficient(s, t))
+      .map(([, n]) => n);
+    const armorText =
+      (armor.length ? 'Armadura ' + armor.join(', ') : 'Sin armadura') +
+      (Equipment.proficient(s, 'shield') ? ' y escudos' : '');
+    const weapons = Object.values(EquipmentData.items)
+      .filter(x => x.weapon)
+      .map(x => [x, Attacks.weaponOf({ equipmentId: x.id, notes: '' })])
+      .filter(([, w]) => w);
+    const group = martial => {
+      const all = weapons.filter(([, w]) => w.martial === martial),
+        ok = all.filter(([, w]) => Attacks.proficient(s, w));
+      if (ok.length && ok.length === all.length) return [martial ? 'armas marciales' : 'armas simples'];
+      return ok.map(([x]) => x.name.toLowerCase());
+    };
+    const list = [...group(false), ...group(true)];
+    return { armor: armorText, weapons: list.length ? list.join(', ') : 'ninguna' };
+  }
+  // Origen e identidad: raza, trasfondo, idiomas, competencias y velocidad en una sola tarjeta.
   function sheetOrigins() {
-    return `<section class="card section-space"><div class="card-header"><h2>Raza y trasfondo</h2>${button('Elegir / cambiar', 'party-identity')}${button('Libros habilitados', 'campaign-sources')}</div><div class="grid two"><div><h3>${esc(state.race || 'Raza por registrar')}</h3>${originInfo(race(state), 'race')}</div><div><h3>${esc(state.background || 'Trasfondo por registrar')}</h3>${originInfo(background(state), 'background')}</div></div></section>`;
+    const legacy = !state.classId,
+      p = legacy ? null : proficiencyText(state);
+    return `<section class="card section-space"><div class="card-header"><h2>Origen e identidad</h2>${button('Editar', 'party-identity')}</div><div class="grid two"><div><h3>${esc(state.race || (legacy ? 'Semielfo' : 'Raza por registrar'))}</h3>${originInfo(race(state), 'race')}</div><div><h3>${esc(state.background || (legacy ? 'Comerciante gremial' : 'Trasfondo por registrar'))}</h3>${originInfo(background(state), 'background')}</div></div><div class="divider"></div><p><b>Idiomas que hablás:</b> ${state.languages ? esc(state.languages) : legacy ? 'Común, Élfico, Enano, Gnómico' : '<span class="muted">elegilos con «Editar»; la raza y el trasfondo indican cuántos</span>'}</p>${p ? `<p><b>Armaduras:</b> ${esc(p.armor)}. <b>Armas:</b> ${esc(p.weapons)}.</p><p class="small muted">Calculado con tu clase, subclase, raza y multiclase. Herramientas y otras competencias: «Competencias» o «Rasgos y notas».</p>` : ''}</section>`;
   }
   function glossary() {
     const d = Rules.stats(state),

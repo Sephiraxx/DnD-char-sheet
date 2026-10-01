@@ -307,7 +307,7 @@ function legacyCharacter() {
     )
       .map(
         ([k, label]) =>
-          `<div class="list-row"><span>${label}</span><button class="roll-button" data-action="roll" data-label="Salvación de ${label}" data-bonus="${R.saveBonus(state, k)}">${sign(R.saveBonus(state, k))}</button></div>`,
+          `<div class="list-row"><span>${label}</span><button class="roll-button" data-action="roll-save" data-ability="${k}">${sign(R.saveBonus(state, k))}</button></div>`,
       )
       .join(
         '',
