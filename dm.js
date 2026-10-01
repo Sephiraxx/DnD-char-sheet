@@ -251,14 +251,20 @@ function draw() {
 
 function drawHome() {
   const tables = Cloud.dmTables();
+  // Primero las mesas existentes (lo más común); después crear una nueva con ajustes plegados.
+  const list = tables.length
+    ? `<div class="dm-table-grid">${tables
+        .map(
+          x =>
+            `<section class="card dm-table-card"><p class="eyebrow">MESA</p><h2>${esc(x.name)}</h2><p class="small muted">Código <b class="table-code">${esc(x.code)}</b></p><div class="actions">${button('Abrir', 'open', '', `data-id="${x.id}"`)}${button('Olvidar', 'forget', 'text-btn', `data-id="${x.id}"`)}${button('Eliminar', 'delete-table', 'text-btn danger-text', `data-id="${x.id}" data-name="${esc(x.name)}"`)}</div></section>`,
+        )
+        .join('')}</div>`
+    : '<p class="muted">Todavía no creaste mesas en este dispositivo.</p>';
   $('#main').innerHTML =
     `<div class="heading"><div><p class="eyebrow">PANTALLA DEL DM</p><h1>Tus mesas.</h1><p>Creá una mesa, compartí el código con la party y seguí sus fichas en vivo.</p></div></div>
-  <div class="columns"><section class="card"><h2>Nueva mesa</h2><form id="create-form" class="stack">${field('Nombre de la campaña', 'name', '', 'text', 'required maxlength="100" placeholder="La maldición de Strahd"')}${field('Tu nombre', 'display', 'DM', 'text', 'maxlength="100"')}${settingsFields()}<div class="actions"><button class="button" type="submit">Crear mesa</button></div><p class="form-error" id="create-error" role="alert">${esc(error)}</p></form></section>
-  <section class="card"><h2>Abiertas en este dispositivo</h2>${
-    tables.length
-      ? `<div class="dm-tables">${tables.map(x => `<div class="list-row"><div><b>${esc(x.name)}</b><p class="small muted">Código ${esc(x.code)}</p></div><div class="actions">${button('Abrir', 'open', '', `data-id="${x.id}"`)}${button('Olvidar', 'forget', 'secondary', `data-id="${x.id}"`)}${button('Eliminar', 'delete-table', 'danger', `data-id="${x.id}" data-name="${esc(x.name)}"`)}</div></div>`).join('')}</div>`
-      : '<p class="muted">Todavía no creaste mesas en este dispositivo.</p>'
-  }<p class="small muted section-space">Tu acceso de DM queda guardado en este navegador. Guardalo con tu email para dirigir tus mesas desde otro dispositivo.</p></section></div>${AccountUI.card('account')}`;
+  ${list}
+  <section class="card section-space dm-new"><h2>Nueva mesa</h2><form id="create-form" class="stack"><div class="form-grid">${field('Nombre de la campaña', 'name', '', 'text', 'required maxlength="100" placeholder="La maldición de Strahd"')}${field('Tu nombre', 'display', 'DM', 'text', 'maxlength="100"')}</div><details class="battle-rule"><summary>Libros, nivel inicial y reglas de la casa (opcional)</summary><div class="section-space">${settingsFields()}</div></details><div class="actions"><button class="button" type="submit">Crear mesa</button></div><p class="form-error" id="create-error" role="alert">${esc(error)}</p></form></section>
+  <p class="small muted section-space">Tu acceso de DM queda guardado en este navegador. Guardalo con tu email para dirigir tus mesas desde otro dispositivo.</p>${AccountUI.card('account')}`;
   if (!merged) {
     merged = true;
     Cloud.myDmTables()

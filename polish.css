@@ -2,7 +2,6 @@
 
 /* ---------- Detalles generales ---------- */
 html {
-  scroll-behavior: smooth;
   -webkit-tap-highlight-color: transparent;
 }
 ::selection {
@@ -387,9 +386,8 @@ html {
   clip-path: polygon(50% 0, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%);
   background: linear-gradient(160deg, #2a4a50, #142a2f);
   color: var(--text);
-  font:
-    700 1.6rem Georgia,
-    serif;
+  font-size: 1.5rem;
+  font-weight: 800;
   animation: roll-spin 0.5s ease-out both;
 }
 .roll-card .roll-label {
@@ -399,9 +397,9 @@ html {
   color: var(--muted);
 }
 .roll-card .roll-total {
-  font:
-    1.9rem Georgia,
-    serif;
+  font-size: 1.9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 .roll-card .roll-detail {
@@ -453,9 +451,6 @@ html {
   .roll-card.leaving,
   .roll-die {
     animation: none;
-  }
-  html {
-    scroll-behavior: auto;
   }
 }
 
@@ -604,4 +599,54 @@ label.check:has(input[name='heroic']:checked) {
   border-left: 3px solid var(--gold);
   background: #2a2619;
   border-radius: 0 8px 8px 0;
+}
+
+/* Inicio del DM: mesas como tarjetas */
+.dm-table-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+.dm-table-card h2 {
+  margin: 2px 0 4px;
+}
+.dm-table-card .actions {
+  margin-top: 12px;
+  align-items: center;
+}
+.danger-text {
+  color: var(--red);
+}
+
+/* Tarjetas de armas: impacto y daño como datos grandes */
+.attack-stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  margin: 8px 0 6px;
+}
+.attack-stats span {
+  display: grid;
+  gap: 1px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: #0f1f24;
+  border: 1px solid var(--line);
+}
+.attack-stats small {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.attack-stats b {
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold);
+}
+.attack-stats em {
+  font-style: normal;
+  font-size: 0.75rem;
+  color: var(--muted);
 }
