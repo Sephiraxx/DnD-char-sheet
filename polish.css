@@ -240,7 +240,8 @@ html {
   flex-direction: column;
   gap: 6px;
   position: absolute;
-  right: 0;
+  left: 0;
+  max-width: calc(100vw - 32px);
   top: calc(100% + 6px);
   z-index: 20;
   min-width: 210px;
