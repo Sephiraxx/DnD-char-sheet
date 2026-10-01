@@ -250,7 +250,7 @@ function feedCard() {
         const dc = Number(e.payload.dc) || null;
         const rs = (responses.get(e.id) || []).map(
           r =>
-            `<span class="chip ${dc ? (r.payload.total >= dc ? 'selected' : 'warn') : ''}">${esc(r.payload.character)}: ${esc(r.payload.total)}</span>`,
+            `<span class="chip ${dc ? (r.payload.total >= dc ? 'selected' : 'warn') : ''}">${esc(r.payload.character)}: ${esc(r.payload.total)}${r.payload.physical ? ' · físico' : ''}</span>`,
         );
         extra = rs.length
           ? `<div class="chips">${rs.join('')}</div>`

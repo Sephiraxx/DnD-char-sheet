@@ -91,6 +91,7 @@ const AttackUI = (() => {
       `<p>${mode === 'action' && n > 1 ? `Tu acción de Atacar permite <b>${n} ataques</b>; podés repartirlos entre objetivos y moverte entre ellos.` : mode === 'bonus' ? 'Ataque con la otra mano: requiere haber atacado con un arma ligera en la otra mano en este turno.' : mode === 'reaction' ? 'Cuando un enemigo sale de tu alcance usando su movimiento.' : 'Un ataque con tu acción de Atacar.'}</p>
       <fieldset class="attack-adv"><legend>Tirada</legend><label class="check"><input type="radio" name="adv" value="" checked>Normal</label><label class="check"><input type="radio" name="adv" value="adv">Con ventaja</label><label class="check"><input type="radio" name="adv" value="dis">Con desventaja</label></fieldset>
       ${w.versatile && mode !== 'bonus' ? `<label class="check"><input type="checkbox" name="twoHands">A dos manos (${esc(w.versatile)})</label>` : ''}
+      <details class="physical-dice"><summary>Uso mis propios dados</summary><p class="small">Escribí lo que salió en la mesa y la ficha suma tus bonos. Con ventaja o desventaja, anotá el d20 que conservás. En un crítico, sumá todos los dados duplicados.</p><div class="form-grid">${field('Mi d20', 'myD20', '', 'number', 'min="1" max="20" inputmode="numeric"')}${field('Suma de mis dados de daño', 'myDamage', '', 'number', 'min="0" max="999" inputmode="numeric"')}</div></details>
       <div class="attack-log" id="attack-log" aria-live="polite"></div>
       <div class="actions">${button('Tirar daño', 'attack-damage', 'secondary', 'disabled')}</div>`,
       () => {
@@ -105,13 +106,19 @@ const AttackUI = (() => {
   function attack() {
     const { item, p } = current();
     const adv = document.querySelector('#dialog-form [name=adv]:checked')?.value || '';
+    const mine = takeInput('myD20', 1, 20);
     spendAction(item.name);
-    const r = A.rollAttack(p, adv, rnd),
+    const r =
+        mine === null
+          ? A.rollAttack(p, adv, rnd)
+          : { rolls: [mine], kept: mine, total: mine + p.toHit, crit: mine === 20, fumble: mine === 1, physical: true },
       n = session.mode === 'action' ? A.attacksPerAction(state) : 1;
     session.attacks++;
     session.last = r.fumble ? null : { crit: r.crit, profile: p };
     const label = `Ataque ${session.attacks}${n > 1 ? ' de ' + n : ''}`;
-    const dice = r.rolls.length > 1 ? `d20 ${r.rolls.join(' / ')} → ${r.kept}` : `d20 ${r.kept}`;
+    const dice =
+      (r.rolls.length > 1 ? `d20 ${r.rolls.join(' / ')} → ${r.kept}` : `d20 ${r.kept}`) +
+      (r.physical ? ' (dado físico)' : '');
     session.log.unshift({
       html: `<b>${label}:</b> ${dice} ${sign(p.toHit)} = <b>${r.total}</b>${r.crit ? ' · <b>¡Crítico!</b>' : r.fumble ? ' · Pifia: falla automáticamente' : ''}${session.attacks > n ? ' <span class="muted">(más ataques que los de tu acción: confirmalo con el DM)</span>' : ''}`,
       cls: r.crit ? 'crit' : r.fumble ? 'fumble' : '',
@@ -122,6 +129,7 @@ const AttackUI = (() => {
       rolls: r.rolls,
       bonus: p.toHit,
       total: r.total,
+      physical: Boolean(r.physical),
     });
     drawLog();
   }
@@ -130,11 +138,17 @@ const AttackUI = (() => {
     if (!session?.last) throw Error('Tirá primero un ataque que no sea pifia.');
     const { item, p } = current();
     const crit = session.last.crit,
-      dmg = A.rollDamage(p, crit, rnd);
-    const parts = dmg.parts
-      .filter(x => x.rolls.length)
-      .map(x => `${x.rolls.join('+')} ${esc(x.label)}`)
-      .join(' · ');
+      mine = takeInput('myDamage', 0, 999),
+      dmg =
+        mine === null
+          ? A.rollDamage(p, crit, rnd)
+          : { parts: [{ rolls: [], sum: mine }], total: Math.max(0, mine + p.dmgMod), physical: true };
+    const parts = dmg.physical
+      ? 'dados físicos ' + mine
+      : dmg.parts
+          .filter(x => x.rolls.length)
+          .map(x => `${x.rolls.join('+')} ${esc(x.label)}`)
+          .join(' · ');
     session.log.unshift({
       html: `<b>Daño${crit ? ' crítico' : ''}:</b> ${parts || 'fijo'}${p.dmgMod ? ' ' + sign(p.dmgMod) : ''} = <b>${dmg.total}</b>`,
       cls: 'damage',
@@ -146,8 +160,19 @@ const AttackUI = (() => {
       rolls: dmg.parts.flatMap(x => x.rolls),
       bonus: p.dmgMod,
       total: dmg.total,
+      physical: Boolean(dmg.physical),
     });
     drawLog();
+  }
+
+  // Lee y vacía un campo de dado físico; null si quedó vacío.
+  function takeInput(name, min, max) {
+    const el = document.querySelector(`#dialog-form [name=${name}]`);
+    if (!el || el.value === '') return null;
+    const n = Number(el.value);
+    if (!Number.isInteger(n) || n < min || n > max) throw Error(`Revisá tu dado: entre ${min} y ${max}.`);
+    el.value = '';
+    return n;
   }
 
   function settingsModal(id) {

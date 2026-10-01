@@ -92,7 +92,7 @@ const TableUI = (() => {
     return openRequests()
       .map(
         r =>
-          `<section class="banner request"><p><b>El DM pide:</b> ${PV.esc(r.payload.label)}${r.payload.dc && r.payload.showDc ? ' · CD ' + PV.esc(r.payload.dc) : ''}</p>${button('Tirar', 'table-answer', '', `data-id="${r.id}"`)}</section>`,
+          `<section class="banner request"><p><b>El DM pide:</b> ${PV.esc(r.payload.label)}${r.payload.dc && r.payload.showDc ? ' · CD ' + PV.esc(r.payload.dc) : ''}</p><div class="actions request-actions">${button('Tirar', 'table-answer', '', `data-id="${r.id}"`)}<label class="physical-die"><span class="visually-hidden">Mi d20</span><input type="number" min="1" max="20" inputmode="numeric" placeholder="d20" id="physical-${r.id}"></label>${button('Usé mi dado', 'table-answer', 'secondary', `data-id="${r.id}" data-physical="1"`)}</div></section>`,
       )
       .join('');
   }
@@ -391,7 +391,7 @@ const TableUI = (() => {
       .catch(() => toast('La tirada no se compartió con la mesa (sin conexión).'));
   }
 
-  function answer(id) {
+  function answer(id, physical = false) {
     const l = link(),
       req = feed.find(e => e.id === Number(id));
     if (!l || !req) throw Error('Ese pedido ya no está disponible.');
@@ -401,9 +401,16 @@ const TableUI = (() => {
     else if (p.type === 'save') bonus = R.saveBonus(state, p.id);
     else if (p.type === 'ability') bonus = Math.floor((state.abilities[p.id] - 10) / 2);
     else if (p.type === 'initiative') bonus = R.stats(state).initiative;
-    const d = roll(20)[0],
-      total = d + bonus;
-    commit(`${p.label} (pedido del DM): d20 ${d} ${sign(bonus)} = ${total}`, () => {});
+    let d = roll(20)[0];
+    if (physical) {
+      d = Number(document.getElementById('physical-' + req.id)?.value);
+      if (!Number.isInteger(d) || d < 1 || d > 20) throw Error('Escribí el resultado de tu d20 (1 a 20).');
+    }
+    const total = d + bonus;
+    commit(
+      `${p.label} (pedido del DM): d20 ${d} ${sign(bonus)} = ${total}${physical ? ' (dado físico)' : ''}`,
+      () => {},
+    );
     Cloud.post(
       l.campaignId,
       'roll-response',
@@ -415,6 +422,7 @@ const TableUI = (() => {
         rolls: [d],
         bonus,
         total,
+        physical,
       },
       { visibility: p.secret ? 'dm' : 'all' },
     )
@@ -447,7 +455,7 @@ const TableUI = (() => {
           },
           'Salir',
         ),
-      'table-answer': e => answer(e.dataset.id),
+      'table-answer': e => answer(e.dataset.id, Boolean(e.dataset.physical)),
     });
     document.addEventListener('submit', e => {
       if (e.target.id !== 'table-join-form') return;

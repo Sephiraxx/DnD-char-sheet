@@ -950,14 +950,31 @@ const actions = {
         'dado',
         [4, 6, 8, 10, 12, 20, 100].map(x => [x, 'd' + x]),
         20,
-      )}${field('Modificador', 'modificador', 0, 'number', 'min="-100" max="100" required')}</div>${Cloud.link(KEY) ? '<label class="check"><input type="checkbox" name="secreta">Solo para el DM</label>' : ''}`,
+      )}${field('Modificador', 'modificador', 0, 'number', 'min="-100" max="100" required')}</div>${field('Ya tiré mis dados: suma (opcional, sin modificador)', 'fisica', '', 'number', 'min="1" max="3000" inputmode="numeric"')}${Cloud.link(KEY) ? '<label class="check"><input type="checkbox" name="secreta">Solo para el DM</label>' : ''}`,
       fd => {
-        let a = roll(number(fd, 'dado', 4, 100), number(fd, 'cantidad', 1, 30)),
+        const n = number(fd, 'cantidad', 1, 30),
+          die = number(fd, 'dado', 4, 100),
+          physical = fd.get('fisica') !== '',
+          own = physical ? number(fd, 'fisica', n, n * die) : 0;
+        let a = physical ? [own] : roll(die, n),
           b = number(fd, 'modificador', -100, 100),
           sum = a.reduce((x, y) => x + y, 0) + b;
-        commit('Dados: ' + a.join(', ') + ' ' + sign(b) + ' = ' + sum, () => {});
+        commit(
+          'Dados: ' +
+            n +
+            'd' +
+            die +
+            ' ' +
+            a.join(', ') +
+            ' ' +
+            sign(b) +
+            ' = ' +
+            sum +
+            (physical ? ' (dados físicos)' : ''),
+          () => {},
+        );
         TableUI.shareRoll(
-          { label: a.length + 'd' + number(fd, 'dado', 4, 100), rolls: a, bonus: b, total: sum },
+          { label: n + 'd' + die, rolls: a, bonus: b, total: sum, physical },
           fd.has('secreta') ? 'dm' : 'all',
         );
         toast('Resultado: ' + sum + ' (' + a.join(', ') + ' ' + sign(b) + ')');

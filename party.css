@@ -239,3 +239,11 @@
 .attack-log .damage {
   color: var(--teal);
 }
+.request-actions {
+  align-items: center;
+}
+.physical-die input {
+  width: 72px;
+  padding: 8px;
+  text-align: center;
+}
