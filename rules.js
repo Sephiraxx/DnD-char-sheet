@@ -641,6 +641,7 @@
       fail();
     if (o.inspirationSpent !== null && !int(o.inspirationSpent, 0, stats(o).inspirationMax)) fail();
     if (o.hdSpent !== null && !int(o.hdSpent, 0, totalLevel(o))) fail();
+    if (o.heroicInspiration !== undefined && typeof o.heroicInspiration !== 'boolean') fail();
     for (let k of ['hpConfirmed', 'goldConfirmed', 'reactionUsed']) if (typeof o[k] !== 'boolean') fail();
     if (
       !list(o.conditions, 20) ||

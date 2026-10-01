@@ -351,7 +351,9 @@ function render() {
   $('#breadcrumb').textContent = navs.find(x => x[0] === view)?.[2] || 'Combate';
   $('#main').innerHTML =
     (storageIssue ? `<div class="banner"><p>${esc(storageIssue)}</p>${button('Mi ficha', 'settings')}</div>` : '') +
-    (view === 'combat' ? `<div id="table-requests">${TableUI.requestBanner()}</div>` : '') +
+    (view === 'combat'
+      ? `<div id="table-requests">${TableUI.initiativeBanner() + TableUI.requestBanner()}</div>`
+      : '') +
     (
       {
         combat,
@@ -450,11 +452,14 @@ function cast(id, ritual = false) {
           else effects.push({ id: uid(), kind: 'advantage', target, value: 0 });
         }
       });
-      toast(
-        ritual
-          ? 'Ritual iniciado. Controlá su tiempo en mesa.'
-          : 'Lanzamiento registrado. Resolvé el efecto y las tiradas en mesa.',
-      );
+      // Si el conjuro tiene ataque, salvación o dados, se abre su tirada.
+      if (!ritual && RollUI.rollable(sp)) setTimeout(() => RollUI.spell(sp, slot || sp.level));
+      else
+        toast(
+          ritual
+            ? 'Ritual iniciado. Controlá su tiempo en mesa.'
+            : 'Lanzamiento registrado. Resolvé el efecto y las tiradas en mesa.',
+        );
     },
     ritual ? 'Iniciar ritual' : 'Registrar lanzamiento',
   );
@@ -917,32 +922,6 @@ const actions = {
       s.death[k] = (s.death[k] + 1) % 4;
     }),
   'death-reset': () => commit('Salvaciones de muerte reiniciadas', s => (s.death = { success: 0, failure: 0 })),
-  roll: e => {
-    if (
-      e.dataset.label === 'Iniciativa' &&
-      state.level >= 20 &&
-      state.inspirationSpent === R.stats(state).inspirationMax
-    )
-      commit('Inspiración superior: recuperada una Inspiración al tirar iniciativa', s => s.inspirationSpent--);
-    let b = Number(e.dataset.bonus),
-      n = roll(20)[0];
-    commit(`${e.dataset.label}: d20 ${n} ${sign(b)} = ${n + b}`, () => {});
-    TableUI.shareRoll({ label: e.dataset.label, rolls: [n], bonus: b, total: n + b });
-    toast(`${e.dataset.label}: ${n} ${sign(b)} = ${n + b}`);
-  },
-  'skill-roll': e => {
-    let id = e.dataset.id,
-      n = roll(20)[0],
-      used =
-        state.level >= 3 && state.subclass === 'eloquence' && ['persuasion', 'deception'].includes(id)
-          ? Math.max(10, n)
-          : n,
-      b = R.skillBonus(state, id),
-      name = R.skills.find(x => x[0] === id)[1];
-    commit(`${name}: d20 ${n}${n !== used ? ' → 10 (Lengua de plata)' : ''} ${sign(b)} = ${used + b}`, () => {});
-    toast(`${name}: ${n !== used ? n + ' → ' + used : used} ${sign(b)} = ${used + b}`);
-    TableUI.shareRoll({ label: name, rolls: [used], bonus: b, total: used + b });
-  },
   dice: () =>
     modal(
       'Tirada de dados',
@@ -1092,6 +1071,7 @@ EquipmentUI.install();
 TableUI.install();
 AttackUI.install();
 MulticlassUI.install();
+RollUI.install();
 document.addEventListener('click', e => {
   if (e.target.closest('[data-close]')) {
     $('#modal').close();

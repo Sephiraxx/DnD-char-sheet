@@ -23,6 +23,7 @@ const TableUI = (() => {
     loading = false,
     error = '',
     unsubscribe = null,
+    online = [],
     booted = false;
   const link = () => Cloud.link(KEY);
 
@@ -92,9 +93,17 @@ const TableUI = (() => {
     return openRequests()
       .map(
         r =>
-          `<section class="banner request"><p><b>El DM pide:</b> ${PV.esc(r.payload.label)}${r.payload.dc && r.payload.showDc ? ' · CD ' + PV.esc(r.payload.dc) : ''}</p><div class="actions request-actions">${button('Tirar', 'table-answer', '', `data-id="${r.id}"`)}<label class="physical-die"><span class="visually-hidden">Mi d20</span><input type="number" min="1" max="20" inputmode="numeric" placeholder="d20" id="physical-${r.id}"></label>${button('Usé mi dado', 'table-answer', 'secondary', `data-id="${r.id}" data-physical="1"`)}</div></section>`,
+          `<section class="banner request"><p><b>El DM pide:</b> ${PV.esc(r.payload.label)}${r.payload.dc && r.payload.showDc ? ' · CD ' + PV.esc(r.payload.dc) : ''}</p>${button('Responder', 'table-answer', '', `data-id="${r.id}"`)}</section>`,
       )
       .join('');
+  }
+  // Barra de iniciativa para la pantalla de combate.
+  function initiativeBanner() {
+    const l = link(),
+      order = PV.initiative(feed);
+    return order
+      ? `<section class="banner initiative-banner">${PV.initiativeStrip(order, l?.characterId)}</section>`
+      : '';
   }
 
   // Pantalla inicial: unirse a una mesa antes de tener personaje.
@@ -134,6 +143,7 @@ const TableUI = (() => {
             PV.card(PV.summarize(c.data), {
               owner: memberName(c.owner_id),
               mine: c.id === mine,
+              online: online.some(p => p.characterId === c.id),
             }),
           )
           .join('')
@@ -142,14 +152,18 @@ const TableUI = (() => {
     return (
       header(
         PV.esc(l.campaignName),
-        `Código <b class="table-code">${PV.esc(l.code)}</b>${dm ? ' · DM: ' + PV.esc(dm.display_name || 'sin nombre') : ''}${party ? '<br><span class="small">Libros de la mesa: ' + PV.esc(Cloud.cleanSettings(party.campaign.settings).sources.join(', ')) + (party.campaign.settings?.rules ? ' · Reglas de la casa: ' + PV.esc(party.campaign.settings.rules) : '') + '</span>' : ''}`,
+        `Código <b class="table-code">${PV.esc(l.code)}</b>${dm ? ' · DM: ' + PV.esc(dm.display_name || 'sin nombre') + (online.some(p => p.role === 'dm') ? ' <span class="online-dot" title="Conectado"></span>' : '') : ''}${party ? '<br><span class="small">Libros de la mesa: ' + PV.esc(Cloud.cleanSettings(party.campaign.settings).sources.join(', ')) + (party.campaign.settings?.rules ? ' · Reglas de la casa: ' + PV.esc(party.campaign.settings.rules) : '') + '</span>' : ''}`,
         button('Actualizar', 'table-refresh') + button('Salir de la mesa', 'table-leave'),
       ) +
       (error && party ? `<div class="banner"><p>${PV.esc(error)}</p></div>` : '') +
       requestBanner() +
+      (PV.initiative(feed)
+        ? `<section class="card section-space"><h2>Iniciativa</h2>${PV.initiativeStrip(PV.initiative(feed), mine)}</section>`
+        : '') +
       `<div class="party-grid">${cards}</div><section class="card section-space"><div class="card-header"><h2>En la mesa</h2>${button('Tirar dados', 'dice')}</div><div class="log table-feed">${
         feed.length
           ? feed
+              .filter(e => e.kind !== 'initiative')
               .slice(0, 40)
               .map(
                 e =>
@@ -166,7 +180,7 @@ const TableUI = (() => {
     if (view === 'table' && !document.getElementById('modal').open) render();
     else if (view === 'combat') {
       const slot = document.getElementById('table-requests');
-      if (slot) slot.innerHTML = requestBanner();
+      if (slot) slot.innerHTML = initiativeBanner() + requestBanner();
     }
   }
 
@@ -259,6 +273,11 @@ const TableUI = (() => {
         return `El DM anunció un descanso ${p.type === 'long' ? 'largo' : 'corto'}. Confirmá cómo lo resolvés.`;
       case 'level':
         return 'El DM te habilitó a subir de nivel. Usá «Subir de nivel» en Clase.';
+      case 'inspiration':
+        commit(p.on === false ? 'DM: Inspiración retirada' : 'DM: Inspiración recibida', s => {
+          s.heroicInspiration = p.on !== false;
+        });
+        return p.on === false ? 'El DM retiró tu Inspiración.' : '★ El DM te dio Inspiración: ventaja en una tirada.';
     }
     return '';
   }
@@ -304,6 +323,11 @@ const TableUI = (() => {
   function onChange(table, payload) {
     const l = link();
     if (!l) return;
+    if (table === 'presence') {
+      online = payload;
+      redraw();
+      return;
+    }
     if (table === 'events' && payload.eventType === 'INSERT') {
       const ev = payload.new;
       feed = [ev, ...feed.filter(x => x.id !== ev.id)].slice(0, 100);
@@ -359,7 +383,7 @@ const TableUI = (() => {
       } else if (r.action === 'conflict') conflict(r);
       else if (r.action === 'push') Cloud.changed(KEY, state);
       else Cloud.acceptRemote(KEY, link().syncedAt);
-      unsubscribe = await Cloud.subscribe(l.campaignId, onChange);
+      unsubscribe = await Cloud.subscribe(l.campaignId, onChange, { characterId: l.characterId });
       await refresh();
       applyCommands(await Cloud.pendingCommands(l.characterId));
     } catch (e) {
@@ -407,7 +431,18 @@ const TableUI = (() => {
   function boot() {
     if (!state || !Cloud.enabled) return;
     attachPending();
-    if (!booted) Cloud.onStatus(showStatus);
+    if (!booted) {
+      Cloud.onStatus(showStatus);
+      // Un celular con la pantalla bloqueada pierde la conexión en vivo: al volver, se pone al día.
+      document.addEventListener('visibilitychange', () => {
+        const l = link();
+        if (document.hidden || !l) return;
+        refresh();
+        Cloud.pendingCommands(l.characterId)
+          .then(applyCommands)
+          .catch(() => {});
+      });
+    }
     booted = true;
     showStatus();
     if (link()) connect();
@@ -424,47 +459,49 @@ const TableUI = (() => {
       .catch(() => toast('La tirada no se compartió con la mesa (sin conexión).'));
   }
 
-  function answer(id, physical = false) {
+  // Responder un pedido del DM con el diálogo de tiradas (ventaja, Inspiración, dado físico).
+  function answer(id) {
     const l = link(),
       req = feed.find(e => e.id === Number(id));
     if (!l || !req) throw Error('Ese pedido ya no está disponible.');
     const p = req.payload;
-    let bonus = 0;
+    let bonus = 0,
+      kind = 'check';
     if (p.type === 'skill') bonus = R.skillBonus(state, p.id);
-    else if (p.type === 'save') bonus = R.saveBonus(state, p.id);
-    else if (p.type === 'ability') bonus = Math.floor((state.abilities[p.id] - 10) / 2);
+    else if (p.type === 'save') {
+      bonus = R.saveBonus(state, p.id);
+      kind = 'save';
+    } else if (p.type === 'ability') bonus = Math.floor((state.abilities[p.id] - 10) / 2);
     else if (p.type === 'initiative') bonus = R.stats(state).initiative;
-    let d = roll(20)[0];
-    if (physical) {
-      d = Number(document.getElementById('physical-' + req.id)?.value);
-      if (!Number.isInteger(d) || d < 1 || d > 20) throw Error('Escribí el resultado de tu d20 (1 a 20).');
-    }
-    const total = d + bonus;
-    commit(
-      `${p.label} (pedido del DM): d20 ${d} ${sign(bonus)} = ${total}${physical ? ' (dado físico)' : ''}`,
-      () => {},
-    );
-    Cloud.post(
-      l.campaignId,
-      'roll-response',
-      {
-        character: state.name,
-        characterId: l.characterId,
-        requestId: req.id,
-        label: p.label,
-        rolls: [d],
-        bonus,
-        total,
-        physical,
-      },
-      { visibility: p.secret ? 'dm' : 'all' },
-    )
-      .then(ev => {
-        feed = [ev, ...feed];
-        redraw();
-      })
-      .catch(e => toast(e.message));
-    toast(`${p.label}: ${d} ${sign(bonus)} = ${total}`);
+    RollUI.d20({
+      title: 'El DM pide: ' + p.label,
+      label: p.label + ' (pedido del DM)',
+      bonus,
+      kind,
+      ability: p.type === 'save' ? p.id : '',
+      share: false,
+      onDone: r =>
+        Cloud.post(
+          l.campaignId,
+          'roll-response',
+          {
+            character: state.name,
+            characterId: l.characterId,
+            requestId: req.id,
+            label: p.label,
+            rolls: r.rolls,
+            bonus,
+            total: r.total,
+            physical: r.physical,
+          },
+          { visibility: p.secret ? 'dm' : 'all' },
+        )
+          .then(ev => {
+            feed = [ev, ...feed];
+            redraw();
+          })
+          .catch(e => toast(e.message)),
+    });
   }
 
   function install() {
@@ -488,7 +525,7 @@ const TableUI = (() => {
           },
           'Salir',
         ),
-      'table-answer': e => answer(e.dataset.id, Boolean(e.dataset.physical)),
+      'table-answer': e => answer(e.dataset.id),
       'table-pending-cancel': () => {
         Cloud.clearPending();
         render();
@@ -537,5 +574,5 @@ const TableUI = (() => {
     });
   }
 
-  return { page, boot, install, welcomeCard, shareRoll, requestBanner, showStatus };
+  return { page, boot, install, welcomeCard, initiativeBanner, shareRoll, requestBanner, showStatus };
 })();
