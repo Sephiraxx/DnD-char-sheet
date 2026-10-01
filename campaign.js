@@ -53,6 +53,41 @@ const Campaign = (() => {
     sylvan: 'Silvano',
     undercommon: 'Infracomún',
     quori: 'Quori',
+    giant: 'Gigante',
+    aquan: 'Acuano',
+    auran: 'Aurano',
+    terran: 'Terrano',
+    ignan: 'Ígneo',
+    'deep speech': 'Habla profunda',
+    other: 'otro idioma',
+    acid: 'ácido',
+    lightning: 'relámpago',
+    thunder: 'trueno',
+    radiant: 'radiante',
+    force: 'fuerza',
+    poisoned: 'envenenado',
+    "smith's tools": 'herramientas de herrero',
+    "brewer's supplies": 'útiles de cervecero',
+    "mason's tools": 'herramientas de albañil',
+    "tinker's tools": 'herramientas de hojalatero',
+    "carpenter's tools": 'herramientas de carpintero',
+    "cartographer's tools": 'herramientas de cartógrafo',
+    "calligrapher's supplies": 'útiles de calígrafo',
+    "alchemist's supplies": 'útiles de alquimista',
+    "cook's utensils": 'utensilios de cocinero',
+    "navigator's tools": 'herramientas de navegante',
+    "thieves' tools": 'herramientas de ladrón',
+    "poisoner's kit": 'útiles de envenenador',
+    'disguise kit': 'útiles de disfraz',
+    'forgery kit': 'útiles de falsificación',
+    'herbalism kit': 'útiles de herborista',
+    'musical instrument': 'instrumento musical',
+    'gaming set': 'juego',
+    'vehicles (land)': 'vehículos terrestres',
+    'vehicles (water)': 'vehículos acuáticos',
+    'vehicles (air)': 'vehículos aéreos',
+    'vehicles (space)': 'vehículos espaciales',
+    V: 'variable',
     any: 'a elección',
     anyStandard: 'idioma estándar a elección',
     anyExotic: 'idioma exótico a elección',
@@ -74,7 +109,15 @@ const Campaign = (() => {
     const skill = Rules.skills.find(
       x => x[0] === ({ 'animal handling': 'animal', 'sleight of hand': 'sleight' }[k] || k),
     );
-    return skill?.[1] || words[k] || k.replaceAll('|phb', '');
+    if (skill?.[1] || words[k]) return skill?.[1] || words[k];
+    // Dotes con fuente («magic initiate|phb»): nombre del catálogo.
+    if (k.includes('|')) {
+      const base = k.split('|')[0];
+      return (
+        Catalog.feats.find(f => f.name.toLowerCase() === base)?.name || base.replace(/\b\w/g, c => c.toUpperCase())
+      );
+    }
+    return k;
   }
   function facts(value) {
     if (value === null || value === undefined) return '';
@@ -82,12 +125,17 @@ const Campaign = (() => {
     if (typeof value !== 'object') return term(String(value));
     return Object.entries(value)
       .map(([k, v]) => {
+        // Linajes flexibles: +2 y +1, o +1 a tres (la segunda alternativa ya queda dicha en la primera).
+        if (k === 'choose' && v.weighted)
+          return String(v.weighted.weights) === '2,1'
+            ? '+2 a una característica y +1 a otra, o +1 a tres distintas'
+            : '';
         if (k === 'choose')
           return (
             'Elegí ' +
             (v.count || 1) +
             ' entre ' +
-            (v.from || []).map(term).join(', ') +
+            (Array.isArray(v) ? v : v.from || []).map(term).join(', ') +
             (v.amount ? ' (+' + v.amount + ')' : '')
           );
         if (k === 'weighted') return 'Distribuí los aumentos indicados por tu linaje';
@@ -119,8 +167,11 @@ const Campaign = (() => {
         .toLowerCase()
         .replace(/[^a-z0-9]/g, '');
     const name = v => {
-      const text = String(v).split('|')[0];
-      return Rules.spells.find(sp => clean(sp.english || sp.name) === clean(text))?.name || text;
+      // «light#c» es un truco; «searing smite#2», lanzado como de nivel 2.
+      const [full, level] = String(v).split('#'),
+        text = full.split('|')[0],
+        found = Rules.spells.find(sp => clean(sp.english || sp.name) === clean(text))?.name || text;
+      return found + (/^\d$/.test(level || '') ? ' (como de nivel ' + level + ')' : '');
     };
     const render = v => {
       if (Array.isArray(v)) return v.map(render).filter(Boolean).join(', ');
@@ -191,6 +242,7 @@ const Campaign = (() => {
         line('Aumentos de referencia', facts(x.ability)) +
         line('Visión en la oscuridad', x.darkvision ? x.darkvision + ' pies' : '') +
         line('Resistencia al daño', facts(x.resist)) +
+        line('Inmunidad al daño', facts(x.immune)) +
         line('Inmunidades de referencia', facts(x.conditionImmune));
       const tip = raceTips[x.english.split(' (')[0]];
       if (tip) out += `<p>${esc(tip)}</p>`;
