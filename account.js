@@ -106,7 +106,12 @@ const AccountUI = (() => {
       out.textContent = 'Juntando…';
       try {
         const moved = await Cloud.mergeInto(email, pass.value);
-        const msg = `Listo: ahora entrás con ${email}. Se sumaron ${moved?.characters || 0} ficha(s) y ${moved?.tables || 0} mesa(s) de este dispositivo.`;
+        const parts = [
+          moved?.characters ? moved.characters + ' ficha(s)' : '',
+          moved?.tables ? moved.tables + ' mesa(s) nueva(s)' : '',
+          moved?.dm ? moved.dm + ' mesa(s) como DM' : '',
+        ].filter(Boolean);
+        const msg = `Listo: ahora entrás con ${email}.${parts.length ? ' Se sumaron ' + parts.join(', ') + ' de este dispositivo.' : ''}`;
         box.remove();
         refill();
         if (typeof toast === 'function') toast(msg);
