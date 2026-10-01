@@ -107,10 +107,13 @@ const MonsterUI = (() => {
   }
 
   // ---------- Elegir monstruos ----------
-  async function picker() {
+  // target: id de un encuentro preparado (las criaturas se guardan ahí y no van a la iniciativa).
+  let target = null;
+  async function picker(prepId = null) {
     await load();
+    target = prepId;
     modal(
-      'Agregar criaturas',
+      prepId ? 'Agregar a «' + (Encounters.get(prepId)?.name || 'encuentro') + '»' : 'Agregar criaturas',
       `<div class="form-grid">${field('Buscar', 'q', query, 'search', 'id="monster-q" placeholder="goblin, dragon, zombie…" autocomplete="off"')}${select(
         'Desafío hasta',
         'cr',
@@ -151,42 +154,60 @@ const MonsterUI = (() => {
           ['roll', 'Tirar ' + m.hd],
         ],
         'avg',
-      )}</div><p class="small">La iniciativa se tira para cada una (d20 ${sign(mod(m.ab[1]))}); podés corregirla con «Init».</p>`,
+      )}</div>${
+        target
+          ? '<p class="small">Se guardan en el encuentro preparado; nadie las ve hasta que lo lanzás.</p>'
+          : `<label class="check"><input type="checkbox" name="hidden">Agregarlas ocultas (los jugadores no las ven hasta que las reveles)</label><p class="small">La iniciativa se tira para cada una (d20 ${sign(mod(m.ab[1]))}); podés corregirla con «Init».</p>`
+      }`,
       async fd => {
         const n = int(fd, 'count', 1, 20),
-          saves = saveBonuses(m);
-        // Numeración continua: si ya hay «Goblin», pasa a «Goblin 1» y los nuevos siguen desde ahí.
-        const number = name =>
-            name === m.name
-              ? 0
-              : name.startsWith(m.name + ' ') && /^\d+$/.test(name.slice(m.name.length + 1))
-                ? Number(name.slice(m.name.length + 1))
-                : -1,
-          taken = tracker().entries.filter(e => e.kind === 'monster' && number(e.name) >= 0),
-          plain = taken.filter(e => e.name === m.name);
-        let next = Math.max(0, ...taken.map(e => number(e.name))) + 1;
-        const numbered = taken.length + n > 1;
-        if (numbered) for (const e of plain) await Cloud.updateCombatant(e.id, { name: `${m.name} ${next++}` });
-        for (let i = 1; i <= n; i++) {
-          const hp = fd.get('hpMode') === 'roll' ? Math.max(1, rollDice(m.hd).total) : m.hp;
+          saves = saveBonuses(m),
+          hps = Array.from({ length: n }, () =>
+            fd.get('hpMode') === 'roll' ? Math.max(1, rollDice(m.hd).total) : m.hp,
+          );
+        if (target) {
+          Encounters.addMonsters(
+            target,
+            hps.map(hp => ({ name: m.name, monsterId: m.id, hp, ac: m.ac, saves, initMod: mod(m.ab[1]) })),
+          );
+          toast(`${n} × ${m.name} en «${Encounters.get(target)?.name}».`);
+          return;
+        }
+        const names = await claimNames(m.name, n);
+        for (let i = 0; i < n; i++)
           await Cloud.addCombatant(
             current,
             {
               kind: 'monster',
-              name: numbered ? `${m.name} ${next++}` : m.name,
+              name: names[i],
               init: d20() + mod(m.ab[1]),
               tiebreak: mod(m.ab[1]),
+              hidden: fd.has('hidden'),
             },
-            { hp, max_hp: hp, ac: m.ac, saves, monster_id: m.id },
+            { hp: hps[i], max_hp: hps[i], ac: m.ac, saves, monster_id: m.id },
           );
-        }
         await refresh();
-        toast(`${n} × ${m.name} en la iniciativa.`);
+        toast(`${n} × ${m.name} en la iniciativa${fd.has('hidden') ? ' (ocultas)' : ''}.`);
       },
       'Agregar',
     );
   }
 
+  // Numeración continua: si ya hay «Goblin», pasa a «Goblin 1» y los nuevos siguen desde ahí.
+  async function claimNames(base, n) {
+    const number = name =>
+        name === base
+          ? 0
+          : name.startsWith(base + ' ') && /^\d+$/.test(name.slice(base.length + 1))
+            ? Number(name.slice(base.length + 1))
+            : -1,
+      taken = tracker().entries.filter(e => e.kind === 'monster' && number(e.name) >= 0),
+      plain = taken.filter(e => e.name === base);
+    let next = Math.max(0, ...taken.map(e => number(e.name))) + 1;
+    if (taken.length + n <= 1) return [base];
+    for (const e of plain) await Cloud.updateCombatant(e.id, { name: `${base} ${next++}` });
+    return Array.from({ length: n }, () => `${base} ${next++}`);
+  }
   function saveBonuses(m) {
     const out = Object.fromEntries(ABIL.map((a, i) => [a, mod(m.ab[i])]));
     const names = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' };
@@ -446,5 +467,5 @@ const MonsterUI = (() => {
     )
   )
     load().then(() => typeof draw === 'function' && draw());
-  return { load, difficulty, difficultyLine, crText };
+  return { load, difficulty, difficultyLine, crText, picker, claimNames };
 })();

@@ -1,5 +1,5 @@
 const PREFIX = 'darien:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v29-mobile-home';
+const CACHE = PREFIX + 'v30-encounters';
 const FILES = [
   './',
   './index.html',
@@ -44,6 +44,7 @@ const FILES = [
   './dm.html',
   './dm.js',
   './monsters-ui.js',
+  './encounters.js',
   './vendor/supabase.js',
 ];
 self.addEventListener('install', event => {

@@ -279,6 +279,7 @@ function draw() {
   </div><div class="stack">
     ${savesCard()}
     ${initiativeCard(t)}
+    ${typeof Encounters !== 'undefined' ? Encounters.card() : ''}
     ${TableExtras.dmHtml(party)}
     <section class="card"><div class="card-header"><h2>Notas del DM</h2></div><label class="field"><span class="visually-hidden">Notas privadas</span><textarea id="dm-notes" style="min-height:160px" placeholder="Solo se guardan en este dispositivo.">${esc(localStorage.getItem(notesKey()) || '')}</textarea></label></section>
   </div></div>`;
@@ -407,7 +408,7 @@ function initiativeCard(t) {
     })
     .join('');
   return `<section class="card"><div class="card-header"><h2>Iniciativa${t.round ? ' · ronda ' + t.round : ''}</h2></div>
-  <div class="initiative-tools">${button('Agregar party', 'init-party')}${button('Pedir iniciativa', 'init-request')}${button('Monstruo del SRD', 'init-monster-srd')}${button('Criatura propia', 'init-monster')}</div>
+  <div class="initiative-tools">${button('Agregar party', 'init-party')}${button('Pedir iniciativa', 'init-request')}${button('Monstruo del SRD', 'init-monster-srd')}${button('Criatura propia', 'init-monster')}${t.entries.some(e => e.hidden) ? button('Revelar ocultas', 'init-reveal') : ''}</div>
   ${typeof MonsterUI !== 'undefined' ? MonsterUI.difficultyLine(t) : ''}${items ? `<ol class="initiative-list section-space">${items}</ol>` : '<p class="muted section-space">Agregá a la party y a las criaturas. Las tiradas de iniciativa de los jugadores se completan solas.</p>'}
   ${t.entries.length ? `<div class="actions section-space">${button(t.turn < 0 ? 'Empezar combate' : 'Siguiente turno', 'init-next', '')}${t.turn >= 0 ? button('Terminar combate', 'init-end') : ''}${button('Vaciar', 'init-clear')}</div><p class="small muted">Cuando un jugador toca «Terminar turno», la iniciativa avanza sola. Los turnos de criaturas los pasás vos.</p>` : ''}</section>`;
 }
@@ -720,7 +721,7 @@ const actions = {
   'init-monster': () =>
     modal(
       'Agregar criatura',
-      `${field('Nombre', 'name', '', 'text', 'required maxlength="80" placeholder="Bandido"')}<div class="form-grid">${field('Cantidad', 'count', 1, 'number', 'min="1" max="20" required')}${field('Mod. de iniciativa', 'mod', 0, 'number', 'min="-10" max="20" required')}${field('PG', 'hp', 10, 'number', 'min="1" max="99999" required')}${field('CA', 'ac', 12, 'number', 'min="1" max="40" required')}</div><p class="small">Se tira la iniciativa de cada una (d20 + modificador). Sus salvaciones usan +0 salvo que las ajustes.</p>`,
+      `${field('Nombre', 'name', '', 'text', 'required maxlength="80" placeholder="Bandido"')}<div class="form-grid">${field('Cantidad', 'count', 1, 'number', 'min="1" max="20" required')}${field('Mod. de iniciativa', 'mod', 0, 'number', 'min="-10" max="20" required')}${field('PG', 'hp', 10, 'number', 'min="1" max="99999" required')}${field('CA', 'ac', 12, 'number', 'min="1" max="40" required')}</div><label class="check"><input type="checkbox" name="hidden">Agregarlas ocultas (los jugadores no las ven hasta que las reveles)</label><p class="small">Se tira la iniciativa de cada una (d20 + modificador). Sus salvaciones usan +0 salvo que las ajustes.</p>`,
       fd =>
         encounterChange(async () => {
           const n = int(fd, 'count', 1, 20),
@@ -731,7 +732,13 @@ const actions = {
           for (let i = 1; i <= n; i++)
             await Cloud.addCombatant(
               current,
-              { kind: 'monster', name: n > 1 ? `${name} ${i}` : name, init: d20() + mod, tiebreak: mod },
+              {
+                kind: 'monster',
+                name: n > 1 ? `${name} ${i}` : name,
+                init: d20() + mod,
+                tiebreak: mod,
+                hidden: fd.has('hidden'),
+              },
               { hp, max_hp: hp, ac, saves: {} },
             );
         }),
