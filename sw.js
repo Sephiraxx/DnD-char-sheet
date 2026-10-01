@@ -1,5 +1,5 @@
 const PREFIX = 'darien:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v26-books';
+const CACHE = PREFIX + 'v27-creator';
 const FILES = [
   './',
   './index.html',
@@ -27,6 +27,8 @@ const FILES = [
   './assets/icon.svg',
   './party.css',
   './polish.css',
+  './creator.css',
+  './creator.js',
   './fx.js',
   './config.js',
   './cloud.js',

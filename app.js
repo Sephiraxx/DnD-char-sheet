@@ -1102,8 +1102,6 @@ document.addEventListener('click', e => {
       ![
         'party',
         'party-create',
-        'party-array',
-        'party-create-back',
         'party-import',
         'party-open',
         'table-pending-cancel',

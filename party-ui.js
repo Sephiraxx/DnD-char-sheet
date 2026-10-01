@@ -2,9 +2,7 @@ const PartyUI = (() => {
   'use strict';
   const C = Classes,
     D = ClassData;
-  let createDraft = null,
-    createStep = 0,
-    spellDraft = null,
+  let spellDraft = null,
     spellQuery = '',
     spellScope = 'class',
     spellLevel = 'all',
@@ -77,187 +75,6 @@ const PartyUI = (() => {
       </div>
       ${items.length ? `<section class="card section-space"><h2>Tus fichas</h2><div class="party-list saved-list">${items.map(x => `<div class="list-row"><div class="party-person">${Portrait.savedThumb(x.key, x.name)}<b>${esc(x.name)}</b></div>${button('Abrir', 'party-open', 'secondary', `data-id="${esc(x.id)}"`)}</div>`).join('')}</div></section>` : ''}
       ${storageIssue ? `<div class="banner"><p>${esc(storageIssue)}</p>${rawBroken ? button('Descargar datos guardados', 'raw-backup') : ''}</div>` : ''}`;
-  }
-  function startCreate() {
-    createDraft = {
-      name: '',
-      classId: 'fighter',
-      level: 1,
-      campaignSources: Campaign.selected(state).slice(),
-      raceId: '',
-      backgroundId: '',
-      race: '',
-      background: '',
-      languages: '',
-      abilities: { str: '', dex: '', con: '', int: '', wis: '', cha: '' },
-      skills: [],
-      originSkills: {},
-      extraSkills: [],
-      raceSkillMode: '',
-      equipmentMode: 'standard',
-      equipmentChoices: {},
-      subclass: '',
-      gold: 0,
-      gear: '',
-      hp: '',
-      full: true,
-      speed: 30,
-      armor: 10,
-      bonus: 0,
-    };
-    const table = window.Cloud?.pendingTable?.();
-    if (table) {
-      createDraft.campaignSources = table.settings.sources.slice();
-      createDraft.level = table.settings.startLevel;
-    }
-
-    createStep = 0;
-    drawCreate();
-  }
-  function collectCreate() {
-    const f = document.getElementById('dialog-form');
-    if (!f) return;
-    const fd = new FormData(f),
-      d = createDraft;
-    if (createStep === 0) {
-      for (const k of ['name', 'race', 'background', 'languages', 'classId', 'raceId', 'backgroundId'])
-        d[k] = String(fd.get(k) || '').trim();
-      d.level = Number(fd.get('level'));
-      CreationSkills.reconcile(d);
-    }
-    if (createStep === 1) {
-      for (const k of Object.keys(d.abilities)) d.abilities[k] = fd.get(k);
-      d.skills = fd.getAll('skill');
-      d.extraSkills = fd.getAll('extraSkill');
-      d.raceSkillMode = String(fd.get('raceSkillMode') || '');
-      d.originSkills = Object.fromEntries(
-        CreationSkills.plan(d)
-          .groups.filter(g => g.id !== 'class')
-          .map(g => [g.id, fd.getAll('origin:' + g.id)]),
-      );
-      d.subclass = fd.get('subclass') || '';
-    }
-    if (createStep === 2) {
-      for (const k of ['hp', 'speed']) d[k] = fd.get(k);
-      EquipmentUI.collectCreation(fd, d);
-      d.full = fd.has('full');
-    }
-  }
-  function validateCreateStep() {
-    const d = createDraft,
-      c = D.classes[d.classId];
-    if (createStep === 0 && (!d.name || !c || !Number.isInteger(d.level) || d.level < 1 || d.level > 20 || !d.race))
-      throw Error('Indicá nombre, clase, nivel 1–20 y raza o linaje.');
-    if (createStep === 1) {
-      for (const v of Object.values(d.abilities))
-        if (v === '' || !Number.isInteger(Number(v)) || Number(v) < 1 || Number(v) > 30)
-          throw Error('Ingresá las seis puntuaciones finales, entre 1 y 30.');
-      CreationSkills.validate(d);
-      if (d.level >= c.subclassLevel && !d.subclass) throw Error('Elegí la subclase para ese nivel.');
-    }
-    if (createStep === 2) Equipment.validateDraft(d);
-  }
-  function drawCreate() {
-    const d = createDraft,
-      c = D.classes[d.classId],
-      labels = ['Identidad', 'Características y clase', 'Equipo y recursos', 'Revisar'];
-    let body = `<p class="eyebrow">PASO ${createStep + 1} DE 4 · ${labels[createStep]}</p>`;
-    const table = window.Cloud?.pendingTable?.();
-    if (table && createStep === 0)
-      body += `<div class="banner"><p><b>Mesa «${esc(table.name)}».</b> Libros del DM: ${esc(table.settings.sources.join(', '))}. Nivel inicial ${table.settings.startLevel}.${table.settings.rules ? ' Reglas de la casa: ' + esc(table.settings.rules) : ''}</p></div>`;
-    if (createStep === 0)
-      body += `<div class="form-grid">${field('Nombre', 'name', d.name, 'text', 'required maxlength="100"')}${select(
-        'Clase (2014)',
-        'classId',
-        Object.values(D.classes).map(c => [c.id, c.name]),
-        d.classId,
-      )}${field('Nivel inicial', 'level', d.level, 'number', 'min="1" max="20" required')}${Campaign.identityFields(d)}${field('Idiomas', 'languages', d.languages, 'text', 'maxlength="500"')}</div><p class="small">Podés escribir cualquier raza o trasfondo autorizado. Esta guía cubre personajes de una sola clase; no calcula multiclase.</p><section id="create-skill-summary" class="battle-rule">${creationSummary(d, true)}</section>`;
-    if (createStep === 1) {
-      body += `<h3>${c.name} · Dado de Golpe d${c.die}</h3><p class="small">Ingresá puntuaciones finales, con los bonos de raza y mejoras ya incluidos. No se suman bonos de raza automáticamente.</p>${button('Usar matriz estándar como punto de partida', 'party-array')}<div class="form-grid">${Object.entries(
-        R.attrs,
-      )
-        .map(([k, v]) => field(v, k, d.abilities[k], 'number', 'required min="1" max="30"'))
-        .join(
-          '',
-        )}</div><div id="creation-skills">${creationSkillFields(d)}</div>${d.level >= c.subclassLevel ? select('Subclase', 'subclass', [['', 'Elegí una subclase'], ...D.subclasses.filter(x => x.classId === d.classId && (Campaign.enabled(d, x) || x.id === d.subclass)).map(x => [x.id, x.name + ' · ' + x.source])], d.subclass) : `<p class="small">Elegís subclase en nivel ${c.subclassLevel}.</p>`}`;
-    }
-    if (createStep === 2) {
-      const suggested = c.die + (d.level - 1) * (c.die / 2 + 1) + d.level * R.mod(Number(d.abilities.con));
-      body += `<div id="creation-equipment">${EquipmentUI.creationFields(d)}</div><h3 class="section-space">PG y recursos</h3><p class="small">PG sugeridos con aumentos fijos: ${Math.max(1, suggested)}. Si tiraron dados o tenés otros rasgos que dan PG, ingresá el máximo correspondiente.</p><div class="form-grid">${field('PG máximos', 'hp', d.hp || Math.max(1, suggested), 'number', 'min="1" max="2000" required')}${field('Velocidad base (pies)', 'speed', d.speed, 'number', 'min="0" max="500" required')}</div><label class="check"><input type="checkbox" name="full" ${d.full ? 'checked' : ''}>Crear con PG, espacios y recursos completos. Desmarcá si los valores actuales están pendientes.</label>`;
-    }
-
-    if (createStep === 3)
-      body += `<h3>${esc(d.name)}</h3><p>${esc(d.race)} · ${c.name} ${d.level}${d.subclass ? ' · ' + esc(D.subclasses.find(x => x.id === d.subclass)?.name) : ''}</p><p><b>Competencias:</b> ${CreationSkills.total(
-        d,
-      )
-        .map(k => esc(CreationSkills.label(k)))
-        .join(
-          ', ',
-        )}.</p><p>PG máximos: ${esc(d.hp)}.</p>${EquipmentUI.review(d)}<p class="small">La ficha mostrará las elecciones pendientes: conjuros, preparación, Pericias, estilos, invocaciones y otras opciones según la clase. No se eligen por vos.</p><label class="check"><input type="checkbox" name="reviewed" required>Revisé mis puntuaciones y el equipo inicial con las reglas de mi mesa.</label>`;
-    body += `<div class="wizard-actions">${createStep ? button('Atrás', 'party-create-back') : button('Cancelar', 'party')}<button class="button" type="submit">${createStep === 3 ? 'Crear personaje' : 'Continuar'}</button></div>`;
-    modal(
-      'Crear personaje',
-      body,
-      () => {
-        collectCreate();
-        validateCreateStep();
-        if (createStep < 3) {
-          createStep++;
-          drawCreate();
-          return false;
-        } else {
-          const s = makeCharacter(createDraft);
-          const id = CharacterStorage.add(s);
-          // Si se unió a una mesa antes de crear la ficha, se vincula al abrirla.
-          if (window.Cloud?.pendingTable?.()) localStorage.setItem('dnd-pending-attach-v1', id);
-          CharacterStorage.activate(id);
-        }
-      },
-      '',
-    );
-    document.querySelector('#dialog-form>.modal-body>.modal-actions')?.remove();
-    document.getElementById('dialog-form').addEventListener('change', e => {
-      if (createStep === 0 && ['classId', 'raceId', 'backgroundId'].includes(e.target.name)) {
-        const previousRace = d.raceId;
-        collectCreate();
-        if (previousRace !== d.raceId) {
-          d.raceSkillMode = '';
-          CreationSkills.reconcile(d);
-          const rs = Campaign.race(d)?.speed;
-          d.speed = typeof rs === 'number' ? rs : rs?.walk || 30;
-        }
-        document.getElementById('create-skill-summary').innerHTML = creationSummary(d, true);
-      }
-      if (createStep === 2 && e.target.closest('#creation-equipment')) {
-        const name = e.target.name,
-          box = document.querySelector('#modal .modal-body'),
-          top = box.scrollTop;
-        collectCreate();
-        if (name === 'equipmentMode') {
-          delete d.equipmentDefense;
-          d.gold = 0;
-        }
-        const el = document.getElementById('creation-equipment');
-        el.innerHTML = EquipmentUI.creationFields(d);
-        [...el.querySelectorAll('input,select,textarea')].find(x => x.name === name)?.focus({ preventScroll: true });
-        box.scrollTop = top;
-      }
-      if (createStep === 1 && e.target.closest('#creation-skills')) {
-        const name = e.target.name,
-          value = e.target.value,
-          box = document.querySelector('#modal .modal-body'),
-          top = box.scrollTop,
-          open = document.querySelector('#skill-extras')?.open;
-        collectCreate();
-        CreationSkills.reconcile(d);
-        document.getElementById('creation-skills').innerHTML = creationSkillFields(d);
-        if (open) document.getElementById('skill-extras').open = true;
-        [...document.querySelectorAll('#creation-skills input, #creation-skills select')]
-          .find(el => el.name === name && el.value === value)
-          ?.focus({ preventScroll: true });
-        box.scrollTop = top;
-      }
-    });
   }
   function creationSummary(d, nextStep = false) {
     const p = CreationSkills.plan(d);
@@ -1091,7 +908,7 @@ const PartyUI = (() => {
       resources: resourcesEdit,
       'party-feature': e => useFeature(e.dataset.id),
       party: list,
-      'party-create': startCreate,
+      'party-create': () => Creator.start(),
       'party-open': e => CharacterStorage.activate(e.dataset.id),
       'party-delete': e =>
         confirmAction(
@@ -1103,27 +920,6 @@ const PartyUI = (() => {
           },
           'Eliminar',
         ),
-      'party-array': () => {
-        collectCreate();
-        const c = D.classes[createDraft.classId],
-          priority = [
-            c.ability || (['fighter', 'barbarian', 'paladin'].includes(c.id) ? 'str' : 'dex'),
-            'con',
-            'dex',
-            'wis',
-            'str',
-            'int',
-            'cha',
-          ],
-          keys = [...new Set(priority)];
-        keys.slice(0, 6).forEach((k, i) => (createDraft.abilities[k] = [15, 14, 13, 12, 10, 8][i]));
-        drawCreate();
-      },
-      'party-create-back': () => {
-        collectCreate();
-        createStep = Math.max(0, createStep - 1);
-        drawCreate();
-      },
       'party-import': () => {
         const el = document.createElement('input');
         el.type = 'file';
@@ -1218,8 +1014,8 @@ const PartyUI = (() => {
     decorate,
     welcome,
     list,
-    startCreate,
     makeCharacter,
+    creationSkillFields,
     classPage,
     classConfig,
     chooseClass,

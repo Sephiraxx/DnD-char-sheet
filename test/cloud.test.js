@@ -97,3 +97,25 @@ test('subir marca la ficha como sincronizada', async () => {
   assert.equal(g.Cloud.link('k').dirty, false);
   assert.equal(g.Cloud.status(), 'synced');
 });
+
+test('reglas de características de la mesa: valores por defecto y saneado', () => {
+  const g = setup({});
+  const plain = x => JSON.parse(JSON.stringify(x));
+  assert.deepEqual(plain(g.Cloud.cleanSettings({}).abilities), {
+    methods: ['manual', 'array', 'pointbuy', 'roll'],
+    array: [15, 14, 13, 12, 10, 8],
+    points: 27,
+    rollMin: 0,
+  });
+  const a = g.Cloud.cleanSettings({
+    abilities: { methods: ['roll', 'hack'], array: [16, 14, 12, 10, 10, 8], points: 99, rollMin: 8 },
+  }).abilities;
+  assert.deepEqual(plain(a.methods), ['roll']);
+  assert.deepEqual(plain(a.array), [16, 14, 12, 10, 10, 8]);
+  assert.equal(a.points, 27);
+  assert.equal(a.rollMin, 8);
+  assert.deepEqual(
+    plain(g.Cloud.cleanSettings({ abilities: { array: [30, 1] } }).abilities.array),
+    [15, 14, 13, 12, 10, 8],
+  );
+});
