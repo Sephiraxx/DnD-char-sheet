@@ -152,28 +152,51 @@ const MonsterUI = (() => {
         ],
         'avg',
       )}</div><p class="small">La iniciativa se tira para cada una (d20 ${sign(mod(m.ab[1]))}); podés corregirla con «Init».</p>`,
-      fd => {
-        const t = tracker(),
-          n = int(fd, 'count', 1, 20);
+      async fd => {
+        const n = int(fd, 'count', 1, 20),
+          saves = saveBonuses(m);
+        // Numeración continua: si ya hay «Goblin», pasa a «Goblin 1» y los nuevos siguen desde ahí.
+        const number = name =>
+            name === m.name
+              ? 0
+              : name.startsWith(m.name + ' ') && /^\d+$/.test(name.slice(m.name.length + 1))
+                ? Number(name.slice(m.name.length + 1))
+                : -1,
+          taken = tracker().entries.filter(e => e.kind === 'monster' && number(e.name) >= 0),
+          plain = taken.filter(e => e.name === m.name);
+        let next = Math.max(0, ...taken.map(e => number(e.name))) + 1;
+        const numbered = taken.length + n > 1;
+        if (numbered) for (const e of plain) await Cloud.updateCombatant(e.id, { name: `${m.name} ${next++}` });
         for (let i = 1; i <= n; i++) {
           const hp = fd.get('hpMode') === 'roll' ? Math.max(1, rollDice(m.hd).total) : m.hp;
-          t.entries.push({
-            id: crypto.randomUUID(),
-            monsterId: m.id,
-            name: n > 1 ? `${m.name} ${i}` : m.name,
-            init: d20() + mod(m.ab[1]),
-            dex: mod(m.ab[1]),
-            hp,
-            max: hp,
-            ac: m.ac,
-          });
+          await Cloud.addCombatant(
+            current,
+            {
+              kind: 'monster',
+              name: numbered ? `${m.name} ${next++}` : m.name,
+              init: d20() + mod(m.ab[1]),
+              tiebreak: mod(m.ab[1]),
+            },
+            { hp, max_hp: hp, ac: m.ac, saves, monster_id: m.id },
+          );
         }
-        saveTracker(t);
-        draw();
+        await refresh();
         toast(`${n} × ${m.name} en la iniciativa.`);
       },
       'Agregar',
     );
+  }
+
+  function saveBonuses(m) {
+    const out = Object.fromEntries(ABIL.map((a, i) => [a, mod(m.ab[i])]));
+    const names = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' };
+    for (const part of String(m.saves || '').split(',')) {
+      const x = /([A-Z]{3})\s*\+(\d+)/i.exec(part.trim());
+      if (!x) continue;
+      const key = Object.keys(names).find(k => names[k] === x[1].toUpperCase());
+      if (key) out[key] = Number(x[2]);
+    }
+    return out;
   }
 
   // ---------- Bloque de estadísticas ----------
@@ -333,26 +356,59 @@ const MonsterUI = (() => {
     document.getElementById('monster-amount').value = '';
     panel.damage = 0;
   }
+  // Salvación de la party (aliento, aura…): el daño se tira acá y cada ficha alcanzada salva y lo aplica.
   async function askSave(entryId, kind, name) {
     const { e, a } = findAction(entryId, kind, name);
     const [ability, dc, success] = a.dc;
+    const parts = (a.dmg || []).map(([d, type]) => ({ type, ...rollDice(d) })),
+      rolled = parts.reduce((t, p) => t + p.total, 0),
+      text = parts.map(p => `${p.rolls.join('+') || '—'}${p.mod ? ' ' + sign(p.mod) : ''} ${p.type}`).join(' · ');
+    const ts = targets();
     modal(
       `${e.name}: ${a.n}`,
-      `<p class="small">${esc(a.d)}</p><p>Salvación de <b>${ABIL_ES[ability] || ability}</b> · CD <b>${dc}</b>${success === 'half' ? ' · mitad si la superan' : ''}</p>${select('A quién', 'target', [['', 'Toda la party'], ...targets().map(t => [t.id, t.name])])}<p class="small">Las respuestas llegan a «En la mesa» con éxito o fallo. Después usá «Tirar daño» en la acción para aplicarlo.</p>`,
-      fd =>
-        send(
-          'roll-request',
-          {
-            type: 'save',
-            id: ability,
-            label: `Salvación de ${ABIL_ES[ability]} (${a.n})`,
-            dc,
-            showDc: true,
-            secret: false,
-          },
-          fd.get('target') || null,
-        ),
-      'Pedir',
+      `<p class="small">${esc(a.d)}</p><p>Salvación de <b>${ABIL_ES[ability] || ability}</b> · CD <b>${dc}</b>${success === 'half' ? ' · mitad si la superan' : ''}</p>
+      ${ts.length ? `<fieldset class="target-list"><legend>Quiénes quedan en el área</legend>${ts.map(t => `<label class="check"><input type="checkbox" name="who" value="${esc(t.id)}" checked>${esc(t.name)}</label>`).join('')}</fieldset>` : '<p class="muted">No hay fichas en la mesa.</p>'}
+      ${parts.length ? `<p class="small">Daño tirado: ${esc(text)} = <b>${rolled}</b></p>${field('Daño (cambialo si tiraste dados físicos o querés bajarlo)', 'damage', rolled, 'number', 'min="0" max="9999" inputmode="numeric"')}` : ''}
+      <p class="small">${parts.length ? 'Cada jugador tira su salvación y su ficha se aplica el daño completo o la mitad. Los resultados llegan a «En la mesa».' : 'Las respuestas llegan a «En la mesa» con éxito o fallo.'}</p>`,
+      async fd => {
+        const who = fd.getAll('who');
+        if (!who.length) throw Error('Elegí al menos una ficha.');
+        if (!parts.length) {
+          for (const id of who)
+            await send(
+              'roll-request',
+              {
+                type: 'save',
+                id: ability,
+                label: `Salvación de ${ABIL_ES[ability]} (${a.n})`,
+                dc,
+                showDc: true,
+                secret: false,
+              },
+              id,
+            );
+          return;
+        }
+        const damage = Number(fd.get('damage'));
+        if (!Number.isInteger(damage) || damage < 0 || damage > 9999) throw Error('Revisá el daño.');
+        for (const id of who)
+          await send(
+            'area-save',
+            {
+              caster: e.name,
+              spell: a.n,
+              ability,
+              abilityName: ABIL_ES[ability] || ability,
+              dc,
+              half: success === 'half',
+              damage,
+              types: parts.map(p => p.type).join(', '),
+            },
+            id,
+          );
+        toast(`${a.n}: ${who.length} ${who.length === 1 ? 'ficha tira' : 'fichas tiran'} su salvación.`);
+      },
+      'Pedir salvaciones',
     );
   }
 

@@ -83,11 +83,20 @@ Opcional. Con la mesa configurada, cada jugador se une con un código y la party
 - Las órdenes del DM las aplica la ficha del jugador con sus propias reglas (PG temporales, concentración, estados). Si el jugador está sin conexión, se aplican al abrir la ficha.
 - Sin cuentas obligatorias: cada navegador recibe un acceso anónimo. Guardarlo con un email permite abrir las mismas fichas en otros dispositivos y no perderlas si se borran los datos del navegador.
 
+### Combate compartido
+
+- El DM arma el encuentro en **Iniciativa**: agrega a la party, monstruos del SRD o criaturas propias (con PG, CA y salvaciones que solo ve el DM) y puede ocultar criaturas hasta revelarlas.
+- Los jugadores ven el orden y el estado de cada criatura con palabras (Ileso, Herido, Malherido, A punto de caer, Derrotado), nunca sus PG ni su CA.
+- Al atacar o lanzar un conjuro se elige el objetivo. Contra una criatura, el servidor compara la tirada con la CA oculta y descuenta el daño. Las curaciones y los efectos (Bendición, Inspiración bárdica…) se aplican a uno mismo o a aliados.
+- Los conjuros de salvación sobre criaturas le llegan al DM como **Salvaciones pendientes**: tira por cada criatura (o anota su dado) y se aplica el daño completo o la mitad.
+- **Áreas y fuego amigo:** en un conjuro de salvación (Bola de fuego, Manos ardientes…) también se marca a los aliados o a uno mismo si quedan dentro. Cada ficha alcanzada recibe el pedido, tira su salvación y se aplica el daño completo o la mitad. Las acciones de salvación de los monstruos (alientos, auras) funcionan igual: el DM tira o ajusta el daño, elige quiénes quedan en el área y cada jugador salva. Requiere `supabase/migrations/005_area_saves.sql`.
+- «Terminar turno» de un jugador pasa la iniciativa al siguiente. Los turnos de las criaturas los pasa el DM.
+
 ### Configurar el servidor (una sola vez)
 
 1. Crear un proyecto gratuito en [supabase.com](https://supabase.com).
 2. **Authentication → Sign In / Providers:** activar **Allow anonymous sign-ins**.
-3. **SQL Editor:** pegar el contenido de `supabase/schema.sql` y ejecutar.
+3. **SQL Editor:** pegar el contenido de `supabase/schema.sql` y ejecutar. Si la mesa ya existía, ejecutar en orden los archivos nuevos de `supabase/migrations/`.
 4. **Project Settings → API:** copiar la **Project URL** y la clave pública (**anon** / **publishable**) en `config.js`. La clave pública puede publicarse; los permisos están en las políticas del esquema. Nunca uses la clave `service_role` / secreta.
 5. **Authentication → URL Configuration:** en *Site URL* poner `https://sephiraxx.github.io/DnD-char-sheet/` y en *Redirect URLs* agregar `https://sephiraxx.github.io/DnD-char-sheet/**` (y `http://localhost:8080/**` para probar). Lo usan los enlaces de acceso por email.
 6. Opcional: **Attack Protection → Captcha** con Cloudflare Turnstile; la clave pública del sitio va en `config.js` (`captchaSiteKey`).

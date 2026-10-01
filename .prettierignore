@@ -7,3 +7,4 @@ equipment-data.js
 node_modules
 vendor/
 monsters-data.js
+.tmp-test

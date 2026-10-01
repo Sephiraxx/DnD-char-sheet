@@ -85,7 +85,7 @@ const TableUI = (() => {
     const recent = Date.now() - 3 * 60 * 60 * 1000;
     return feed.filter(
       e =>
-        e.kind === 'roll-request' &&
+        (e.kind === 'roll-request' || (e.kind === 'area-save' && e.target_character === l.characterId)) &&
         !answered.has(e.id) &&
         (!e.target_character || e.target_character === l.characterId) &&
         new Date(e.created_at).getTime() > recent,
@@ -93,19 +93,72 @@ const TableUI = (() => {
   }
   function requestBanner() {
     return openRequests()
-      .map(
-        r =>
-          `<section class="banner request"><p><b>El DM pide:</b> ${PV.esc(r.payload.label)}${r.payload.dc && r.payload.showDc ? ' · CD ' + PV.esc(r.payload.dc) : ''}</p>${button('Responder', 'table-answer', '', `data-id="${r.id}"`)}</section>`,
+      .map(r =>
+        r.kind === 'area-save'
+          ? `<section class="banner request"><p><b>${PV.esc(r.payload.spell)}</b> de ${PV.esc(r.payload.caster)}: salvación de ${PV.esc(r.payload.abilityName || r.payload.ability)} CD ${PV.esc(r.payload.dc)} · ${PV.esc(r.payload.damage)} de daño${r.payload.half ? ' (mitad si salvás)' : ''}</p>${button('Responder', 'table-answer', '', `data-id="${r.id}"`)}</section>`
+          : `<section class="banner request"><p><b>El DM pide:</b> ${PV.esc(r.payload.label)}${r.payload.dc && r.payload.showDc ? ' · CD ' + PV.esc(r.payload.dc) : ''}</p>${button('Responder', 'table-answer', '', `data-id="${r.id}"`)}</section>`,
       )
       .join('');
   }
+  // ---------- Encuentro compartido (migración 004) ----------
+  const CREATURE_STATUS = {
+    ileso: 'Ileso',
+    herido: 'Herido',
+    malherido: 'Malherido',
+    'a punto de caer': 'A punto de caer',
+    derrotado: 'Derrotado',
+  };
+  function encounter() {
+    const enc = party?.encounter;
+    const entries = Cloud.order(party?.combatants || []).map(c => ({
+      id: c.id,
+      kind: c.kind,
+      name: c.name,
+      init: c.init,
+      status: c.status,
+      conditions: c.conditions || [],
+      characterId: c.character_id,
+      current: Boolean(enc?.active && enc.current_id === c.id),
+    }));
+    return { active: Boolean(enc?.active), round: enc?.round || 0, entries };
+  }
+  const isMyTurn = () => {
+    const l = link();
+    return Boolean(l && encounter().entries.some(e => e.current && e.characterId === l.characterId));
+  };
+  // Objetivos posibles: criaturas visibles en pie, aliados de la mesa y vos.
+  function targets() {
+    const l = link();
+    return {
+      monsters: encounter().entries.filter(e => e.kind === 'monster' && e.status !== 'derrotado'),
+      allies: (party?.characters || [])
+        .filter(c => c.id !== l?.characterId)
+        .map(c => ({ characterId: c.id, name: c.name })),
+      selfId: l?.characterId || null,
+    };
+  }
+  // Curaciones, efectos y dados para otro jugador: su ficha los aplica al recibirlos.
+  function sendTo(characterId, kind, payload) {
+    const l = link();
+    if (!l) throw Error('Unite a una mesa para afectar a otros personajes.');
+    return Cloud.post(l.campaignId, kind, { ...payload, from: state.name }, { target: characterId, visibility: 'all' });
+  }
+  function encounterStrip() {
+    const e = encounter();
+    if (!e.entries.length) return '';
+    const mine = link()?.characterId;
+    return `<div class="initiative-strip">${e.active ? `<b>Ronda ${e.round}</b>` : '<b>Iniciativa</b>'}${e.entries
+      .map(
+        x =>
+          `<span class="chip ${x.current ? 'current' : ''} ${x.status === 'derrotado' ? 'defeated' : ''}">${x.init ?? '—'} · ${PV.esc(x.name)}${x.characterId && x.characterId === mine ? ' (vos)' : ''}${x.kind === 'monster' ? ` <em class="status-${x.status.replace(/ /g, '-')}">${CREATURE_STATUS[x.status] || x.status}</em>` : ''}${x.conditions.length ? ` <em class="chip-conds">${PV.esc(x.conditions.join(', '))}</em>` : ''}</span>`,
+      )
+      .join('')}</div>`;
+  }
   // Barra de iniciativa para la pantalla de combate.
   function initiativeBanner() {
-    const l = link(),
-      order = PV.initiative(feed);
-    return order
-      ? `<section class="banner initiative-banner">${PV.initiativeStrip(order, l?.characterId)}</section>`
-      : '';
+    const strip = encounterStrip();
+    if (!strip) return '';
+    return `<section class="banner initiative-banner">${strip}${isMyTurn() ? '<p class="small"><b>Es tu turno.</b> Al tocar «Terminar turno» pasa al siguiente.</p>' : ''}</section>`;
   }
 
   // Pantalla inicial: unirse a una mesa antes de tener personaje.
@@ -159,13 +212,11 @@ const TableUI = (() => {
       ) +
       (error && party ? `<div class="banner"><p>${PV.esc(error)}</p></div>` : '') +
       requestBanner() +
-      (PV.initiative(feed)
-        ? `<section class="card section-space"><h2>Iniciativa</h2>${PV.initiativeStrip(PV.initiative(feed), mine)}</section>`
-        : '') +
+      (encounterStrip() ? `<section class="card section-space"><h2>Iniciativa</h2>${encounterStrip()}</section>` : '') +
       `<div class="party-grid">${cards}</div>${party ? TableExtras.playerHtml(party, mine) : ''}<section class="card section-space"><div class="card-header"><h2>En la mesa</h2>${button('Tirar dados', 'dice')}</div><div class="log table-feed">${
         feed.length
           ? feed
-              .filter(e => e.kind !== 'initiative')
+              .filter(e => e.kind !== 'initiative' && e.kind !== 'encounter-sync')
               .slice(0, 40)
               .map(
                 e =>
@@ -210,7 +261,7 @@ const TableUI = (() => {
         const amount = n(p.amount);
         if (!amount || state.hp === null) return 'Daño del DM pendiente: confirmá tus PG actuales.';
         const conc = state.concentration;
-        commit('DM: daño recibido ' + amount + (p.source ? ' (' + p.source + ')' : ''), s => {
+        commit((p.from || 'DM') + ': daño recibido ' + amount + (p.source ? ' (' + p.source + ')' : ''), s => {
           const absorbed = Math.min(s.temp, amount);
           s.temp -= absorbed;
           s.hp = Math.max(0, s.hp - (amount - absorbed));
@@ -227,14 +278,14 @@ const TableUI = (() => {
       case 'heal': {
         const amount = n(p.amount);
         if (!amount || state.hp === null) return 'Curación del DM pendiente: confirmá tus PG actuales.';
-        commit('DM: curación ' + amount, s => {
+        commit((p.from || 'DM') + ': curación ' + amount, s => {
           s.hp = Math.min(R.stats(s).maxHP, s.hp + amount);
           if (s.hp > 0) {
             s.death = { success: 0, failure: 0 };
             s.conditions = s.conditions.filter(x => x !== 'Inconsciente');
           }
         });
-        return `El DM te curó ${amount} PG.`;
+        return `${p.from || 'El DM'} te curó ${amount} PG${p.source ? ' (' + p.source + ')' : ''}.`;
       }
       case 'temp':
         commit('DM: PG temporales ' + n(p.amount), s => (s.temp = Math.max(s.temp, n(p.amount))));
@@ -293,16 +344,26 @@ const TableUI = (() => {
             { id: uid(), die, reason: String(p.reason || '').slice(0, 200), kind, skills },
           ].slice(-20);
         });
-        return `El DM te dio un d${die}${p.reason ? ' (' + p.reason + ')' : ''} para ${RollUI.bonusScope({ kind, skills })}.`;
+        return `${p.from || 'El DM'} te dio un d${die}${p.reason ? ' (' + p.reason + ')' : ''} para ${RollUI.bonusScope({ kind, skills })}.`;
       }
       case 'effect': {
         const name = String(p.name || '')
           .trim()
           .slice(0, 100);
         if (!name) return '';
+        // Fin de un efecto ajeno: el que lo lanzó perdió la concentración.
+        if (p.end) {
+          if (!p.link || !Effects.list(state).some(x => x.link === p.link)) return '';
+          commit((p.from || 'DM') + ': termina ' + name, s => {
+            s.timedEffects = Effects.list(s).filter(x => x.link !== p.link);
+          });
+          return `Terminó ${name}: ${p.from || 'el DM'} perdió la concentración.`;
+        }
         const rounds = Number.isInteger(p.rounds) && p.rounds > 0 ? Math.min(100000, p.rounds) : null;
-        commit('DM: efecto ' + name, s => Effects.add(s, { name, rounds, from: 'dm' }));
-        return `El DM te aplicó: ${name}${rounds ? ' (' + Effects.remaining({ rounds }) + ')' : ''}.`;
+        commit((p.from || 'DM') + ': efecto ' + name, s =>
+          Effects.add(s, { name, rounds, from: 'dm', link: typeof p.link === 'string' ? p.link : null }),
+        );
+        return `${p.from || 'El DM'} te aplicó: ${name}${rounds ? ' (' + Effects.remaining({ rounds }) + ')' : ''}.`;
       }
       case 'inspiration':
         commit(p.on === false ? 'DM: Inspiración retirada' : 'DM: Inspiración recibida', s => {
@@ -320,7 +381,7 @@ const TableUI = (() => {
     for (const ev of fresh) {
       try {
         const msg = applyCommand(ev);
-        if (msg && !msg.includes('pendiente')) ids.push(ev.id);
+        if (typeof msg === 'string' && !msg.includes('pendiente')) ids.push(ev.id);
         if (msg) messages.push(msg);
       } catch (e) {
         messages.push('No se pudo aplicar una orden del DM: ' + e.message);
@@ -342,17 +403,22 @@ const TableUI = (() => {
     }
     if (p.characterId === l.characterId) {
       let ended = [];
+      // Igual que «Mi turno»: la pantalla de combate vuelve a la pestaña de acción.
+      combatTab = 'action';
+      combatLevel = 'all';
       commit('Turno indicado por el DM (ronda ' + (p.round || 1) + ')', s => {
         Combat.start(s);
         ended = Effects.tick(s);
       });
       navigator.vibrate?.(200);
       toast('¡Es tu turno!' + (ended.length ? ' Terminó: ' + ended.join(', ') + '.' : ''));
-    } else if (state.combatState?.onTurn || !state.combatState?.active)
+    } else if (state.combatState?.onTurn || !state.combatState?.active) {
+      if (state.combatState?.onTurn) combatTab = 'reaction';
       commit('Turno de ' + (p.name || 'otro integrante'), s => {
         Combat.end(s);
         Combat.data(s).active = true;
       });
+    }
   }
 
   function onChange(table, payload) {
@@ -367,10 +433,15 @@ const TableUI = (() => {
       const ev = payload.new;
       feed = [ev, ...feed.filter(x => x.id !== ev.id)].slice(0, 100);
       if (ev.target_character === l.characterId && Cloud.COMMANDS.includes(ev.kind)) applyCommands([ev]);
-      else if (ev.kind === 'turn' || ev.kind === 'combat-end') onTurn(ev);
-      else if (ev.kind === 'roll-request' && (!ev.target_character || ev.target_character === l.characterId))
+      else if (ev.kind === 'encounter-sync') refresh();
+      else if (ev.kind === 'turn' || ev.kind === 'combat-end') {
+        onTurn(ev);
+        refresh();
+      } else if (ev.kind === 'roll-request' && (!ev.target_character || ev.target_character === l.characterId))
         toast('El DM pide: ' + ev.payload.label);
       else if (ev.kind === 'note' && ev.target_character === l.characterId) toast('Mensaje del DM: ' + ev.payload.text);
+      else if (ev.kind === 'area-save' && ev.target_character === l.characterId)
+        toast(ev.payload.spell + ' de ' + ev.payload.caster + ': tirá tu salvación.');
       redraw();
       return;
     }
@@ -514,6 +585,7 @@ const TableUI = (() => {
     const l = link(),
       req = feed.find(e => e.id === Number(id));
     if (!l || !req) throw Error('Ese pedido ya no está disponible.');
+    if (req.kind === 'area-save') return areaSave(req);
     const p = req.payload;
     let bonus = 0,
       kind = 'check';
@@ -554,7 +626,82 @@ const TableUI = (() => {
     });
   }
 
+  // Salvación de área (Bola de fuego de un aliado, aliento de un dragón…): tirás y la ficha aplica el daño.
+  function areaSave(req, local = false) {
+    const l = link(),
+      p = req.payload,
+      bonus = R.saveBonus(state, p.ability);
+    RollUI.d20({
+      title: `${p.spell} · salvación de ${p.abilityName || p.ability} CD ${p.dc}`,
+      label: 'Salvación contra ' + p.spell,
+      bonus,
+      kind: 'save',
+      ability: p.ability,
+      share: false,
+      onDone: r =>
+        setTimeout(() => {
+          // Paralizado, aturdido, inconsciente o petrificado: falla sola las salvaciones de FUE y DES.
+          const out = RollUI.conditionMods(state, 'save', p.ability).autoFail;
+          const success = !out && r.kept !== 1 && (r.kept === 20 || r.total >= Number(p.dc));
+          const amount = success ? (p.half ? Math.floor(Number(p.damage) / 2) : 0) : Number(p.damage) || 0;
+          const conc = state.concentration;
+          if (amount) applyCommand({ kind: 'damage', payload: { amount, source: p.spell, from: p.caster } });
+          toast(
+            `${success ? 'Salvaste' : 'Fallaste'}: ${amount ? amount + ' de daño' : 'sin daño'} (${p.spell}).` +
+              (amount && conc && state.hp > 0 ? ' Tirá la salvación de concentración.' : ''),
+          );
+          if (local || !l) return;
+          Cloud.post(
+            l.campaignId,
+            'roll-response',
+            {
+              character: state.name,
+              characterId: l.characterId,
+              requestId: req.id,
+              saved: success,
+              damage: amount,
+              label: `Salvación contra ${p.spell} (${success ? 'salva' : 'falla'} · ${amount} de daño)`,
+              rolls: r.rolls,
+              bonus,
+              total: r.total,
+              physical: r.physical,
+            },
+            { visibility: 'all' },
+          )
+            .then(ev => {
+              feed = [ev, ...feed];
+              redraw();
+            })
+            .catch(e => toast(e.message));
+        }),
+    });
+  }
+
+  // Después de cada cambio: si terminó la concentración de un conjuro compartido, los aliados lo pierden.
+  function watch(before, after) {
+    const shared = before.sharedConcentration,
+      l = link();
+    if (!l || !shared || before.concentration !== shared.spell || after.concentration === shared.spell) return;
+    for (const id of shared.targets || [])
+      sendTo(id, 'effect', {
+        name: shared.name,
+        end: true,
+        link: l.characterId + ':' + shared.spell,
+        from: after.name,
+      }).catch(e => toast(e.message));
+  }
+
   function install() {
+    const endTurn = actions['combat-end'];
+    actions['combat-end'] = e => {
+      const mine = isMyTurn(),
+        l = link();
+      endTurn(e);
+      if (mine && l)
+        Cloud.advanceTurn(l.campaignId)
+          .then(n => toast('Turno de ' + n.name + '.'))
+          .catch(err => toast(err.message));
+    };
     TableExtras.install({
       refresh: () => refresh(),
       campaignId: () => link()?.campaignId,
@@ -629,5 +776,22 @@ const TableUI = (() => {
     });
   }
 
-  return { page, boot, install, welcomeCard, initiativeBanner, shareRoll, requestBanner, showStatus };
+  return {
+    page,
+    boot,
+    install,
+    welcomeCard,
+    initiativeBanner,
+    encounter,
+    targets,
+    sendTo,
+    isMyTurn,
+    link,
+    statusLabel: st => CREATURE_STATUS[st] || st,
+    areaSave,
+    watch,
+    shareRoll,
+    requestBanner,
+    showStatus,
+  };
 })();

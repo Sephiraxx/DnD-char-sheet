@@ -85,13 +85,15 @@ const AttackUI = (() => {
     if (!item) throw Error('Arma no encontrada.');
     const why = reason(mode);
     if (why) throw Error(why);
-    session = { itemId: id, mode, attacks: 0, last: null, log: [], spent: false };
+    session = { itemId: id, mode, attacks: 0, last: null, log: [], spent: false, target: null };
+    const foes = TableUI.targets().monsters;
     const p = A.profile(state, item, { mode }),
       w = p.weapon,
       n = mode === 'action' ? A.attacksPerAction(state) : 1;
     modal(
       (mode === 'reaction' ? 'Ataque de oportunidad con ' : 'Atacar con ') + item.name,
       `<p>${mode === 'action' && n > 1 ? `Tu acción de Atacar permite <b>${n} ataques</b>; podés repartirlos entre objetivos y moverte entre ellos.` : mode === 'bonus' ? 'Ataque con la otra mano: requiere haber atacado con un arma ligera en la otra mano en este turno.' : mode === 'reaction' ? 'Cuando un enemigo sale de tu alcance usando su movimiento.' : 'Un ataque con tu acción de Atacar.'}</p>
+      ${foes.length ? select('Objetivo', 'target', [...foes.map(f => [f.id, f.name + ' · ' + TableUI.statusLabel(f.status)]), ['', 'Otro objetivo (lo resuelve la mesa)']], foes[0].id) : ''}
       ${RollUI.d20Fields(RollUI.conditionMods(state, 'attack'), '', { kind: 'attack' }).replace(/<details class="physical-dice">[\s\S]*<\/details>$/, '')}
       ${w.versatile && mode !== 'bonus' ? `<label class="check"><input type="checkbox" name="twoHands">A dos manos (${esc(w.versatile)})</label>` : ''}
       <details class="physical-dice"><summary>Uso mis propios dados</summary><p class="small">Escribí lo que salió en la mesa y la ficha suma tus bonos. Con ventaja o desventaja, anotá el d20 que conservás. En un crítico, sumá todos los dados duplicados.</p><div class="form-grid">${field('Mi d20', 'myD20', '', 'number', 'min="1" max="20" inputmode="numeric"')}${field('Suma de mis dados de daño', 'myDamage', '', 'number', 'min="0" max="999" inputmode="numeric"')}</div></details>
@@ -111,7 +113,10 @@ const AttackUI = (() => {
     const heroic = Boolean(document.querySelector('#dialog-form [name=heroic]')?.checked);
     let adv = document.querySelector('#dialog-form [name=adv]:checked')?.value || '';
     if (heroic) adv = adv === 'dis' ? '' : 'adv';
-    const extra = RollUI.readBonus(new FormData(document.getElementById('dialog-form')));
+    const form = new FormData(document.getElementById('dialog-form'));
+    const extra = RollUI.readBonus(form),
+      target = form.get('target') || '',
+      foe = target && TableUI.targets().monsters.find(f => f.id === target);
     const mine = takeInput('myD20', 1, 20);
     spendAction(item.name);
     const r =
@@ -131,14 +136,33 @@ const AttackUI = (() => {
       html: `<b>${label}:</b> ${dice} ${sign(p.toHit)} = <b>${r.total}</b>${r.crit ? ' · <b>¡Crítico!</b>' : r.fumble ? ' · Pifia: falla automáticamente' : ''}${session.attacks > n ? ' <span class="muted">(más ataques que los de tu acción: confirmalo con el DM)</span>' : ''}`,
       cls: r.crit ? 'crit' : r.fumble ? 'fumble' : '',
     };
-    RollFX.show({
-      label: label + ' · ' + item.name,
+    const landed = RollFX.show({
+      label: label + ' · ' + item.name + (foe ? ' → ' + foe.name : ''),
       total: r.total,
       face: r.kept,
       detail: dice + ' ' + sign(p.toHit),
       crit: r.crit,
       fumble: r.fumble,
-    }).then(() => {
+    });
+    // Con objetivo, el impacto lo decide el servidor (CA oculta); sin objetivo, la mesa.
+    const verdict = foe
+      ? Cloud.resolveAttack(target, r.total, r.kept, 'Ataque con ' + item.name, state.name).catch(err => {
+          toast(err.message);
+          return null;
+        })
+      : Promise.resolve(null);
+    if (foe) session.last = null;
+    Promise.all([landed, verdict]).then(([, out]) => {
+      if (out) {
+        entry.html += out.hit ? ` → <b>impacta a ${esc(out.name)}</b>` : ` → <b>falla contra ${esc(out.name)}</b>`;
+        entry.cls = out.hit ? entry.cls || 'hit' : 'fumble';
+        session.last = out.hit ? { crit: r.crit, profile: p } : null;
+        session.target = out.hit ? target : null;
+      } else {
+        // Sin respuesta del servidor: se resuelve en la mesa como un ataque sin objetivo.
+        session.target = null;
+        if (foe && !r.fumble) session.last = { crit: r.crit, profile: p };
+      }
       session.log.unshift(entry);
       drawLog();
     });
@@ -152,13 +176,14 @@ const AttackUI = (() => {
     document.querySelectorAll('#dialog-form [name=bonusDie]:checked').forEach(x => x.closest('.bonus-die').remove());
     const box = document.querySelector('#dialog-form [name=heroic]');
     if (heroic && box) box.closest('label').remove();
-    TableUI.shareRoll({
-      label: 'Ataque con ' + item.name + (r.crit ? ' (crítico)' : ''),
-      rolls: r.rolls,
-      bonus: p.toHit,
-      total: r.total,
-      physical: Boolean(r.physical),
-    });
+    if (!foe)
+      TableUI.shareRoll({
+        label: 'Ataque con ' + item.name + (r.crit ? ' (crítico)' : ''),
+        rolls: r.rolls,
+        bonus: p.toHit,
+        total: r.total,
+        physical: Boolean(r.physical),
+      });
   }
 
   function damage() {
@@ -180,21 +205,32 @@ const AttackUI = (() => {
       html: `<b>Daño${crit ? ' crítico' : ''}:</b> ${parts || 'fijo'}${p.dmgMod ? ' ' + sign(p.dmgMod) : ''} = <b>${dmg.total}</b>`,
       cls: 'damage',
     };
-    RollFX.show({ label: 'Daño · ' + item.name, total: dmg.total, face: '⚔', detail: parts || 'fijo', crit }).then(
-      () => {
-        session.log.unshift(entry);
-        drawLog();
-      },
-    );
-    session.last = null;
-    commit(`${item.name}: daño ${dmg.total}${crit ? ' (crítico)' : ''}`, () => {});
-    TableUI.shareRoll({
-      label: 'Daño con ' + item.name + (crit ? ' (crítico)' : ''),
-      rolls: dmg.parts.flatMap(x => x.rolls),
-      bonus: p.dmgMod,
-      total: dmg.total,
-      physical: Boolean(dmg.physical),
+    const target = session.target;
+    const applied = target
+      ? Cloud.damageCombatant(target, dmg.total, 'Daño con ' + item.name, state.name).catch(err => {
+          toast(err.message);
+          return null;
+        })
+      : Promise.resolve(null);
+    Promise.all([
+      RollFX.show({ label: 'Daño · ' + item.name, total: dmg.total, face: '⚔', detail: parts || 'fijo', crit }),
+      applied,
+    ]).then(([, out]) => {
+      if (out) entry.html += ` → ${esc(out.name)}: <b>${esc(TableUI.statusLabel(out.status))}</b>`;
+      session.log.unshift(entry);
+      drawLog();
     });
+    session.last = null;
+    session.target = null;
+    commit(`${item.name}: daño ${dmg.total}${crit ? ' (crítico)' : ''}`, () => {});
+    if (!target)
+      TableUI.shareRoll({
+        label: 'Daño con ' + item.name + (crit ? ' (crítico)' : ''),
+        rolls: dmg.parts.flatMap(x => x.rolls),
+        bonus: p.dmgMod,
+        total: dmg.total,
+        physical: Boolean(dmg.physical),
+      });
     const btn = document.querySelector('[data-action=attack-damage]');
     if (btn) btn.disabled = true;
   }

@@ -199,15 +199,23 @@ function combatOption(id) {
   if (reason) throw Error(reason);
   const d = R.stats(state);
   let html = `<p>${o.text}</p>`;
+  const allies = TableUI.targets().allies;
   if (['inspired', 'unsettling'].includes(id))
     html +=
-      field(
-        id === 'inspired' ? 'Aliado que recibe el dado' : 'Enemigo visible',
-        'objetivo',
-        '',
-        'text',
-        'required maxlength="100"',
-      ) +
+      (id === 'inspired' && allies.length
+        ? select(
+            'Aliado que recibe el dado',
+            'objetivo',
+            allies.map(a => [a.name, a.name]),
+            allies[0].name,
+          ) + '<p class="small">El dado le llega a su ficha y lo ve al tirar.</p>'
+        : field(
+            id === 'inspired' ? 'Aliado que recibe el dado' : 'Enemigo visible',
+            'objetivo',
+            '',
+            'text',
+            'required maxlength="100"',
+          )) +
       (id === 'unsettling'
         ? field(
             'Resultado de tu d' + d.inspirationDie,
@@ -254,7 +262,16 @@ function combatOption(id) {
           if (id === 'release') Combat.data(s).effects = Combat.data(s).effects.filter(x => x.kind !== 'ready');
         }
       });
-      toast('Registrado: ' + o.name);
+      // En la mesa, el aliado recibe el dado de Inspiración bárdica en su ficha.
+      const ally = id === 'inspired' && allies.find(a => a.name === fd.get('objetivo'));
+      if (ally)
+        TableUI.sendTo(ally.characterId, 'bonus-die', {
+          die: d.inspirationDie,
+          kind: 'any',
+          skills: [],
+          reason: 'Inspiración bárdica de ' + state.name,
+        }).catch(err => toast(err.message));
+      toast('Registrado: ' + o.name + (ally ? '. ' + ally.name + ' recibió el d' + d.inspirationDie + '.' : ''));
     },
     'Registrar uso',
   );

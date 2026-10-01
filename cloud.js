@@ -411,21 +411,31 @@
     ]);
     if (!campaign) throw Error('La mesa ya no existe o no formás parte de ella.');
     // Botín y homebrew son opcionales: si la migración 003 no se aplicó, la mesa sigue funcionando.
-    const [loot, homebrew] = await Promise.all([
+    const rows = (table, order) =>
       c
-        .from('loot')
+        .from(table)
         .select('*')
         .eq('campaign_id', campaignId)
-        .order('created_at')
-        .then(r => r.data || []),
+        .order(order)
+        .then(r => r.data || []);
+    // Combate compartido (migración 004): los jugadores no reciben combatant_secrets (RLS).
+    const [loot, homebrew, combatants, secrets, encounter] = await Promise.all([
+      rows('loot', 'created_at'),
+      rows('homebrew', 'name'),
+      rows('combatants', 'created_at'),
       c
-        .from('homebrew')
+        .from('combatant_secrets')
         .select('*')
         .eq('campaign_id', campaignId)
-        .order('name')
         .then(r => r.data || []),
+      c
+        .from('encounters')
+        .select('*')
+        .eq('campaign_id', campaignId)
+        .maybeSingle()
+        .then(r => r.data || null),
     ]);
-    return { campaign, members, characters, loot, homebrew };
+    return { campaign, members, characters, loot, homebrew, combatants, secrets, encounter };
   }
   async function events(campaignId, limit = 60) {
     return check(
@@ -469,6 +479,64 @@
     if (!ids.length) return;
     check(await (await api()).from('events').update({ applied_at: new Date().toISOString() }).in('id', ids));
   }
+  // ---------- Combate compartido ----------
+  // Orden de iniciativa igual al del servidor (advance_turn).
+  const order = list =>
+    [...list].sort(
+      (a, b) =>
+        (b.init ?? -999) - (a.init ?? -999) ||
+        b.tiebreak - a.tiebreak ||
+        String(a.created_at).localeCompare(b.created_at),
+    );
+  async function addCombatant(campaignId, row, secret = null) {
+    const c = await api();
+    const added = check(
+      await c
+        .from('combatants')
+        .insert({ campaign_id: campaignId, ...row })
+        .select()
+        .single(),
+    );
+    if (secret)
+      check(await c.from('combatant_secrets').insert({ combatant_id: added.id, campaign_id: campaignId, ...secret }));
+    return added;
+  }
+  async function updateCombatant(id, patch) {
+    check(await (await api()).from('combatants').update(patch).eq('id', id));
+  }
+  async function updateSecret(id, patch) {
+    check(await (await api()).from('combatant_secrets').update(patch).eq('combatant_id', id));
+  }
+  async function removeCombatant(id) {
+    check(await (await api()).from('combatants').delete().eq('id', id));
+  }
+  async function advanceTurn(campaignId) {
+    return check(await (await api()).rpc('advance_turn', { p_campaign: campaignId }));
+  }
+  async function endCombat(campaignId) {
+    check(await (await api()).rpc('end_combat', { p_campaign: campaignId }));
+  }
+  async function resolveAttack(target, total, natural, label, attacker) {
+    return check(
+      await (
+        await api()
+      ).rpc('resolve_attack', {
+        p_target: target,
+        p_total: total,
+        p_natural: natural,
+        p_label: label,
+        p_attacker: attacker,
+      }),
+    );
+  }
+  async function damageCombatant(target, amount, label, attacker) {
+    return check(
+      await (
+        await api()
+      ).rpc('damage_combatant', { p_target: target, p_amount: amount, p_label: label, p_attacker: attacker }),
+    );
+  }
+
   // ---------- Botín de la party ----------
   async function addLoot(campaignId, item) {
     return check(
@@ -526,7 +594,16 @@
     await user();
     const filter = 'campaign_id=eq.' + campaignId;
     const channel = c.channel('mesa-' + campaignId);
-    for (const table of ['characters', 'events', 'members', 'loot', 'homebrew'])
+    for (const table of [
+      'characters',
+      'events',
+      'members',
+      'loot',
+      'homebrew',
+      'encounters',
+      'combatants',
+      'combatant_secrets',
+    ])
       channel.on('postgres_changes', { event: '*', schema: 'public', table, filter }, p => handler(table, p));
     channel.on('presence', { event: 'sync' }, () => handler('presence', Object.values(channel.presenceState()).flat()));
     channel.subscribe(status => {
@@ -537,6 +614,15 @@
 
   root.Cloud = {
     enabled,
+    order,
+    addCombatant,
+    updateCombatant,
+    updateSecret,
+    removeCombatant,
+    advanceTurn,
+    endCombat,
+    resolveAttack,
+    damageCombatant,
     addLoot,
     removeLoot,
     claimLoot,

@@ -25,7 +25,6 @@ let current = null, // id de la mesa abierta
   error = '',
   unsubscribe = null,
   online = [],
-  publishTimer,
   toastTimer;
 
 // ---------- Utilidades de interfaz ----------
@@ -105,33 +104,42 @@ function settingsSummary(st) {
   return `Libros: ${esc(books)} · Nivel inicial ${st.startLevel}${st.rules ? ' · Reglas de la casa' : ''}`;
 }
 
-// ---------- Iniciativa (se guarda solo en este dispositivo) ----------
-const initKey = () => 'dnd-dm-initiative-' + current;
+// ---------- Iniciativa: encuentro compartido en la base (migración 004) ----------
+// Vista del encuentro con los datos secretos de cada criatura (solo el DM los recibe).
 function tracker() {
-  try {
-    const t = JSON.parse(localStorage.getItem(initKey()) || 'null');
-    if (t && Array.isArray(t.entries)) return t;
-  } catch {}
-  return { entries: [], turn: -1, round: 0 };
+  const sec = new Map((party?.secrets || []).map(x => [x.combatant_id, x]));
+  const enc = party?.encounter;
+  const entries = Cloud.order(party?.combatants || []).map(c => {
+    const x = sec.get(c.id) || {};
+    return {
+      id: c.id,
+      kind: c.kind,
+      characterId: c.character_id,
+      monsterId: x.monster_id || null,
+      name: c.name,
+      init: c.init,
+      dex: c.tiebreak,
+      hp: c.kind === 'monster' ? (x.hp ?? null) : null,
+      max: x.max_hp ?? null,
+      ac: x.ac ?? null,
+      saves: x.saves || {},
+      hidden: c.hidden,
+      status: c.status,
+      conditions: c.conditions || [],
+    };
+  });
+  return {
+    entries,
+    turn: enc?.active ? entries.findIndex(e => e.id === enc.current_id) : -1,
+    round: enc?.active ? enc.round : 0,
+  };
 }
-function saveTracker(t) {
-  t.entries.sort((a, b) => (b.init ?? -99) - (a.init ?? -99) || (b.dex ?? 0) - (a.dex ?? 0));
-  localStorage.setItem(initKey(), JSON.stringify(t));
-  publishOrder();
-}
-// Los jugadores ven el orden de iniciativa (sin PG ni CA de las criaturas).
-function publishOrder() {
-  clearTimeout(publishTimer);
-  const id = current;
-  publishTimer = setTimeout(() => {
-    if (id !== current) return;
-    const t = tracker();
-    send('initiative', {
-      round: t.round,
-      turn: t.turn,
-      entries: t.entries.map(e => ({ name: e.name, init: e.init, characterId: e.characterId || null })),
-    }).catch(() => {});
-  }, 800);
+// Cambios del encuentro: se guardan en la base y se recarga la mesa.
+async function encounterChange(fn) {
+  await fn();
+  // Los jugadores no reciben cambios de filas que dejan de ver (criaturas ocultas): este aviso los hace recargar.
+  Cloud.post(current, 'encounter-sync', {}).catch(() => {});
+  await refresh();
 }
 const notesKey = () => 'dnd-dm-notes-' + current;
 
@@ -195,12 +203,11 @@ function onChange(table, payload) {
     if (ev.kind === 'roll-response') {
       const req = feed.find(x => x.id === ev.payload.requestId);
       if (req?.payload.type === 'initiative') {
-        const t = tracker(),
-          e = t.entries.find(x => x.characterId === ev.payload.characterId);
-        if (e) {
-          e.init = ev.payload.total;
-          saveTracker(t);
-        }
+        const e = tracker().entries.find(x => x.characterId === ev.payload.characterId);
+        if (e)
+          Cloud.updateCombatant(e.id, { init: ev.payload.total })
+            .then(refresh)
+            .catch(err => toast(err.message));
       }
       toast(`${ev.payload.character}: ${ev.payload.label} ${ev.payload.total}`);
     }
@@ -243,6 +250,7 @@ function draw() {
     }</div>
     ${feedCard()}
   </div><div class="stack">
+    ${savesCard()}
     ${initiativeCard(t)}
     ${TableExtras.dmHtml(party)}
     <section class="card"><div class="card-header"><h2>Notas del DM</h2></div><label class="field"><span class="visually-hidden">Notas privadas</span><textarea id="dm-notes" style="min-height:160px" placeholder="Solo se guardan en este dispositivo.">${esc(localStorage.getItem(notesKey()) || '')}</textarea></label></section>
@@ -278,6 +286,83 @@ addEventListener('cloud-login', () => {
   if (!current) drawHome();
 });
 
+// Salvaciones que pidieron los jugadores y todavía no se resolvieron.
+function pendingSaves() {
+  const done = new Set(
+    feed.filter(e => e.kind === 'creature-save-result').map(e => e.payload.requestId + ':' + e.payload.targetId),
+  );
+  return feed
+    .filter(e => e.kind === 'creature-save')
+    .map(e => ({ ev: e, targets: (e.payload.targets || []).filter(t => !done.has(e.id + ':' + t.id)) }))
+    .filter(x => x.targets.length && tracker().entries.some(c => x.targets.some(t => t.id === c.id)));
+}
+function savesCard() {
+  const list = pendingSaves();
+  if (!list.length) return '';
+  const ABIL = { str: 'FUE', dex: 'DES', con: 'CON', int: 'INT', wis: 'SAB', cha: 'CAR' };
+  return `<section class="card saves-card"><div class="card-header"><h2>Salvaciones pendientes</h2></div>${list
+    .map(
+      ({ ev, targets }) =>
+        `<div class="feature"><p><b>${esc(ev.payload.caster)}</b> lanzó <b>${esc(ev.payload.spell)}</b>: ${ABIL[ev.payload.ability] || esc(ev.payload.ability)} CD ${esc(ev.payload.dc)} · ${esc(ev.payload.damage)} de daño${ev.payload.half ? ' (mitad si salva)' : ''}</p><div class="party-list">${targets
+          .map(t => {
+            const c = tracker().entries.find(x => x.id === t.id);
+            return `<div class="list-row"><span>${esc(t.name)} <small class="muted">${c ? sign(c.saves?.[ev.payload.ability] ?? 0) : ''}</small></span>${button('Resolver', 'save-resolve', 'secondary', `data-req="${ev.id}" data-target="${t.id}"`)}</div>`;
+          })
+          .join(
+            '',
+          )}</div>${targets.length > 1 ? `<div class="actions">${button('Tirar todas', 'save-all', '', `data-req="${ev.id}"`)}</div>` : ''}</div>`,
+    )
+    .join('')}</section>`;
+}
+async function resolveSave(req, targetId, own = null) {
+  const p = req.payload,
+    c = tracker().entries.find(x => x.id === targetId),
+    t = (p.targets || []).find(x => x.id === targetId);
+  if (!c || !t) throw Error('Esa criatura ya no está en el encuentro.');
+  const bonus = Number(c.saves?.[p.ability] ?? 0),
+    natural = own ?? d20(),
+    total = natural + bonus,
+    // Paralizada, aturdida, inconsciente o petrificada: falla sola las salvaciones de FUE y DES.
+    out =
+      ['str', 'dex'].includes(p.ability) &&
+      ['Paralizado', 'Aturdido', 'Inconsciente', 'Petrificado'].some(x => (c.conditions || []).includes(x)),
+    success = !out && natural !== 1 && (natural === 20 || total >= Number(p.dc)),
+    dmg = Number(p.damage) || 0,
+    damage = success ? (p.half ? Math.floor(dmg / 2) : 0) : dmg,
+    hp = Math.max(0, (c.hp ?? 0) - damage);
+  if (damage) await Cloud.updateSecret(c.id, { hp });
+  const max = c.max || 1,
+    status =
+      hp <= 0
+        ? 'derrotado'
+        : hp * 4 < max
+          ? 'a punto de caer'
+          : hp * 2 < max
+            ? 'malherido'
+            : hp < max
+              ? 'herido'
+              : 'ileso';
+  await send('creature-save-result', {
+    requestId: req.id,
+    targetId,
+    name: t.name,
+    spell: p.spell,
+    roll: natural,
+    total,
+    success,
+    damage,
+    status,
+  });
+  return { name: t.name, natural, total, success, damage };
+}
+
+const STATUS_LABEL = {
+  ileso: 'Ileso',
+  herido: 'Herido',
+  malherido: 'Malherido',
+  'a punto de caer': 'A punto de caer',
+  derrotado: 'Derrotado',
+};
 function initiativeCard(t) {
   const items = t.entries
     .map((e, i) => {
@@ -285,19 +370,19 @@ function initiativeCard(t) {
         x = pc ? PV.summarize(pc.data) : null;
       const sub = x
         ? `${x.hp ?? '—'}/${x.maxHP} PG · CA ${x.ac}${x.conditions.length ? ' · ' + esc(x.conditions.join(', ')) : ''}`
-        : `CA ${e.ac ?? '—'}${e.max ? `<span class="monster-hpbar" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Math.round(((e.hp ?? e.max) / e.max) * 100)))}%"></i></span>` : ''}`;
+        : `CA ${e.ac ?? '—'} · ${STATUS_LABEL[e.status] || e.status}${e.hidden ? ' · oculta' : ''}${e.conditions.length ? ' · ' + esc(e.conditions.join(', ')) : ''}${e.max ? `<span class="monster-hpbar" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Math.round(((e.hp ?? e.max) / e.max) * 100)))}%"></i></span>` : ''}`;
       const down = x ? x.hp === 0 : e.hp === 0;
-      return `<li class="${i === t.turn ? 'current' : ''} ${down ? 'down' : ''}"><span class="init">${e.init ?? '—'}</span><span class="who"><b>${e.monsterId ? `<button type="button" class="text-btn monster-name" data-action="monster-open" data-entry="${e.id}">${esc(e.name)}</button>` : esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
+      return `<li class="${i === t.turn ? 'current' : ''} ${down ? 'down' : ''} ${e.hidden ? 'hidden-combatant' : ''}"><span class="init">${e.init ?? '—'}</span><span class="who"><b>${e.monsterId ? `<button type="button" class="text-btn monster-name" data-action="monster-open" data-entry="${e.id}">${esc(e.name)}</button>` : esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
         e.characterId
           ? button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)
-          : `<input type="number" aria-label="PG de ${esc(e.name)}" data-monster-hp="${e.id}" value="${e.hp ?? ''}" min="0" max="99999">/${e.max ?? '—'}${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}`
+          : `<input type="number" aria-label="PG de ${esc(e.name)}" data-monster-hp="${e.id}" value="${e.hp ?? ''}" min="0" max="99999">/${e.max ?? '—'}${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}${button('Estados', 'init-conditions', 'text-btn', `data-entry="${e.id}"`)}${button(e.hidden ? 'Mostrar' : 'Ocultar', 'init-hide', 'text-btn', `data-entry="${e.id}"`)}`
       }${button('×', 'init-remove', 'text-btn', `data-entry="${e.id}" aria-label="Quitar ${esc(e.name)}"`)}</span></li>`;
     })
     .join('');
   return `<section class="card"><div class="card-header"><h2>Iniciativa${t.round ? ' · ronda ' + t.round : ''}</h2></div>
   <div class="initiative-tools">${button('Agregar party', 'init-party')}${button('Pedir iniciativa', 'init-request')}${button('Monstruo del SRD', 'init-monster-srd')}${button('Criatura propia', 'init-monster')}</div>
   ${typeof MonsterUI !== 'undefined' ? MonsterUI.difficultyLine(t) : ''}${items ? `<ol class="initiative-list section-space">${items}</ol>` : '<p class="muted section-space">Agregá a la party y a las criaturas. Las tiradas de iniciativa de los jugadores se completan solas.</p>'}
-  ${t.entries.length ? `<div class="actions section-space">${button(t.turn < 0 ? 'Empezar combate' : 'Siguiente turno', 'init-next', '')}${t.turn >= 0 ? button('Terminar combate', 'init-end') : ''}${button('Vaciar', 'init-clear')}</div>` : ''}</section>`;
+  ${t.entries.length ? `<div class="actions section-space">${button(t.turn < 0 ? 'Empezar combate' : 'Siguiente turno', 'init-next', '')}${t.turn >= 0 ? button('Terminar combate', 'init-end') : ''}${button('Vaciar', 'init-clear')}</div><p class="small muted">Cuando un jugador toca «Terminar turno», la iniciativa avanza sola. Los turnos de criaturas los pasás vos.</p>` : ''}</section>`;
 }
 
 function feedCard() {
@@ -309,7 +394,7 @@ function feedCard() {
       responses.set(e.payload.requestId, list);
     }
   const items = feed
-    .filter(e => e.kind !== 'initiative')
+    .filter(e => e.kind !== 'initiative' && e.kind !== 'encounter-sync')
     .filter(e => e.kind !== 'roll-response' || !feed.some(r => r.id === e.payload.requestId))
     .slice(0, 60)
     .map(e => {
@@ -323,6 +408,12 @@ function feedCard() {
         extra = rs.length
           ? `<div class="chips">${rs.join('')}</div>`
           : '<p class="small muted">Esperando respuestas…</p>';
+      }
+      if (e.kind === 'area-save') {
+        const r = (responses.get(e.id) || [])[0];
+        extra = r
+          ? `<div class="chips"><span class="chip ${r.payload.saved ? 'selected' : 'warn'}">${esc(r.payload.character)}: ${esc(r.payload.total)}${r.payload.physical ? ' · físico' : ''} · ${r.payload.saved ? 'salva' : 'falla'} · ${esc(r.payload.damage ?? 0)} de daño</span></div>`
+          : '<p class="small muted">Esperando la salvación…</p>';
       }
       const time = new Date(e.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
       return `<div class="log-item"><time>${esc(time)}</time><div><p>${PV.eventText(e, party)}${e.visibility !== 'all' ? ' <span class="muted small">(privado)</span>' : ''}${e.kind !== 'roll' && e.kind !== 'roll-response' && e.target_character && e.applied_at === null && Cloud.COMMANDS.includes(e.kind) ? ' <span class="muted small">· pendiente</span>' : ''}</p>${extra}</div></div>`;
@@ -544,95 +635,112 @@ const actions = {
       },
       'Tirar',
     ),
-  'init-party': () => {
-    const t = tracker();
-    for (const { row, x } of summaries())
-      if (!t.entries.some(e => e.characterId === row.id))
-        t.entries.push({ id: crypto.randomUUID(), characterId: row.id, name: row.name, init: null, dex: x.initiative });
-    saveTracker(t);
-    draw();
+  'save-resolve': e => {
+    const req = feed.find(x => x.id === Number(e.dataset.req)),
+      t = req?.payload.targets.find(x => x.id === e.dataset.target),
+      c = tracker().entries.find(x => x.id === e.dataset.target);
+    if (!req || !t || !c) throw Error('Ese pedido ya no está.');
+    modal(
+      `${t.name}: salvación (${req.payload.spell})`,
+      `<p>CD <b>${esc(req.payload.dc)}</b> · bono de la criatura <b>${sign(c.saves?.[req.payload.ability] ?? 0)}</b> · ${esc(req.payload.damage)} de daño${req.payload.half ? ' (mitad si salva)' : ''}.</p>${field('Mi d20 (opcional: si lo tiré en la mesa)', 'own', '', 'number', 'min="1" max="20" inputmode="numeric"')}<p class="small">Sin dado propio, la pantalla tira por la criatura.</p>`,
+      async fd => {
+        const own = fd.get('own') ? int(fd, 'own', 1, 20) : null;
+        const r = await resolveSave(req, t.id, own);
+        await refresh();
+        RollFX.show({
+          label: r.name + ' · salvación',
+          total: r.total,
+          face: r.natural,
+          detail: r.success
+            ? 'supera' + (r.damage ? ' · ' + r.damage + ' de daño' : '')
+            : 'falla · ' + r.damage + ' de daño',
+          crit: r.natural === 20,
+          fumble: r.natural === 1,
+        });
+      },
+      'Resolver',
+    );
   },
+  'save-all': async e => {
+    const req = feed.find(x => x.id === Number(e.dataset.req));
+    const item = pendingSaves().find(x => x.ev.id === req?.id);
+    if (!item) return;
+    const lines = [];
+    for (const t of item.targets) {
+      const r = await resolveSave(req, t.id);
+      lines.push(`${r.name} ${r.success ? 'supera' : 'falla'} (${r.total}) · ${r.damage} de daño`);
+    }
+    await refresh();
+    toast(lines.join(' · '));
+  },
+  'init-party': () =>
+    encounterChange(async () => {
+      const t = tracker();
+      for (const { row, x } of summaries())
+        if (!t.entries.some(e => e.characterId === row.id))
+          await Cloud.addCombatant(current, {
+            kind: 'pc',
+            character_id: row.id,
+            name: row.name,
+            tiebreak: x.initiative,
+          });
+    }),
   'init-request': async () => {
-    actions['init-party']();
+    await actions['init-party']();
     await send('roll-request', { type: 'initiative', id: '', label: 'Iniciativa' });
     toast('Pedido enviado: las respuestas completan la iniciativa.');
   },
   'init-monster': () =>
     modal(
       'Agregar criatura',
-      `${field('Nombre', 'name', '', 'text', 'required maxlength="80" placeholder="Goblin"')}<div class="form-grid">${field('Cantidad', 'count', 1, 'number', 'min="1" max="20" required')}${field('Mod. de iniciativa', 'mod', 0, 'number', 'min="-10" max="20" required')}${field('PG', 'hp', '', 'number', 'min="1" max="99999"')}${field('CA', 'ac', '', 'number', 'min="1" max="40"')}</div><p class="small">Se tira la iniciativa de cada una (d20 + modificador). Podés corregirla con «Init».</p>`,
-      fd => {
-        const t = tracker(),
-          n = int(fd, 'count', 1, 20),
-          mod = int(fd, 'mod', -10, 20),
-          hp = int(fd, 'hp', 1, 99999, null),
-          ac = int(fd, 'ac', 1, 40, null),
-          name = String(fd.get('name')).trim();
-        for (let i = 1; i <= n; i++)
-          t.entries.push({
-            id: crypto.randomUUID(),
-            name: n > 1 ? `${name} ${i}` : name,
-            init: d20() + mod,
-            dex: mod,
-            hp,
-            max: hp,
-            ac,
-          });
-        saveTracker(t);
-        draw();
-      },
+      `${field('Nombre', 'name', '', 'text', 'required maxlength="80" placeholder="Bandido"')}<div class="form-grid">${field('Cantidad', 'count', 1, 'number', 'min="1" max="20" required')}${field('Mod. de iniciativa', 'mod', 0, 'number', 'min="-10" max="20" required')}${field('PG', 'hp', 10, 'number', 'min="1" max="99999" required')}${field('CA', 'ac', 12, 'number', 'min="1" max="40" required')}</div><p class="small">Se tira la iniciativa de cada una (d20 + modificador). Sus salvaciones usan +0 salvo que las ajustes.</p>`,
+      fd =>
+        encounterChange(async () => {
+          const n = int(fd, 'count', 1, 20),
+            mod = int(fd, 'mod', -10, 20),
+            hp = int(fd, 'hp', 1, 99999),
+            ac = int(fd, 'ac', 1, 40),
+            name = String(fd.get('name')).trim();
+          for (let i = 1; i <= n; i++)
+            await Cloud.addCombatant(
+              current,
+              { kind: 'monster', name: n > 1 ? `${name} ${i}` : name, init: d20() + mod, tiebreak: mod },
+              { hp, max_hp: hp, ac, saves: {} },
+            );
+        }),
       'Agregar',
     ),
   'init-set': e => {
-    const t = tracker(),
-      entry = t.entries.find(x => x.id === e.dataset.entry);
+    const entry = tracker().entries.find(x => x.id === e.dataset.entry);
     modal(
       'Iniciativa de ' + entry.name,
       field('Resultado', 'init', entry.init ?? '', 'number', 'min="-10" max="50" required autofocus'),
-      fd => {
-        entry.init = int(fd, 'init', -10, 50);
-        saveTracker(t);
-        draw();
-      },
+      fd => encounterChange(() => Cloud.updateCombatant(entry.id, { init: int(fd, 'init', -10, 50) })),
       'Guardar',
     );
   },
-  'init-remove': e => {
-    const t = tracker(),
-      i = t.entries.findIndex(x => x.id === e.dataset.entry);
-    if (i < 0) return;
-    t.entries.splice(i, 1);
-    if (t.turn >= t.entries.length) t.turn = t.entries.length - 1;
-    else if (i < t.turn) t.turn--;
-    saveTracker(t);
-    draw();
+  'init-remove': e => encounterChange(() => Cloud.removeCombatant(e.dataset.entry)),
+  'init-conditions': e => {
+    const entry = tracker().entries.find(x => x.id === e.dataset.entry);
+    modal(
+      'Estados de ' + entry.name,
+      `<div class="chips">${CONDITIONS.map(c => `<label class="check"><input type="checkbox" name="c" value="${c}" ${entry.conditions.includes(c) ? 'checked' : ''}>${c}</label>`).join('')}</div><p class="small">Los jugadores ven los estados de la criatura en la iniciativa.</p>`,
+      fd => encounterChange(() => Cloud.updateCombatant(entry.id, { conditions: fd.getAll('c') })),
+      'Aplicar',
+    );
   },
-  'init-next': async () => {
-    const t = tracker();
-    if (!t.entries.length) return;
-    if (t.turn < 0) {
-      t.turn = 0;
-      t.round = 1;
-    } else {
-      t.turn = (t.turn + 1) % t.entries.length;
-      if (t.turn === 0) t.round++;
-    }
-    saveTracker(t);
-    const e = t.entries[t.turn];
-    await send('turn', { characterId: e.characterId || null, name: e.name, round: t.round });
+  'init-hide': e => {
+    const entry = tracker().entries.find(x => x.id === e.dataset.entry);
+    return encounterChange(() => Cloud.updateCombatant(entry.id, { hidden: !entry.hidden }));
   },
-  'init-end': async () => {
-    const t = tracker();
-    t.turn = -1;
-    t.round = 0;
-    saveTracker(t);
-    await send('combat-end', {});
-  },
+  'init-next': () => encounterChange(() => Cloud.advanceTurn(current)),
+  'init-end': () => encounterChange(() => Cloud.endCombat(current)),
   'init-clear': () => {
-    if (!confirm('¿Vaciar la iniciativa?')) return;
-    localStorage.removeItem(initKey());
-    publishOrder();
-    draw();
+    if (!confirm('¿Vaciar la iniciativa? Se quitan todas las criaturas y personajes del encuentro.')) return;
+    return encounterChange(async () => {
+      if (party?.encounter?.active) await Cloud.endCombat(current);
+      for (const e of tracker().entries) await Cloud.removeCombatant(e.id);
+    });
   },
   'bonus-die': e => {
     const id = e.dataset.id;
@@ -715,13 +823,10 @@ document.addEventListener('click', async e => {
 document.addEventListener('change', e => {
   const id = e.target.dataset.monsterHp;
   if (!id) return;
-  const t = tracker(),
-    entry = t.entries.find(x => x.id === id);
-  if (!entry) return;
-  const v = e.target.value === '' ? null : Math.max(0, Math.min(99999, Math.floor(Number(e.target.value))));
-  entry.hp = v;
-  saveTracker(t);
-  draw();
+  const entry = tracker().entries.find(x => x.id === id);
+  if (!entry || e.target.value === '') return;
+  const v = Math.max(0, Math.min(entry.max ?? 99999, Math.floor(Number(e.target.value))));
+  encounterChange(() => Cloud.updateSecret(id, { hp: v })).catch(err => toast(err.message));
 });
 document.addEventListener('input', e => {
   if (e.target.id === 'dm-notes') localStorage.setItem(notesKey(), e.target.value);

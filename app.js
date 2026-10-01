@@ -110,6 +110,7 @@ function commit(label, fn, requireSaved = false) {
   history = history.slice(-20);
   state = next;
   if (!requireSaved) persist(before);
+  TableUI.watch(before, next);
   render();
 }
 function download(name, data, type = 'application/json') {
