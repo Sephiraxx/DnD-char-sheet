@@ -32,6 +32,7 @@
       return Error('Sin conexión con la mesa. Se reintentará al volver la conexión.');
     if (/Anonymous sign-ins are disabled/i.test(msg))
       return Error('La mesa no permite ingresos anónimos. Activalos en Supabase → Authentication → Providers.');
+    if (/captcha/i.test(msg)) return Error('Falló la verificación anti-bots. Recargá la página y volvé a intentar.');
     return Error(msg || 'No se pudo completar la operación en la mesa.');
   }
   const check = ({ data, error }) => {
@@ -75,7 +76,9 @@
     const c = await api();
     const { data } = await c.auth.getSession();
     if (data.session) return data.session.user;
-    const captchaToken = cfg.captchaSiteKey ? await captcha() : undefined;
+    // En desarrollo local no hay captcha: para probar, desactivalo temporalmente en Supabase.
+    const local = location.hostname === 'localhost' || /^127\.\d+\.\d+\.\d+$/.test(location.hostname);
+    const captchaToken = cfg.captchaSiteKey && !local ? await captcha() : undefined;
     const r = await c.auth.signInAnonymously(captchaToken ? { options: { captchaToken } } : undefined);
     if (r.error) throw friendly(r.error);
     return r.data.user;
