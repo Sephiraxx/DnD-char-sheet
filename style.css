@@ -1770,7 +1770,15 @@ dialog::backdrop {
 .no-character main {
   min-height: 70vh;
   display: grid;
-  place-items: center;
+  /* Una sola columna del ancho de la pantalla: sin esto, las tarjetas de la portada
+     ensanchan la grilla y en el celular la página queda más ancha que la pantalla. */
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+}
+/* Con margin: auto, un ítem de grilla toma el ancho de su contenido; width: 100% lo limita a la pantalla. */
+.no-character main > * {
+  min-width: 0;
+  width: 100%;
 }
 .welcome-card {
   width: 100%;
