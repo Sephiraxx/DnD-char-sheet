@@ -894,3 +894,16 @@ body.enc-shake .workspace {
 .prepared .actions {
   margin-top: 8px;
 }
+
+/* Sesiones */
+.session-notes {
+  margin: 10px 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--gold);
+  color: var(--muted);
+  font-style: italic;
+}
+.xp-line {
+  margin: 0 0 12px;
+  color: var(--muted);
+}

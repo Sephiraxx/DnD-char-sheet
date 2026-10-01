@@ -467,5 +467,5 @@ const MonsterUI = (() => {
     )
   )
     load().then(() => typeof draw === 'function' && draw());
-  return { load, difficulty, difficultyLine, crText, picker, claimNames };
+  return { load, difficulty, difficultyLine, crText, picker, claimNames, xp: id => byId(id)?.xp || 0 };
 })();

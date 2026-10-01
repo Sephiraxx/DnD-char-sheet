@@ -246,6 +246,7 @@ const TableUI = (() => {
       party = p;
       feed = ev;
       error = '';
+      setTimeout(sessionSummary, 600);
     } catch (e) {
       error = e.message;
     }
@@ -333,6 +334,19 @@ const TableUI = (() => {
         return `El DM anunció un descanso ${p.type === 'long' ? 'largo' : 'corto'}. Confirmá cómo lo resolvés.`;
       case 'level':
         return 'El DM te habilitó a subir de nivel. Usá «Subir de nivel» en Clase.';
+      case 'xp': {
+        const amount = n(p.amount);
+        if (!amount) return '';
+        const before = Number(state.xp) || 0;
+        commit('DM: experiencia +' + amount + ' PX' + (p.session ? ' (sesión ' + p.session + ')' : ''), s => {
+          s.xp = before + amount;
+        });
+        const next = R.xpNext?.(state);
+        return (
+          `Recibiste ${amount} PX (total ${state.xp}).` +
+          (next && state.xp >= next ? ' ¡Te alcanza para subir de nivel!' : '')
+        );
+      }
       case 'bonus-die': {
         const die = [4, 6, 8, 10, 12].includes(Number(p.die)) ? Number(p.die) : 0;
         if (!die) return '';
@@ -434,6 +448,8 @@ const TableUI = (() => {
       feed = [ev, ...feed.filter(x => x.id !== ev.id)].slice(0, 100);
       if (ev.target_character === l.characterId && Cloud.COMMANDS.includes(ev.kind)) applyCommands([ev]);
       else if (ev.kind === 'encounter-sync') refresh();
+      else if (ev.kind === 'session-start') toast('Empezó la sesión ' + ev.payload.n + '. ¡A jugar!');
+      else if (ev.kind === 'session-end') setTimeout(sessionSummary, 1500);
       else if (ev.kind === 'encounter-start') {
         EncounterFX.show(ev.payload);
         refresh();
@@ -518,6 +534,30 @@ const TableUI = (() => {
         }
       },
       'Continuar',
+    );
+  }
+
+  // Fin de sesión: un resumen por sesión (también al abrir la ficha más tarde). A quien no guardó su
+  // acceso con email se le pide que lo guarde para no perder la ficha si se borran los datos del navegador.
+  async function sessionSummary() {
+    const l = link();
+    if (!l || document.getElementById('modal').open || document.getElementById('creator')?.hidden === false) return;
+    const ev = feed.find(e => e.kind === 'session-end'),
+      seenKey = 'dnd-session-seen-' + l.campaignId;
+    if (!ev || ev.id <= Number(localStorage.getItem(seenKey) || 0)) return;
+    if (Date.now() - Date.parse(ev.created_at) > 14 * 864e5) return;
+    localStorage.setItem(seenKey, String(ev.id));
+    const p = ev.payload || {},
+      me = await Cloud.currentUser().catch(() => null),
+      exposed = !me || me.is_anonymous,
+      min = Number(p.minutes) || 0;
+    modal(
+      'Fin de la sesión ' + (p.n || ''),
+      `<p>Jugaron ${min >= 60 ? Math.floor(min / 60) + ' h ' + (min % 60) + ' min' : min + ' min'}.${p.xp ? ' Cada personaje recibe <b>' + PV.esc(p.xp) + ' PX</b>.' : ''}${p.levelUp ? ' <b>El DM habilitó la subida de nivel:</b> usá «Subir de nivel» en Clase.' : ''}</p>${p.notes ? `<blockquote class="session-notes">${PV.esc(p.notes)}</blockquote>` : ''}${
+        exposed
+          ? `<div class="banner"><p><b>Guardá tu acceso.</b> Tu ficha en la mesa vive solo en este navegador: si se borran sus datos o cambiás de celular, la perdés. Con un email y una contraseña la recuperás en cualquier dispositivo.</p>${button('Guardar mi acceso ahora', 'session-save-access', '')}</div>`
+          : '<p class="small">Tu acceso está guardado: tu ficha está a salvo.</p>'
+      }<div class="actions">${button('Descargar copia de mi ficha', 'backup', 'secondary')}</div>`,
     );
   }
 
@@ -711,6 +751,15 @@ const TableUI = (() => {
       characterId: () => link()?.characterId,
     });
     Object.assign(actions, {
+      // Desde el resumen de fin de sesión: lleva a «Tu acceso» en Mesa.
+      'session-save-access': () => {
+        document.getElementById('modal').close();
+        location.hash = 'table';
+        setTimeout(
+          () => document.getElementById('account-account')?.scrollIntoView({ block: 'center', behavior: 'smooth' }),
+          400,
+        );
+      },
       'table-refresh': () => refresh(),
       'table-leave': () =>
         confirmAction(

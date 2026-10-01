@@ -134,6 +134,9 @@
     'creature-save': ['⛨', 'k-dm'],
     'creature-save-result': ['⛨', ''],
     'encounter-start': ['⚔', 'k-damage'],
+    'session-start': ['▶', ''],
+    'session-end': ['■', ''],
+    xp: ['✦', 'k-dm'],
     'area-save': ['✺', 'k-damage'],
   };
   function eventText(ev, party) {
@@ -166,6 +169,12 @@
         return `<b>${esc(p.caster)}</b> lanza ${esc(p.spell)}: ${esc((p.targets || []).map(x => x.name).join(', '))} salvan ${esc(p.abilityName || p.ability)} contra CD ${esc(p.dc)}`;
       case 'area-save':
         return `<b>${esc(p.caster)}</b> · ${esc(p.spell)}: ${esc(target)} tira salvación de ${esc(p.abilityName || p.ability)} CD ${esc(p.dc)} (${esc(p.damage)} de daño${p.half ? ', mitad si salva' : ''})`;
+      case 'session-start':
+        return `<b>DM</b>: empieza la sesión ${esc(p.n)}`;
+      case 'session-end':
+        return `<b>DM</b>: fin de la sesión ${esc(p.n)}${p.minutes ? ' · ' + esc(p.minutes >= 60 ? Math.floor(p.minutes / 60) + ' h ' + (p.minutes % 60) + ' min' : p.minutes + ' min') : ''}${p.xp ? ' · ' + esc(p.xp) + ' PX por personaje' : ''}${p.levelUp ? ' · subida de nivel' : ''}`;
+      case 'xp':
+        return `<b>DM</b>: ${esc(target)} recibe ${esc(p.amount)} PX`;
       case 'encounter-start':
         return `<b>DM</b>: ${esc(p.cry || '¡Combate!')}${p.count ? ' · ' + esc(p.count) + (p.count === 1 ? ' enemigo' : ' enemigos') : ''}`;
       case 'creature-save-result':
