@@ -238,7 +238,7 @@ const MonsterUI = (() => {
       <details class="physical-dice"><summary>Uso mis propios dados</summary><div class="form-grid">${noAttack ? '' : field('Mi d20', 'myD20', '', 'number', 'min="1" max="20"')}${field('Suma del daño', 'myDamage', '', 'number', 'min="0" max="999"')}</div></details>
       <div class="actions">${noAttack ? '' : button('Tirar ataque', 'monster-roll-attack', '')}${button('Tirar daño', 'monster-roll-damage', noAttack ? '' : 'secondary')}</div>
       <div class="attack-log" id="attack-log"></div>
-      <div class="actions"><label class="check"><input type="checkbox" name="half">Mitad (salvación superada)</label>${button('Aplicar daño al objetivo', 'monster-apply', 'secondary', 'disabled id="monster-apply"')}</div>`,
+      <div class="form-grid apply-damage">${field('Daño a aplicar (podés ajustarlo)', 'applyAmount', '', 'number', 'min="0" max="9999" id="monster-amount" inputmode="numeric"')}<label class="check"><input type="checkbox" name="half">Mitad (salvación superada)</label></div><div class="actions">${button('Aplicar daño al objetivo', 'monster-apply', 'secondary', 'disabled id="monster-apply"')}</div><p class="small muted">Las tiradas del monstruo solo se ven en tu pantalla; la party ve el daño que aplicás.</p>`,
       null,
     );
   }
@@ -295,6 +295,8 @@ const MonsterUI = (() => {
       text = parts.map(p => `${p.rolls.join('+') || '—'}${p.mod ? ' ' + sign(p.mod) : ''} ${p.type}`).join(' · ');
     }
     panel.damage = total;
+    const amountField = document.getElementById('monster-amount');
+    if (amountField) amountField.value = total;
     logLine(`<b>Daño${crit ? ' crítico' : ''}:</b> ${esc(text)} = <b>${total}</b>`, 'damage');
     const btn = document.getElementById('monster-apply');
     if (btn) btn.disabled = false;
@@ -303,8 +305,12 @@ const MonsterUI = (() => {
     const fd = formData(),
       target = fd.get('target'),
       t = targets().find(x => x.id === target);
-    if (!t || !panel.damage) throw Error('Tirá el daño primero.');
-    const amount = fd.has('half') ? Math.floor(panel.damage / 2) : panel.damage;
+    const typed = fd.get('applyAmount');
+    const base = typed === null || typed === '' ? panel.damage : Number(typed);
+    if (!t) throw Error('Elegí un objetivo.');
+    if (!Number.isInteger(base) || base < 0 || base > 9999) throw Error('Revisá el daño a aplicar.');
+    if (!base && !panel.damage) throw Error('Tirá el daño o escribí cuánto aplicar.');
+    const amount = fd.has('half') ? Math.floor(base / 2) : base;
     if (amount > 0)
       await send(
         'damage',
@@ -313,6 +319,7 @@ const MonsterUI = (() => {
       );
     logLine(`Aplicado: ${amount} de daño a ${esc(t.name)}.`);
     document.getElementById('monster-apply').disabled = true;
+    document.getElementById('monster-amount').value = '';
     panel.damage = 0;
   }
   async function askSave(entryId, kind, name) {
@@ -350,6 +357,10 @@ const MonsterUI = (() => {
     'monster-save': e => askSave(e.dataset.entry, e.dataset.kind, e.dataset.name),
   });
   document.addEventListener('input', e => {
+    if (e.target.id === 'monster-amount') {
+      const btn = document.getElementById('monster-apply');
+      if (btn) btn.disabled = e.target.value === '';
+    }
     if (e.target.id === 'monster-q') {
       query = e.target.value;
       drawResults();
