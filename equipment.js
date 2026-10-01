@@ -33,6 +33,7 @@ const Equipment = (() => {
           : []);
       if (got.includes(type)) return true;
     }
+    if (type === 'light' && traits.includes('Martial Training')) return true;
     if (
       ['light', 'medium'].includes(type) &&
       (traits.includes('Dwarven Armor Training') ||
@@ -244,6 +245,21 @@ const Equipment = (() => {
         label: 'Resistencia dracónica',
         value: 13 + m.dex,
         formula: '13 ' + sg(m.dex) + ' DES',
+      });
+    // Armadura natural de otros linajes (Volo, Monsters of the Multiverse, Spelljammer…): sin armadura, admite escudo.
+    const natural = {
+      Lizardfolk: [13, 'dex', 'Armadura natural de hombre lagarto'],
+      Locathah: [12, 'dex', 'Armadura natural de locathah'],
+      Autognome: [13, 'dex', 'Carcasa blindada de autognomo'],
+      'Thri-kreen': [13, 'dex', 'Caparazón camaleónico de thri-kreen'],
+      Tortle: [17, null, 'Armadura natural de tortuguino'],
+    }[race?.english];
+    if (natural && !worn)
+      candidates.push({
+        id: 'natural',
+        label: natural[2],
+        value: natural[0] + (natural[1] ? m[natural[1]] : 0),
+        formula: String(natural[0]) + (natural[1] ? ' ' + sg(m[natural[1]]) + ' DES' : ' (sin DES)'),
       });
     if (race?.id === 'loxodon-base-GGR')
       candidates.push({
