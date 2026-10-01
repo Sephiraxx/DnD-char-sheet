@@ -137,6 +137,8 @@ function tracker() {
 // Cambios del encuentro: se guardan en la base y se recarga la mesa.
 async function encounterChange(fn) {
   await fn();
+  // Los jugadores no reciben cambios de filas que dejan de ver (criaturas ocultas): este aviso los hace recargar.
+  Cloud.post(current, 'encounter-sync', {}).catch(() => {});
   await refresh();
 }
 const notesKey = () => 'dnd-dm-notes-' + current;
@@ -369,7 +371,7 @@ function initiativeCard(t) {
       return `<li class="${i === t.turn ? 'current' : ''} ${down ? 'down' : ''} ${e.hidden ? 'hidden-combatant' : ''}"><span class="init">${e.init ?? '—'}</span><span class="who"><b>${e.monsterId ? `<button type="button" class="text-btn monster-name" data-action="monster-open" data-entry="${e.id}">${esc(e.name)}</button>` : esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
         e.characterId
           ? button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)
-          : `<input type="number" aria-label="PG de ${esc(e.name)}" data-monster-hp="${e.id}" value="${e.hp ?? ''}" min="0" max="99999">/${e.max ?? '—'}${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}${button(e.hidden ? 'Mostrar' : 'Ocultar', 'init-hide', 'text-btn', `data-entry="${e.id}"`)}`
+          : `<input type="number" aria-label="PG de ${esc(e.name)}" data-monster-hp="${e.id}" value="${e.hp ?? ''}" min="0" max="99999">/${e.max ?? '—'}${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}${button('Estados', 'init-conditions', 'text-btn', `data-entry="${e.id}"`)}${button(e.hidden ? 'Mostrar' : 'Ocultar', 'init-hide', 'text-btn', `data-entry="${e.id}"`)}`
       }${button('×', 'init-remove', 'text-btn', `data-entry="${e.id}" aria-label="Quitar ${esc(e.name)}"`)}</span></li>`;
     })
     .join('');
@@ -388,7 +390,7 @@ function feedCard() {
       responses.set(e.payload.requestId, list);
     }
   const items = feed
-    .filter(e => e.kind !== 'initiative')
+    .filter(e => e.kind !== 'initiative' && e.kind !== 'encounter-sync')
     .filter(e => e.kind !== 'roll-response' || !feed.some(r => r.id === e.payload.requestId))
     .slice(0, 60)
     .map(e => {
@@ -708,6 +710,15 @@ const actions = {
     );
   },
   'init-remove': e => encounterChange(() => Cloud.removeCombatant(e.dataset.entry)),
+  'init-conditions': e => {
+    const entry = tracker().entries.find(x => x.id === e.dataset.entry);
+    modal(
+      'Estados de ' + entry.name,
+      `<div class="chips">${CONDITIONS.map(c => `<label class="check"><input type="checkbox" name="c" value="${c}" ${entry.conditions.includes(c) ? 'checked' : ''}>${c}</label>`).join('')}</div><p class="small">Los jugadores ven los estados de la criatura en la iniciativa.</p>`,
+      fd => encounterChange(() => Cloud.updateCombatant(entry.id, { conditions: fd.getAll('c') })),
+      'Aplicar',
+    );
+  },
   'init-hide': e => {
     const entry = tracker().entries.find(x => x.id === e.dataset.entry);
     return encounterChange(() => Cloud.updateCombatant(entry.id, { hidden: !entry.hidden }));

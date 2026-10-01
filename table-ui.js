@@ -149,7 +149,7 @@ const TableUI = (() => {
     return `<div class="initiative-strip">${e.active ? `<b>Ronda ${e.round}</b>` : '<b>Iniciativa</b>'}${e.entries
       .map(
         x =>
-          `<span class="chip ${x.current ? 'current' : ''} ${x.status === 'derrotado' ? 'defeated' : ''}">${x.init ?? '—'} · ${PV.esc(x.name)}${x.characterId && x.characterId === mine ? ' (vos)' : ''}${x.kind === 'monster' ? ` <em class="status-${x.status.replace(/ /g, '-')}">${CREATURE_STATUS[x.status] || x.status}</em>` : ''}</span>`,
+          `<span class="chip ${x.current ? 'current' : ''} ${x.status === 'derrotado' ? 'defeated' : ''}">${x.init ?? '—'} · ${PV.esc(x.name)}${x.characterId && x.characterId === mine ? ' (vos)' : ''}${x.kind === 'monster' ? ` <em class="status-${x.status.replace(/ /g, '-')}">${CREATURE_STATUS[x.status] || x.status}</em>` : ''}${x.conditions.length ? ` <em class="chip-conds">${PV.esc(x.conditions.join(', '))}</em>` : ''}</span>`,
       )
       .join('')}</div>`;
   }
@@ -215,7 +215,7 @@ const TableUI = (() => {
       `<div class="party-grid">${cards}</div>${party ? TableExtras.playerHtml(party, mine) : ''}<section class="card section-space"><div class="card-header"><h2>En la mesa</h2>${button('Tirar dados', 'dice')}</div><div class="log table-feed">${
         feed.length
           ? feed
-              .filter(e => e.kind !== 'initiative')
+              .filter(e => e.kind !== 'initiative' && e.kind !== 'encounter-sync')
               .slice(0, 40)
               .map(
                 e =>
@@ -417,8 +417,11 @@ const TableUI = (() => {
       const ev = payload.new;
       feed = [ev, ...feed.filter(x => x.id !== ev.id)].slice(0, 100);
       if (ev.target_character === l.characterId && Cloud.COMMANDS.includes(ev.kind)) applyCommands([ev]);
-      else if (ev.kind === 'turn' || ev.kind === 'combat-end') onTurn(ev);
-      else if (ev.kind === 'roll-request' && (!ev.target_character || ev.target_character === l.characterId))
+      else if (ev.kind === 'encounter-sync') refresh();
+      else if (ev.kind === 'turn' || ev.kind === 'combat-end') {
+        onTurn(ev);
+        refresh();
+      } else if (ev.kind === 'roll-request' && (!ev.target_character || ev.target_character === l.characterId))
         toast('El DM pide: ' + ev.payload.label);
       else if (ev.kind === 'note' && ev.target_character === l.characterId) toast('Mensaje del DM: ' + ev.payload.text);
       redraw();

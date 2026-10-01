@@ -259,7 +259,8 @@ const RollUI = (() => {
       attack: (sp.attackKind || []).length > 0,
       save: ABILITY_ES[(sp.saveAbility || [])[0]] || '',
       saveName: (sp.saveAbility || [])[0] || '',
-      dice: m ? count + 'd' + sides : '',
+      // Solo cuentan como daño los dados de conjuros con tipo de daño (o curación): el 1d4 de Bendecir es un bono.
+      dice: m && (heal || (sp.damageTypes || []).length) ? count + 'd' + sides : '',
       heal,
       addMod: /modificador de lanzamiento|spellcasting ability modifier/i.test(all),
       types: (sp.damageTypes || []).join(', '),

@@ -745,3 +745,6 @@ label.check:has(input[name='heroic']:checked) {
 .saves-card {
   border-color: #ab8a50;
 }
+.initiative-strip .chip-conds {
+  color: var(--red);
+}
