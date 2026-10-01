@@ -1,7 +1,7 @@
 /* Tarjeta con el resultado de una tirada: el número «rueda» un instante y se asienta. Tocala para cerrarla. */
 const RollFX = (() => {
   'use strict';
-  let timer, ticker;
+  let timer, ticker, settle;
   const esc = v =>
     String(v ?? '').replace(
       /[&<>"']/g,
@@ -19,6 +19,7 @@ const RollFX = (() => {
     setTimeout(() => card.remove(), 200);
   }
   // face: d20 que quedó (número) o un símbolo; total: resultado final.
+  // Devuelve una promesa que se cumple cuando el número queda fijo (para mostrar el resultado en otros lados).
   function show({ label, total, face = '', detail = '', crit = false, fumble = false }) {
     const host = document.querySelector('dialog[open]') || document.body;
     let box = document.getElementById('roll-fx');
@@ -33,6 +34,10 @@ const RollFX = (() => {
     }
     clearTimeout(timer);
     clearTimeout(ticker);
+    settle?.();
+    let done;
+    const landed = new Promise(r => (done = r));
+    settle = done;
     const tag = crit ? '¡Crítico!' : fumble ? 'Pifia' : '';
     box.innerHTML = `<button type="button" class="roll-card ${crit ? 'crit' : fumble ? 'fumble' : ''}" aria-label="${esc(label)}: ${esc(total)}. Tocá para cerrar."><span class="roll-icon">${D20}<b>${esc(face)}</b></span><span class="roll-label">${esc(label)}${tag ? `<span class="roll-tag">${tag}</span>` : ''}</span><span class="roll-total">${esc(total)}</span>${detail ? `<span class="roll-detail">${esc(detail)}</span>` : ''}</button>`;
     const card = box.firstElementChild,
@@ -52,6 +57,8 @@ const RollFX = (() => {
           if (dieOut) dieOut.textContent = face;
           card.classList.remove('rolling');
           card.classList.add('settled');
+          settle = null;
+          done();
           return;
         }
         out.textContent = Math.max(0, Math.round(final + (Math.random() - 0.5) * spread));
@@ -59,8 +66,13 @@ const RollFX = (() => {
         ticker = setTimeout(tick, steps[i++]);
       };
       tick();
-    } else card.classList.add('settled');
+    } else {
+      card.classList.add('settled');
+      settle = null;
+      done();
+    }
     timer = setTimeout(() => hide(box), 4000);
+    return landed;
   }
   return { show };
 })();

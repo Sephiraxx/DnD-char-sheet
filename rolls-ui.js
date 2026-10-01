@@ -310,10 +310,7 @@ const RollUI = (() => {
     if (own) own.value = '';
     const crit = r.kept === 20,
       miss = r.kept === 1;
-    logLine(
-      `<b>Ataque:</b> ${diceText(r)} ${sign(st.attack)}${extra.text} = <b>${total}</b>${crit ? ' · <b>¡Crítico!</b> (el daño duplica dados)' : miss ? ' · Pifia: falla' : ''}`,
-      crit ? 'crit' : miss ? 'fumble' : '',
-    );
+    const line = `<b>Ataque:</b> ${diceText(r)} ${sign(st.attack)}${extra.text} = <b>${total}</b>${crit ? ' · <b>¡Crítico!</b> (el daño duplica dados)' : miss ? ' · Pifia: falla' : ''}`;
     RollFX.show({
       label: 'Ataque · ' + sp.name,
       total,
@@ -321,7 +318,7 @@ const RollUI = (() => {
       detail: diceText(r) + ' ' + sign(st.attack) + extra.text,
       crit,
       fumble: miss,
-    });
+    }).then(() => logLine(line, crit ? 'crit' : miss ? 'fumble' : ''));
     commit(`${sp.name}: ataque ${diceText(r)} ${sign(st.attack)}${extra.text} = ${total}`, s => {
       if (r.heroic) s.heroicInspiration = false;
       spendBonus(s, extra.ids);
@@ -357,17 +354,14 @@ const RollUI = (() => {
     }
     const total = Math.max(0, sum + mod),
       what = info.heal ? 'Curación' : 'Daño';
-    logLine(
-      `<b>${what}${spellSession.crit ? ' crítico' : ''}:</b> ${rolls.length ? rolls.join('+') : 'dados físicos ' + sum}${mod ? ' ' + sign(mod) : ''} = <b>${total}</b>${info.types ? ' ' + esc(info.types) : ''}`,
-      'damage',
-    );
+    const line = `<b>${what}${spellSession.crit ? ' crítico' : ''}:</b> ${rolls.length ? rolls.join('+') : 'dados físicos ' + sum}${mod ? ' ' + sign(mod) : ''} = <b>${total}</b>${info.types ? ' ' + esc(info.types) : ''}`;
     RollFX.show({
       label: what + ' · ' + sp.name,
       total,
       face: info.heal ? '✚' : '✦',
       detail: rolls.length ? rolls.join(' + ') + (mod ? ' ' + sign(mod) : '') : 'dados físicos',
       crit: spellSession.crit,
-    });
+    }).then(() => logLine(line, 'damage'));
     commit(`${sp.name}: ${what.toLowerCase()} ${total}${rolls.length ? '' : ' (dados físicos)'}`, () => {});
     TableUI.shareRoll({
       label: what + ' de ' + sp.name + (spellSession.crit ? ' (crítico)' : ''),

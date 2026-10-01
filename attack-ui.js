@@ -127,6 +127,10 @@ const AttackUI = (() => {
       (r.rolls.length > 1 ? `d20 ${r.rolls.join(' / ')} → ${r.kept}` : `d20 ${r.kept}`) +
       (r.physical ? ' (dado físico)' : '') +
       extra.text;
+    const entry = {
+      html: `<b>${label}:</b> ${dice} ${sign(p.toHit)} = <b>${r.total}</b>${r.crit ? ' · <b>¡Crítico!</b>' : r.fumble ? ' · Pifia: falla automáticamente' : ''}${session.attacks > n ? ' <span class="muted">(más ataques que los de tu acción: confirmalo con el DM)</span>' : ''}`,
+      cls: r.crit ? 'crit' : r.fumble ? 'fumble' : '',
+    };
     RollFX.show({
       label: label + ' · ' + item.name,
       total: r.total,
@@ -134,10 +138,9 @@ const AttackUI = (() => {
       detail: dice + ' ' + sign(p.toHit),
       crit: r.crit,
       fumble: r.fumble,
-    });
-    session.log.unshift({
-      html: `<b>${label}:</b> ${dice} ${sign(p.toHit)} = <b>${r.total}</b>${r.crit ? ' · <b>¡Crítico!</b>' : r.fumble ? ' · Pifia: falla automáticamente' : ''}${session.attacks > n ? ' <span class="muted">(más ataques que los de tu acción: confirmalo con el DM)</span>' : ''}`,
-      cls: r.crit ? 'crit' : r.fumble ? 'fumble' : '',
+    }).then(() => {
+      session.log.unshift(entry);
+      drawLog();
     });
     commit(
       `${item.name}: ataque ${dice} ${sign(p.toHit)} = ${r.total}${r.crit ? ' (crítico)' : ''}${heroic ? ' (Inspiración)' : ''}`,
@@ -156,7 +159,6 @@ const AttackUI = (() => {
       total: r.total,
       physical: Boolean(r.physical),
     });
-    drawLog();
   }
 
   function damage() {
@@ -174,11 +176,16 @@ const AttackUI = (() => {
           .filter(x => x.rolls.length)
           .map(x => `${x.rolls.join('+')} ${esc(x.label)}`)
           .join(' · ');
-    RollFX.show({ label: 'Daño · ' + item.name, total: dmg.total, face: '⚔', detail: parts || 'fijo', crit });
-    session.log.unshift({
+    const entry = {
       html: `<b>Daño${crit ? ' crítico' : ''}:</b> ${parts || 'fijo'}${p.dmgMod ? ' ' + sign(p.dmgMod) : ''} = <b>${dmg.total}</b>`,
       cls: 'damage',
-    });
+    };
+    RollFX.show({ label: 'Daño · ' + item.name, total: dmg.total, face: '⚔', detail: parts || 'fijo', crit }).then(
+      () => {
+        session.log.unshift(entry);
+        drawLog();
+      },
+    );
     session.last = null;
     commit(`${item.name}: daño ${dmg.total}${crit ? ' (crítico)' : ''}`, () => {});
     TableUI.shareRoll({
@@ -188,7 +195,8 @@ const AttackUI = (() => {
       total: dmg.total,
       physical: Boolean(dmg.physical),
     });
-    drawLog();
+    const btn = document.querySelector('[data-action=attack-damage]');
+    if (btn) btn.disabled = true;
   }
 
   // Lee y vacía un campo de dado físico; null si quedó vacío.
