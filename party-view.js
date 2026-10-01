@@ -68,7 +68,7 @@
   }
 
   // Tarjeta de un integrante. `actions` es HTML extra (botones del DM).
-  function card(x, { actions = '', owner = '', mine = false, online = false } = {}) {
+  function card(x, { actions = '', owner = '', mine = false, online = false, showGold = false } = {}) {
     if (x.broken)
       return `<article class="card party-card"><h3>${esc(x.name)}</h3><p class="muted">No se pudo leer esta ficha.</p>${actions}</article>`;
     const hpKnown = x.hp !== null && x.hp !== undefined;
@@ -86,6 +86,7 @@
       <div class="party-ac" title="Clase de armadura"><b>${x.ac}</b><span>CA</span></div></div>
       <div class="party-hp"><div class="meter" aria-hidden="true"><span style="width:${pct}%"></span></div><p><b>${hpKnown ? x.hp : '—'}</b> / ${x.maxHP} PG${x.temp ? ` · +${x.temp} temp.` : ''}</p></div>
       <dl class="party-stats"><div><dt>Iniciativa</dt><dd>${sign(x.initiative)}</dd></div><div><dt>Percepción pasiva</dt><dd>${x.passive.perception}</dd></div><div><dt>Perspicacia pasiva</dt><dd>${x.passive.insight}</dd></div><div><dt>CD</dt><dd>${x.dc}</dd></div></dl>
+      ${showGold && x.gold ? `<p class="small party-gold">Bolsa: ${esc(goldText(x.gold) === '0 po' ? 'vacía' : goldText(x.gold))}</p>` : ''}
       ${x.slots.length ? `<p class="small party-slots">Espacios: ${x.slots.map(s => `<span title="Nivel ${s.level}">${s.level}º ${s.left ?? '?'}/${s.max}</span>`).join(' · ')}</p>` : ''}
       ${chips ? `<div class="chips">${chips}</div>` : ''}
       ${actions}
@@ -123,6 +124,8 @@
         return `<b>DM</b>: descanso ${p.type === 'long' ? 'largo' : 'corto'}${target ? ' para ' + esc(target) : ''}`;
       case 'gold':
         return `<b>DM</b>: ${esc(target)} recibe ${esc(goldText(p))}`;
+      case 'gold-remove':
+        return `<b>DM</b>: ${esc(target)} paga ${esc(goldText(p))}`;
       case 'item':
         return `<b>DM</b>: ${esc(target)} recibe ${esc(p.qty > 1 ? p.qty + ' × ' : '')}${esc(p.name)}`;
       case 'effect':
@@ -140,6 +143,38 @@
       default:
         return esc(ev.kind);
     }
+  }
+  // Cobrar monedas: paga con lo que hay y da cambio (rompe monedas grandes si hace falta).
+  // Devuelve la bolsa nueva o null si no alcanza.
+  const VALUE = { cp: 1, sp: 10, ep: 50, gp: 100, pp: 1000 };
+  function pay(gold, cost) {
+    const g = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0, ...gold };
+    const total = o => Object.entries(VALUE).reduce((a, [k, v]) => a + (o[k] || 0) * v, 0);
+    let due = total(cost);
+    if (due > total(g)) return null;
+    // Primero, las mismas monedas que se piden.
+    for (const k of Object.keys(VALUE)) {
+      const use = Math.min(g[k], cost[k] || 0);
+      g[k] -= use;
+      due -= use * VALUE[k];
+    }
+    // Después, otras monedas de menor a mayor sin pasarse.
+    for (const k of ['cp', 'sp', 'ep', 'gp', 'pp']) {
+      const use = Math.min(g[k], Math.floor(due / VALUE[k]));
+      g[k] -= use;
+      due -= use * VALUE[k];
+    }
+    // Si queda algo, se paga con la moneda más chica que alcance y se recibe cambio.
+    if (due > 0) {
+      const k = ['cp', 'sp', 'ep', 'gp', 'pp'].find(c => g[c] > 0 && VALUE[c] >= due);
+      g[k]--;
+      let change = VALUE[k] - due;
+      for (const c of ['gp', 'sp', 'cp']) {
+        g[c] += Math.floor(change / VALUE[c]);
+        change %= VALUE[c];
+      }
+    }
+    return g;
   }
   function goldText(p) {
     return (
@@ -165,6 +200,7 @@
       .join('')}</div>`;
   }
   root.PartyView = {
+    pay,
     initiative,
     initiativeStrip,
     esc,

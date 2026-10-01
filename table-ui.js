@@ -250,6 +250,13 @@ const TableUI = (() => {
           for (const k of ['cp', 'sp', 'ep', 'gp', 'pp']) s.gold[k] = Math.min(9999999, s.gold[k] + n(p[k]));
         });
         return 'El DM te dio ' + PV.goldText(p) + '.';
+      case 'gold-remove': {
+        const cost = Object.fromEntries(['cp', 'sp', 'ep', 'gp', 'pp'].map(k => [k, n(p[k])]));
+        const next = PV.pay(state.gold, cost);
+        if (!next) return 'El DM te cobró ' + PV.goldText(cost) + ', pero no te alcanza. Arreglalo con el DM.';
+        commit('DM: pagaste ' + PV.goldText(cost), s => (s.gold = next));
+        return 'Pagaste ' + PV.goldText(cost) + '.';
+      }
       case 'item': {
         const name = String(p.name || '')
           .trim()

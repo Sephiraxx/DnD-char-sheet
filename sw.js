@@ -1,5 +1,5 @@
 const PREFIX = 'darien:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v18-table-tools';
+const CACHE = PREFIX + 'v19-monsters';
 const FILES = [
   './',
   './index.html',
@@ -38,6 +38,7 @@ const FILES = [
   './rolls-ui.js',
   './dm.html',
   './dm.js',
+  './monsters-ui.js',
   './vendor/supabase.js',
 ];
 self.addEventListener('install', event => {

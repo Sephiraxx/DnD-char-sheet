@@ -50,9 +50,10 @@ function modal(title, html, submit, saveLabel = 'Enviar') {
   const d = $('#modal');
   if (d.open) d.close();
   $('#modal-content').innerHTML =
-    `<div class="modal-head"><h2 id="dialog-title">${esc(title)}</h2><button type="button" class="icon-btn" data-close aria-label="Cerrar">×</button></div><form id="dialog-form"><div class="modal-body">${html}<p class="form-error" id="form-error" role="alert"></p><div class="modal-actions"><button type="button" class="button secondary" data-close>Cancelar</button><button class="button" type="submit">${esc(saveLabel)}</button></div></div></form>`;
+    `<div class="modal-head"><h2 id="dialog-title">${esc(title)}</h2><button type="button" class="icon-btn" data-close aria-label="Cerrar">×</button></div><form id="dialog-form"><div class="modal-body">${html}<p class="form-error" id="form-error" role="alert"></p>${submit ? `<div class="modal-actions"><button type="button" class="button secondary" data-close>Cancelar</button><button class="button" type="submit">${esc(saveLabel)}</button></div>` : ''}</div></form>`;
   $('#dialog-form').addEventListener('submit', async e => {
     e.preventDefault();
+    if (!submit) return;
     const btn = e.currentTarget.querySelector('button[type=submit]');
     btn.disabled = true;
     try {
@@ -232,8 +233,9 @@ function draw() {
             .map(({ row, x }) =>
               PV.card(x, {
                 owner: party.members.find(m => m.user_id === row.owner_id)?.display_name,
+                showGold: true,
                 online: online.some(p => p.characterId === row.id),
-                actions: `<div class="party-actions">${button('PG', 'hp', 'secondary', `data-id="${row.id}"`)}${button('Estados', 'conditions', 'secondary', `data-id="${row.id}"`)}${button(x.heroic ? '★ Quitar Insp.' : '★ Inspiración', 'inspire', 'secondary', `data-id="${row.id}" data-on="${x.heroic ? '' : '1'}"`)}${button('Dado', 'bonus-die', 'secondary', `data-id="${row.id}"`)}${button('Tirada', 'request', 'secondary', `data-id="${row.id}"`)}${button('Dar', 'give', 'secondary', `data-id="${row.id}"`)}${button('Mensaje', 'message', 'secondary', `data-id="${row.id}"`)}${button('Más', 'more', 'secondary', `data-id="${row.id}"`)}</div>`,
+                actions: `<div class="party-actions">${button('PG', 'hp', 'secondary', `data-id="${row.id}"`)}${button('Estados', 'conditions', 'secondary', `data-id="${row.id}"`)}${button(x.heroic ? '★ Quitar Insp.' : '★ Inspiración', 'inspire', 'secondary', `data-id="${row.id}" data-on="${x.heroic ? '' : '1'}"`)}${button('Dado', 'bonus-die', 'secondary', `data-id="${row.id}"`)}${button('Tirada', 'request', 'secondary', `data-id="${row.id}"`)}${button('Oro y objetos', 'give', 'secondary', `data-id="${row.id}"`)}${button('Mensaje', 'message', 'secondary', `data-id="${row.id}"`)}${button('Más', 'more', 'secondary', `data-id="${row.id}"`)}</div>`,
               }),
             )
             .join('')
@@ -279,7 +281,7 @@ function initiativeCard(t) {
         ? `${x.hp ?? '—'}/${x.maxHP} PG · CA ${x.ac}${x.conditions.length ? ' · ' + esc(x.conditions.join(', ')) : ''}`
         : `CA ${e.ac ?? '—'}`;
       const down = x ? x.hp === 0 : e.hp === 0;
-      return `<li class="${i === t.turn ? 'current' : ''} ${down ? 'down' : ''}"><span class="init">${e.init ?? '—'}</span><span class="who"><b>${esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
+      return `<li class="${i === t.turn ? 'current' : ''} ${down ? 'down' : ''}"><span class="init">${e.init ?? '—'}</span><span class="who"><b>${e.monsterId ? `<button type="button" class="text-btn monster-name" data-action="monster-open" data-entry="${e.id}">${esc(e.name)}</button>` : esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
         e.characterId
           ? button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)
           : `<input type="number" aria-label="PG de ${esc(e.name)}" data-monster-hp="${e.id}" value="${e.hp ?? ''}" min="0" max="99999">/${e.max ?? '—'}${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}`
@@ -287,8 +289,8 @@ function initiativeCard(t) {
     })
     .join('');
   return `<section class="card"><div class="card-header"><h2>Iniciativa${t.round ? ' · ronda ' + t.round : ''}</h2></div>
-  <div class="actions">${button('Agregar party', 'init-party')}${button('Pedir iniciativa', 'init-request')}${button('Agregar criatura', 'init-monster')}</div>
-  ${items ? `<ol class="initiative-list section-space">${items}</ol>` : '<p class="muted section-space">Agregá a la party y a las criaturas. Las tiradas de iniciativa de los jugadores se completan solas.</p>'}
+  <div class="actions">${button('Agregar party', 'init-party')}${button('Pedir iniciativa', 'init-request')}${button('Monstruo del SRD', 'init-monster-srd')}${button('Criatura propia', 'init-monster')}</div>
+  ${typeof MonsterUI !== 'undefined' ? MonsterUI.difficultyLine(t) : ''}${items ? `<ol class="initiative-list section-space">${items}</ol>` : '<p class="muted section-space">Agregá a la party y a las criaturas. Las tiradas de iniciativa de los jugadores se completan solas.</p>'}
   ${t.entries.length ? `<div class="actions section-space">${button(t.turn < 0 ? 'Empezar combate' : 'Siguiente turno', 'init-next', '')}${t.turn >= 0 ? button('Terminar combate', 'init-end') : ''}${button('Vaciar', 'init-clear')}</div>` : ''}</section>`;
 }
 
@@ -434,18 +436,26 @@ const actions = {
     );
   },
   give: e => {
-    const id = e.dataset.id;
+    const id = e.dataset.id,
+      x = PV.summarize(characterById(id).data),
+      names = { pp: 'Platino', gp: 'Oro', ep: 'Electro', sp: 'Plata', cp: 'Cobre' };
     modal(
-      'Entregar a ' + targetName(id),
-      `<h3>Monedas</h3><div class="form-grid">${['pp', 'gp', 'ep', 'sp', 'cp'].map(k => field({ pp: 'Platino', gp: 'Oro', ep: 'Electro', sp: 'Plata', cp: 'Cobre' }[k], k, '', 'number', 'min="0" max="999999"')).join('')}</div><h3>Objeto</h3>${field('Nombre', 'item', '', 'text', 'maxlength="150" placeholder="Poción de curación"')}<div class="form-grid">${field('Cantidad', 'qty', 1, 'number', 'min="1" max="999"')}</div><label class="field">Notas<textarea name="notes" maxlength="2000"></textarea></label>`,
+      'Monedas y objetos · ' + targetName(id),
+      `<p class="small">Bolsa actual: <b>${esc(PV.goldText(x.gold))}</b></p><h3>Monedas</h3><div class="actions"><label class="check"><input type="radio" name="mode" value="give" checked>Dar</label><label class="check"><input type="radio" name="mode" value="take">Cobrar</label></div><div class="form-grid">${['pp', 'gp', 'ep', 'sp', 'cp'].map(k => field(names[k], k, '', 'number', 'min="0" max="999999"')).join('')}</div><p class="small">Al cobrar, la ficha paga con las monedas que tenga y recibe el cambio.</p><h3>Objeto para entregar</h3>${field('Nombre', 'item', '', 'text', 'maxlength="150" placeholder="Poción de curación"')}<div class="form-grid">${field('Cantidad', 'qty', 1, 'number', 'min="1" max="999"')}</div><label class="field">Notas<textarea name="notes" maxlength="2000"></textarea></label>`,
       async fd => {
         const coins = Object.fromEntries(['pp', 'gp', 'ep', 'sp', 'cp'].map(k => [k, int(fd, k, 0, 999999, 0)]));
-        const item = String(fd.get('item')).trim();
-        if (!item && !Object.values(coins).some(Boolean)) throw Error('Indicá monedas o un objeto.');
-        if (Object.values(coins).some(Boolean)) await send('gold', coins, id);
+        const item = String(fd.get('item')).trim(),
+          any = Object.values(coins).some(Boolean);
+        if (!item && !any) throw Error('Indicá monedas o un objeto.');
+        if (any && fd.get('mode') === 'take') {
+          if (!PV.pay(x.gold, coins)) throw Error('No le alcanza: tiene ' + PV.goldText(x.gold) + '.');
+          await send('gold-remove', coins, id);
+        } else if (any) await send('gold', coins, id);
         if (item)
           await send('item', { name: item, qty: int(fd, 'qty', 1, 999, 1), notes: String(fd.get('notes')).trim() }, id);
+        toast('Listo.');
       },
+      'Aplicar',
     );
   },
   message: e => {
