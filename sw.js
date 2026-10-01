@@ -55,8 +55,14 @@ self.addEventListener('activate', event => {
 });
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET' || !event.request.url.startsWith(self.registration.scope)) return;
+  // Siempre revalida con el servidor: GitHub Pages permite reusar archivos 10 minutos y, tras una
+  // actualización, el navegador podía mezclar scripts nuevos y viejos. Un 304 cuesta casi nada.
+  const fresh =
+    event.request.mode === 'navigate'
+      ? new Request(event.request.url, { cache: 'no-cache', credentials: 'same-origin' })
+      : new Request(event.request, { cache: 'no-cache' });
   event.respondWith(
-    fetch(event.request)
+    fetch(fresh)
       .then(response => {
         if (response.ok) {
           const copy = response.clone();
