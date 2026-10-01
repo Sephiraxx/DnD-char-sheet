@@ -226,19 +226,64 @@
     rememberDmTable(c);
     return c;
   }
+  // ---------- Ajustes de la mesa (los elige el DM) ----------
+  const PENDING = 'dnd-pending-table-v1';
+  function cleanSettings(x) {
+    const known = Object.keys(root.CampaignData?.sources || {});
+    const sources = Array.isArray(x?.sources) ? x.sources.filter(k => known.includes(k)) : [];
+    const level = Number(x?.startLevel);
+    return {
+      sources: !sources.length
+        ? (root.CampaignData?.defaults || []).slice()
+        : sources.includes('PHB')
+          ? sources
+          : ['PHB', ...sources],
+      startLevel: Number.isInteger(level) && level >= 1 && level <= 20 ? level : 1,
+      rules: typeof x?.rules === 'string' ? x.rules.slice(0, 2000) : '',
+    };
+  }
+  async function updateSettings(id, settings) {
+    const clean = cleanSettings(settings);
+    const rows = check(await (await api()).from('campaigns').update({ settings: clean }).eq('id', id).select('id'));
+    if (!rows.length) throw Error('Solo el DM de la mesa puede cambiar sus ajustes.');
+    return clean;
+  }
+  // Unirse sin ficha: la mesa queda pendiente hasta crear el personaje.
+  async function joinOnly(code, display) {
+    await user();
+    const camp = check(await (await api()).rpc('join_campaign', { p_code: code, p_display: display }));
+    const pending = { campaignId: camp.id, name: camp.name, code: camp.code, settings: cleanSettings(camp.settings) };
+    localStorage.setItem(PENDING, JSON.stringify(pending));
+    return pending;
+  }
+  function pendingTable() {
+    try {
+      return JSON.parse(localStorage.getItem(PENDING) || 'null');
+    } catch {
+      return null;
+    }
+  }
+  function clearPending() {
+    localStorage.removeItem(PENDING);
+  }
   async function joinCampaign(code, display, key, state) {
     await user();
     const c = await api();
     const camp = check(await c.rpc('join_campaign', { p_code: code, p_display: display }));
+    return attach(key, state, camp);
+  }
+  // Sube la ficha a una mesa a la que ya se unió este acceso y la vincula.
+  async function attach(key, state, camp) {
+    const c = await api();
     const row = check(
       await c
         .from('characters')
-        .insert({ campaign_id: camp.id, name: state.name, data: state })
+        .insert({ campaign_id: camp.id || camp.campaignId, name: state.name, data: state })
         .select('id, updated_at')
         .single(),
     );
     setLink(key, {
-      campaignId: camp.id,
+      campaignId: camp.id || camp.campaignId,
       campaignName: camp.name,
       code: camp.code,
       characterId: row.id,
@@ -246,7 +291,7 @@
       dirty: false,
     });
     setStatus('synced');
-    return camp;
+    return { ...camp, settings: cleanSettings(camp.settings) };
   }
   async function leave(key) {
     const l = link(key);
@@ -331,7 +376,7 @@
     const c = await api();
     await user();
     const [campaign, members, characters] = await Promise.all([
-      c.from('campaigns').select('id, name, code, dm_id').eq('id', campaignId).maybeSingle().then(check),
+      c.from('campaigns').select('id, name, code, dm_id, settings').eq('id', campaignId).maybeSingle().then(check),
       c.from('members').select('user_id, role, display_name, joined_at').eq('campaign_id', campaignId).then(check),
       c
         .from('characters')
@@ -408,6 +453,12 @@
 
   root.Cloud = {
     enabled,
+    cleanSettings,
+    updateSettings,
+    joinOnly,
+    pendingTable,
+    clearPending,
+    attach,
     currentUser,
     linkEmail,
     sendLoginLink,

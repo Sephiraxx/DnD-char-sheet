@@ -78,6 +78,30 @@ const d20 = () => {
 };
 const sign = n => (n >= 0 ? '+' : '') + n;
 
+// ---------- Ajustes de la mesa ----------
+function settingsFields(st = Cloud.cleanSettings({})) {
+  return `<fieldset class="campaign-sources"><legend>Libros habilitados para crear y subir personajes</legend><div class="source-grid">${Object.entries(
+    CampaignData.sources,
+  )
+    .map(
+      ([id, n]) =>
+        `<label class="check"><input type="checkbox" name="source" value="${id}" ${st.sources.includes(id) ? 'checked' : ''} ${id === 'PHB' ? 'disabled' : ''}>${esc(n)}</label>`,
+    )
+    .join(
+      '',
+    )}</div><p class="small">El Manual del Jugador siempre queda habilitado. Los jugadores ven razas, trasfondos y opciones de estos libros.</p></fieldset><div class="form-grid">${field('Nivel inicial de los personajes', 'startLevel', st.startLevel, 'number', 'min="1" max="20" required')}</div><label class="field">Reglas de la casa (opcional)<textarea name="rules" maxlength="2000" placeholder="Puntos de golpe máximos en nivel 1, sin dotes, compra de puntos…">${esc(st.rules)}</textarea></label>`;
+}
+const readSettings = fd => ({
+  sources: ['PHB', ...fd.getAll('source')],
+  startLevel: Number(fd.get('startLevel')),
+  rules: String(fd.get('rules') || '').trim(),
+});
+function settingsSummary(st) {
+  const books =
+    st.sources.length === Object.keys(CampaignData.sources).length ? 'todos los libros' : st.sources.join(', ');
+  return `Libros: ${esc(books)} · Nivel inicial ${st.startLevel}${st.rules ? ' · Reglas de la casa' : ''}`;
+}
+
 // ---------- Iniciativa (se guarda solo en este dispositivo) ----------
 const initKey = () => 'dnd-dm-initiative-' + current;
 function tracker() {
@@ -177,7 +201,7 @@ function draw() {
   const list = summaries();
   const t = tracker();
   $('#main').innerHTML =
-    `<div class="heading"><div><p class="eyebrow">MESA EN VIVO</p><h1>${esc(party.campaign.name)}</h1><p>Código para unirse: <b class="table-code">${esc(party.campaign.code)}</b> · ${list.length} ficha${list.length === 1 ? '' : 's'}</p></div><div class="actions">${button('Pedir tirada a todos', 'request')}${button('Descanso corto', 'rest-short')}${button('Descanso largo', 'rest-long')}${button('Mensaje a todos', 'message')}${button('Mis mesas', 'home')}${button('Eliminar mesa', 'delete-table', 'danger', `data-id="${esc(party.campaign.id)}" data-name="${esc(party.campaign.name)}"`)}</div></div>
+    `<div class="heading"><div><p class="eyebrow">MESA EN VIVO</p><h1>${esc(party.campaign.name)}</h1><p>Código para unirse: <b class="table-code">${esc(party.campaign.code)}</b> · ${list.length} ficha${list.length === 1 ? '' : 's'}</p><p class="small">${settingsSummary(Cloud.cleanSettings(party.campaign.settings))}</p></div><div class="actions">${button('Pedir tirada a todos', 'request')}${button('Descanso corto', 'rest-short')}${button('Descanso largo', 'rest-long')}${button('Mensaje a todos', 'message')}${button('Ajustes de la mesa', 'settings')}${button('Mis mesas', 'home')}${button('Eliminar mesa', 'delete-table', 'danger', `data-id="${esc(party.campaign.id)}" data-name="${esc(party.campaign.name)}"`)}</div></div>
   ${error ? `<div class="banner"><p>${esc(error)}</p>${button('Reintentar', 'refresh')}</div>` : ''}
   <div class="dm-layout"><div class="stack">
     <div class="party-grid">${
@@ -203,7 +227,7 @@ function drawHome() {
   const tables = Cloud.dmTables();
   $('#main').innerHTML =
     `<div class="heading"><div><p class="eyebrow">PANTALLA DEL DM</p><h1>Tus mesas.</h1><p>Creá una mesa, compartí el código con la party y seguí sus fichas en vivo.</p></div></div>
-  <div class="columns"><section class="card"><h2>Nueva mesa</h2><form id="create-form" class="stack">${field('Nombre de la campaña', 'name', '', 'text', 'required maxlength="100" placeholder="La maldición de Strahd"')}${field('Tu nombre', 'display', 'DM', 'text', 'maxlength="100"')}<div class="actions"><button class="button" type="submit">Crear mesa</button></div><p class="form-error" id="create-error" role="alert">${esc(error)}</p></form></section>
+  <div class="columns"><section class="card"><h2>Nueva mesa</h2><form id="create-form" class="stack">${field('Nombre de la campaña', 'name', '', 'text', 'required maxlength="100" placeholder="La maldición de Strahd"')}${field('Tu nombre', 'display', 'DM', 'text', 'maxlength="100"')}${settingsFields()}<div class="actions"><button class="button" type="submit">Crear mesa</button></div><p class="form-error" id="create-error" role="alert">${esc(error)}</p></form></section>
   <section class="card"><h2>Abiertas en este dispositivo</h2>${
     tables.length
       ? `<div class="dm-tables">${tables.map(x => `<div class="list-row"><div><b>${esc(x.name)}</b><p class="small muted">Código ${esc(x.code)}</p></div><div class="actions">${button('Abrir', 'open', '', `data-id="${x.id}"`)}${button('Olvidar', 'forget', 'secondary', `data-id="${x.id}"`)}${button('Eliminar', 'delete-table', 'danger', `data-id="${x.id}" data-name="${esc(x.name)}"`)}</div></div>`).join('')}</div>`
@@ -288,6 +312,18 @@ const actions = {
     draw();
   },
   open: e => open(e.dataset.id),
+  settings: () =>
+    modal(
+      'Ajustes de la mesa',
+      settingsFields(Cloud.cleanSettings(party.campaign.settings)) +
+        '<p class="small">Los cambios valen para personajes nuevos y para las fichas que se unan desde ahora. Las fichas ya unidas conservan sus elecciones.</p>',
+      async fd => {
+        party.campaign.settings = await Cloud.updateSettings(current, readSettings(fd));
+        draw();
+        toast('Ajustes guardados.');
+      },
+      'Guardar',
+    ),
   'delete-table': e => {
     const { id, name } = e.dataset;
     modal(
@@ -576,7 +612,10 @@ document.addEventListener('submit', e => {
     out = $('#create-error');
   out.textContent = 'Creando…';
   Cloud.createCampaign(String(fd.get('name')).trim(), String(fd.get('display')).trim())
-    .then(c => open(c.id))
+    .then(async c => {
+      await Cloud.updateSettings(c.id, readSettings(fd));
+      open(c.id);
+    })
     .catch(err => (out.textContent = err.message));
 });
 window.addEventListener('hashchange', () => {
