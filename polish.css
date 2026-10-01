@@ -351,105 +351,136 @@ html {
 }
 
 /* ---------- Resultado de tiradas ---------- */
+/* Tarjeta sólida abajo al centro: ícono de d20, número que «rueda» y se asienta, desglose. */
 #roll-fx {
   position: fixed;
   left: 50%;
-  bottom: 110px;
+  bottom: 28px;
   z-index: 60;
-  pointer-events: none;
+  width: min(380px, calc(100vw - 32px));
   transform: translateX(-50%);
 }
 .roll-card {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 4px 16px;
+  grid-template-columns: 56px 1fr;
+  gap: 2px 14px;
   align-items: center;
-  min-width: 240px;
-  max-width: min(420px, 90vw);
-  padding: 14px 20px 14px 14px;
+  width: 100%;
+  padding: 14px 16px;
   border: 1px solid #3d5a61;
-  border-radius: 16px;
-  background: #13252bf2;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 18px 50px #000a;
-  animation: roll-in 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  border-radius: 14px;
+  background: #13252b;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 16px 40px #000b;
+  animation: roll-in 0.22s ease-out both;
 }
 .roll-card.leaving {
-  animation: roll-out 0.3s ease-in both;
+  animation: roll-out 0.2s ease-in both;
 }
-.roll-die {
-  grid-row: span 2;
-  width: 64px;
-  height: 64px;
+.roll-icon {
+  grid-row: span 3;
+  position: relative;
+  width: 56px;
+  height: 56px;
+  color: #3d5a61;
+}
+.roll-icon svg {
+  width: 100%;
+  height: 100%;
+}
+.roll-icon b {
+  position: absolute;
+  inset: 0;
   display: grid;
   place-items: center;
-  clip-path: polygon(50% 0, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%);
-  background: linear-gradient(160deg, #2a4a50, #142a2f);
+  padding-top: 2px;
   color: var(--text);
-  font-size: 1.5rem;
-  font-weight: 800;
-  animation: roll-spin 0.5s ease-out both;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
 }
 .roll-card .roll-label {
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted);
 }
 .roll-card .roll-total {
-  font-size: 1.9rem;
-  font-weight: 700;
+  font-size: 2rem;
+  font-weight: 750;
+  line-height: 1.05;
   font-variant-numeric: tabular-nums;
-  line-height: 1;
 }
 .roll-card .roll-detail {
-  grid-column: 2;
   font-size: 0.8rem;
   color: var(--muted);
+}
+.roll-card.settled .roll-total {
+  animation: roll-pop 0.25s ease-out;
+}
+.roll-tag {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  vertical-align: 2px;
 }
 .roll-card.crit {
   border-color: var(--gold);
   box-shadow:
-    0 0 0 1px #e0be8066,
-    0 0 40px #e0be8044,
-    0 18px 50px #000a;
+    0 0 0 1px #e0be8055,
+    0 16px 40px #000b;
 }
-.roll-card.crit .roll-die {
-  background: linear-gradient(160deg, #e0be80, #a07a3c);
+.roll-card.crit .roll-icon {
+  color: var(--gold);
+}
+.roll-card.crit .roll-total {
+  color: var(--gold);
+}
+.roll-card.crit .roll-tag {
+  background: var(--gold);
   color: #1d261f;
 }
 .roll-card.fumble {
   border-color: #7a4a48;
 }
-.roll-card.fumble .roll-die {
-  background: linear-gradient(160deg, #6a3236, #3b1f22);
+.roll-card.fumble .roll-icon,
+.roll-card.fumble .roll-total {
+  color: var(--red);
+}
+.roll-card.fumble .roll-tag {
+  background: #3b252b;
+  color: var(--red);
 }
 @keyframes roll-in {
   from {
     opacity: 0;
-    transform: translateY(24px) scale(0.92);
+    transform: translateY(14px);
   }
 }
 @keyframes roll-out {
   to {
     opacity: 0;
-    transform: translateY(12px) scale(0.96);
+    transform: translateY(10px);
   }
 }
-@keyframes roll-spin {
-  from {
-    transform: rotate(-200deg) scale(0.6);
+@keyframes roll-pop {
+  40% {
+    transform: scale(1.12);
   }
 }
 @media (max-width: 720px) {
   #roll-fx {
-    bottom: calc(92px + env(safe-area-inset-bottom));
+    bottom: calc(80px + env(safe-area-inset-bottom));
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .roll-card,
   .roll-card.leaving,
-  .roll-die {
+  .roll-card.settled .roll-total {
     animation: none;
   }
 }

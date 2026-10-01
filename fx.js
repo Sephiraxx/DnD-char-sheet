@@ -1,13 +1,24 @@
-/* Tarjeta animada con el resultado de una tirada. Se ve sobre la página o sobre el diálogo abierto. */
+/* Tarjeta con el resultado de una tirada: el número «rueda» un instante y se asienta. Tocala para cerrarla. */
 const RollFX = (() => {
   'use strict';
-  let timer;
+  let timer, ticker;
   const esc = v =>
     String(v ?? '').replace(
       /[&<>"']/g,
       c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
     );
-  // face: lo que va dentro del dado (el d20 que quedó o un símbolo); total: el resultado final.
+  const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Contorno de un d20 visto de frente: hexágono con el triángulo central.
+  const D20 =
+    '<svg viewBox="0 0 56 56" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M28 3 51 16v24L28 53 5 40V16Z"/><path d="M28 13 44 39H12Z"/><path d="M28 3v10M5 16l7 23M51 16l-7 23M12 39l16 14 16-14"/></g></svg>';
+
+  function hide(box) {
+    const card = box.firstElementChild;
+    if (!card) return;
+    card.classList.add('leaving');
+    setTimeout(() => card.remove(), 200);
+  }
+  // face: d20 que quedó (número) o un símbolo; total: resultado final.
   function show({ label, total, face = '', detail = '', crit = false, fumble = false }) {
     const host = document.querySelector('dialog[open]') || document.body;
     let box = document.getElementById('roll-fx');
@@ -17,16 +28,31 @@ const RollFX = (() => {
       box.id = 'roll-fx';
       box.setAttribute('role', 'status');
       box.setAttribute('aria-live', 'polite');
+      box.addEventListener('click', () => hide(box));
       host.append(box);
     }
     clearTimeout(timer);
-    box.innerHTML = `<div class="roll-card ${crit ? 'crit' : fumble ? 'fumble' : ''}"><span class="roll-die" aria-hidden="true">${esc(face || '✦')}</span><span class="roll-label">${esc(label)}${crit ? ' · ¡Crítico!' : fumble ? ' · Pifia' : ''}</span><span class="roll-total">${esc(total)}</span>${detail ? `<span class="roll-detail">${esc(detail)}</span>` : ''}</div>`;
-    timer = setTimeout(() => {
-      const card = box.firstElementChild;
-      if (!card) return;
-      card.classList.add('leaving');
-      setTimeout(() => card.remove(), 300);
-    }, 3200);
+    clearInterval(ticker);
+    const tag = crit ? '¡Crítico!' : fumble ? 'Pifia' : '';
+    box.innerHTML = `<button type="button" class="roll-card ${crit ? 'crit' : fumble ? 'fumble' : ''}" aria-label="${esc(label)}: ${esc(total)}. Tocá para cerrar."><span class="roll-icon">${D20}<b>${esc(face)}</b></span><span class="roll-label">${esc(label)}${tag ? `<span class="roll-tag">${tag}</span>` : ''}</span><span class="roll-total">${esc(total)}</span>${detail ? `<span class="roll-detail">${esc(detail)}</span>` : ''}</button>`;
+    const card = box.firstElementChild,
+      out = card.querySelector('.roll-total'),
+      final = Number(total);
+    // El total pasa por algunos valores al azar antes de mostrar el real.
+    if (!calm() && Number.isFinite(final)) {
+      let n = 0;
+      const spread = Math.max(6, Math.abs(final));
+      ticker = setInterval(() => {
+        if (++n >= 7) {
+          clearInterval(ticker);
+          out.textContent = total;
+          card.classList.add('settled');
+          return;
+        }
+        out.textContent = Math.max(0, Math.round(final + (Math.random() - 0.5) * spread));
+      }, 45);
+    } else card.classList.add('settled');
+    timer = setTimeout(() => hide(box), 4000);
   }
   return { show };
 })();
