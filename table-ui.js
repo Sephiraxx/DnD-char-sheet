@@ -97,6 +97,22 @@ const TableUI = (() => {
       .join('');
   }
 
+  // Pantalla inicial: unirse a una mesa antes de tener personaje.
+  function welcomeCard() {
+    const t = Cloud.pendingTable();
+    if (t)
+      return `<section class="card section-space"><h2>Mesa «${PV.esc(t.name)}»</h2><p>Ya estás en la mesa. Creá tu personaje: el creador usa los libros que eligió el DM (${PV.esc(t.settings.sources.join(', '))}) y empieza en nivel ${t.settings.startLevel}. Al terminar, la ficha se comparte con la mesa.</p>${t.settings.rules ? `<p class="small"><b>Reglas de la casa:</b> ${PV.esc(t.settings.rules)}</p>` : ''}<div class="actions">${button('Crear personaje para esta mesa', 'party-create', '')}${button('Cancelar', 'table-pending-cancel')}</div></section>`;
+    return `<section class="card section-space"><h2>¿Tu DM ya creó la mesa?</h2><p>Unite con el código y después creá tu personaje con las reglas de esa mesa.</p><form id="table-prejoin-form" class="stack">${field('Código de la mesa', 'code', '', 'text', 'required minlength="6" maxlength="6" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.2em"')}${field('Tu nombre (jugador)', 'display', '', 'text', 'maxlength="100" placeholder="Opcional"')}<div class="actions"><button class="button" type="submit">Unirme a la mesa</button></div><p class="form-error" id="table-prejoin-error" role="alert"></p></form></section>`;
+  }
+  // Libros y reglas de la mesa aplicados a una ficha que se une.
+  function applySettings(settings) {
+    if (!settings?.sources?.length) return;
+    commit('Libros de la mesa aplicados', s => {
+      s.campaignSources = settings.sources.slice();
+      s.progression.sources = settings.sources.slice();
+    });
+  }
+
   function page() {
     const intro = header('Tu mesa.', 'La party en vivo, las tiradas compartidas y las órdenes del DM.');
     if (!Cloud.enabled)
@@ -126,7 +142,7 @@ const TableUI = (() => {
     return (
       header(
         PV.esc(l.campaignName),
-        `Código <b class="table-code">${PV.esc(l.code)}</b>${dm ? ' · DM: ' + PV.esc(dm.display_name || 'sin nombre') : ''}`,
+        `Código <b class="table-code">${PV.esc(l.code)}</b>${dm ? ' · DM: ' + PV.esc(dm.display_name || 'sin nombre') : ''}${party ? '<br><span class="small">Libros de la mesa: ' + PV.esc(Cloud.cleanSettings(party.campaign.settings).sources.join(', ')) + (party.campaign.settings?.rules ? ' · Reglas de la casa: ' + PV.esc(party.campaign.settings.rules) : '') + '</span>' : ''}`,
         button('Actualizar', 'table-refresh') + button('Salir de la mesa', 'table-leave'),
       ) +
       (error && party ? `<div class="banner"><p>${PV.esc(error)}</p></div>` : '') +
@@ -372,8 +388,25 @@ const TableUI = (() => {
     );
   }
 
+  // Ficha recién creada para una mesa a la que el jugador se unió antes.
+  async function attachPending() {
+    const t = Cloud.pendingTable(),
+      id = localStorage.getItem('dnd-pending-attach-v1');
+    if (!t || !id || KEY !== 'dnd-character-' + id || link()) return;
+    localStorage.removeItem('dnd-pending-attach-v1');
+    try {
+      await Cloud.attach(KEY, state, t);
+      Cloud.clearPending();
+      toast('Tu ficha ya está en la mesa «' + t.name + '».');
+      connect();
+      render();
+    } catch (e) {
+      toast('No se pudo subir la ficha a la mesa: ' + e.message + ' Probá unirte desde Mesa.');
+    }
+  }
   function boot() {
     if (!state || !Cloud.enabled) return;
+    attachPending();
     if (!booted) Cloud.onStatus(showStatus);
     booted = true;
     showStatus();
@@ -456,6 +489,25 @@ const TableUI = (() => {
           'Salir',
         ),
       'table-answer': e => answer(e.dataset.id, Boolean(e.dataset.physical)),
+      'table-pending-cancel': () => {
+        Cloud.clearPending();
+        render();
+      },
+    });
+    document.addEventListener('submit', e => {
+      if (e.target.id !== 'table-prejoin-form') return;
+      e.preventDefault();
+      const fd = new FormData(e.target),
+        out = document.getElementById('table-prejoin-error'),
+        code = String(fd.get('code')).trim().toUpperCase();
+      if (!/^[A-Z0-9]{6}$/.test(code)) {
+        out.textContent = 'El código tiene 6 letras o números.';
+        return;
+      }
+      out.textContent = 'Conectando…';
+      Cloud.joinOnly(code, String(fd.get('display')).trim())
+        .then(() => render())
+        .catch(err => (out.textContent = err.message));
     });
     document.addEventListener('submit', e => {
       if (e.target.id !== 'table-join-form') return;
@@ -473,6 +525,7 @@ const TableUI = (() => {
       Cloud.joinCampaign(code, String(fd.get('display')).trim(), KEY, state)
         .then(c => {
           error = '';
+          applySettings(c.settings);
           toast('Te uniste a «' + c.name + '».');
           boot();
           render();
@@ -484,5 +537,5 @@ const TableUI = (() => {
     });
   }
 
-  return { page, boot, install, shareRoll, requestBanner, showStatus };
+  return { page, boot, install, welcomeCard, shareRoll, requestBanner, showStatus };
 })();

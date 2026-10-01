@@ -97,6 +97,12 @@ const PartyUI = (() => {
       armor: 10,
       bonus: 0,
     };
+    const table = window.Cloud?.pendingTable?.();
+    if (table) {
+      createDraft.campaignSources = table.settings.sources.slice();
+      createDraft.level = table.settings.startLevel;
+    }
+
     createStep = 0;
     drawCreate();
   }
@@ -148,6 +154,9 @@ const PartyUI = (() => {
       c = D.classes[d.classId],
       labels = ['Identidad', 'Características y clase', 'Equipo y recursos', 'Revisar'];
     let body = `<p class="eyebrow">PASO ${createStep + 1} DE 4 · ${labels[createStep]}</p>`;
+    const table = window.Cloud?.pendingTable?.();
+    if (table && createStep === 0)
+      body += `<div class="banner"><p><b>Mesa «${esc(table.name)}».</b> Libros del DM: ${esc(table.settings.sources.join(', '))}. Nivel inicial ${table.settings.startLevel}.${table.settings.rules ? ' Reglas de la casa: ' + esc(table.settings.rules) : ''}</p></div>`;
     if (createStep === 0)
       body += `<div class="form-grid">${field('Nombre', 'name', d.name, 'text', 'required maxlength="100"')}${select(
         'Clase (2014)',
@@ -191,6 +200,8 @@ const PartyUI = (() => {
         } else {
           const s = makeCharacter(createDraft);
           const id = CharacterStorage.add(s);
+          // Si se unió a una mesa antes de crear la ficha, se vincula al abrirla.
+          if (window.Cloud?.pendingTable?.()) localStorage.setItem('dnd-pending-attach-v1', id);
           CharacterStorage.activate(id);
         }
       },
