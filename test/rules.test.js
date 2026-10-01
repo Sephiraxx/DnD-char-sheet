@@ -68,3 +68,19 @@ test('almacenamiento local: agregar, listar y eliminar fichas', () => {
   assert.equal(store.list().length, 1);
   assert.throws(() => store.remove(a), /Cambiá de personaje/);
 });
+
+test('cobrar monedas da cambio y rechaza si no alcanza', () => {
+  g.vm = g.vm || require('vm');
+  require('vm').runInContext(
+    require('fs').readFileSync(require('path').join(__dirname, '..', 'party-view.js'), 'utf8'),
+    g,
+  );
+  const pay = g.PartyView.pay;
+  const wallet = { cp: 0, sp: 3, ep: 0, gp: 2, pp: 1 };
+  assert.deepEqual({ ...pay(wallet, { gp: 2 }) }, { cp: 0, sp: 3, ep: 0, gp: 0, pp: 1 });
+  // 5 po con 2 po y 1 platino: rompe el platino y devuelve cambio.
+  assert.deepEqual({ ...pay(wallet, { gp: 5 }) }, { cp: 0, sp: 3, ep: 0, gp: 7, pp: 0 });
+  // 25 pc con 3 piezas de plata: paga 3 pp y recibe 5 pc.
+  assert.deepEqual({ ...pay({ cp: 0, sp: 3 }, { cp: 25 }) }, { cp: 5, sp: 0, ep: 0, gp: 0, pp: 0 });
+  assert.equal(pay(wallet, { pp: 2 }), null);
+});

@@ -17,6 +17,7 @@
     'inspiration',
     'bonus-die',
     'effect',
+    'gold-remove',
   ];
   let client = null,
     loading = null,
