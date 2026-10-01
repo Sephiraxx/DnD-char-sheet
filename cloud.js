@@ -43,7 +43,13 @@
     if (!enabled) throw Error('La mesa compartida no está configurada en esta copia de la aplicación.');
     await loadSdk();
     client ||= root.supabase.createClient(cfg.url, cfg.key, {
-      auth: { storageKey: 'dnd-cloud-auth', persistSession: true, autoRefreshToken: true },
+      auth: {
+        storageKey: 'dnd-cloud-auth',
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: 'implicit',
+      },
     });
     return client;
   }
@@ -72,16 +78,106 @@
       document.head.append(s);
     });
   }
+  // En desarrollo local no hay captcha: para probar, desactivalo temporalmente en Supabase.
+  const isLocal = () => location.hostname === 'localhost' || /^127\.\d+\.\d+\.\d+$/.test(location.hostname);
   async function user() {
     const c = await api();
     const { data } = await c.auth.getSession();
     if (data.session) return data.session.user;
-    // En desarrollo local no hay captcha: para probar, desactivalo temporalmente en Supabase.
-    const local = location.hostname === 'localhost' || /^127\.\d+\.\d+\.\d+$/.test(location.hostname);
-    const captchaToken = cfg.captchaSiteKey && !local ? await captcha() : undefined;
+    const captchaToken = cfg.captchaSiteKey && !isLocal() ? await captcha() : undefined;
     const r = await c.auth.signInAnonymously(captchaToken ? { options: { captchaToken } } : undefined);
     if (r.error) throw friendly(r.error);
     return r.data.user;
+  }
+
+  // ---------- Acceso con email (la misma ficha en varios dispositivos) ----------
+  // Usuario actual, sin crear uno anónimo.
+  async function currentUser() {
+    if (!enabled) return null;
+    const { data } = await (await api()).auth.getSession();
+    return data.session?.user || null;
+  }
+  const returnUrl = () => location.origin + location.pathname;
+  function hasLocalCloudData() {
+    if (dmTables().length) return true;
+    for (let i = 0; i < localStorage.length; i++) if (/-cloud$/.test(localStorage.key(i))) return true;
+    return false;
+  }
+  // Convierte el acceso anónimo de este dispositivo en uno con email (manda un correo de confirmación).
+  async function linkEmail(email) {
+    await user();
+    const r = await (await api()).auth.updateUser({ email }, { emailRedirectTo: returnUrl() });
+    if (r.error) throw friendly(r.error);
+    return r.data.user;
+  }
+  // En otro dispositivo: manda un enlace de ingreso al email ya guardado.
+  async function sendLoginLink(email) {
+    const me = await currentUser();
+    if (me?.is_anonymous && hasLocalCloudData())
+      throw Error(
+        'Este dispositivo ya tiene fichas o mesas con un acceso sin email. Guardá ese acceso con tu email (Mesa → Tu acceso) en vez de ingresar con otro.',
+      );
+    const captchaToken = cfg.captchaSiteKey && !isLocal() ? await captcha() : undefined;
+    const r = await (
+      await api()
+    ).auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false, emailRedirectTo: returnUrl(), ...(captchaToken ? { captchaToken } : {}) },
+    });
+    if (r.error)
+      throw /signups not allowed|not found/i.test(r.error.message)
+        ? Error(
+            'No hay un acceso guardado con ese email. Guardalo primero desde el dispositivo donde ya usás la ficha.',
+          )
+        : friendly(r.error);
+  }
+  // Fichas de este usuario en cualquier mesa, para traerlas a este dispositivo.
+  async function myCharacters() {
+    const me = await currentUser();
+    if (!me) return [];
+    return check(
+      await (
+        await api()
+      )
+        .from('characters')
+        .select('id, name, data, updated_at, campaign_id, campaigns(name, code)')
+        .eq('owner_id', me.id)
+        .order('name'),
+    );
+  }
+  async function myDmTables() {
+    const me = await currentUser();
+    if (!me) return [];
+    const rows = check(await (await api()).from('campaigns').select('id, name, code').eq('dm_id', me.id));
+    rows.forEach(rememberDmTable);
+    return rows;
+  }
+  // Guarda una ficha de la mesa en este dispositivo (vinculada) y devuelve su id local.
+  function restore(row) {
+    for (const x of root.CharacterStorage.list()) if (link(x.key)?.characterId === row.id) return x.id;
+    const id = root.CharacterStorage.add(row.data),
+      key = 'dnd-character-' + id;
+    setLink(key, {
+      campaignId: row.campaign_id,
+      campaignName: row.campaigns?.name || 'Mesa',
+      code: row.campaigns?.code || '',
+      characterId: row.id,
+      syncedAt: row.updated_at,
+      dirty: false,
+    });
+    return id;
+  }
+  // Al volver desde el enlace del correo, Supabase deja la sesión en la URL: se toma y se limpia la dirección.
+  if (enabled && typeof location !== 'undefined' && /access_token=|error_description=/.test(location.hash)) {
+    const err = /error_description=([^&]+)/.exec(location.hash)?.[1];
+    api()
+      .then(c => c.auth.getSession())
+      .catch(() => {})
+      .finally(() => {
+        history.replaceState(null, '', location.pathname + location.search);
+        const detail = { error: err ? decodeURIComponent(err.replace(/\+/g, ' ')) : '' };
+        dispatchEvent(new CustomEvent('cloud-login', { detail }));
+      });
   }
 
   // Vínculo local entre una ficha del dispositivo y su copia en la mesa.
@@ -293,7 +389,8 @@
     check(await (await api()).from('characters').delete().eq('id', id));
   }
   async function deleteCampaign(id) {
-    check(await (await api()).from('campaigns').delete().eq('id', id));
+    const gone = check(await (await api()).from('campaigns').delete().eq('id', id).select('id'));
+    if (!gone.length) throw Error('No se pudo eliminar: solo el DM que creó la mesa puede hacerlo, desde su acceso.');
     forgetDmTable(id);
   }
 
@@ -311,6 +408,12 @@
 
   root.Cloud = {
     enabled,
+    currentUser,
+    linkEmail,
+    sendLoginLink,
+    myCharacters,
+    myDmTables,
+    restore,
     COMMANDS,
     user,
     link,

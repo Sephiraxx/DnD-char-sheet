@@ -77,7 +77,7 @@ Opcional. Con la mesa configurada, cada jugador se une con un código y la party
 - **Jugadores — sección Mesa:** unirse con el código de 6 letras, ver PG, CA, estados, concentración, espacios y percepción pasiva de toda la party, tiradas compartidas y pedidos de tirada del DM. La ficha sigue guardándose en el dispositivo y funciona sin conexión; los cambios se suben al volver.
 - **DM — `dm.html` (botón «Soy el DM»):** crear la mesa, panel con todas las fichas, daño y curación, estados, pedidos de tirada con CD (las respuestas llegan solas), entrega de monedas y objetos, mensajes, descansos y subidas de nivel, iniciativa con criaturas que marca el turno en la ficha de cada jugador, y notas privadas.
 - Las órdenes del DM las aplica la ficha del jugador con sus propias reglas (PG temporales, concentración, estados). Si el jugador está sin conexión, se aplican al abrir la ficha.
-- No hay cuentas: cada navegador recibe un acceso anónimo. Borrar los datos del navegador hace perder el acceso a esa ficha en la mesa (la copia exportada sirve para volver a unirse).
+- Sin cuentas obligatorias: cada navegador recibe un acceso anónimo. Guardarlo con un email permite abrir las mismas fichas en otros dispositivos y no perderlas si se borran los datos del navegador.
 
 ### Configurar el servidor (una sola vez)
 
@@ -85,7 +85,13 @@ Opcional. Con la mesa configurada, cada jugador se une con un código y la party
 2. **Authentication → Sign In / Providers:** activar **Allow anonymous sign-ins**.
 3. **SQL Editor:** pegar el contenido de `supabase/schema.sql` y ejecutar.
 4. **Project Settings → API:** copiar la **Project URL** y la clave pública (**anon** / **publishable**) en `config.js`. La clave pública puede publicarse; los permisos están en las políticas del esquema. Nunca uses la clave `service_role` / secreta.
-5. Publicar los cambios (GitHub Pages).
+5. **Authentication → URL Configuration:** en *Site URL* poner `https://sephiraxx.github.io/DnD-char-sheet/` y en *Redirect URLs* agregar `https://sephiraxx.github.io/DnD-char-sheet/**` (y `http://localhost:8080/**` para probar). Lo usan los enlaces de acceso por email.
+6. Opcional: **Attack Protection → Captcha** con Cloudflare Turnstile; la clave pública del sitio va en `config.js` (`captchaSiteKey`).
+7. Publicar los cambios (GitHub Pages).
+
+### Acceso con email
+
+En **Mesa → Tu acceso** (o en la pantalla del DM) cada uno puede guardar su acceso con un email. En otro dispositivo, la pantalla inicial ofrece «¿Ya tenés una ficha en una mesa?»: llega un enlace por correo y las fichas y mesas de esa cuenta se pueden traer al dispositivo, sincronizadas. El correo integrado de Supabase permite pocos envíos por hora; para más, configurar un SMTP propio en Supabase.
 
 ## Guardado, copias y uso sin conexión
 

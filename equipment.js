@@ -23,6 +23,16 @@ const Equipment = (() => {
       base = D.classes[c].armor.map(x => (typeof x === 'string' ? x : x.proficiency));
     if (s.equipmentDefense?.proficiencyOverride) return true;
     if (base.includes(type)) return true;
+    // Armaduras ganadas por multiclase (PHB p. 164).
+    const mcArmor = { barbarian: ['shield'], bard: ['light'], rogue: ['light'], warlock: ['light'] };
+    for (const v of (globalThis.Classes?.views?.(s) || []).slice(1)) {
+      const got =
+        mcArmor[v.classId] ||
+        (['artificer', 'cleric', 'druid', 'fighter', 'paladin', 'ranger'].includes(v.classId)
+          ? ['light', 'medium', 'shield']
+          : []);
+      if (got.includes(type)) return true;
+    }
     if (
       ['light', 'medium'].includes(type) &&
       (traits.includes('Dwarven Armor Training') ||

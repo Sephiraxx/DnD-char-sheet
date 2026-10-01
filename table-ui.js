@@ -92,7 +92,7 @@ const TableUI = (() => {
     return openRequests()
       .map(
         r =>
-          `<section class="banner request"><p><b>El DM pide:</b> ${PV.esc(r.payload.label)}${r.payload.dc && r.payload.showDc ? ' · CD ' + PV.esc(r.payload.dc) : ''}</p>${button('Tirar', 'table-answer', '', `data-id="${r.id}"`)}</section>`,
+          `<section class="banner request"><p><b>El DM pide:</b> ${PV.esc(r.payload.label)}${r.payload.dc && r.payload.showDc ? ' · CD ' + PV.esc(r.payload.dc) : ''}</p><div class="actions request-actions">${button('Tirar', 'table-answer', '', `data-id="${r.id}"`)}<label class="physical-die"><span class="visually-hidden">Mi d20</span><input type="number" min="1" max="20" inputmode="numeric" placeholder="d20" id="physical-${r.id}"></label>${button('Usé mi dado', 'table-answer', 'secondary', `data-id="${r.id}" data-physical="1"`)}</div></section>`,
       )
       .join('');
   }
@@ -108,7 +108,7 @@ const TableUI = (() => {
     if (!l)
       return (
         intro +
-        `<div class="columns"><section class="card"><h2>Unirse a una mesa</h2><p>Pedile el código de 6 letras a tu DM. Tu ficha se comparte con la mesa: la party y el DM ven tus PG, CA, estados y espacios. Solo vos podés editarla.</p><form id="table-join-form" class="stack">${field('Código de la mesa', 'code', '', 'text', 'required minlength="6" maxlength="6" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.2em"')}${field('Tu nombre (jugador)', 'display', '', 'text', 'maxlength="100" placeholder="Opcional"')}<div class="actions"><button class="button" type="submit">Unirme con ${PV.esc(state.name)}</button></div><p class="form-error" id="table-join-error" role="alert">${PV.esc(error)}</p></form><p class="small muted">Tu ficha sigue guardándose en este dispositivo y funciona sin conexión; los cambios se suben al volver.</p></section><section class="card"><h2>¿Sos el DM?</h2><p>Creá una mesa, compartí el código y seguí a la party desde tu pantalla: PG, iniciativa, daño, estados, pedidos de tirada y botín.</p><div class="actions"><a class="button secondary" href="./dm.html">Abrir pantalla del DM</a></div></section></div>`
+        `<div class="columns"><section class="card"><h2>Unirse a una mesa</h2><p>Pedile el código de 6 letras a tu DM. Tu ficha se comparte con la mesa: la party y el DM ven tus PG, CA, estados y espacios. Solo vos podés editarla.</p><form id="table-join-form" class="stack">${field('Código de la mesa', 'code', '', 'text', 'required minlength="6" maxlength="6" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.2em"')}${field('Tu nombre (jugador)', 'display', '', 'text', 'maxlength="100" placeholder="Opcional"')}<div class="actions"><button class="button" type="submit">Unirme con ${PV.esc(state.name)}</button></div><p class="form-error" id="table-join-error" role="alert">${PV.esc(error)}</p></form><p class="small muted">Tu ficha sigue guardándose en este dispositivo y funciona sin conexión; los cambios se suben al volver.</p></section>${AccountUI.card('restore')}</div><div class="columns"><section class="card"><h2>¿Sos el DM?</h2><p>Creá una mesa, compartí el código y seguí a la party desde tu pantalla: PG, iniciativa, daño, estados, pedidos de tirada y botín.</p><div class="actions"><a class="button secondary" href="./dm.html">Abrir pantalla del DM</a></div></section></div>`
       );
     if (!party && !loading) refresh();
     const mine = l.characterId;
@@ -141,7 +141,7 @@ const TableUI = (() => {
               )
               .join('')
           : '<p class="muted">Las tiradas y los avisos del DM aparecerán acá.</p>'
-      }</div></section>`
+      }</div></section>${AccountUI.card('account')}`
     );
   }
 
@@ -391,7 +391,7 @@ const TableUI = (() => {
       .catch(() => toast('La tirada no se compartió con la mesa (sin conexión).'));
   }
 
-  function answer(id) {
+  function answer(id, physical = false) {
     const l = link(),
       req = feed.find(e => e.id === Number(id));
     if (!l || !req) throw Error('Ese pedido ya no está disponible.');
@@ -401,9 +401,16 @@ const TableUI = (() => {
     else if (p.type === 'save') bonus = R.saveBonus(state, p.id);
     else if (p.type === 'ability') bonus = Math.floor((state.abilities[p.id] - 10) / 2);
     else if (p.type === 'initiative') bonus = R.stats(state).initiative;
-    const d = roll(20)[0],
-      total = d + bonus;
-    commit(`${p.label} (pedido del DM): d20 ${d} ${sign(bonus)} = ${total}`, () => {});
+    let d = roll(20)[0];
+    if (physical) {
+      d = Number(document.getElementById('physical-' + req.id)?.value);
+      if (!Number.isInteger(d) || d < 1 || d > 20) throw Error('Escribí el resultado de tu d20 (1 a 20).');
+    }
+    const total = d + bonus;
+    commit(
+      `${p.label} (pedido del DM): d20 ${d} ${sign(bonus)} = ${total}${physical ? ' (dado físico)' : ''}`,
+      () => {},
+    );
     Cloud.post(
       l.campaignId,
       'roll-response',
@@ -415,6 +422,7 @@ const TableUI = (() => {
         rolls: [d],
         bonus,
         total,
+        physical,
       },
       { visibility: p.secret ? 'dm' : 'all' },
     )
@@ -447,7 +455,7 @@ const TableUI = (() => {
           },
           'Salir',
         ),
-      'table-answer': e => answer(e.dataset.id),
+      'table-answer': e => answer(e.dataset.id, Boolean(e.dataset.physical)),
     });
     document.addEventListener('submit', e => {
       if (e.target.id !== 'table-join-form') return;

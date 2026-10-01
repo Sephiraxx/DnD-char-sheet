@@ -15,14 +15,8 @@
   }
   function classLine(s) {
     if (!s.classId) return 'Bardo ' + s.level;
-    const info = root.Classes.info(s);
-    let sub = '';
-    try {
-      sub = root.Classes.sub(s)?.name || '';
-    } catch {}
-    return info.name + ' ' + s.level + (sub ? ' · ' + sub : '');
+    return root.Classes.label(s, true);
   }
-
   // Datos que la mesa necesita ver de un vistazo, calculados con las mismas reglas de la ficha.
   function summarize(data) {
     let s;
@@ -94,7 +88,7 @@
 
   function rollText(p) {
     const parts = (p.rolls || []).join(', ');
-    return `${esc(p.label || 'Tirada')}: <b>${esc(p.total)}</b>${parts ? ` <span class="muted">(${esc(parts)}${p.bonus ? ' ' + sign(p.bonus) : ''})</span>` : ''}`;
+    return `${esc(p.label || 'Tirada')}: <b>${esc(p.total)}</b>${parts ? ` <span class="muted">(${esc(parts)}${p.bonus ? ' ' + sign(p.bonus) : ''})</span>` : ''}${p.physical ? ' <span class="muted small">· dado físico</span>' : ''}`;
   }
 
   function eventText(ev, party) {
