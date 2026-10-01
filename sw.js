@@ -1,5 +1,5 @@
 const PREFIX = 'darien:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v31-sessions';
+const CACHE = PREFIX + 'v32-merge';
 const FILES = [
   './',
   './index.html',
