@@ -7,6 +7,7 @@ const ROOT = path.join(__dirname, '..');
 const LOGIC = [
   'catalog.js',
   'class-data.js',
+  'names-es.js',
   'campaign-data.js',
   'equipment-data.js',
   'equipment.js',

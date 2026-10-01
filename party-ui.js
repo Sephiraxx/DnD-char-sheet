@@ -214,7 +214,7 @@ const PartyUI = (() => {
         Object.entries(state.classChoices || {})
           .map(
             ([name, ids]) =>
-              `<div class="feature"><h3>${esc(name)}</h3><p>${ids.map(x => esc(D.options.find(o => o.id === x)?.name || x)).join(', ')}</p></div>`,
+              `<div class="feature"><h3>${esc(NamesEs.choice(name))}</h3><p>${ids.map(x => esc(D.options.find(o => o.id === x)?.name || x)).join(', ')}</p></div>`,
           )
           .join('') ||
         '<p class="small">Estilos, infusiones, Metamagia, invocaciones y otras elecciones aparecerán acá.</p>'
@@ -279,13 +279,13 @@ const PartyUI = (() => {
     }
     modal(
       'Opciones de tu clase',
-      `<p class="small">Las opciones muestran fuente y requisitos. Elegí hasta el máximo de cada grupo. Los efectos sobre armas, armadura u otros recursos se aplican según el rasgo; registralos en la ficha. Se pueden dejar elecciones pendientes.</p>${groups.map(g => `<details open class="battle-rule"><summary>${esc(g.name)} · ${g.count} elección(es)</summary><div class="option-picker">${g.options.map(o => `<label class="option-row"><input type="checkbox" name="choice:${esc(g.name)}" value="${esc(o.id)}" ${(state.classChoices?.[g.name] || []).includes(o.id) ? 'checked' : ''}><span><b>${esc(o.name)}</b><small>${esc(o.source)}${o.prerequisite.length ? ' · Requisitos: ' + esc(prerequisiteText(o.prerequisite)) : ''}</small>${o.text ? `<details><summary>Efecto SRD</summary><p class="spell-reference">${esc(o.text)}</p></details>` : ''}</span></label>`).join('')}</div></details>`).join('') || '<p>No hay una elección de catálogo pendiente para esta clase y nivel. Usá las notas para otras decisiones del rasgo.</p>'}<label class="check"><input type="checkbox" required>Revisé los requisitos de las opciones elegidas con mi DM.</label>`,
+      `<p class="small">Las opciones muestran fuente y requisitos. Elegí hasta el máximo de cada grupo. Los efectos sobre armas, armadura u otros recursos se aplican según el rasgo; registralos en la ficha. Se pueden dejar elecciones pendientes.</p>${groups.map(g => `<details open class="battle-rule"><summary>${esc(NamesEs.choice(g.name))} · ${g.count} elección(es)</summary><div class="option-picker">${g.options.map(o => `<label class="option-row"><input type="checkbox" name="choice:${esc(g.name)}" value="${esc(o.id)}" ${(state.classChoices?.[g.name] || []).includes(o.id) ? 'checked' : ''}><span><b>${esc(o.name)}</b><small>${esc(o.source)}${o.prerequisite.length ? ' · Requisitos: ' + esc(prerequisiteText(o.prerequisite)) : ''}</small>${o.text ? `<details><summary>Efecto SRD</summary><p class="spell-reference">${esc(o.text)}</p></details>` : ''}</span></label>`).join('')}</div></details>`).join('') || '<p>No hay una elección de catálogo pendiente para esta clase y nivel. Usá las notas para otras decisiones del rasgo.</p>'}<label class="check"><input type="checkbox" required>Revisé los requisitos de las opciones elegidas con mi DM.</label>`,
       fd =>
         commit('Opciones de clase actualizadas', s => {
           s.classChoices = s.classChoices || {};
           for (const g of groups) {
             const ids = fd.getAll('choice:' + g.name);
-            if (ids.length > g.count) throw Error('Superás el máximo de ' + g.name);
+            if (ids.length > g.count) throw Error('Superás el máximo de ' + NamesEs.choice(g.name));
             s.classChoices[g.name] = ids;
           }
         }),
@@ -504,7 +504,7 @@ const PartyUI = (() => {
         }
         if (
           C.id(s) === 'bard' &&
-          (s.level >= 10 || (C.sub(s)?.name === 'College of Lore' && s.level >= 6)) &&
+          (s.level >= 10 || (C.sub(s)?.id === 'bard-college-of-lore' && s.level >= 6)) &&
           sp.level <= d.slots.length
         )
           options.push(['secret', 'Secreto mágico']);
@@ -550,7 +550,7 @@ const PartyUI = (() => {
     if (counts.prepared > d.prepared) throw Error('Superás tus conjuros preparados.');
     const maxSecrets =
       2 * [10, 14, 18].filter(n => s.level >= n).length +
-      (C.sub(s)?.name === 'College of Lore' && s.level >= 6 ? 2 : 0);
+      (C.sub(s)?.id === 'bard-college-of-lore' && s.level >= 6 ? 2 : 0);
     if (s.secretKnown.length > maxSecrets) throw Error('Superás tus Secretos mágicos.');
     for (const sp of known) {
       if (g.details[sp.id]) continue;
