@@ -100,7 +100,7 @@ const TableUI = (() => {
       .join('');
   }
   // ---------- Encuentro compartido (migración 004) ----------
-  const STATUS = {
+  const CREATURE_STATUS = {
     ileso: 'Ileso',
     herido: 'Herido',
     malherido: 'Malherido',
@@ -149,7 +149,7 @@ const TableUI = (() => {
     return `<div class="initiative-strip">${e.active ? `<b>Ronda ${e.round}</b>` : '<b>Iniciativa</b>'}${e.entries
       .map(
         x =>
-          `<span class="chip ${x.current ? 'current' : ''} ${x.status === 'derrotado' ? 'defeated' : ''}">${x.init ?? '—'} · ${PV.esc(x.name)}${x.characterId && x.characterId === mine ? ' (vos)' : ''}${x.kind === 'monster' ? ` <em class="status-${x.status.replace(/ /g, '-')}">${STATUS[x.status] || x.status}</em>` : ''}</span>`,
+          `<span class="chip ${x.current ? 'current' : ''} ${x.status === 'derrotado' ? 'defeated' : ''}">${x.init ?? '—'} · ${PV.esc(x.name)}${x.characterId && x.characterId === mine ? ' (vos)' : ''}${x.kind === 'monster' ? ` <em class="status-${x.status.replace(/ /g, '-')}">${CREATURE_STATUS[x.status] || x.status}</em>` : ''}</span>`,
       )
       .join('')}</div>`;
   }
@@ -700,7 +700,7 @@ const TableUI = (() => {
     sendTo,
     isMyTurn,
     link,
-    statusLabel: st => STATUS[st] || st,
+    statusLabel: st => CREATURE_STATUS[st] || st,
     shareRoll,
     requestBanner,
     showStatus,

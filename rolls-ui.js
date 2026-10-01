@@ -294,6 +294,17 @@ const RollUI = (() => {
       );
     if (info.save && t.monsters.length)
       return `<fieldset class="target-list"><legend>Objetivos (el DM tira sus salvaciones)</legend>${t.monsters.map(m => who('mon:' + m.id, m.name + ' · ' + TableUI.statusLabel(m.status))).join('')}</fieldset>`;
+    // Daño automático (Proyectil mágico…): se elige la criatura que lo recibe.
+    if (info.dice && !info.heal && !info.attack && !info.save && t.monsters.length)
+      return select(
+        'Objetivo del daño',
+        'target',
+        [
+          ...t.monsters.map(m => [m.id, m.name + ' · ' + TableUI.statusLabel(m.status)]),
+          ['', 'Otro objetivo (lo resuelve la mesa)'],
+        ],
+        t.monsters[0].id,
+      );
     if (info.heal || (!info.attack && !info.save && TableUI.link() && isBuff(sp)))
       return `<fieldset class="target-list"><legend>${info.heal ? 'A quién curás' : 'A quién afecta'}</legend>${who('self', 'Vos (' + state.name + ')', true)}${t.allies.map(a => who('pc:' + a.characterId, a.name)).join('')}</fieldset>`;
     return '';
@@ -449,8 +460,14 @@ const RollUI = (() => {
       }
       return ` → curaste a ${esc(names.join(', '))}`;
     }
-    if (spellSession.hitTarget) {
-      const out = await Cloud.damageCombatant(spellSession.hitTarget, total, 'Daño con ' + sp.name, state.name);
+    const autoTarget = !info.attack && !info.save && !info.heal ? fd.get('target') : '';
+    if (spellSession.hitTarget || autoTarget) {
+      const out = await Cloud.damageCombatant(
+        spellSession.hitTarget || autoTarget,
+        total,
+        'Daño con ' + sp.name,
+        state.name,
+      );
       spellSession.hitTarget = null;
       return ` → ${esc(out.name)}: <b>${esc(TableUI.statusLabel(out.status))}</b>`;
     }

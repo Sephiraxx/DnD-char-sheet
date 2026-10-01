@@ -179,7 +179,7 @@ const MonsterUI = (() => {
     const out = Object.fromEntries(ABIL.map((a, i) => [a, mod(m.ab[i])]));
     const names = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' };
     for (const part of String(m.saves || '').split(',')) {
-      const x = /([A-Z]{3})s*+(d+)/i.exec(part.trim());
+      const x = /([A-Z]{3})\s*\+(\d+)/i.exec(part.trim());
       if (!x) continue;
       const key = Object.keys(names).find(k => names[k] === x[1].toUpperCase());
       if (key) out[key] = Number(x[2]);
