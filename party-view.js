@@ -103,6 +103,13 @@
     return `${esc(p.label || 'Tirada')}: <b>${esc(p.total)}</b>${parts ? ` <span class="muted">(${esc(parts)}${p.bonus ? ' ' + sign(p.bonus) : ''})</span>` : ''}${p.physical ? ' <span class="muted small">· dado físico</span>' : ''}`;
   }
 
+  const STATUS_ES = {
+    ileso: 'Ileso',
+    herido: 'Herido',
+    malherido: 'Malherido',
+    'a punto de caer': 'A punto de caer',
+    derrotado: 'Derrotado',
+  };
   const ICONS = {
     roll: ['◆', ''],
     'roll-request': ['?', 'k-dm'],
@@ -122,6 +129,10 @@
     inspiration: ['★', 'k-dm'],
     'bonus-die': ['◆', 'k-dm'],
     effect: ['⧗', 'k-dm'],
+    attack: ['⚔', ''],
+    'creature-damage': ['✸', 'k-damage'],
+    'creature-save': ['⛨', 'k-dm'],
+    'creature-save-result': ['⛨', ''],
   };
   function eventText(ev, party) {
     const [icon, cls] = ICONS[ev.kind] || ['·', ''];
@@ -144,7 +155,15 @@
       case 'damage':
         return `<b>DM</b>: ${esc(target)} recibe ${esc(p.amount)} de daño${p.source ? ' (' + esc(p.source) + ')' : ''}`;
       case 'heal':
-        return `<b>DM</b>: ${esc(target)} recupera ${esc(p.amount)} PG`;
+        return `<b>${esc(p.from || 'DM')}</b>: ${esc(target)} recupera ${esc(p.amount)} PG${p.source ? ' (' + esc(p.source) + ')' : ''}`;
+      case 'attack':
+        return `<b>${esc(p.attacker)}</b> ${p.hit ? 'impacta a' : 'falla contra'} <b>${esc(p.target)}</b>${p.label ? ' · ' + esc(p.label) : ''}`;
+      case 'creature-damage':
+        return `<b>${esc(p.attacker)}</b> hace ${esc(p.amount)} de daño a <b>${esc(p.target)}</b> → ${esc(STATUS_ES[p.status] || p.status)}`;
+      case 'creature-save':
+        return `<b>${esc(p.caster)}</b> lanza ${esc(p.spell)}: ${esc((p.targets || []).map(x => x.name).join(', '))} salvan ${esc(p.abilityName || p.ability)} contra CD ${esc(p.dc)}`;
+      case 'creature-save-result':
+        return `<b>${esc(p.name)}</b> ${p.success ? 'supera' : 'falla'} la salvación (${esc(p.spell)}) → ${esc(p.damage)} de daño · ${esc(STATUS_ES[p.status] || p.status)}`;
       case 'temp':
         return `<b>DM</b>: ${esc(target)} obtiene ${esc(p.amount)} PG temporales`;
       case 'condition':
@@ -158,9 +177,9 @@
       case 'item':
         return `<b>DM</b>: ${esc(target)} recibe ${esc(p.qty > 1 ? p.qty + ' × ' : '')}${esc(p.name)}`;
       case 'effect':
-        return `<b>DM</b>: ${esc(target)} queda con ${esc(p.name)}${p.rounds ? ' (' + esc(p.rounds) + ' rondas)' : ''}`;
+        return `<b>${esc(p.from || 'DM')}</b>: ${esc(target)} queda con ${esc(p.name)}${p.rounds ? ' (' + esc(p.rounds) + ' rondas)' : ''}`;
       case 'bonus-die':
-        return `<b>DM</b>: ${esc(target)} recibe un d${esc(p.die)}${p.reason ? ' (' + esc(p.reason) + ')' : ''}`;
+        return `<b>${esc(p.from || 'DM')}</b>: ${esc(target)} recibe un d${esc(p.die)}${p.reason ? ' (' + esc(p.reason) + ')' : ''}`;
       case 'inspiration':
         return `<b>DM</b>: ${esc(target)} ${p.on === false ? 'pierde' : 'recibe'} Inspiración`;
       case 'level':

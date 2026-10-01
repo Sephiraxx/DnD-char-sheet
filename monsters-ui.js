@@ -152,28 +152,39 @@ const MonsterUI = (() => {
         ],
         'avg',
       )}</div><p class="small">La iniciativa se tira para cada una (d20 ${sign(mod(m.ab[1]))}); podés corregirla con «Init».</p>`,
-      fd => {
-        const t = tracker(),
-          n = int(fd, 'count', 1, 20);
+      async fd => {
+        const n = int(fd, 'count', 1, 20),
+          saves = saveBonuses(m);
         for (let i = 1; i <= n; i++) {
           const hp = fd.get('hpMode') === 'roll' ? Math.max(1, rollDice(m.hd).total) : m.hp;
-          t.entries.push({
-            id: crypto.randomUUID(),
-            monsterId: m.id,
-            name: n > 1 ? `${m.name} ${i}` : m.name,
-            init: d20() + mod(m.ab[1]),
-            dex: mod(m.ab[1]),
-            hp,
-            max: hp,
-            ac: m.ac,
-          });
+          await Cloud.addCombatant(
+            current,
+            {
+              kind: 'monster',
+              name: n > 1 ? `${m.name} ${i}` : m.name,
+              init: d20() + mod(m.ab[1]),
+              tiebreak: mod(m.ab[1]),
+            },
+            { hp, max_hp: hp, ac: m.ac, saves, monster_id: m.id },
+          );
         }
-        saveTracker(t);
-        draw();
+        await refresh();
         toast(`${n} × ${m.name} en la iniciativa.`);
       },
       'Agregar',
     );
+  }
+
+  function saveBonuses(m) {
+    const out = Object.fromEntries(ABIL.map((a, i) => [a, mod(m.ab[i])]));
+    const names = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' };
+    for (const part of String(m.saves || '').split(',')) {
+      const x = /([A-Z]{3})s*+(d+)/i.exec(part.trim());
+      if (!x) continue;
+      const key = Object.keys(names).find(k => names[k] === x[1].toUpperCase());
+      if (key) out[key] = Number(x[2]);
+    }
+    return out;
   }
 
   // ---------- Bloque de estadísticas ----------

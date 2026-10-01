@@ -25,7 +25,6 @@ let current = null, // id de la mesa abierta
   error = '',
   unsubscribe = null,
   online = [],
-  publishTimer,
   toastTimer;
 
 // ---------- Utilidades de interfaz ----------
@@ -105,33 +104,40 @@ function settingsSummary(st) {
   return `Libros: ${esc(books)} · Nivel inicial ${st.startLevel}${st.rules ? ' · Reglas de la casa' : ''}`;
 }
 
-// ---------- Iniciativa (se guarda solo en este dispositivo) ----------
-const initKey = () => 'dnd-dm-initiative-' + current;
+// ---------- Iniciativa: encuentro compartido en la base (migración 004) ----------
+// Vista del encuentro con los datos secretos de cada criatura (solo el DM los recibe).
 function tracker() {
-  try {
-    const t = JSON.parse(localStorage.getItem(initKey()) || 'null');
-    if (t && Array.isArray(t.entries)) return t;
-  } catch {}
-  return { entries: [], turn: -1, round: 0 };
+  const sec = new Map((party?.secrets || []).map(x => [x.combatant_id, x]));
+  const enc = party?.encounter;
+  const entries = Cloud.order(party?.combatants || []).map(c => {
+    const x = sec.get(c.id) || {};
+    return {
+      id: c.id,
+      kind: c.kind,
+      characterId: c.character_id,
+      monsterId: x.monster_id || null,
+      name: c.name,
+      init: c.init,
+      dex: c.tiebreak,
+      hp: c.kind === 'monster' ? (x.hp ?? null) : null,
+      max: x.max_hp ?? null,
+      ac: x.ac ?? null,
+      saves: x.saves || {},
+      hidden: c.hidden,
+      status: c.status,
+      conditions: c.conditions || [],
+    };
+  });
+  return {
+    entries,
+    turn: enc?.active ? entries.findIndex(e => e.id === enc.current_id) : -1,
+    round: enc?.active ? enc.round : 0,
+  };
 }
-function saveTracker(t) {
-  t.entries.sort((a, b) => (b.init ?? -99) - (a.init ?? -99) || (b.dex ?? 0) - (a.dex ?? 0));
-  localStorage.setItem(initKey(), JSON.stringify(t));
-  publishOrder();
-}
-// Los jugadores ven el orden de iniciativa (sin PG ni CA de las criaturas).
-function publishOrder() {
-  clearTimeout(publishTimer);
-  const id = current;
-  publishTimer = setTimeout(() => {
-    if (id !== current) return;
-    const t = tracker();
-    send('initiative', {
-      round: t.round,
-      turn: t.turn,
-      entries: t.entries.map(e => ({ name: e.name, init: e.init, characterId: e.characterId || null })),
-    }).catch(() => {});
-  }, 800);
+// Cambios del encuentro: se guardan en la base y se recarga la mesa.
+async function encounterChange(fn) {
+  await fn();
+  await refresh();
 }
 const notesKey = () => 'dnd-dm-notes-' + current;
 
@@ -195,12 +201,11 @@ function onChange(table, payload) {
     if (ev.kind === 'roll-response') {
       const req = feed.find(x => x.id === ev.payload.requestId);
       if (req?.payload.type === 'initiative') {
-        const t = tracker(),
-          e = t.entries.find(x => x.characterId === ev.payload.characterId);
-        if (e) {
-          e.init = ev.payload.total;
-          saveTracker(t);
-        }
+        const e = tracker().entries.find(x => x.characterId === ev.payload.characterId);
+        if (e)
+          Cloud.updateCombatant(e.id, { init: ev.payload.total })
+            .then(refresh)
+            .catch(err => toast(err.message));
       }
       toast(`${ev.payload.character}: ${ev.payload.label} ${ev.payload.total}`);
     }
@@ -278,6 +283,13 @@ addEventListener('cloud-login', () => {
   if (!current) drawHome();
 });
 
+const STATUS_LABEL = {
+  ileso: 'Ileso',
+  herido: 'Herido',
+  malherido: 'Malherido',
+  'a punto de caer': 'A punto de caer',
+  derrotado: 'Derrotado',
+};
 function initiativeCard(t) {
   const items = t.entries
     .map((e, i) => {
@@ -285,19 +297,19 @@ function initiativeCard(t) {
         x = pc ? PV.summarize(pc.data) : null;
       const sub = x
         ? `${x.hp ?? '—'}/${x.maxHP} PG · CA ${x.ac}${x.conditions.length ? ' · ' + esc(x.conditions.join(', ')) : ''}`
-        : `CA ${e.ac ?? '—'}${e.max ? `<span class="monster-hpbar" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Math.round(((e.hp ?? e.max) / e.max) * 100)))}%"></i></span>` : ''}`;
+        : `CA ${e.ac ?? '—'} · ${STATUS_LABEL[e.status] || e.status}${e.hidden ? ' · oculta' : ''}${e.conditions.length ? ' · ' + esc(e.conditions.join(', ')) : ''}${e.max ? `<span class="monster-hpbar" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Math.round(((e.hp ?? e.max) / e.max) * 100)))}%"></i></span>` : ''}`;
       const down = x ? x.hp === 0 : e.hp === 0;
-      return `<li class="${i === t.turn ? 'current' : ''} ${down ? 'down' : ''}"><span class="init">${e.init ?? '—'}</span><span class="who"><b>${e.monsterId ? `<button type="button" class="text-btn monster-name" data-action="monster-open" data-entry="${e.id}">${esc(e.name)}</button>` : esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
+      return `<li class="${i === t.turn ? 'current' : ''} ${down ? 'down' : ''} ${e.hidden ? 'hidden-combatant' : ''}"><span class="init">${e.init ?? '—'}</span><span class="who"><b>${e.monsterId ? `<button type="button" class="text-btn monster-name" data-action="monster-open" data-entry="${e.id}">${esc(e.name)}</button>` : esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
         e.characterId
           ? button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)
-          : `<input type="number" aria-label="PG de ${esc(e.name)}" data-monster-hp="${e.id}" value="${e.hp ?? ''}" min="0" max="99999">/${e.max ?? '—'}${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}`
+          : `<input type="number" aria-label="PG de ${esc(e.name)}" data-monster-hp="${e.id}" value="${e.hp ?? ''}" min="0" max="99999">/${e.max ?? '—'}${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}${button(e.hidden ? 'Mostrar' : 'Ocultar', 'init-hide', 'text-btn', `data-entry="${e.id}"`)}`
       }${button('×', 'init-remove', 'text-btn', `data-entry="${e.id}" aria-label="Quitar ${esc(e.name)}"`)}</span></li>`;
     })
     .join('');
   return `<section class="card"><div class="card-header"><h2>Iniciativa${t.round ? ' · ronda ' + t.round : ''}</h2></div>
   <div class="initiative-tools">${button('Agregar party', 'init-party')}${button('Pedir iniciativa', 'init-request')}${button('Monstruo del SRD', 'init-monster-srd')}${button('Criatura propia', 'init-monster')}</div>
   ${typeof MonsterUI !== 'undefined' ? MonsterUI.difficultyLine(t) : ''}${items ? `<ol class="initiative-list section-space">${items}</ol>` : '<p class="muted section-space">Agregá a la party y a las criaturas. Las tiradas de iniciativa de los jugadores se completan solas.</p>'}
-  ${t.entries.length ? `<div class="actions section-space">${button(t.turn < 0 ? 'Empezar combate' : 'Siguiente turno', 'init-next', '')}${t.turn >= 0 ? button('Terminar combate', 'init-end') : ''}${button('Vaciar', 'init-clear')}</div>` : ''}</section>`;
+  ${t.entries.length ? `<div class="actions section-space">${button(t.turn < 0 ? 'Empezar combate' : 'Siguiente turno', 'init-next', '')}${t.turn >= 0 ? button('Terminar combate', 'init-end') : ''}${button('Vaciar', 'init-clear')}</div><p class="small muted">Cuando un jugador toca «Terminar turno», la iniciativa avanza sola. Los turnos de criaturas los pasás vos.</p>` : ''}</section>`;
 }
 
 function feedCard() {
@@ -544,95 +556,65 @@ const actions = {
       },
       'Tirar',
     ),
-  'init-party': () => {
-    const t = tracker();
-    for (const { row, x } of summaries())
-      if (!t.entries.some(e => e.characterId === row.id))
-        t.entries.push({ id: crypto.randomUUID(), characterId: row.id, name: row.name, init: null, dex: x.initiative });
-    saveTracker(t);
-    draw();
-  },
+  'init-party': () =>
+    encounterChange(async () => {
+      const t = tracker();
+      for (const { row, x } of summaries())
+        if (!t.entries.some(e => e.characterId === row.id))
+          await Cloud.addCombatant(current, {
+            kind: 'pc',
+            character_id: row.id,
+            name: row.name,
+            tiebreak: x.initiative,
+          });
+    }),
   'init-request': async () => {
-    actions['init-party']();
+    await actions['init-party']();
     await send('roll-request', { type: 'initiative', id: '', label: 'Iniciativa' });
     toast('Pedido enviado: las respuestas completan la iniciativa.');
   },
   'init-monster': () =>
     modal(
       'Agregar criatura',
-      `${field('Nombre', 'name', '', 'text', 'required maxlength="80" placeholder="Goblin"')}<div class="form-grid">${field('Cantidad', 'count', 1, 'number', 'min="1" max="20" required')}${field('Mod. de iniciativa', 'mod', 0, 'number', 'min="-10" max="20" required')}${field('PG', 'hp', '', 'number', 'min="1" max="99999"')}${field('CA', 'ac', '', 'number', 'min="1" max="40"')}</div><p class="small">Se tira la iniciativa de cada una (d20 + modificador). Podés corregirla con «Init».</p>`,
-      fd => {
-        const t = tracker(),
-          n = int(fd, 'count', 1, 20),
-          mod = int(fd, 'mod', -10, 20),
-          hp = int(fd, 'hp', 1, 99999, null),
-          ac = int(fd, 'ac', 1, 40, null),
-          name = String(fd.get('name')).trim();
-        for (let i = 1; i <= n; i++)
-          t.entries.push({
-            id: crypto.randomUUID(),
-            name: n > 1 ? `${name} ${i}` : name,
-            init: d20() + mod,
-            dex: mod,
-            hp,
-            max: hp,
-            ac,
-          });
-        saveTracker(t);
-        draw();
-      },
+      `${field('Nombre', 'name', '', 'text', 'required maxlength="80" placeholder="Bandido"')}<div class="form-grid">${field('Cantidad', 'count', 1, 'number', 'min="1" max="20" required')}${field('Mod. de iniciativa', 'mod', 0, 'number', 'min="-10" max="20" required')}${field('PG', 'hp', 10, 'number', 'min="1" max="99999" required')}${field('CA', 'ac', 12, 'number', 'min="1" max="40" required')}</div><p class="small">Se tira la iniciativa de cada una (d20 + modificador). Sus salvaciones usan +0 salvo que las ajustes.</p>`,
+      fd =>
+        encounterChange(async () => {
+          const n = int(fd, 'count', 1, 20),
+            mod = int(fd, 'mod', -10, 20),
+            hp = int(fd, 'hp', 1, 99999),
+            ac = int(fd, 'ac', 1, 40),
+            name = String(fd.get('name')).trim();
+          for (let i = 1; i <= n; i++)
+            await Cloud.addCombatant(
+              current,
+              { kind: 'monster', name: n > 1 ? `${name} ${i}` : name, init: d20() + mod, tiebreak: mod },
+              { hp, max_hp: hp, ac, saves: {} },
+            );
+        }),
       'Agregar',
     ),
   'init-set': e => {
-    const t = tracker(),
-      entry = t.entries.find(x => x.id === e.dataset.entry);
+    const entry = tracker().entries.find(x => x.id === e.dataset.entry);
     modal(
       'Iniciativa de ' + entry.name,
       field('Resultado', 'init', entry.init ?? '', 'number', 'min="-10" max="50" required autofocus'),
-      fd => {
-        entry.init = int(fd, 'init', -10, 50);
-        saveTracker(t);
-        draw();
-      },
+      fd => encounterChange(() => Cloud.updateCombatant(entry.id, { init: int(fd, 'init', -10, 50) })),
       'Guardar',
     );
   },
-  'init-remove': e => {
-    const t = tracker(),
-      i = t.entries.findIndex(x => x.id === e.dataset.entry);
-    if (i < 0) return;
-    t.entries.splice(i, 1);
-    if (t.turn >= t.entries.length) t.turn = t.entries.length - 1;
-    else if (i < t.turn) t.turn--;
-    saveTracker(t);
-    draw();
+  'init-remove': e => encounterChange(() => Cloud.removeCombatant(e.dataset.entry)),
+  'init-hide': e => {
+    const entry = tracker().entries.find(x => x.id === e.dataset.entry);
+    return encounterChange(() => Cloud.updateCombatant(entry.id, { hidden: !entry.hidden }));
   },
-  'init-next': async () => {
-    const t = tracker();
-    if (!t.entries.length) return;
-    if (t.turn < 0) {
-      t.turn = 0;
-      t.round = 1;
-    } else {
-      t.turn = (t.turn + 1) % t.entries.length;
-      if (t.turn === 0) t.round++;
-    }
-    saveTracker(t);
-    const e = t.entries[t.turn];
-    await send('turn', { characterId: e.characterId || null, name: e.name, round: t.round });
-  },
-  'init-end': async () => {
-    const t = tracker();
-    t.turn = -1;
-    t.round = 0;
-    saveTracker(t);
-    await send('combat-end', {});
-  },
+  'init-next': () => encounterChange(() => Cloud.advanceTurn(current)),
+  'init-end': () => encounterChange(() => Cloud.endCombat(current)),
   'init-clear': () => {
-    if (!confirm('¿Vaciar la iniciativa?')) return;
-    localStorage.removeItem(initKey());
-    publishOrder();
-    draw();
+    if (!confirm('¿Vaciar la iniciativa? Se quitan todas las criaturas y personajes del encuentro.')) return;
+    return encounterChange(async () => {
+      if (party?.encounter?.active) await Cloud.endCombat(current);
+      for (const e of tracker().entries) await Cloud.removeCombatant(e.id);
+    });
   },
   'bonus-die': e => {
     const id = e.dataset.id;
@@ -699,13 +681,10 @@ document.addEventListener('click', async e => {
 document.addEventListener('change', e => {
   const id = e.target.dataset.monsterHp;
   if (!id) return;
-  const t = tracker(),
-    entry = t.entries.find(x => x.id === id);
-  if (!entry) return;
-  const v = e.target.value === '' ? null : Math.max(0, Math.min(99999, Math.floor(Number(e.target.value))));
-  entry.hp = v;
-  saveTracker(t);
-  draw();
+  const entry = tracker().entries.find(x => x.id === id);
+  if (!entry || e.target.value === '') return;
+  const v = Math.max(0, Math.min(entry.max ?? 99999, Math.floor(Number(e.target.value))));
+  encounterChange(() => Cloud.updateSecret(id, { hp: v })).catch(err => toast(err.message));
 });
 document.addEventListener('input', e => {
   if (e.target.id === 'dm-notes') localStorage.setItem(notesKey(), e.target.value);

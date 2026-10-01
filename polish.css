@@ -701,3 +701,42 @@ label.check:has(input[name='heroic']:checked) {
   font-size: 0.75rem;
   color: var(--muted);
 }
+
+/* Combate compartido: objetivos, estados de criaturas y ocultas */
+.target-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.target-list legend {
+  padding: 0 4px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.initiative-strip em {
+  font-style: normal;
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+.status-herido {
+  color: var(--gold);
+}
+.status-malherido,
+.status-a-punto-de-caer {
+  color: var(--red);
+}
+.initiative-strip .chip.defeated {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+.initiative-list li.hidden-combatant {
+  border-style: dashed;
+  opacity: 0.7;
+}
+.attack-log .hit {
+  color: #9fe0b5;
+}

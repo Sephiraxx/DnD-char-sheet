@@ -99,13 +99,65 @@ const TableUI = (() => {
       )
       .join('');
   }
+  // ---------- Encuentro compartido (migración 004) ----------
+  const STATUS = {
+    ileso: 'Ileso',
+    herido: 'Herido',
+    malherido: 'Malherido',
+    'a punto de caer': 'A punto de caer',
+    derrotado: 'Derrotado',
+  };
+  function encounter() {
+    const enc = party?.encounter;
+    const entries = Cloud.order(party?.combatants || []).map(c => ({
+      id: c.id,
+      kind: c.kind,
+      name: c.name,
+      init: c.init,
+      status: c.status,
+      conditions: c.conditions || [],
+      characterId: c.character_id,
+      current: Boolean(enc?.active && enc.current_id === c.id),
+    }));
+    return { active: Boolean(enc?.active), round: enc?.round || 0, entries };
+  }
+  const isMyTurn = () => {
+    const l = link();
+    return Boolean(l && encounter().entries.some(e => e.current && e.characterId === l.characterId));
+  };
+  // Objetivos posibles: criaturas visibles en pie, aliados de la mesa y vos.
+  function targets() {
+    const l = link();
+    return {
+      monsters: encounter().entries.filter(e => e.kind === 'monster' && e.status !== 'derrotado'),
+      allies: (party?.characters || [])
+        .filter(c => c.id !== l?.characterId)
+        .map(c => ({ characterId: c.id, name: c.name })),
+      selfId: l?.characterId || null,
+    };
+  }
+  // Curaciones, efectos y dados para otro jugador: su ficha los aplica al recibirlos.
+  function sendTo(characterId, kind, payload) {
+    const l = link();
+    if (!l) throw Error('Unite a una mesa para afectar a otros personajes.');
+    return Cloud.post(l.campaignId, kind, { ...payload, from: state.name }, { target: characterId, visibility: 'all' });
+  }
+  function encounterStrip() {
+    const e = encounter();
+    if (!e.entries.length) return '';
+    const mine = link()?.characterId;
+    return `<div class="initiative-strip">${e.active ? `<b>Ronda ${e.round}</b>` : '<b>Iniciativa</b>'}${e.entries
+      .map(
+        x =>
+          `<span class="chip ${x.current ? 'current' : ''} ${x.status === 'derrotado' ? 'defeated' : ''}">${x.init ?? '—'} · ${PV.esc(x.name)}${x.characterId && x.characterId === mine ? ' (vos)' : ''}${x.kind === 'monster' ? ` <em class="status-${x.status.replace(/ /g, '-')}">${STATUS[x.status] || x.status}</em>` : ''}</span>`,
+      )
+      .join('')}</div>`;
+  }
   // Barra de iniciativa para la pantalla de combate.
   function initiativeBanner() {
-    const l = link(),
-      order = PV.initiative(feed);
-    return order
-      ? `<section class="banner initiative-banner">${PV.initiativeStrip(order, l?.characterId)}</section>`
-      : '';
+    const strip = encounterStrip();
+    if (!strip) return '';
+    return `<section class="banner initiative-banner">${strip}${isMyTurn() ? '<p class="small"><b>Es tu turno.</b> Al tocar «Terminar turno» pasa al siguiente.</p>' : ''}</section>`;
   }
 
   // Pantalla inicial: unirse a una mesa antes de tener personaje.
@@ -159,9 +211,7 @@ const TableUI = (() => {
       ) +
       (error && party ? `<div class="banner"><p>${PV.esc(error)}</p></div>` : '') +
       requestBanner() +
-      (PV.initiative(feed)
-        ? `<section class="card section-space"><h2>Iniciativa</h2>${PV.initiativeStrip(PV.initiative(feed), mine)}</section>`
-        : '') +
+      (encounterStrip() ? `<section class="card section-space"><h2>Iniciativa</h2>${encounterStrip()}</section>` : '') +
       `<div class="party-grid">${cards}</div>${party ? TableExtras.playerHtml(party, mine) : ''}<section class="card section-space"><div class="card-header"><h2>En la mesa</h2>${button('Tirar dados', 'dice')}</div><div class="log table-feed">${
         feed.length
           ? feed
@@ -227,14 +277,14 @@ const TableUI = (() => {
       case 'heal': {
         const amount = n(p.amount);
         if (!amount || state.hp === null) return 'Curación del DM pendiente: confirmá tus PG actuales.';
-        commit('DM: curación ' + amount, s => {
+        commit((p.from || 'DM') + ': curación ' + amount, s => {
           s.hp = Math.min(R.stats(s).maxHP, s.hp + amount);
           if (s.hp > 0) {
             s.death = { success: 0, failure: 0 };
             s.conditions = s.conditions.filter(x => x !== 'Inconsciente');
           }
         });
-        return `El DM te curó ${amount} PG.`;
+        return `${p.from || 'El DM'} te curó ${amount} PG${p.source ? ' (' + p.source + ')' : ''}.`;
       }
       case 'temp':
         commit('DM: PG temporales ' + n(p.amount), s => (s.temp = Math.max(s.temp, n(p.amount))));
@@ -293,7 +343,7 @@ const TableUI = (() => {
             { id: uid(), die, reason: String(p.reason || '').slice(0, 200), kind, skills },
           ].slice(-20);
         });
-        return `El DM te dio un d${die}${p.reason ? ' (' + p.reason + ')' : ''} para ${RollUI.bonusScope({ kind, skills })}.`;
+        return `${p.from || 'El DM'} te dio un d${die}${p.reason ? ' (' + p.reason + ')' : ''} para ${RollUI.bonusScope({ kind, skills })}.`;
       }
       case 'effect': {
         const name = String(p.name || '')
@@ -301,8 +351,8 @@ const TableUI = (() => {
           .slice(0, 100);
         if (!name) return '';
         const rounds = Number.isInteger(p.rounds) && p.rounds > 0 ? Math.min(100000, p.rounds) : null;
-        commit('DM: efecto ' + name, s => Effects.add(s, { name, rounds, from: 'dm' }));
-        return `El DM te aplicó: ${name}${rounds ? ' (' + Effects.remaining({ rounds }) + ')' : ''}.`;
+        commit((p.from || 'DM') + ': efecto ' + name, s => Effects.add(s, { name, rounds, from: 'dm' }));
+        return `${p.from || 'El DM'} te aplicó: ${name}${rounds ? ' (' + Effects.remaining({ rounds }) + ')' : ''}.`;
       }
       case 'inspiration':
         commit(p.on === false ? 'DM: Inspiración retirada' : 'DM: Inspiración recibida', s => {
@@ -555,6 +605,16 @@ const TableUI = (() => {
   }
 
   function install() {
+    const endTurn = actions['combat-end'];
+    actions['combat-end'] = e => {
+      const mine = isMyTurn(),
+        l = link();
+      endTurn(e);
+      if (mine && l)
+        Cloud.advanceTurn(l.campaignId)
+          .then(n => toast('Turno de ' + n.name + '.'))
+          .catch(err => toast(err.message));
+    };
     TableExtras.install({
       refresh: () => refresh(),
       campaignId: () => link()?.campaignId,
@@ -629,5 +689,20 @@ const TableUI = (() => {
     });
   }
 
-  return { page, boot, install, welcomeCard, initiativeBanner, shareRoll, requestBanner, showStatus };
+  return {
+    page,
+    boot,
+    install,
+    welcomeCard,
+    initiativeBanner,
+    encounter,
+    targets,
+    sendTo,
+    isMyTurn,
+    link,
+    statusLabel: st => STATUS[st] || st,
+    shareRoll,
+    requestBanner,
+    showStatus,
+  };
 })();
