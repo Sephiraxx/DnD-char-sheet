@@ -89,6 +89,7 @@ Opcional. Con la mesa configurada, cada jugador se une con un código y la party
 - Los jugadores ven el orden y el estado de cada criatura con palabras (Ileso, Herido, Malherido, A punto de caer, Derrotado), nunca sus PG ni su CA.
 - Al atacar o lanzar un conjuro se elige el objetivo. Contra una criatura, el servidor compara la tirada con la CA oculta y descuenta el daño. Las curaciones y los efectos (Bendición, Inspiración bárdica…) se aplican a uno mismo o a aliados.
 - Los conjuros de salvación sobre criaturas le llegan al DM como **Salvaciones pendientes**: tira por cada criatura (o anota su dado) y se aplica el daño completo o la mitad.
+- **Áreas y fuego amigo:** en un conjuro de salvación (Bola de fuego, Manos ardientes…) también se marca a los aliados o a uno mismo si quedan dentro. Cada ficha alcanzada recibe el pedido, tira su salvación y se aplica el daño completo o la mitad. Las acciones de salvación de los monstruos (alientos, auras) funcionan igual: el DM tira o ajusta el daño, elige quiénes quedan en el área y cada jugador salva. Requiere `supabase/migrations/005_area_saves.sql`.
 - «Terminar turno» de un jugador pasa la iniciativa al siguiente. Los turnos de las criaturas los pasa el DM.
 
 ### Configurar el servidor (una sola vez)

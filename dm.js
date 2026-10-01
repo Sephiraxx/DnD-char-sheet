@@ -405,6 +405,12 @@ function feedCard() {
           ? `<div class="chips">${rs.join('')}</div>`
           : '<p class="small muted">Esperando respuestas…</p>';
       }
+      if (e.kind === 'area-save') {
+        const r = (responses.get(e.id) || [])[0];
+        extra = r
+          ? `<div class="chips"><span class="chip ${r.payload.saved ? 'selected' : 'warn'}">${esc(r.payload.character)}: ${esc(r.payload.total)}${r.payload.physical ? ' · físico' : ''} · ${r.payload.saved ? 'salva' : 'falla'} · ${esc(r.payload.damage ?? 0)} de daño</span></div>`
+          : '<p class="small muted">Esperando la salvación…</p>';
+      }
       const time = new Date(e.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
       return `<div class="log-item"><time>${esc(time)}</time><div><p>${PV.eventText(e, party)}${e.visibility !== 'all' ? ' <span class="muted small">(privado)</span>' : ''}${e.kind !== 'roll' && e.kind !== 'roll-response' && e.target_character && e.applied_at === null && Cloud.COMMANDS.includes(e.kind) ? ' <span class="muted small">· pendiente</span>' : ''}</p>${extra}</div></div>`;
     })

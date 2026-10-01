@@ -293,8 +293,9 @@ const RollUI = (() => {
         ],
         t.monsters[0].id,
       );
-    if (info.save && t.monsters.length)
-      return `<fieldset class="target-list"><legend>Objetivos (el DM tira sus salvaciones)</legend>${t.monsters.map(m => who('mon:' + m.id, m.name + ' · ' + TableUI.statusLabel(m.status))).join('')}</fieldset>`;
+    // Conjuros de salvación (también de área): criaturas, y aliados o vos si quedan dentro.
+    if (info.save && (t.monsters.length || t.allies.length))
+      return `${t.monsters.length ? `<fieldset class="target-list"><legend>Criaturas (el DM tira sus salvaciones)</legend>${t.monsters.map(m => who('mon:' + m.id, m.name + ' · ' + TableUI.statusLabel(m.status))).join('')}</fieldset>` : ''}<fieldset class="target-list"><legend>También en el área (cada uno tira su salvación)</legend>${who('self', 'Vos (' + state.name + ')')}${t.allies.map(a => who('pc:' + a.characterId, a.name)).join('')}</fieldset>`;
     // Daño automático (Proyectil mágico…): se elige la criatura que lo recibe.
     if (info.dice && !info.heal && !info.attack && !info.save && t.monsters.length)
       return select(
@@ -476,11 +477,14 @@ const RollUI = (() => {
       .filter(w => w.startsWith('mon:'))
       .map(w => t.monsters.find(m => m.id === w.slice(4)))
       .filter(Boolean);
-    if (info.save && foes.length) {
+    const allies = who
+      .filter(w => w.startsWith('pc:'))
+      .map(w => t.allies.find(a => a.characterId === w.slice(3)))
+      .filter(Boolean);
+    if (info.save && (foes.length || allies.length || who.includes('self'))) {
       const l = TableUI.link();
-      await Cloud.post(l.campaignId, 'creature-save', {
+      const request = {
         caster: state.name,
-        characterId: l.characterId,
         spell: sp.name,
         ability: info.save,
         abilityName: info.saveName,
@@ -488,9 +492,31 @@ const RollUI = (() => {
         half: /mitad|half/i.test(sp.text || sp.srdOriginal || ''),
         damage: total,
         types: info.types,
-        targets: foes.map(f => ({ id: f.id, name: f.name })),
-      });
-      return ` → el DM tira las salvaciones de ${esc(foes.map(f => f.name).join(', '))}`;
+      };
+      const notes = [];
+      if (foes.length) {
+        await Cloud.post(l.campaignId, 'creature-save', {
+          ...request,
+          characterId: l.characterId,
+          targets: foes.map(f => ({ id: f.id, name: f.name })),
+        });
+        notes.push('el DM tira las salvaciones de ' + foes.map(f => f.name).join(', '));
+      }
+      // Aliados alcanzados: cada ficha recibe el pedido y aplica su propio daño.
+      if (allies.length) {
+        try {
+          for (const a of allies) await TableUI.sendTo(a.characterId, 'area-save', request);
+          notes.push(allies.map(a => a.name).join(', ') + ' tiran su salvación');
+        } catch (err) {
+          notes.push('no se pudo avisar a los aliados (' + err.message + ')');
+        }
+      }
+      // Vos dentro del área: tu propia salvación al cerrar el registro.
+      if (who.includes('self')) {
+        setTimeout(() => TableUI.areaSave({ id: 0, payload: request }, true), 900);
+        notes.push('vos también salvás');
+      }
+      return ' → ' + esc(notes.join(' · '));
     }
     return '';
   }

@@ -344,26 +344,59 @@ const MonsterUI = (() => {
     document.getElementById('monster-amount').value = '';
     panel.damage = 0;
   }
+  // Salvación de la party (aliento, aura…): el daño se tira acá y cada ficha alcanzada salva y lo aplica.
   async function askSave(entryId, kind, name) {
     const { e, a } = findAction(entryId, kind, name);
     const [ability, dc, success] = a.dc;
+    const parts = (a.dmg || []).map(([d, type]) => ({ type, ...rollDice(d) })),
+      rolled = parts.reduce((t, p) => t + p.total, 0),
+      text = parts.map(p => `${p.rolls.join('+') || '—'}${p.mod ? ' ' + sign(p.mod) : ''} ${p.type}`).join(' · ');
+    const ts = targets();
     modal(
       `${e.name}: ${a.n}`,
-      `<p class="small">${esc(a.d)}</p><p>Salvación de <b>${ABIL_ES[ability] || ability}</b> · CD <b>${dc}</b>${success === 'half' ? ' · mitad si la superan' : ''}</p>${select('A quién', 'target', [['', 'Toda la party'], ...targets().map(t => [t.id, t.name])])}<p class="small">Las respuestas llegan a «En la mesa» con éxito o fallo. Después usá «Tirar daño» en la acción para aplicarlo.</p>`,
-      fd =>
-        send(
-          'roll-request',
-          {
-            type: 'save',
-            id: ability,
-            label: `Salvación de ${ABIL_ES[ability]} (${a.n})`,
-            dc,
-            showDc: true,
-            secret: false,
-          },
-          fd.get('target') || null,
-        ),
-      'Pedir',
+      `<p class="small">${esc(a.d)}</p><p>Salvación de <b>${ABIL_ES[ability] || ability}</b> · CD <b>${dc}</b>${success === 'half' ? ' · mitad si la superan' : ''}</p>
+      ${ts.length ? `<fieldset class="target-list"><legend>Quiénes quedan en el área</legend>${ts.map(t => `<label class="check"><input type="checkbox" name="who" value="${esc(t.id)}" checked>${esc(t.name)}</label>`).join('')}</fieldset>` : '<p class="muted">No hay fichas en la mesa.</p>'}
+      ${parts.length ? `<p class="small">Daño tirado: ${esc(text)} = <b>${rolled}</b></p>${field('Daño (cambialo si tiraste dados físicos o querés bajarlo)', 'damage', rolled, 'number', 'min="0" max="9999" inputmode="numeric"')}` : ''}
+      <p class="small">${parts.length ? 'Cada jugador tira su salvación y su ficha se aplica el daño completo o la mitad. Los resultados llegan a «En la mesa».' : 'Las respuestas llegan a «En la mesa» con éxito o fallo.'}</p>`,
+      async fd => {
+        const who = fd.getAll('who');
+        if (!who.length) throw Error('Elegí al menos una ficha.');
+        if (!parts.length) {
+          for (const id of who)
+            await send(
+              'roll-request',
+              {
+                type: 'save',
+                id: ability,
+                label: `Salvación de ${ABIL_ES[ability]} (${a.n})`,
+                dc,
+                showDc: true,
+                secret: false,
+              },
+              id,
+            );
+          return;
+        }
+        const damage = Number(fd.get('damage'));
+        if (!Number.isInteger(damage) || damage < 0 || damage > 9999) throw Error('Revisá el daño.');
+        for (const id of who)
+          await send(
+            'area-save',
+            {
+              caster: e.name,
+              spell: a.n,
+              ability,
+              abilityName: ABIL_ES[ability] || ability,
+              dc,
+              half: success === 'half',
+              damage,
+              types: parts.map(p => p.type).join(', '),
+            },
+            id,
+          );
+        toast(`${a.n}: ${who.length} ${who.length === 1 ? 'ficha tira' : 'fichas tiran'} su salvación.`);
+      },
+      'Pedir salvaciones',
     );
   }
 

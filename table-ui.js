@@ -85,7 +85,7 @@ const TableUI = (() => {
     const recent = Date.now() - 3 * 60 * 60 * 1000;
     return feed.filter(
       e =>
-        e.kind === 'roll-request' &&
+        (e.kind === 'roll-request' || (e.kind === 'area-save' && e.target_character === l.characterId)) &&
         !answered.has(e.id) &&
         (!e.target_character || e.target_character === l.characterId) &&
         new Date(e.created_at).getTime() > recent,
@@ -93,9 +93,10 @@ const TableUI = (() => {
   }
   function requestBanner() {
     return openRequests()
-      .map(
-        r =>
-          `<section class="banner request"><p><b>El DM pide:</b> ${PV.esc(r.payload.label)}${r.payload.dc && r.payload.showDc ? ' · CD ' + PV.esc(r.payload.dc) : ''}</p>${button('Responder', 'table-answer', '', `data-id="${r.id}"`)}</section>`,
+      .map(r =>
+        r.kind === 'area-save'
+          ? `<section class="banner request"><p><b>${PV.esc(r.payload.spell)}</b> de ${PV.esc(r.payload.caster)}: salvación de ${PV.esc(r.payload.abilityName || r.payload.ability)} CD ${PV.esc(r.payload.dc)} · ${PV.esc(r.payload.damage)} de daño${r.payload.half ? ' (mitad si salvás)' : ''}</p>${button('Responder', 'table-answer', '', `data-id="${r.id}"`)}</section>`
+          : `<section class="banner request"><p><b>El DM pide:</b> ${PV.esc(r.payload.label)}${r.payload.dc && r.payload.showDc ? ' · CD ' + PV.esc(r.payload.dc) : ''}</p>${button('Responder', 'table-answer', '', `data-id="${r.id}"`)}</section>`,
       )
       .join('');
   }
@@ -424,6 +425,8 @@ const TableUI = (() => {
       } else if (ev.kind === 'roll-request' && (!ev.target_character || ev.target_character === l.characterId))
         toast('El DM pide: ' + ev.payload.label);
       else if (ev.kind === 'note' && ev.target_character === l.characterId) toast('Mensaje del DM: ' + ev.payload.text);
+      else if (ev.kind === 'area-save' && ev.target_character === l.characterId)
+        toast(ev.payload.spell + ' de ' + ev.payload.caster + ': tirá tu salvación.');
       redraw();
       return;
     }
@@ -567,6 +570,7 @@ const TableUI = (() => {
     const l = link(),
       req = feed.find(e => e.id === Number(id));
     if (!l || !req) throw Error('Ese pedido ya no está disponible.');
+    if (req.kind === 'area-save') return areaSave(req);
     const p = req.payload;
     let bonus = 0,
       kind = 'check';
@@ -604,6 +608,51 @@ const TableUI = (() => {
             redraw();
           })
           .catch(e => toast(e.message)),
+    });
+  }
+
+  // Salvación de área (Bola de fuego de un aliado, aliento de un dragón…): tirás y la ficha aplica el daño.
+  function areaSave(req, local = false) {
+    const l = link(),
+      p = req.payload,
+      bonus = R.saveBonus(state, p.ability);
+    RollUI.d20({
+      title: `${p.spell} · salvación de ${p.abilityName || p.ability} CD ${p.dc}`,
+      label: 'Salvación contra ' + p.spell,
+      bonus,
+      kind: 'save',
+      ability: p.ability,
+      share: false,
+      onDone: r =>
+        setTimeout(() => {
+          const success = r.kept !== 1 && (r.kept === 20 || r.total >= Number(p.dc));
+          const amount = success ? (p.half ? Math.floor(Number(p.damage) / 2) : 0) : Number(p.damage) || 0;
+          if (amount) applyCommand({ kind: 'damage', payload: { amount, source: p.spell } });
+          toast(`${success ? 'Salvaste' : 'Fallaste'}: ${amount ? amount + ' de daño' : 'sin daño'} (${p.spell}).`);
+          if (local || !l) return;
+          Cloud.post(
+            l.campaignId,
+            'roll-response',
+            {
+              character: state.name,
+              characterId: l.characterId,
+              requestId: req.id,
+              saved: success,
+              damage: amount,
+              label: `Salvación contra ${p.spell} (${success ? 'salva' : 'falla'} · ${amount} de daño)`,
+              rolls: r.rolls,
+              bonus,
+              total: r.total,
+              physical: r.physical,
+            },
+            { visibility: 'all' },
+          )
+            .then(ev => {
+              feed = [ev, ...feed];
+              redraw();
+            })
+            .catch(e => toast(e.message));
+        }),
     });
   }
 
@@ -704,6 +753,7 @@ const TableUI = (() => {
     isMyTurn,
     link,
     statusLabel: st => CREATURE_STATUS[st] || st,
+    areaSave,
     shareRoll,
     requestBanner,
     showStatus,
