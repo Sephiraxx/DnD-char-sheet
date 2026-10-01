@@ -1,0 +1,8 @@
+# Datos generados: se mantienen compactos.
+catalog.js
+class-data.js
+campaign-data.js
+equipment-data.js
+*.md
+node_modules
+vendor/
