@@ -177,7 +177,7 @@ function draw() {
   const list = summaries();
   const t = tracker();
   $('#main').innerHTML =
-    `<div class="heading"><div><p class="eyebrow">MESA EN VIVO</p><h1>${esc(party.campaign.name)}</h1><p>Código para unirse: <b class="table-code">${esc(party.campaign.code)}</b> · ${list.length} ficha${list.length === 1 ? '' : 's'}</p></div><div class="actions">${button('Pedir tirada a todos', 'request')}${button('Descanso corto', 'rest-short')}${button('Descanso largo', 'rest-long')}${button('Mensaje a todos', 'message')}${button('Mis mesas', 'home')}</div></div>
+    `<div class="heading"><div><p class="eyebrow">MESA EN VIVO</p><h1>${esc(party.campaign.name)}</h1><p>Código para unirse: <b class="table-code">${esc(party.campaign.code)}</b> · ${list.length} ficha${list.length === 1 ? '' : 's'}</p></div><div class="actions">${button('Pedir tirada a todos', 'request')}${button('Descanso corto', 'rest-short')}${button('Descanso largo', 'rest-long')}${button('Mensaje a todos', 'message')}${button('Mis mesas', 'home')}${button('Eliminar mesa', 'delete-table', 'danger', `data-id="${esc(party.campaign.id)}" data-name="${esc(party.campaign.name)}"`)}</div></div>
   ${error ? `<div class="banner"><p>${esc(error)}</p>${button('Reintentar', 'refresh')}</div>` : ''}
   <div class="dm-layout"><div class="stack">
     <div class="party-grid">${
@@ -206,7 +206,7 @@ function drawHome() {
   <div class="columns"><section class="card"><h2>Nueva mesa</h2><form id="create-form" class="stack">${field('Nombre de la campaña', 'name', '', 'text', 'required maxlength="100" placeholder="La maldición de Strahd"')}${field('Tu nombre', 'display', 'DM', 'text', 'maxlength="100"')}<div class="actions"><button class="button" type="submit">Crear mesa</button></div><p class="form-error" id="create-error" role="alert">${esc(error)}</p></form></section>
   <section class="card"><h2>Abiertas en este dispositivo</h2>${
     tables.length
-      ? `<div class="dm-tables">${tables.map(x => `<div class="list-row"><div><b>${esc(x.name)}</b><p class="small muted">Código ${esc(x.code)}</p></div><div class="actions">${button('Abrir', 'open', '', `data-id="${x.id}"`)}${button('Olvidar', 'forget', 'secondary', `data-id="${x.id}"`)}</div></div>`).join('')}</div>`
+      ? `<div class="dm-tables">${tables.map(x => `<div class="list-row"><div><b>${esc(x.name)}</b><p class="small muted">Código ${esc(x.code)}</p></div><div class="actions">${button('Abrir', 'open', '', `data-id="${x.id}"`)}${button('Olvidar', 'forget', 'secondary', `data-id="${x.id}"`)}${button('Eliminar', 'delete-table', 'danger', `data-id="${x.id}" data-name="${esc(x.name)}"`)}</div></div>`).join('')}</div>`
       : '<p class="muted">Todavía no creaste mesas en este dispositivo.</p>'
   }<p class="small muted section-space">Tu acceso de DM queda guardado en este navegador. Si borrás sus datos, la mesa sigue existiendo pero no vas a poder dirigirla desde acá.</p></section></div>`;
 }
@@ -277,6 +277,23 @@ const actions = {
     draw();
   },
   open: e => open(e.dataset.id),
+  'delete-table': e => {
+    const { id, name } = e.dataset;
+    modal(
+      'Eliminar «' + name + '»',
+      `<p>Se borran para siempre la mesa, su código, las fichas compartidas en ella y todo el historial de tiradas y órdenes. <b>Las fichas siguen en los dispositivos de cada jugador</b> y pueden unirse a otra mesa.</p>${field('Escribí el nombre de la mesa para confirmar', 'confirm', '', 'text', 'required autocomplete="off"')}`,
+      async fd => {
+        if (String(fd.get('confirm')).trim() !== name) throw Error('El nombre no coincide.');
+        await Cloud.deleteCampaign(id);
+        localStorage.removeItem('dnd-dm-initiative-' + id);
+        localStorage.removeItem('dnd-dm-notes-' + id);
+        if (current === id) actions.home();
+        else draw();
+        toast('Mesa eliminada.');
+      },
+      'Eliminar para siempre',
+    );
+  },
   forget: e => {
     Cloud.forgetDmTable(e.dataset.id);
     draw();

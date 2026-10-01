@@ -293,7 +293,8 @@
     check(await (await api()).from('characters').delete().eq('id', id));
   }
   async function deleteCampaign(id) {
-    check(await (await api()).from('campaigns').delete().eq('id', id));
+    const gone = check(await (await api()).from('campaigns').delete().eq('id', id).select('id'));
+    if (!gone.length) throw Error('No se pudo eliminar: solo el DM que creó la mesa puede hacerlo, desde su acceso.');
     forgetDmTable(id);
   }
 
