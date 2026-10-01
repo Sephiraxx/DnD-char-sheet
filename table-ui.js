@@ -473,8 +473,23 @@ const TableUI = (() => {
         const l = link();
         if (document.hidden || !l) return;
         refresh();
-        Cloud.pendingCommands(l.characterId)
-          .then(applyCommands)
+        // Si la ficha cambió en otro dispositivo, se baja antes de aplicar órdenes pendientes.
+        Cloud.reconcile(KEY)
+          .then(r => {
+            if (r.action === 'pull' && !document.getElementById('modal').open) {
+              const before = clone(state);
+              history.push(before);
+              state = R.validate(r.remote);
+              persist(before);
+              Cloud.acceptRemote(KEY, r.updatedAt);
+              render();
+              toast('Ficha actualizada con los cambios de otro dispositivo.');
+            } else if (r.action === 'conflict') conflict(r);
+            else if (r.action === 'push') Cloud.changed(KEY, state);
+          })
+          .catch(() => {})
+          .then(() => Cloud.pendingCommands(l.characterId))
+          .then(cmds => cmds && applyCommands(cmds))
           .catch(() => {});
       });
     }

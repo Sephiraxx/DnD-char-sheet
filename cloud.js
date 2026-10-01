@@ -116,33 +116,44 @@
     for (let i = 0; i < localStorage.length; i++) if (/-cloud$/.test(localStorage.key(i))) return true;
     return false;
   }
-  // Convierte el acceso anónimo de este dispositivo en uno con email (manda un correo de confirmación).
-  async function linkEmail(email) {
+  // Guarda el acceso de este dispositivo con email y contraseña. No se envían correos
+  // (en Supabase, «Confirm email» tiene que estar desactivado).
+  async function linkEmail(email, password) {
     await user();
-    const r = await (await api()).auth.updateUser({ email }, { emailRedirectTo: returnUrl() });
-    if (r.error) throw friendly(r.error);
+    const r = await (await api()).auth.updateUser({ email, password });
+    if (r.error)
+      throw /already.*registered|already been registered|exists/i.test(r.error.message)
+        ? Error('Ese email ya tiene un acceso. Usá «Entrar» con su contraseña.')
+        : friendly(r.error);
+    if (r.data.user?.new_email && !r.data.user?.email)
+      throw Error('El servidor todavía pide confirmar el email por correo. Avisale a quien administra la mesa.');
+    dispatchEvent(new CustomEvent('cloud-login', { detail: { error: '' } }));
     return r.data.user;
   }
-  // En otro dispositivo: manda un enlace de ingreso al email ya guardado.
-  async function sendLoginLink(email) {
+  async function changePassword(password) {
+    const r = await (await api()).auth.updateUser({ password });
+    if (r.error) throw friendly(r.error);
+  }
+  // En otro dispositivo: entrar con el email y la contraseña guardados.
+  async function signIn(email, password) {
     const me = await currentUser();
     if (me?.is_anonymous && hasLocalCloudData())
       throw Error(
-        'Este dispositivo ya tiene fichas o mesas con un acceso sin email. Guardá ese acceso con tu email (Mesa → Tu acceso) en vez de ingresar con otro.',
+        'Este dispositivo ya tiene fichas o mesas con un acceso sin email. Guardá ese acceso con tu email (Tu acceso) en vez de entrar con otro.',
       );
     const captchaToken = cfg.captchaSiteKey && !isLocal() ? await captcha() : undefined;
     const r = await (
       await api()
-    ).auth.signInWithOtp({
+    ).auth.signInWithPassword({
       email,
-      options: { shouldCreateUser: false, emailRedirectTo: returnUrl(), ...(captchaToken ? { captchaToken } : {}) },
+      password,
+      ...(captchaToken ? { options: { captchaToken } } : {}),
     });
     if (r.error)
-      throw /signups not allowed|not found/i.test(r.error.message)
-        ? Error(
-            'No hay un acceso guardado con ese email. Guardalo primero desde el dispositivo donde ya usás la ficha.',
-          )
+      throw /invalid login|credentials/i.test(r.error.message)
+        ? Error('Email o contraseña incorrectos.')
         : friendly(r.error);
+    dispatchEvent(new CustomEvent('cloud-login', { detail: { error: '' } }));
   }
   // Fichas de este usuario en cualquier mesa, para traerlas a este dispositivo.
   async function myCharacters() {
@@ -539,7 +550,8 @@
     attach,
     currentUser,
     linkEmail,
-    sendLoginLink,
+    changePassword,
+    signIn,
     myCharacters,
     myDmTables,
     restore,
