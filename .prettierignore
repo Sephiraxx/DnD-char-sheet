@@ -6,3 +6,4 @@ equipment-data.js
 *.md
 node_modules
 vendor/
+monsters-data.js

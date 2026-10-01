@@ -286,3 +286,24 @@
   align-items: center;
   justify-content: space-between;
 }
+.monster-results {
+  max-height: 50vh;
+  overflow: auto;
+  margin-top: 10px;
+}
+.monster-abilities {
+  grid-template-columns: repeat(6, 1fr);
+  margin: 8px 0;
+}
+.monster-name {
+  font-weight: 700;
+  padding: 0;
+  text-align: left;
+}
+.difficulty.difícil,
+.difficulty.mortal {
+  color: var(--red);
+}
+.difficulty.mediano {
+  color: var(--gold);
+}

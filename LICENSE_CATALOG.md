@@ -19,3 +19,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+Los datos de monstruos (`monsters-data.js`) provienen del SRD 5.1 (CC-BY-4.0, Wizards of the Coast) en el formato de 5e-bits (licencia MIT anterior); se generan con `tools/build-monsters.js`.

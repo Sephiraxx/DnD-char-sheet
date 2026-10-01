@@ -50,9 +50,10 @@ function modal(title, html, submit, saveLabel = 'Enviar') {
   const d = $('#modal');
   if (d.open) d.close();
   $('#modal-content').innerHTML =
-    `<div class="modal-head"><h2 id="dialog-title">${esc(title)}</h2><button type="button" class="icon-btn" data-close aria-label="Cerrar">×</button></div><form id="dialog-form"><div class="modal-body">${html}<p class="form-error" id="form-error" role="alert"></p><div class="modal-actions"><button type="button" class="button secondary" data-close>Cancelar</button><button class="button" type="submit">${esc(saveLabel)}</button></div></div></form>`;
+    `<div class="modal-head"><h2 id="dialog-title">${esc(title)}</h2><button type="button" class="icon-btn" data-close aria-label="Cerrar">×</button></div><form id="dialog-form"><div class="modal-body">${html}<p class="form-error" id="form-error" role="alert"></p>${submit ? `<div class="modal-actions"><button type="button" class="button secondary" data-close>Cancelar</button><button class="button" type="submit">${esc(saveLabel)}</button></div>` : ''}</div></form>`;
   $('#dialog-form').addEventListener('submit', async e => {
     e.preventDefault();
+    if (!submit) return;
     const btn = e.currentTarget.querySelector('button[type=submit]');
     btn.disabled = true;
     try {
@@ -280,7 +281,7 @@ function initiativeCard(t) {
         ? `${x.hp ?? '—'}/${x.maxHP} PG · CA ${x.ac}${x.conditions.length ? ' · ' + esc(x.conditions.join(', ')) : ''}`
         : `CA ${e.ac ?? '—'}`;
       const down = x ? x.hp === 0 : e.hp === 0;
-      return `<li class="${i === t.turn ? 'current' : ''} ${down ? 'down' : ''}"><span class="init">${e.init ?? '—'}</span><span class="who"><b>${esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
+      return `<li class="${i === t.turn ? 'current' : ''} ${down ? 'down' : ''}"><span class="init">${e.init ?? '—'}</span><span class="who"><b>${e.monsterId ? `<button type="button" class="text-btn monster-name" data-action="monster-open" data-entry="${e.id}">${esc(e.name)}</button>` : esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
         e.characterId
           ? button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)
           : `<input type="number" aria-label="PG de ${esc(e.name)}" data-monster-hp="${e.id}" value="${e.hp ?? ''}" min="0" max="99999">/${e.max ?? '—'}${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}`
@@ -288,8 +289,8 @@ function initiativeCard(t) {
     })
     .join('');
   return `<section class="card"><div class="card-header"><h2>Iniciativa${t.round ? ' · ronda ' + t.round : ''}</h2></div>
-  <div class="actions">${button('Agregar party', 'init-party')}${button('Pedir iniciativa', 'init-request')}${button('Agregar criatura', 'init-monster')}</div>
-  ${items ? `<ol class="initiative-list section-space">${items}</ol>` : '<p class="muted section-space">Agregá a la party y a las criaturas. Las tiradas de iniciativa de los jugadores se completan solas.</p>'}
+  <div class="actions">${button('Agregar party', 'init-party')}${button('Pedir iniciativa', 'init-request')}${button('Monstruo del SRD', 'init-monster-srd')}${button('Criatura propia', 'init-monster')}</div>
+  ${typeof MonsterUI !== 'undefined' ? MonsterUI.difficultyLine(t) : ''}${items ? `<ol class="initiative-list section-space">${items}</ol>` : '<p class="muted section-space">Agregá a la party y a las criaturas. Las tiradas de iniciativa de los jugadores se completan solas.</p>'}
   ${t.entries.length ? `<div class="actions section-space">${button(t.turn < 0 ? 'Empezar combate' : 'Siguiente turno', 'init-next', '')}${t.turn >= 0 ? button('Terminar combate', 'init-end') : ''}${button('Vaciar', 'init-clear')}</div>` : ''}</section>`;
 }
 
