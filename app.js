@@ -84,6 +84,7 @@ function commit(label, fn, requireSaved = false) {
     next = clone(state);
   try {
     fn(next);
+    Effects.sync(next);
     next.log.unshift({ date: new Date().toISOString(), text: label });
     next.log = next.log.slice(0, 100);
     R.validate(next);
@@ -444,6 +445,7 @@ function cast(id, ritual = false) {
       const slot = sp.level && !ritual && !special ? number(fd, 'espacio', sp.level, 9) : 0;
       commit((ritual ? 'Ritual: ' : 'Lanzado: ') + sp.name + (slot ? ' · espacio ' + slot : ''), s => {
         Combat.cast(s, sp, slot, ritual);
+        if (!ritual) Effects.fromSpell(s, sp);
         const target = String(fd.get('ventaja') || '').trim();
         if (sp.id === 'silvery' && target) {
           const effects = Combat.data(s).effects;

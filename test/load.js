@@ -13,6 +13,7 @@ const LOGIC = [
   'class-rules.js',
   'party-store.js',
   'combat-engine.js',
+  'effects.js',
   'rules.js',
   'attacks.js',
   'campaign.js',

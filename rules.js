@@ -642,6 +642,7 @@
     if (o.inspirationSpent !== null && !int(o.inspirationSpent, 0, stats(o).inspirationMax)) fail();
     if (o.hdSpent !== null && !int(o.hdSpent, 0, totalLevel(o))) fail();
     if (o.heroicInspiration !== undefined && typeof o.heroicInspiration !== 'boolean') fail();
+    if (root.Effects && !root.Effects.valid(o)) fail();
     if (
       o.bonusDice !== undefined &&
       (!list(o.bonusDice, 20) ||

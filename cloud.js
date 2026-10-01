@@ -5,7 +5,19 @@
   const enabled = Boolean(cfg.url && cfg.key);
   const DM_TABLES = 'dnd-cloud-dm-v1';
   // Órdenes que solo el DM puede publicar y que la app del jugador aplica a su ficha.
-  const COMMANDS = ['damage', 'heal', 'temp', 'condition', 'rest', 'gold', 'item', 'level', 'inspiration', 'bonus-die'];
+  const COMMANDS = [
+    'damage',
+    'heal',
+    'temp',
+    'condition',
+    'rest',
+    'gold',
+    'item',
+    'level',
+    'inspiration',
+    'bonus-die',
+    'effect',
+  ];
   let client = null,
     loading = null,
     timer = null,
