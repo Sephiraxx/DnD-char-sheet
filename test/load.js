@@ -25,6 +25,8 @@ function load(files = LOGIC) {
     console,
     crypto: require('crypto').webcrypto,
     structuredClone,
+    setTimeout,
+    clearTimeout,
     localStorage: {
       getItem: k => (store.has(k) ? store.get(k) : null),
       setItem: (k, v) => store.set(k, String(v)),

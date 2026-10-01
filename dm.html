@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#10252a" />
+    <meta name="description" content="Pantalla del DM: party en vivo, iniciativa, daño, estados y pedidos de tirada." />
+    <title>Pantalla del DM · Cuaderno de aventura</title>
+    <link rel="icon" type="image/svg+xml" href="./assets/icon.svg" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./party.css" />
+    <script src="./catalog.js" defer></script>
+    <script src="./class-data.js" defer></script>
+    <script src="./campaign-data.js" defer></script>
+    <script src="./equipment-data.js" defer></script>
+    <script src="./equipment.js" defer></script>
+    <script src="./class-rules.js" defer></script>
+    <script src="./combat-engine.js" defer></script>
+    <script src="./rules.js" defer></script>
+    <script src="./campaign.js" defer></script>
+    <script src="./config.js" defer></script>
+    <script src="./cloud.js" defer></script>
+    <script src="./party-view.js" defer></script>
+    <script src="./dm.js" defer></script>
+  </head>
+  <body class="dm-page">
+    <a class="skip" href="#main">Ir a la mesa</a>
+    <div class="workspace dm-workspace">
+      <header class="topbar">
+        <div>
+          <span class="eyebrow">PANTALLA DEL DM</span>
+          <div id="breadcrumb">Tus mesas</div>
+        </div>
+        <div class="top-actions">
+          <a class="button secondary" href="./">Fichas</a>
+          <span id="save-status" role="status"></span>
+        </div>
+      </header>
+      <main id="main" tabindex="-1"></main>
+    </div>
+    <dialog id="modal" aria-labelledby="dialog-title"><div id="modal-content"></div></dialog>
+    <div id="toast" hidden role="status" aria-live="polite"></div>
+    <noscript>Activá JavaScript para usar la pantalla del DM.</noscript>
+  </body>
+</html>

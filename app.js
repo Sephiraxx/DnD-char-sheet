@@ -1,4 +1,4 @@
-/* Aplicación estática. Sin cuentas, servicios externos ni claves. */
+/* Aplicación estática. La mesa compartida (cloud.js) es opcional; sin ella todo queda en el dispositivo. */
 'use strict';
 const R = window.Rules,
   KEY = CharacterStorage.activeKey(),
@@ -41,6 +41,7 @@ const navs = [
   ['character', '◇', 'Personaje'],
   ['class', '✧', 'Clase'],
   ['journal', '≡', 'Diario'],
+  ['table', '⚑', 'Mesa'],
 ];
 function hideToast() {
   clearTimeout(toastTimer);
@@ -70,6 +71,7 @@ function persist(before) {
     localStorage.setItem(KEY, JSON.stringify(state));
     $('#save-status').textContent = 'Guardado en este dispositivo';
     storageIssue = '';
+    Cloud.changed(KEY, state);
   } catch (e) {
     storageIssue = rawBroken ? e.message : 'No se pudo guardar. Tu ficha sigue abierta: exportá una copia.';
     $('#save-status').textContent = 'Sin guardar';
@@ -101,6 +103,7 @@ function commit(label, fn, requireSaved = false) {
     } catch {}
     storageIssue = '';
     $('#save-status').textContent = 'Guardado en este dispositivo';
+    Cloud.changed(KEY, next);
   }
   history.push(before);
   history = history.slice(-20);
@@ -343,7 +346,11 @@ function render() {
   $('#breadcrumb').textContent = navs.find(x => x[0] === view)?.[2] || 'Combate';
   $('#main').innerHTML =
     (storageIssue ? `<div class="banner"><p>${esc(storageIssue)}</p>${button('Mi ficha', 'settings')}</div>` : '') +
-    ({ combat, spells: spellPage, gear, character, journal, class: PartyUI.classPage }[view] || combat)();
+    (view === 'combat' ? `<div id="table-requests">${TableUI.requestBanner()}</div>` : '') +
+    (
+      { combat, spells: spellPage, gear, character, journal, class: PartyUI.classPage, table: TableUI.page }[view] ||
+      combat
+    )();
   scrollTo(0, y);
 }
 function go() {
@@ -908,6 +915,7 @@ const actions = {
     let b = Number(e.dataset.bonus),
       n = roll(20)[0];
     commit(`${e.dataset.label}: d20 ${n} ${sign(b)} = ${n + b}`, () => {});
+    TableUI.shareRoll({ label: e.dataset.label, rolls: [n], bonus: b, total: n + b });
     toast(`${e.dataset.label}: ${n} ${sign(b)} = ${n + b}`);
   },
   'skill-roll': e => {
@@ -921,6 +929,7 @@ const actions = {
       name = R.skills.find(x => x[0] === id)[1];
     commit(`${name}: d20 ${n}${n !== used ? ' → 10 (Lengua de plata)' : ''} ${sign(b)} = ${used + b}`, () => {});
     toast(`${name}: ${n !== used ? n + ' → ' + used : used} ${sign(b)} = ${used + b}`);
+    TableUI.shareRoll({ label: name, rolls: [used], bonus: b, total: used + b });
   },
   dice: () =>
     modal(
@@ -930,12 +939,16 @@ const actions = {
         'dado',
         [4, 6, 8, 10, 12, 20, 100].map(x => [x, 'd' + x]),
         20,
-      )}${field('Modificador', 'modificador', 0, 'number', 'min="-100" max="100" required')}</div>`,
+      )}${field('Modificador', 'modificador', 0, 'number', 'min="-100" max="100" required')}</div>${Cloud.link(KEY) ? '<label class="check"><input type="checkbox" name="secreta">Solo para el DM</label>' : ''}`,
       fd => {
         let a = roll(number(fd, 'dado', 4, 100), number(fd, 'cantidad', 1, 30)),
           b = number(fd, 'modificador', -100, 100),
           sum = a.reduce((x, y) => x + y, 0) + b;
         commit('Dados: ' + a.join(', ') + ' ' + sign(b) + ' = ' + sum, () => {});
+        TableUI.shareRoll(
+          { label: a.length + 'd' + number(fd, 'dado', 4, 100), rolls: a, bonus: b, total: sum },
+          fd.has('secreta') ? 'dm' : 'all',
+        );
         toast('Resultado: ' + sum + ' (' + a.join(', ') + ' ' + sign(b) + ')');
       },
       'Tirar',
@@ -1047,6 +1060,7 @@ installCombatActions();
 PartyUI.install();
 Campaign.install();
 EquipmentUI.install();
+TableUI.install();
 document.addEventListener('click', e => {
   if (e.target.closest('[data-close]')) {
     $('#modal').close();
@@ -1133,6 +1147,7 @@ window.addEventListener('storage', e => {
   }
 });
 go();
+TableUI.boot();
 if ('serviceWorker' in navigator && location.protocol !== 'file:')
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 try {

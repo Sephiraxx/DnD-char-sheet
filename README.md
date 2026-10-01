@@ -70,9 +70,26 @@ Caballero arcano y Embaucador arcano: las restricciones de escuelas y excepcione
 
 El combate automatiza recursos y acciones comunes, **no todos los efectos de las 118 subclases**. Por ejemplo, las formas del druida, mascotas, bonificaciones de objetos y reacciones especiales pueden necesitar notas, ajustes o la opción del DM. No calcula multiclase. La velocidad y los bonos de equipo se registran manualmente. Las condiciones son recordatorios y no alteran todas las tiradas.
 
+## Mesa compartida (party y DM)
+
+Opcional. Con la mesa configurada, cada jugador se une con un código y la party se ve en vivo:
+
+- **Jugadores — sección Mesa:** unirse con el código de 6 letras, ver PG, CA, estados, concentración, espacios y percepción pasiva de toda la party, tiradas compartidas y pedidos de tirada del DM. La ficha sigue guardándose en el dispositivo y funciona sin conexión; los cambios se suben al volver.
+- **DM — `dm.html` (botón «Soy el DM»):** crear la mesa, panel con todas las fichas, daño y curación, estados, pedidos de tirada con CD (las respuestas llegan solas), entrega de monedas y objetos, mensajes, descansos y subidas de nivel, iniciativa con criaturas que marca el turno en la ficha de cada jugador, y notas privadas.
+- Las órdenes del DM las aplica la ficha del jugador con sus propias reglas (PG temporales, concentración, estados). Si el jugador está sin conexión, se aplican al abrir la ficha.
+- No hay cuentas: cada navegador recibe un acceso anónimo. Borrar los datos del navegador hace perder el acceso a esa ficha en la mesa (la copia exportada sirve para volver a unirse).
+
+### Configurar el servidor (una sola vez)
+
+1. Crear un proyecto gratuito en [supabase.com](https://supabase.com).
+2. **Authentication → Sign In / Providers:** activar **Allow anonymous sign-ins**.
+3. **SQL Editor:** pegar el contenido de `supabase/schema.sql` y ejecutar.
+4. **Project Settings → API:** copiar la **Project URL** y la clave pública (**anon** / **publishable**) en `config.js`. La clave pública puede publicarse; los permisos están en las políticas del esquema. Nunca uses la clave `service_role` / secreta.
+5. Publicar los cambios (GitHub Pages).
+
 ## Guardado, copias y uso sin conexión
 
-Todo se guarda **en ese navegador y dispositivo**. GitHub Pages publica la aplicación, pero no almacena ni sincroniza las fichas entre los integrantes de la party. Para trasladar una ficha usá **Personajes → Exportar personaje actual** e **Importar como personaje nuevo**. La importación tradicional de Mi ficha reemplaza solo la ficha activa, después de confirmar.
+Todo se guarda **en ese navegador y dispositivo**. Sin la mesa compartida, GitHub Pages publica la aplicación pero no almacena ni sincroniza las fichas entre los integrantes de la party. Para trasladar una ficha usá **Personajes → Exportar personaje actual** e **Importar como personaje nuevo**. La importación tradicional de Mi ficha reemplaza solo la ficha activa, después de confirmar.
 
 Guardá copias JSON periódicas: borrar los datos del navegador elimina los guardados locales. Cambiar el dominio o navegador requiere exportar e importar. Después de una carga completa por HTTPS se puede volver a abrir sin conexión en navegadores compatibles. Los enlaces externos de referencia sí requieren conexión.
 

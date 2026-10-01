@@ -24,6 +24,14 @@ const FILES = [
   './wizard.js',
   './manifest.webmanifest',
   './assets/icon.svg',
+  './party.css',
+  './config.js',
+  './cloud.js',
+  './party-view.js',
+  './table-ui.js',
+  './dm.html',
+  './dm.js',
+  './vendor/supabase.js',
 ];
 self.addEventListener('install', event => {
   event.waitUntil(

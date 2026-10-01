@@ -5,9 +5,11 @@
   "scripts": {
     "serve": "npx --yes http-server -c-1 -p 8080 .",
     "format": "prettier --write .",
-    "check": "prettier --check . && node --test"
+    "check": "prettier --check . && node --test",
+    "vendor": "node -e \"require('fs').copyFileSync(require.resolve('@supabase/supabase-js/dist/umd/supabase.js'),'vendor/supabase.js')\""
   },
   "devDependencies": {
+    "@supabase/supabase-js": "^2.117.2",
     "prettier": "^3.3.3"
   }
 }
