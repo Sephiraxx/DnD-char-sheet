@@ -338,6 +338,7 @@ function render() {
   document.body.classList.toggle('no-character', !state);
   if (!state) {
     PartyUI.welcome();
+    if (Cloud.enabled) $('#main').insertAdjacentHTML('beforeend', AccountUI.card('restore'));
     return;
   }
   PartyUI.decorate();

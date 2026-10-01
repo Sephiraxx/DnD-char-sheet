@@ -108,7 +108,7 @@ const TableUI = (() => {
     if (!l)
       return (
         intro +
-        `<div class="columns"><section class="card"><h2>Unirse a una mesa</h2><p>Pedile el código de 6 letras a tu DM. Tu ficha se comparte con la mesa: la party y el DM ven tus PG, CA, estados y espacios. Solo vos podés editarla.</p><form id="table-join-form" class="stack">${field('Código de la mesa', 'code', '', 'text', 'required minlength="6" maxlength="6" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.2em"')}${field('Tu nombre (jugador)', 'display', '', 'text', 'maxlength="100" placeholder="Opcional"')}<div class="actions"><button class="button" type="submit">Unirme con ${PV.esc(state.name)}</button></div><p class="form-error" id="table-join-error" role="alert">${PV.esc(error)}</p></form><p class="small muted">Tu ficha sigue guardándose en este dispositivo y funciona sin conexión; los cambios se suben al volver.</p></section><section class="card"><h2>¿Sos el DM?</h2><p>Creá una mesa, compartí el código y seguí a la party desde tu pantalla: PG, iniciativa, daño, estados, pedidos de tirada y botín.</p><div class="actions"><a class="button secondary" href="./dm.html">Abrir pantalla del DM</a></div></section></div>`
+        `<div class="columns"><section class="card"><h2>Unirse a una mesa</h2><p>Pedile el código de 6 letras a tu DM. Tu ficha se comparte con la mesa: la party y el DM ven tus PG, CA, estados y espacios. Solo vos podés editarla.</p><form id="table-join-form" class="stack">${field('Código de la mesa', 'code', '', 'text', 'required minlength="6" maxlength="6" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.2em"')}${field('Tu nombre (jugador)', 'display', '', 'text', 'maxlength="100" placeholder="Opcional"')}<div class="actions"><button class="button" type="submit">Unirme con ${PV.esc(state.name)}</button></div><p class="form-error" id="table-join-error" role="alert">${PV.esc(error)}</p></form><p class="small muted">Tu ficha sigue guardándose en este dispositivo y funciona sin conexión; los cambios se suben al volver.</p></section>${AccountUI.card('restore')}</div><div class="columns"><section class="card"><h2>¿Sos el DM?</h2><p>Creá una mesa, compartí el código y seguí a la party desde tu pantalla: PG, iniciativa, daño, estados, pedidos de tirada y botín.</p><div class="actions"><a class="button secondary" href="./dm.html">Abrir pantalla del DM</a></div></section></div>`
       );
     if (!party && !loading) refresh();
     const mine = l.characterId;
@@ -141,7 +141,7 @@ const TableUI = (() => {
               )
               .join('')
           : '<p class="muted">Las tiradas y los avisos del DM aparecerán acá.</p>'
-      }</div></section>`
+      }</div></section>${AccountUI.card('account')}`
     );
   }
 

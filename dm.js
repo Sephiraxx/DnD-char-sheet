@@ -208,8 +208,19 @@ function drawHome() {
     tables.length
       ? `<div class="dm-tables">${tables.map(x => `<div class="list-row"><div><b>${esc(x.name)}</b><p class="small muted">Código ${esc(x.code)}</p></div><div class="actions">${button('Abrir', 'open', '', `data-id="${x.id}"`)}${button('Olvidar', 'forget', 'secondary', `data-id="${x.id}"`)}${button('Eliminar', 'delete-table', 'danger', `data-id="${x.id}" data-name="${esc(x.name)}"`)}</div></div>`).join('')}</div>`
       : '<p class="muted">Todavía no creaste mesas en este dispositivo.</p>'
-  }<p class="small muted section-space">Tu acceso de DM queda guardado en este navegador. Si borrás sus datos, la mesa sigue existiendo pero no vas a poder dirigirla desde acá.</p></section></div>`;
+  }<p class="small muted section-space">Tu acceso de DM queda guardado en este navegador. Guardalo con tu email para dirigir tus mesas desde otro dispositivo.</p></section></div>${AccountUI.card('account')}`;
+  if (!merged) {
+    merged = true;
+    Cloud.myDmTables()
+      .then(r => r.length && !current && drawHome())
+      .catch(() => {});
+  }
 }
+let merged = false;
+addEventListener('cloud-login', () => {
+  merged = false;
+  if (!current) drawHome();
+});
 
 function initiativeCard(t) {
   const items = t.entries
@@ -569,10 +580,11 @@ document.addEventListener('submit', e => {
     .catch(err => (out.textContent = err.message));
 });
 window.addEventListener('hashchange', () => {
-  const id = location.hash.slice(1);
+  const id = location.hash.includes('=') ? '' : location.hash.slice(1);
   if (id && id !== current) open(id);
 });
 Cloud.onStatus(() => {});
-const start = location.hash.slice(1) || localStorage.getItem('dnd-dm-last');
+const hashId = location.hash.includes('=') ? '' : location.hash.slice(1);
+const start = hashId || localStorage.getItem('dnd-dm-last');
 if (Cloud.enabled && start) open(start);
 else draw();
