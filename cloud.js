@@ -264,6 +264,24 @@
           : ['PHB', ...sources],
       startLevel: Number.isInteger(level) && level >= 1 && level <= 20 ? level : 1,
       rules: typeof x?.rules === 'string' ? x.rules.slice(0, 2000) : '',
+      abilities: cleanAbilityRules(x?.abilities),
+    };
+  }
+  // Cómo se generan las características al crear personajes: métodos permitidos y sus parámetros.
+  const ABILITY_METHODS = ['manual', 'array', 'pointbuy', 'roll'];
+  function cleanAbilityRules(a) {
+    const int = (v, min, max, def) =>
+      Number.isInteger(Number(v)) && v !== '' && v !== null && Number(v) >= min && Number(v) <= max ? Number(v) : def;
+    const methods = Array.isArray(a?.methods) ? ABILITY_METHODS.filter(m => a.methods.includes(m)) : [];
+    const array =
+      Array.isArray(a?.array) && a.array.length === 6 && a.array.every(v => int(v, 3, 20, null) !== null)
+        ? a.array.map(Number)
+        : [15, 14, 13, 12, 10, 8];
+    return {
+      methods: methods.length ? methods : ABILITY_METHODS.slice(),
+      array,
+      points: int(a?.points, 1, 60, 27),
+      rollMin: int(a?.rollMin, 0, 18, 0),
     };
   }
   async function updateSettings(id, settings) {

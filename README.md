@@ -2,9 +2,13 @@
 
 ## Crear y cambiar de personaje
 
-En la primera visita, elegí **Crear personaje** o **Importar una ficha JSON**. Si ya tenés una abierta, usá **Personajes → Crear personaje**. La guía pide identidad, clase, nivel, subclase cuando corresponda, puntuaciones finales, competencias, PG, oro y equipo. Podés empezar en cualquier nivel del 1 al 20.
+En la primera visita, elegí **Crear personaje** o **Importar una ficha JSON**. Si ya tenés una abierta, usá **Personajes → Crear personaje**. El creador ocupa toda la pantalla y va paso a paso, una decisión por pantalla: **Clase → Trasfondo → Raza → Características → Habilidades → Conjuros → Equipo → Detalles → Revisar**. Podés empezar en cualquier nivel del 1 al 20.
 
-- La matriz estándar es una ayuda editable: las puntuaciones finales deben incluir los bonos y mejoras de tu mesa. La aplicación no elige raza, trasfondo, dotes ni equipo por vos.
+- Clases, trasfondos, razas y conjuros se eligen con tarjetas, buscador y filtros (por ejemplo «Pega fuerte», «Cura y apoya», «Para empezar»). Las razas se agrupan por familia: elegís «Tiefling» y después su variante.
+- Características: repartir valores fijos (la matriz estándar o los que defina el DM), compra de puntos, tirar 4d6 (digital o con tus dados físicos) o escribirlas. Los aumentos de raza se suman solos, incluidos los flexibles +2/+1 o +1/+1/+1, y se pueden reubicar con la opción de Tasha. Se resaltan las características clave de la clase.
+- El DM elige en **Mesa → Ajustes** qué métodos se permiten, los valores fijos a repartir, los puntos de compra y un mínimo por tirada (si sale menos, cuenta como el mínimo). Si se vuelve a tirar, la revisión lo muestra.
+- El paso de conjuros aparece solo si la clase lanza a ese nivel: trucos, conocidos, preparados o libro de mago con sus límites, y los siempre preparados de la subclase.
+- El borrador se guarda en el dispositivo: «Salir» (o Esc) lo conserva y al volver se retoma. La aplicación no elige por vos; lo que quede pendiente aparece en la ficha.
 - Hay 13 clases: artificiero, bárbaro, bardo, clérigo, druida, guerrero, monje, paladín, explorador, pícaro, hechicero, brujo y mago.
 - Cada ficha tiene guardado, respaldo, historial de la sesión y borrador de subida independientes. Crear otra nunca reemplaza a Darien.
 - La primera visita muestra únicamente Crear personaje e Importar ficha. No abre a Darien ni crea un personaje de ejemplo. Si ya tenés una ficha guardada, abre la última seleccionada; los guardados antiguos de Darien se conservan.

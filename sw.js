@@ -1,11 +1,12 @@
 const PREFIX = 'darien:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v26-books';
+const CACHE = PREFIX + 'v28-es';
 const FILES = [
   './',
   './index.html',
   './style.css',
   './rules.js',
   './class-data.js',
+  './names-es.js',
   './campaign-data.js',
   './campaign.js',
   './class-rules.js',
@@ -27,6 +28,8 @@ const FILES = [
   './assets/icon.svg',
   './party.css',
   './polish.css',
+  './creator.css',
+  './creator.js',
   './fx.js',
   './config.js',
   './cloud.js',

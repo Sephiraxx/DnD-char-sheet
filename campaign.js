@@ -114,7 +114,8 @@ const Campaign = (() => {
     if (k.includes('|')) {
       const base = k.split('|')[0];
       return (
-        Catalog.feats.find(f => f.name.toLowerCase() === base)?.name || base.replace(/\b\w/g, c => c.toUpperCase())
+        Catalog.feats.find(f => (f.english || f.name).toLowerCase() === base)?.name ||
+        base.replace(/\b\w/g, c => c.toUpperCase())
       );
     }
     return k;

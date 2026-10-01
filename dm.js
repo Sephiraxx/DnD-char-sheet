@@ -91,13 +91,40 @@ function settingsFields(st = Cloud.cleanSettings({})) {
     )
     .join(
       '',
-    )}</div><p class="small">El Manual del Jugador siempre queda habilitado. Los jugadores ven razas, trasfondos y opciones de estos libros.</p></fieldset><div class="form-grid">${field('Nivel inicial de los personajes', 'startLevel', st.startLevel, 'number', 'min="1" max="20" required')}</div><label class="field">Reglas de la casa (opcional)<textarea name="rules" maxlength="2000" placeholder="Puntos de golpe máximos en nivel 1, sin dotes, compra de puntos…">${esc(st.rules)}</textarea></label>`;
+    )}</div><p class="small">El Manual del Jugador siempre queda habilitado. Los jugadores ven razas, trasfondos y opciones de estos libros.</p></fieldset><fieldset class="campaign-sources"><legend>Características al crear personajes</legend><div class="source-grid">${[
+    ['manual', 'Escribir las puntuaciones'],
+    ['array', 'Repartir valores fijos'],
+    ['pointbuy', 'Compra de puntos'],
+    ['roll', 'Tirar 4d6 (descartando el menor)'],
+  ]
+    .map(
+      ([id, n]) =>
+        `<label class="check"><input type="checkbox" name="abilityMethod" value="${id}" ${st.abilities.methods.includes(id) ? 'checked' : ''}>${n}</label>`,
+    )
+    .join(
+      '',
+    )}</div><div class="form-grid">${field('Valores fijos para repartir', 'abilityArray', st.abilities.array.join(', '), 'text', 'maxlength="40" placeholder="15, 14, 13, 12, 10, 8"')}${field('Puntos para comprar', 'abilityPoints', st.abilities.points, 'number', 'min="1" max="60" required')}${field('Mínimo por puntuación al tirar (0 = sin mínimo)', 'abilityRollMin', st.abilities.rollMin, 'number', 'min="0" max="18" required')}</div><p class="small">Si una tirada queda por debajo del mínimo, cuenta como el mínimo. Sin ningún método marcado se permiten todos.</p></fieldset><div class="form-grid">${field('Nivel inicial de los personajes', 'startLevel', st.startLevel, 'number', 'min="1" max="20" required')}</div><label class="field">Reglas de la casa (opcional)<textarea name="rules" maxlength="2000" placeholder="Puntos de golpe máximos en nivel 1, sin dotes, compra de puntos…">${esc(st.rules)}</textarea></label>`;
 }
 const readSettings = fd => ({
   sources: ['PHB', ...fd.getAll('source')],
   startLevel: Number(fd.get('startLevel')),
   rules: String(fd.get('rules') || '').trim(),
+  abilities: readAbilityRules(fd),
 });
+function readAbilityRules(fd) {
+  const array = String(fd.get('abilityArray') || '')
+    .split(/[^0-9]+/)
+    .filter(Boolean)
+    .map(Number);
+  if (array.length !== 6 || array.some(v => v < 3 || v > 20))
+    throw Error('Los valores fijos son seis números entre 3 y 20, por ejemplo 15, 14, 13, 12, 10, 8.');
+  return {
+    methods: fd.getAll('abilityMethod'),
+    array,
+    points: Number(fd.get('abilityPoints')),
+    rollMin: Number(fd.get('abilityRollMin')),
+  };
+}
 function settingsSummary(st) {
   const books =
     st.sources.length === Object.keys(CampaignData.sources).length ? 'todos los libros' : st.sources.join(', ');

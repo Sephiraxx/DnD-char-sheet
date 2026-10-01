@@ -131,7 +131,7 @@
       totalLevel: total,
       slots: ss,
       pact: pact(s),
-      known: cast.known + (sub(s)?.name === 'College of Lore' && l >= 6 ? 2 : 0),
+      known: cast.known + (sub(s)?.id === 'bard-college-of-lore' && l >= 6 ? 2 : 0),
       cantrips: cast.cantrips,
       prepared:
         cast.type === 'prepared' || cast.type === 'book'
@@ -476,9 +476,14 @@
     for (const c of choices(s)) {
       const count = (s.classChoices?.[c.name] || []).length;
       if (count < c.count)
-        add('choice:' + c.name, 'Elegí ' + (c.count - count) + ' opción(es) de ' + c.name + '.', 'class-choices', {
-          group: c.name,
-        });
+        add(
+          'choice:' + c.name,
+          'Elegí ' + (c.count - count) + ' opción(es) de ' + (root.NamesEs?.choice(c.name) || c.name) + '.',
+          'class-choices',
+          {
+            group: c.name,
+          },
+        );
     }
     if (id(s) === 'warlock')
       for (const [l, sl] of [
