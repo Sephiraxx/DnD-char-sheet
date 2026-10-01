@@ -277,6 +277,7 @@ function draw() {
     }</div>
     ${feedCard()}
   </div><div class="stack">
+    ${typeof Sessions !== 'undefined' ? Sessions.card() : ''}
     ${savesCard()}
     ${initiativeCard(t)}
     ${typeof Encounters !== 'undefined' ? Encounters.card() : ''}
@@ -470,7 +471,11 @@ const actions = {
       settingsFields(Cloud.cleanSettings(party.campaign.settings)) +
         '<p class="small">Los cambios valen para personajes nuevos y para las fichas que se unan desde ahora. Las fichas ya unidas conservan sus elecciones.</p>',
       async fd => {
-        party.campaign.settings = await Cloud.updateSettings(current, readSettings(fd));
+        // Se combinan con lo que el formulario no muestra (sesión en curso y registro de sesiones).
+        party.campaign.settings = await Cloud.updateSettings(current, {
+          ...party.campaign.settings,
+          ...readSettings(fd),
+        });
         draw();
         toast('Ajustes guardados.');
       },

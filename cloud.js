@@ -18,6 +18,7 @@
     'bonus-die',
     'effect',
     'gold-remove',
+    'xp',
   ];
   let client = null,
     loading = null,
@@ -265,6 +266,26 @@
       startLevel: Number.isInteger(level) && level >= 1 && level <= 20 ? level : 1,
       rules: typeof x?.rules === 'string' ? x.rules.slice(0, 2000) : '',
       abilities: cleanAbilityRules(x?.abilities),
+      session: cleanSession(x?.session),
+      log: Array.isArray(x?.log) ? x.log.map(cleanLog).filter(Boolean).slice(-200) : [],
+    };
+  }
+  // Sesiones: la que está en curso y el registro de las terminadas.
+  const isDate = v => typeof v === 'string' && v.length <= 40 && !Number.isNaN(Date.parse(v));
+  function cleanSession(s) {
+    return s && Number.isInteger(s.n) && s.n > 0 && s.n < 100000 && isDate(s.start) ? { n: s.n, start: s.start } : null;
+  }
+  function cleanLog(e) {
+    if (!cleanSession(e) || !isDate(e.end)) return null;
+    const n = (v, max) => (Number.isInteger(v) && v >= 0 && v <= max ? v : 0);
+    return {
+      n: e.n,
+      start: e.start,
+      end: e.end,
+      minutes: n(e.minutes, 100000),
+      xp: n(e.xp, 1000000),
+      levelUp: e.levelUp === true,
+      notes: typeof e.notes === 'string' ? e.notes.slice(0, 1000) : '',
     };
   }
   // Cómo se generan las características al crear personajes: métodos permitidos y sus parámetros.

@@ -202,6 +202,9 @@ const PartyUI = (() => {
         MulticlassUI.label(state, true),
         button('Subir de nivel', 'levelup', '') + button('Resolver elecciones', 'resolve-choices'),
       ) +
+      (state.xp
+        ? `<p class="xp-line"><b>Experiencia:</b> ${state.xp} PX${R.xpNext(state) ? (state.xp >= R.xpNext(state) ? ' · <b>te alcanza para subir de nivel</b>' : ' · siguiente nivel con ' + R.xpNext(state) + ' PX') : ''}</p>`
+        : '') +
       `<div class="banner"><div><b>${tasks.length ? 'Elecciones pendientes' : 'Revisá tus rasgos y opciones'}</b>${tasks.length ? pendingList() : '<p class="small">Las elecciones de rasgos, equipo y efectos especiales se registran con las reglas de la mesa.</p>'}</div><div class="actions">${button('Conjuros', 'spell-manage')}${button('Elecciones de clase', 'class-choices')}${button('Subclase y Pericias', 'class-config')}</div></div><div class="grid two"><section class="card"><h2>Progresión 1–20</h2><div class="class-timeline">${Array.from(
         { length: 20 },
         (_, i) => i + 1,

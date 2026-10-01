@@ -466,6 +466,12 @@
   }
   // Nivel de personaje (suma de clases con multiclase).
   const totalLevel = s => (root.Classes?.totalLevel ? root.Classes.totalLevel(s) : s.level);
+  // Experiencia necesaria para cada nivel (PHB p. 15); null en nivel 20.
+  const XP = [
+    0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000, 85000, 100000, 120000, 140000, 165000, 195000, 225000,
+    265000, 305000, 355000,
+  ];
+  const xpNext = s => XP[totalLevel(s)] ?? null;
   function skillBonus(s, id) {
     let a = skills.find(x => x[0] === id);
     if (!a) throw Error('Habilidad inválida');
@@ -794,6 +800,7 @@
     allSpells,
     features,
     validate,
+    xpNext,
   };
   if (typeof module !== 'undefined') module.exports = api;
   root.Rules = api;
