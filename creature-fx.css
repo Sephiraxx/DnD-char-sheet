@@ -85,25 +85,38 @@
   box-shadow: 0 0 10px 3px #8be0a0;
 }
 
-/* Llamas (dragones e infernales), con variantes por color de dragón */
-.fx-flames {
-  position: absolute;
-  inset: auto 0 0;
-  height: 60%;
+/* Llamas (dragones e infernales): lenguas con punta que titilan, núcleo claro y brasas */
+.fx-fire {
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 55%;
+  filter: drop-shadow(0 0 14px var(--f2));
 }
-.fx-flames i {
-  position: absolute;
-  bottom: -10%;
-  width: 9%;
-  height: var(--h);
-  border-radius: 50% 50% 20% 20% / 70% 70% 30% 30%;
-  background: linear-gradient(to top, var(--f2), var(--f1) 60%, transparent);
-  filter: blur(2px);
-  opacity: 0;
-  transform-origin: bottom;
+.fx-fire .flame {
+  fill: url(#fx-fire-g);
+  opacity: 0.92;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transform: scaleY(0);
   animation:
-    fx-flame 0.9s var(--d) ease-out forwards,
-    fx-flicker 0.35s 1s ease-in-out infinite alternate;
+    fx-flame-up 0.6s var(--d) ease-out forwards,
+    fx-flame-lick var(--f) calc(var(--d) + 0.6s) ease-in-out infinite alternate;
+}
+.fx-fire .flame.core {
+  fill: var(--f1);
+  opacity: 0.85;
+}
+.fx-ember {
+  position: absolute;
+  bottom: 8%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--f1);
+  box-shadow: 0 0 8px 2px var(--f2);
+  opacity: 0;
+  animation: fx-ember 1.8s var(--d) ease-out forwards;
 }
 .theme-fiend {
   --f1: #ff7a3c;
@@ -125,12 +138,33 @@
   --f1: #eaff6a;
   --f2: #6a8f00;
 }
-.fx-wing {
-  width: 140%;
-  left: -20%;
-  top: 0;
-  fill: #000a;
-  animation: fx-wing 1.4s 0.2s ease-in-out both;
+.fx-dragon {
+  left: 50%;
+  top: 50%;
+  width: min(85vw, 640px);
+  translate: -50% -50%;
+  fill: #05080a;
+  filter: drop-shadow(0 0 10px var(--f2));
+  animation: fx-fly 2.4s 0.1s cubic-bezier(0.15, 0.7, 0.85, 0.3) both;
+}
+.fx-dragon .bone {
+  fill: none;
+  stroke: #1d2a2f;
+  stroke-width: 2;
+}
+.fx-dragon .wing {
+  transform-box: view-box;
+  transform-origin: 188px 100px;
+  animation: fx-flap 0.42s ease-in-out infinite alternate;
+}
+.fx-bolts {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: #f5f7ff;
+  filter: drop-shadow(0 0 12px #6f8bff);
+  opacity: 0;
+  animation: fx-bolt 0.9s 0.3s steps(1) 2;
 }
 .fx-sigil {
   left: 50%;
@@ -446,27 +480,54 @@ body.enc-stomp .workspace {
     scale: 1.6;
   }
 }
-@keyframes fx-flame {
-  from {
-    transform: scaleY(0);
-    opacity: 0;
-  }
+@keyframes fx-flame-up {
   to {
     transform: scaleY(1);
-    opacity: 0.9;
   }
 }
-@keyframes fx-flicker {
-  to {
-    transform: scaleY(0.8) skewX(4deg);
-  }
-}
-@keyframes fx-wing {
+@keyframes fx-flame-lick {
   from {
-    transform: translate(-60%, -30%) scale(0.9);
+    transform: scaleY(1) skewX(-3deg);
   }
   to {
-    transform: translate(60%, -10%) scale(1.2);
+    transform: scaleY(0.82) skewX(4deg);
+  }
+}
+@keyframes fx-ember {
+  10% {
+    opacity: 1;
+  }
+  to {
+    transform: translate(var(--x), -60vh);
+    opacity: 0;
+  }
+}
+@keyframes fx-fly {
+  from {
+    transform: translate(-75vw, 45vh) rotate(40deg) scale(0.5);
+  }
+  to {
+    transform: translate(75vw, -65vh) rotate(40deg) scale(1.35);
+  }
+}
+@keyframes fx-flap {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0.55);
+  }
+}
+@keyframes fx-bolt {
+  0%,
+  30%,
+  60% {
+    opacity: 0;
+  }
+  15%,
+  45%,
+  75% {
+    opacity: 1;
   }
 }
 @keyframes fx-draw {
