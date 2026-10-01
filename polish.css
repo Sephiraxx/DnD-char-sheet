@@ -417,8 +417,26 @@ html {
   font-size: 0.8rem;
   color: var(--muted);
 }
+.roll-card.rolling .roll-total,
+.roll-card.rolling .roll-icon b {
+  color: var(--muted);
+}
+.roll-card.rolling .roll-icon {
+  animation: roll-shake 0.12s linear infinite;
+}
 .roll-card.settled .roll-total {
-  animation: roll-pop 0.25s ease-out;
+  animation: roll-pop 0.3s ease-out;
+}
+.roll-card.settled .roll-icon b {
+  animation: roll-pop 0.3s ease-out;
+}
+@keyframes roll-shake {
+  25% {
+    transform: rotate(-6deg);
+  }
+  75% {
+    transform: rotate(6deg);
+  }
 }
 .roll-tag {
   margin-left: 6px;
@@ -480,7 +498,9 @@ html {
 @media (prefers-reduced-motion: reduce) {
   .roll-card,
   .roll-card.leaving,
-  .roll-card.settled .roll-total {
+  .roll-card.settled .roll-total,
+  .roll-card.settled .roll-icon b,
+  .roll-card.rolling .roll-icon {
     animation: none;
   }
 }

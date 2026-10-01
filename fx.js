@@ -32,25 +32,33 @@ const RollFX = (() => {
       host.append(box);
     }
     clearTimeout(timer);
-    clearInterval(ticker);
+    clearTimeout(ticker);
     const tag = crit ? '¡Crítico!' : fumble ? 'Pifia' : '';
     box.innerHTML = `<button type="button" class="roll-card ${crit ? 'crit' : fumble ? 'fumble' : ''}" aria-label="${esc(label)}: ${esc(total)}. Tocá para cerrar."><span class="roll-icon">${D20}<b>${esc(face)}</b></span><span class="roll-label">${esc(label)}${tag ? `<span class="roll-tag">${tag}</span>` : ''}</span><span class="roll-total">${esc(total)}</span>${detail ? `<span class="roll-detail">${esc(detail)}</span>` : ''}</button>`;
     const card = box.firstElementChild,
       out = card.querySelector('.roll-total'),
-      final = Number(total);
-    // El total pasa por algunos valores al azar antes de mostrar el real.
+      dieOut = card.querySelector('.roll-icon b'),
+      final = Number(total),
+      faceNum = Number(face);
+    // Números al azar que se frenan de a poco hasta quedar en el resultado real.
     if (!calm() && Number.isFinite(final)) {
-      let n = 0;
-      const spread = Math.max(6, Math.abs(final));
-      ticker = setInterval(() => {
-        if (++n >= 7) {
-          clearInterval(ticker);
+      const steps = [45, 45, 50, 55, 65, 75, 90, 110, 135, 165];
+      const spread = Math.max(8, Math.abs(final));
+      card.classList.add('rolling');
+      let i = 0;
+      const tick = () => {
+        if (i >= steps.length) {
           out.textContent = total;
+          if (dieOut) dieOut.textContent = face;
+          card.classList.remove('rolling');
           card.classList.add('settled');
           return;
         }
         out.textContent = Math.max(0, Math.round(final + (Math.random() - 0.5) * spread));
-      }, 45);
+        if (dieOut && Number.isInteger(faceNum)) dieOut.textContent = 1 + Math.floor(Math.random() * 20);
+        ticker = setTimeout(tick, steps[i++]);
+      };
+      tick();
     } else card.classList.add('settled');
     timer = setTimeout(() => hide(box), 4000);
   }
