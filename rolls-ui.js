@@ -36,8 +36,64 @@ const RollUI = (() => {
     return { mode, notes, autoFail };
   }
 
-  // Bloque reutilizable: ventaja, Inspiración del DM y dado físico.
-  function d20Fields(mods, extra = '') {
+  // ---------- Dados de bonificación que da el DM (d4, d6…) ----------
+  const KIND_LABEL = {
+    any: 'cualquier tirada',
+    check: 'pruebas de característica',
+    attack: 'ataques',
+    save: 'salvaciones',
+  };
+  function bonusScope(b) {
+    if (b.kind === 'check' && b.skills?.length)
+      return b.skills.map(id => R.skills.find(x => x[0] === id)?.[1] || id).join(', ');
+    return KIND_LABEL[b.kind] || KIND_LABEL.any;
+  }
+  // Dados que sirven para esta tirada. kind: 'check' | 'save' | 'attack'; skill: id de habilidad si aplica.
+  function bonusOptions(kind, skill = '') {
+    return (state.bonusDice || []).filter(
+      b =>
+        b.kind === 'any' ||
+        (b.kind === kind && (kind !== 'check' || !b.skills?.length || (skill && b.skills.includes(skill)))),
+    );
+  }
+  function bonusFields(kind, skill) {
+    const list = bonusOptions(kind, skill);
+    return list.length
+      ? `<fieldset class="bonus-dice"><legend>Dados del DM</legend>${list
+          .map(
+            b =>
+              `<div class="bonus-die"><label class="check"><input type="checkbox" name="bonusDie" value="${esc(b.id)}">Sumar d${b.die}${b.reason ? ' · ' + esc(b.reason) : ''}</label><label class="physical-die"><span class="visually-hidden">Mi d${b.die}</span><input type="number" name="bonusOwn-${esc(b.id)}" min="1" max="${b.die}" inputmode="numeric" placeholder="d${b.die}" title="Si lo tiraste en la mesa"></label></div>`,
+          )
+          .join('')}<p class="small">Se gasta al usarlo. Si tiraste el dado en la mesa, anotalo al lado.</p></fieldset>`
+      : '';
+  }
+  // Suma los dados del DM marcados. Devuelve { total, text, ids }.
+  function readBonus(fd) {
+    const ids = fd.getAll('bonusDie'),
+      parts = [];
+    for (const id of ids) {
+      const b = (state.bonusDice || []).find(x => x.id === id);
+      if (!b) continue;
+      const own = fd.get('bonusOwn-' + id);
+      let v;
+      if (own !== null && own !== '') {
+        v = Number(own);
+        if (!Number.isInteger(v) || v < 1 || v > b.die) throw Error(`Tu d${b.die} va de 1 a ${b.die}.`);
+      } else v = roll(b.die)[0];
+      parts.push({ die: b.die, value: v });
+    }
+    return {
+      total: parts.reduce((a, p) => a + p.value, 0),
+      text: parts.map(p => ` + d${p.die} (${p.value})`).join(''),
+      ids,
+    };
+  }
+  const spendBonus = (s, ids) => {
+    if (ids?.length) s.bonusDice = (s.bonusDice || []).filter(b => !ids.includes(b.id));
+  };
+
+  // Bloque reutilizable: ventaja, Inspiración del DM, dados del DM y dado físico.
+  function d20Fields(mods, extra = '', ctx = {}) {
     return `${mods.notes.length ? `<p class="small condition-note">${esc(mods.notes.join(' · '))}</p>` : ''}<fieldset class="attack-adv"><legend>Tirada</legend>${[
       ['', 'Normal'],
       ['adv', 'Con ventaja'],
@@ -49,7 +105,7 @@ const RollUI = (() => {
       )
       .join(
         '',
-      )}</fieldset>${state.heroicInspiration ? '<label class="check"><input type="checkbox" name="heroic">Usar mi Inspiración del DM (ventaja; se gasta)</label>' : ''}${extra}<details class="physical-dice"><summary>Uso mis propios dados</summary><p class="small">Anotá el d20 que quedó (con ventaja o desventaja, el que conservás). La ficha suma tus bonos.</p>${field('Mi d20', 'myD20', '', 'number', 'min="1" max="20" inputmode="numeric"')}</details>`;
+      )}</fieldset>${state.heroicInspiration ? '<label class="check"><input type="checkbox" name="heroic">Usar mi Inspiración del DM (ventaja; se gasta)</label>' : ''}${ctx.kind ? bonusFields(ctx.kind, ctx.skill) : ''}${extra}<details class="physical-dice"><summary>Uso mis propios dados</summary><p class="small">Anotá el d20 que quedó (con ventaja o desventaja, el que conservás). La ficha suma tus bonos.</p>${field('Mi d20', 'myD20', '', 'number', 'min="1" max="20" inputmode="numeric"')}</details>`;
   }
   // Resuelve el d20 según el formulario. Devuelve { rolls, kept, physical, heroic }.
   function readD20(fd) {
@@ -77,21 +133,30 @@ const RollUI = (() => {
     (r.heroic ? ' (Inspiración)' : '');
 
   // Diálogo de d20: pruebas, salvaciones, iniciativa, pedidos del DM.
-  function d20({ title, label, bonus, kind = 'check', ability = '', share = true, min = 0, onDone }) {
+  function d20({ title, label, bonus, kind = 'check', ability = '', skill = '', share = true, min = 0, onDone }) {
     const mods = conditionMods(state, kind, ability);
     modal(
       title,
-      `<p>Bono: <b>${sign(bonus)}</b>${min ? ` · Lengua de plata: un d20 menor que ${min} cuenta como ${min}` : ''}</p>${d20Fields(mods)}${mods.autoFail ? '<p class="small">Podés registrar la falla sin tirar.</p>' : ''}`,
+      `<p>Bono: <b>${sign(bonus)}</b>${min ? ` · Lengua de plata: un d20 menor que ${min} cuenta como ${min}` : ''}</p>${d20Fields(mods, '', { kind: kind === 'death' ? '' : kind, skill })}${mods.autoFail ? '<p class="small">Podés registrar la falla sin tirar.</p>' : ''}`,
       fd => {
-        const r = readD20(fd);
+        const r = readD20(fd),
+          extra = readBonus(fd);
         if (min && r.kept < min) r.kept = min;
-        const total = r.kept + bonus;
-        commit(`${label}: ${diceText(r)} ${sign(bonus)} = ${total}`, s => {
+        const total = r.kept + bonus + extra.total;
+        commit(`${label}: ${diceText(r)} ${sign(bonus)}${extra.text} = ${total}`, s => {
           if (r.heroic) s.heroicInspiration = false;
+          spendBonus(s, extra.ids);
         });
         if (share)
-          TableUI.shareRoll({ label, rolls: r.rolls, bonus, total, physical: r.physical, inspiration: r.heroic });
-        toast(`${label}: ${r.kept} ${sign(bonus)} = ${total}`);
+          TableUI.shareRoll({
+            label: label + extra.text,
+            rolls: r.rolls,
+            bonus: bonus + extra.total,
+            total,
+            physical: r.physical,
+            inspiration: r.heroic,
+          });
+        toast(`${label}: ${r.kept} ${sign(bonus)}${extra.text} = ${total}`);
         onDone?.({ ...r, total });
       },
       'Tirar',
@@ -207,7 +272,7 @@ const RollUI = (() => {
     const mods = conditionMods(state, 'attack');
     modal(
       sp.name + (slot > sp.level ? ' · nivel ' + slot : ''),
-      `${info.attack ? `<h3>Ataque de conjuro ${sign(st.attack)}</h3>${d20Fields(mods)}<div class="actions">${button('Tirar ataque', 'spell-roll-attack', '')}</div>` : ''}
+      `${info.attack ? `<h3>Ataque de conjuro ${sign(st.attack)}</h3>${d20Fields(mods, '', { kind: 'attack' })}<div class="actions">${button('Tirar ataque', 'spell-roll-attack', '')}</div>` : ''}
       ${info.save ? `<p class="banner">Cada objetivo tira una salvación de <b>${esc(info.saveName)}</b> contra tu CD <b>${st.dc}</b>.${/mitad|half/i.test(sp.text || sp.srdOriginal || '') ? ' Si la supera, suele recibir la mitad.' : ''}</p>` : ''}
       ${
         info.dice || info.attack || info.save
@@ -227,20 +292,24 @@ const RollUI = (() => {
   function spellAttack() {
     const { sp } = spellSession,
       st = R.stats(state),
-      r = readD20(new FormData(document.getElementById('dialog-form'))),
-      total = r.kept + st.attack;
+      fd = new FormData(document.getElementById('dialog-form')),
+      r = readD20(fd),
+      extra = readBonus(fd),
+      total = r.kept + st.attack + extra.total;
     spellSession.crit = r.kept === 20;
     const own = document.querySelector('#dialog-form [name=myD20]');
     if (own) own.value = '';
     const crit = r.kept === 20,
       miss = r.kept === 1;
     logLine(
-      `<b>Ataque:</b> ${diceText(r)} ${sign(st.attack)} = <b>${total}</b>${crit ? ' · <b>¡Crítico!</b> (el daño duplica dados)' : miss ? ' · Pifia: falla' : ''}`,
+      `<b>Ataque:</b> ${diceText(r)} ${sign(st.attack)}${extra.text} = <b>${total}</b>${crit ? ' · <b>¡Crítico!</b> (el daño duplica dados)' : miss ? ' · Pifia: falla' : ''}`,
       crit ? 'crit' : miss ? 'fumble' : '',
     );
-    commit(`${sp.name}: ataque ${diceText(r)} ${sign(st.attack)} = ${total}`, s => {
+    commit(`${sp.name}: ataque ${diceText(r)} ${sign(st.attack)}${extra.text} = ${total}`, s => {
       if (r.heroic) s.heroicInspiration = false;
+      spendBonus(s, extra.ids);
     });
+    document.querySelectorAll('#dialog-form [name=bonusDie]:checked').forEach(x => x.closest('.bonus-die').remove());
     TableUI.shareRoll({
       label: 'Ataque con ' + sp.name + (crit ? ' (crítico)' : ''),
       rolls: r.rolls,
@@ -307,7 +376,14 @@ const RollUI = (() => {
         const id = e.dataset.id,
           name = R.skills.find(x => x[0] === id)[1];
         const silver = state.level >= 3 && state.subclass === 'eloquence' && ['persuasion', 'deception'].includes(id);
-        d20({ title: name, label: name, bonus: R.skillBonus(state, id), kind: 'check', min: silver ? 10 : 0 });
+        d20({
+          title: name,
+          label: name,
+          bonus: R.skillBonus(state, id),
+          kind: 'check',
+          skill: id,
+          min: silver ? 10 : 0,
+        });
       },
       'roll-save': e =>
         d20({
@@ -319,6 +395,10 @@ const RollUI = (() => {
         }),
       'concentration-roll': concentration,
       'death-roll': deathSave,
+      'bonus-discard': e =>
+        commit('Dado del DM descartado', s => {
+          s.bonusDice = (s.bonusDice || []).filter(b => b.id !== e.dataset.id);
+        }),
       'heroic-toggle': () =>
         commit(state.heroicInspiration ? 'Inspiración del DM usada' : 'Inspiración del DM anotada', s => {
           s.heroicInspiration = !s.heroicInspiration;
@@ -328,5 +408,18 @@ const RollUI = (() => {
       'spell-roll-damage': spellDamage,
     });
   }
-  return { conditionMods, d20, d20Fields, readD20, diceText, spell, spellInfo, rollable, install };
+  return {
+    conditionMods,
+    d20,
+    d20Fields,
+    readD20,
+    readBonus,
+    spendBonus,
+    bonusScope,
+    diceText,
+    spell,
+    spellInfo,
+    rollable,
+    install,
+  };
 })();

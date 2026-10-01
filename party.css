@@ -274,3 +274,15 @@
   background: var(--gold);
   border-color: var(--gold);
 }
+.bonus-dice {
+  border: 1px solid #655137;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin: 0 0 10px;
+}
+.bonus-die {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}

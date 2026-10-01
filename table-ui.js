@@ -273,6 +273,19 @@ const TableUI = (() => {
         return `El DM anunció un descanso ${p.type === 'long' ? 'largo' : 'corto'}. Confirmá cómo lo resolvés.`;
       case 'level':
         return 'El DM te habilitó a subir de nivel. Usá «Subir de nivel» en Clase.';
+      case 'bonus-die': {
+        const die = [4, 6, 8, 10, 12].includes(Number(p.die)) ? Number(p.die) : 0;
+        if (!die) return '';
+        const kind = ['any', 'check', 'attack', 'save'].includes(p.kind) ? p.kind : 'any';
+        const skills = kind === 'check' ? (p.skills || []).filter(k => R.skills.some(x => x[0] === k)) : [];
+        commit('DM: dado de bonificación d' + die, s => {
+          s.bonusDice = [
+            ...(s.bonusDice || []),
+            { id: uid(), die, reason: String(p.reason || '').slice(0, 200), kind, skills },
+          ].slice(-20);
+        });
+        return `El DM te dio un d${die}${p.reason ? ' (' + p.reason + ')' : ''} para ${RollUI.bonusScope({ kind, skills })}.`;
+      }
       case 'inspiration':
         commit(p.on === false ? 'DM: Inspiración retirada' : 'DM: Inspiración recibida', s => {
           s.heroicInspiration = p.on !== false;

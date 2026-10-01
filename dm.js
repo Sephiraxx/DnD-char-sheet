@@ -233,7 +233,7 @@ function draw() {
               PV.card(x, {
                 owner: party.members.find(m => m.user_id === row.owner_id)?.display_name,
                 online: online.some(p => p.characterId === row.id),
-                actions: `<div class="party-actions">${button('PG', 'hp', 'secondary', `data-id="${row.id}"`)}${button('Estados', 'conditions', 'secondary', `data-id="${row.id}"`)}${button(x.heroic ? '★ Quitar Insp.' : '★ Inspiración', 'inspire', 'secondary', `data-id="${row.id}" data-on="${x.heroic ? '' : '1'}"`)}${button('Tirada', 'request', 'secondary', `data-id="${row.id}"`)}${button('Dar', 'give', 'secondary', `data-id="${row.id}"`)}${button('Mensaje', 'message', 'secondary', `data-id="${row.id}"`)}${button('Más', 'more', 'secondary', `data-id="${row.id}"`)}</div>`,
+                actions: `<div class="party-actions">${button('PG', 'hp', 'secondary', `data-id="${row.id}"`)}${button('Estados', 'conditions', 'secondary', `data-id="${row.id}"`)}${button(x.heroic ? '★ Quitar Insp.' : '★ Inspiración', 'inspire', 'secondary', `data-id="${row.id}" data-on="${x.heroic ? '' : '1'}"`)}${button('Dado', 'bonus-die', 'secondary', `data-id="${row.id}"`)}${button('Tirada', 'request', 'secondary', `data-id="${row.id}"`)}${button('Dar', 'give', 'secondary', `data-id="${row.id}"`)}${button('Mensaje', 'message', 'secondary', `data-id="${row.id}"`)}${button('Más', 'more', 'secondary', `data-id="${row.id}"`)}</div>`,
               }),
             )
             .join('')
@@ -597,6 +597,42 @@ const actions = {
     localStorage.removeItem(initKey());
     publishOrder();
     draw();
+  },
+  'bonus-die': e => {
+    const id = e.dataset.id;
+    modal(
+      'Dado de bonificación para ' + targetName(id),
+      `<div class="form-grid">${select(
+        'Dado',
+        'die',
+        [4, 6, 8, 10, 12].map(d => [d, 'd' + d]),
+        4,
+      )}${select(
+        'Para',
+        'kind',
+        [
+          ['check', 'Pruebas de característica'],
+          ['attack', 'Ataques'],
+          ['save', 'Salvaciones'],
+          ['any', 'Cualquier tirada'],
+        ],
+        'check',
+      )}</div>${field('Motivo', 'reason', '', 'text', 'maxlength="200" placeholder="Por distraer al guardia"')}<fieldset class="campaign-sources"><legend>Solo para estas habilidades (opcional, en pruebas)</legend><div class="source-grid">${Rules.skills.map(([k, n]) => `<label class="check"><input type="checkbox" name="skill" value="${k}">${esc(n)}</label>`).join('')}</div></fieldset><p class="small">El jugador lo ve en su ficha y lo suma cuando tira; se gasta al usarlo.</p>`,
+      fd => {
+        const kind = fd.get('kind');
+        return send(
+          'bonus-die',
+          {
+            die: int(fd, 'die', 4, 12),
+            kind,
+            skills: kind === 'check' ? fd.getAll('skill') : [],
+            reason: String(fd.get('reason')).trim(),
+          },
+          id,
+        );
+      },
+      'Dar dado',
+    );
   },
   inspire: async e => {
     const on = Boolean(e.dataset.on);

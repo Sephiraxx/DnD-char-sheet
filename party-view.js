@@ -54,6 +54,7 @@
       death: s.death,
       onTurn: Boolean(c.active && c.onTurn),
       heroic: Boolean(s.heroicInspiration),
+      bonusDice: (s.bonusDice || []).map(b => 'd' + b.die + (b.reason ? ' · ' + b.reason : '')),
       inCombat: Boolean(c.active),
       gold: s.gold,
     };
@@ -75,6 +76,7 @@
       ...x.conditions.map(c => `<span class="chip warn">${esc(c)}</span>`),
       x.concentration ? `<span class="chip">Concentración: ${esc(x.concentration)}</span>` : '',
       x.heroic ? '<span class="chip selected">★ Inspiración</span>' : '',
+      ...(x.bonusDice || []).map(b => `<span class="chip selected">+${esc(b)}</span>`),
       x.hp === 0 ? `<span class="chip warn">Salvaciones: ${x.death.success}✓ ${x.death.failure}✗</span>` : '',
     ].join('');
     return `<article class="card party-card ${hpClass(x)} ${x.onTurn ? 'on-turn' : ''} ${mine ? 'mine' : ''}">
@@ -121,6 +123,8 @@
         return `<b>DM</b>: ${esc(target)} recibe ${esc(goldText(p))}`;
       case 'item':
         return `<b>DM</b>: ${esc(target)} recibe ${esc(p.qty > 1 ? p.qty + ' × ' : '')}${esc(p.name)}`;
+      case 'bonus-die':
+        return `<b>DM</b>: ${esc(target)} recibe un d${esc(p.die)}${p.reason ? ' (' + esc(p.reason) + ')' : ''}`;
       case 'inspiration':
         return `<b>DM</b>: ${esc(target)} ${p.on === false ? 'pierde' : 'recibe'} Inspiración`;
       case 'level':

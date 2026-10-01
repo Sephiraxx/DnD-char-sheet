@@ -89,7 +89,7 @@ const AttackUI = (() => {
     modal(
       (mode === 'reaction' ? 'Ataque de oportunidad con ' : 'Atacar con ') + item.name,
       `<p>${mode === 'action' && n > 1 ? `Tu acción de Atacar permite <b>${n} ataques</b>; podés repartirlos entre objetivos y moverte entre ellos.` : mode === 'bonus' ? 'Ataque con la otra mano: requiere haber atacado con un arma ligera en la otra mano en este turno.' : mode === 'reaction' ? 'Cuando un enemigo sale de tu alcance usando su movimiento.' : 'Un ataque con tu acción de Atacar.'}</p>
-      ${RollUI.d20Fields(RollUI.conditionMods(state, 'attack')).replace(/<details class="physical-dice">[\s\S]*<\/details>$/, '')}
+      ${RollUI.d20Fields(RollUI.conditionMods(state, 'attack'), '', { kind: 'attack' }).replace(/<details class="physical-dice">[\s\S]*<\/details>$/, '')}
       ${w.versatile && mode !== 'bonus' ? `<label class="check"><input type="checkbox" name="twoHands">A dos manos (${esc(w.versatile)})</label>` : ''}
       <details class="physical-dice"><summary>Uso mis propios dados</summary><p class="small">Escribí lo que salió en la mesa y la ficha suma tus bonos. Con ventaja o desventaja, anotá el d20 que conservás. En un crítico, sumá todos los dados duplicados.</p><div class="form-grid">${field('Mi d20', 'myD20', '', 'number', 'min="1" max="20" inputmode="numeric"')}${field('Suma de mis dados de daño', 'myDamage', '', 'number', 'min="0" max="999" inputmode="numeric"')}</div></details>
       <div class="attack-log" id="attack-log" aria-live="polite"></div>
@@ -108,6 +108,7 @@ const AttackUI = (() => {
     const heroic = Boolean(document.querySelector('#dialog-form [name=heroic]')?.checked);
     let adv = document.querySelector('#dialog-form [name=adv]:checked')?.value || '';
     if (heroic) adv = adv === 'dis' ? '' : 'adv';
+    const extra = RollUI.readBonus(new FormData(document.getElementById('dialog-form')));
     const mine = takeInput('myD20', 1, 20);
     spendAction(item.name);
     const r =
@@ -115,12 +116,14 @@ const AttackUI = (() => {
           ? A.rollAttack(p, adv, rnd)
           : { rolls: [mine], kept: mine, total: mine + p.toHit, crit: mine === 20, fumble: mine === 1, physical: true },
       n = session.mode === 'action' ? A.attacksPerAction(state) : 1;
+    r.total += extra.total;
     session.attacks++;
     session.last = r.fumble ? null : { crit: r.crit, profile: p };
     const label = `Ataque ${session.attacks}${n > 1 ? ' de ' + n : ''}`;
     const dice =
       (r.rolls.length > 1 ? `d20 ${r.rolls.join(' / ')} → ${r.kept}` : `d20 ${r.kept}`) +
-      (r.physical ? ' (dado físico)' : '');
+      (r.physical ? ' (dado físico)' : '') +
+      extra.text;
     session.log.unshift({
       html: `<b>${label}:</b> ${dice} ${sign(p.toHit)} = <b>${r.total}</b>${r.crit ? ' · <b>¡Crítico!</b>' : r.fumble ? ' · Pifia: falla automáticamente' : ''}${session.attacks > n ? ' <span class="muted">(más ataques que los de tu acción: confirmalo con el DM)</span>' : ''}`,
       cls: r.crit ? 'crit' : r.fumble ? 'fumble' : '',
@@ -129,8 +132,10 @@ const AttackUI = (() => {
       `${item.name}: ataque ${dice} ${sign(p.toHit)} = ${r.total}${r.crit ? ' (crítico)' : ''}${heroic ? ' (Inspiración)' : ''}`,
       s => {
         if (heroic) s.heroicInspiration = false;
+        RollUI.spendBonus(s, extra.ids);
       },
     );
+    document.querySelectorAll('#dialog-form [name=bonusDie]:checked').forEach(x => x.closest('.bonus-die').remove());
     const box = document.querySelector('#dialog-form [name=heroic]');
     if (heroic && box) box.closest('label').remove();
     TableUI.shareRoll({
