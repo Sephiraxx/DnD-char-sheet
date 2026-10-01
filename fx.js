@@ -76,3 +76,34 @@ const RollFX = (() => {
   }
   return { show };
 })();
+
+/* Aviso de combate a pantalla completa (encuentro lanzado o refuerzos): destello, temblor y un grito que cae. */
+const EncounterFX = (() => {
+  'use strict';
+  const esc = v =>
+    String(v ?? '').replace(
+      /[&<>"']/g,
+      c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+    );
+  let timer;
+  function show({ style = 'battle', cry = '¡Combate!', count = 0 } = {}) {
+    document.getElementById('encounter-fx')?.remove();
+    clearTimeout(timer);
+    const box = document.createElement('div');
+    box.id = 'encounter-fx';
+    box.className = 'enc-fx enc-' + (['battle', 'ambush', 'boss', 'reinforce'].includes(style) ? style : 'battle');
+    box.setAttribute('role', 'alert');
+    box.innerHTML = `<div class="enc-flash"></div><div class="enc-text"><span class="enc-swords" aria-hidden="true">⚔</span><strong>${esc(cry)}</strong>${count ? `<small>${count} ${count === 1 ? 'enemigo' : 'enemigos'}</small>` : ''}</div>`;
+    box.addEventListener('click', () => box.remove());
+    (document.querySelector('dialog[open]') || document.body).append(box);
+    document.body.classList.remove('enc-shake');
+    void document.body.offsetWidth;
+    document.body.classList.add('enc-shake');
+    navigator.vibrate?.([120, 60, 220]);
+    timer = setTimeout(() => {
+      box.remove();
+      document.body.classList.remove('enc-shake');
+    }, 2800);
+  }
+  return { show };
+})();

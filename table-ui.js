@@ -434,7 +434,10 @@ const TableUI = (() => {
       feed = [ev, ...feed.filter(x => x.id !== ev.id)].slice(0, 100);
       if (ev.target_character === l.characterId && Cloud.COMMANDS.includes(ev.kind)) applyCommands([ev]);
       else if (ev.kind === 'encounter-sync') refresh();
-      else if (ev.kind === 'turn' || ev.kind === 'combat-end') {
+      else if (ev.kind === 'encounter-start') {
+        EncounterFX.show(ev.payload);
+        refresh();
+      } else if (ev.kind === 'turn' || ev.kind === 'combat-end') {
         onTurn(ev);
         refresh();
       } else if (ev.kind === 'roll-request' && (!ev.target_character || ev.target_character === l.characterId))

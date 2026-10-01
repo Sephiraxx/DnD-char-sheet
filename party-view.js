@@ -133,6 +133,7 @@
     'creature-damage': ['✸', 'k-damage'],
     'creature-save': ['⛨', 'k-dm'],
     'creature-save-result': ['⛨', ''],
+    'encounter-start': ['⚔', 'k-damage'],
     'area-save': ['✺', 'k-damage'],
   };
   function eventText(ev, party) {
@@ -165,6 +166,8 @@
         return `<b>${esc(p.caster)}</b> lanza ${esc(p.spell)}: ${esc((p.targets || []).map(x => x.name).join(', '))} salvan ${esc(p.abilityName || p.ability)} contra CD ${esc(p.dc)}`;
       case 'area-save':
         return `<b>${esc(p.caster)}</b> · ${esc(p.spell)}: ${esc(target)} tira salvación de ${esc(p.abilityName || p.ability)} CD ${esc(p.dc)} (${esc(p.damage)} de daño${p.half ? ', mitad si salva' : ''})`;
+      case 'encounter-start':
+        return `<b>DM</b>: ${esc(p.cry || '¡Combate!')}${p.count ? ' · ' + esc(p.count) + (p.count === 1 ? ' enemigo' : ' enemigos') : ''}`;
       case 'creature-save-result':
         return `<b>${esc(p.name)}</b> ${p.success ? 'supera' : 'falla'} la salvación (${esc(p.spell)}) → ${esc(p.damage)} de daño · ${esc(STATUS_ES[p.status] || p.status)}`;
       case 'temp':
