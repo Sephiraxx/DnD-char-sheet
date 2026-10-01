@@ -29,6 +29,7 @@ const FILES = [
   './config.js',
   './cloud.js',
   './party-view.js',
+  './table-extras.js',
   './account.js',
   './table-ui.js',
   './attacks.js',

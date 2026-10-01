@@ -398,7 +398,22 @@
         .then(check),
     ]);
     if (!campaign) throw Error('La mesa ya no existe o no formás parte de ella.');
-    return { campaign, members, characters };
+    // Botín y homebrew son opcionales: si la migración 003 no se aplicó, la mesa sigue funcionando.
+    const [loot, homebrew] = await Promise.all([
+      c
+        .from('loot')
+        .select('*')
+        .eq('campaign_id', campaignId)
+        .order('created_at')
+        .then(r => r.data || []),
+      c
+        .from('homebrew')
+        .select('*')
+        .eq('campaign_id', campaignId)
+        .order('name')
+        .then(r => r.data || []),
+    ]);
+    return { campaign, members, characters, loot, homebrew };
   }
   async function events(campaignId, limit = 60) {
     return check(
@@ -442,6 +457,47 @@
     if (!ids.length) return;
     check(await (await api()).from('events').update({ applied_at: new Date().toISOString() }).in('id', ids));
   }
+  // ---------- Botín de la party ----------
+  async function addLoot(campaignId, item) {
+    return check(
+      await (
+        await api()
+      )
+        .from('loot')
+        .insert({ campaign_id: campaignId, ...item })
+        .select()
+        .single(),
+    );
+  }
+  async function removeLoot(id) {
+    check(await (await api()).from('loot').delete().eq('id', id));
+  }
+  // Reclamar un objeto libre: solo uno puede ganarlo.
+  async function claimLoot(id, characterId, name) {
+    const rows = check(
+      await (
+        await api()
+      )
+        .from('loot')
+        .update({ claimed_character: characterId, claimed_name: name })
+        .eq('id', id)
+        .is('claimed_character', null)
+        .select(),
+    );
+    if (!rows.length) throw Error('Alguien lo tomó primero.');
+    return rows[0];
+  }
+  // ---------- Homebrew de la mesa ----------
+  async function saveHomebrew(campaignId, entry, id = null) {
+    const c = await api();
+    const row = { campaign_id: campaignId, kind: entry.kind, name: entry.name, data: entry.data || {} };
+    return check(
+      await (id ? c.from('homebrew').update(row).eq('id', id) : c.from('homebrew').insert(row)).select().single(),
+    );
+  }
+  async function removeHomebrew(id) {
+    check(await (await api()).from('homebrew').delete().eq('id', id));
+  }
   async function removeCharacter(id) {
     check(await (await api()).from('characters').delete().eq('id', id));
   }
@@ -458,7 +514,7 @@
     await user();
     const filter = 'campaign_id=eq.' + campaignId;
     const channel = c.channel('mesa-' + campaignId);
-    for (const table of ['characters', 'events', 'members'])
+    for (const table of ['characters', 'events', 'members', 'loot', 'homebrew'])
       channel.on('postgres_changes', { event: '*', schema: 'public', table, filter }, p => handler(table, p));
     channel.on('presence', { event: 'sync' }, () => handler('presence', Object.values(channel.presenceState()).flat()));
     channel.subscribe(status => {
@@ -469,6 +525,11 @@
 
   root.Cloud = {
     enabled,
+    addLoot,
+    removeLoot,
+    claimLoot,
+    saveHomebrew,
+    removeHomebrew,
     cleanSettings,
     updateSettings,
     joinOnly,

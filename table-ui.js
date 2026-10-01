@@ -160,7 +160,7 @@ const TableUI = (() => {
       (PV.initiative(feed)
         ? `<section class="card section-space"><h2>Iniciativa</h2>${PV.initiativeStrip(PV.initiative(feed), mine)}</section>`
         : '') +
-      `<div class="party-grid">${cards}</div><section class="card section-space"><div class="card-header"><h2>En la mesa</h2>${button('Tirar dados', 'dice')}</div><div class="log table-feed">${
+      `<div class="party-grid">${cards}</div>${party ? TableExtras.playerHtml(party, mine) : ''}<section class="card section-space"><div class="card-header"><h2>En la mesa</h2>${button('Tirar dados', 'dice')}</div><div class="log table-feed">${
         feed.length
           ? feed
               .filter(e => e.kind !== 'initiative')
@@ -531,6 +531,11 @@ const TableUI = (() => {
   }
 
   function install() {
+    TableExtras.install({
+      refresh: () => refresh(),
+      campaignId: () => link()?.campaignId,
+      characterId: () => link()?.characterId,
+    });
     Object.assign(actions, {
       'table-refresh': () => refresh(),
       'table-leave': () =>

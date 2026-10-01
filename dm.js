@@ -242,6 +242,7 @@ function draw() {
     ${feedCard()}
   </div><div class="stack">
     ${initiativeCard(t)}
+    ${TableExtras.dmHtml(party)}
     <section class="card"><div class="card-header"><h2>Notas del DM</h2></div><label class="field"><span class="visually-hidden">Notas privadas</span><textarea id="dm-notes" style="min-height:160px" placeholder="Solo se guardan en este dispositivo.">${esc(localStorage.getItem(notesKey()) || '')}</textarea></label></section>
   </div></div>`;
 }
@@ -691,6 +692,7 @@ window.addEventListener('hashchange', () => {
   if (id && id !== current) open(id);
 });
 Cloud.onStatus(() => {});
+TableExtras.install({ refresh: () => refresh(), campaignId: () => current, characterId: () => null });
 // Al volver a la pestaña (o desbloquear el celular), se pone al día con la mesa.
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && current) refresh();
