@@ -195,6 +195,8 @@ const Creator = (() => {
         if (e.key === 'Escape') close();
       });
     }
+    const m = document.getElementById('modal');
+    if (m?.open) m.close();
     host.hidden = false;
     document.body.classList.add('creator-open');
     draw();
@@ -315,7 +317,7 @@ const Creator = (() => {
         return `<button type="button" class="creator-step ${state}" data-cr="go" data-i="${i}" ${i > seen ? 'disabled' : ''}>${i < step || (i <= seen && i !== step) ? '✓ ' : i + 1 + ' · '}${esc(stepLabel(sid, label))}</button>`;
       })
       .join('');
-    host.innerHTML = `<div class="creator-shell"><header class="creator-head"><div><p class="eyebrow">CREAR PERSONAJE · PASO ${step + 1} DE ${list.length}</p><h1>${esc(title(id))}</h1></div><div class="actions">${btn('Empezar de nuevo', 'restart', 'secondary')}${btn('Salir', 'close', 'secondary')}</div></header><nav class="creator-rail" aria-label="Pasos">${rail}</nav><form class="creator-body" id="creator-form" novalidate>${ui.resumed ? '<div class="banner"><p>Retomaste tu borrador guardado en este dispositivo.</p></div>' : ''}${table() && step === 0 ? `<div class="banner"><p><b>Mesa «${esc(table().name)}».</b> Libros del DM: ${esc(table().settings.sources.join(', '))}. Nivel inicial ${table().settings.startLevel}.${table().settings.rules ? ' Reglas de la casa: ' + esc(table().settings.rules) : ''}</p></div>` : ''}<div id="creator-error" class="creator-error" role="alert"></div>${body(id)}</form><footer class="creator-foot"><p class="creator-summary">${summary()}</p><div class="actions">${step ? btn('Atrás', 'back', 'secondary') : ''}${btn(id === 'review' ? 'Crear personaje' : 'Siguiente', 'next')}</div></footer></div>`;
+    host.innerHTML = `<div class="creator-shell"><header class="creator-head"><div><p class="eyebrow">CREAR PERSONAJE · PASO ${step + 1} DE ${list.length}</p><h1>${esc(title(id))}</h1></div><div class="actions">${btn('Empezar de nuevo', 'restart', 'secondary')}${btn('Salir', 'close', 'secondary')}</div></header><nav class="creator-rail" aria-label="Pasos">${rail}</nav><form class="creator-body" id="creator-form" novalidate>${ui.resumed ? '<div class="banner"><p>Retomaste tu borrador guardado en este dispositivo.</p></div>' : ''}${step === 0 ? tablePanel() : ''}<div id="creator-error" class="creator-error" role="alert"></div>${body(id)}</form><footer class="creator-foot"><p class="creator-summary">${summary()}</p><div class="actions">${step ? btn('Atrás', 'back', 'secondary') : ''}${btn(id === 'review' ? 'Crear personaje' : 'Siguiente', 'next')}</div></footer></div>`;
     const b = host.querySelector('.creator-body');
     if (b) b.scrollTop = top;
   }
@@ -373,6 +375,40 @@ const Creator = (() => {
       details: detailStep,
       review: reviewStep,
     }[id]();
+  }
+
+  // ---------- Mesa y libros (primer paso) ----------
+  function tablePanel() {
+    const t = table(),
+      cloud = !!window.Cloud?.enabled,
+      mine = cloud && typeof KEY !== 'undefined' && KEY ? window.Cloud.link(KEY) : null;
+    if (t)
+      return `<section class="card creator-table"><div class="card-header"><h2>Mesa «${esc(t.name)}»</h2>${btn('Crear sin mesa', 'leave-table', 'secondary')}</div><p class="small">Al terminar, la ficha se suma a esta mesa. Libros del DM: ${t.settings.sources.length >= Object.keys(CampaignData.sources).length ? 'todos' : t.settings.sources.length > 8 ? t.settings.sources.length + ' libros' : esc(t.settings.sources.join(', '))} · nivel inicial ${t.settings.startLevel}.${t.settings.rules ? ' Reglas de la casa: ' + esc(t.settings.rules) : ''}</p></section>`;
+    const books = Object.entries(CampaignData.sources)
+      .map(
+        ([id, n]) =>
+          `<label class="check"><input type="checkbox" name="source" value="${id}" ${d.campaignSources.includes(id) ? 'checked' : ''} ${id === 'PHB' ? 'disabled' : ''}>${esc(n)}</label>`,
+      )
+      .join('');
+    return `<section class="card creator-table">${
+      cloud
+        ? `<h2>¿Es para una mesa?</h2><p class="small">Con el código del DM, el personaje usa sus libros, su nivel inicial y sus reglas de características, y al terminar queda en la mesa.</p><div class="creator-join">${field('Código de la mesa', 'tableCode', ui.code || '', 'text', 'maxlength="6" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.2em"')}${field('Tu nombre (jugador)', 'tableDisplay', ui.display || '', 'text', 'maxlength="100" placeholder="Opcional"')}${btn('Unirme', 'join')}</div>${mine?.code ? `<div class="actions">${btn('Usar la mesa de ' + esc(state?.name || 'tu personaje') + ': «' + esc(mine.campaignName || mine.code) + '»', 'join-current', 'secondary')}</div>` : ''}`
+        : ''
+    }<details class="creator-books" ${!cloud || ui.booksOpen ? 'open' : ''}><summary>Libros habilitados: ${d.campaignSources.length} de ${Object.keys(CampaignData.sources).length}${cloud ? ' (sin mesa)' : ''}</summary><p class="small">Marcá los que permite tu DM. Filtran las clases, razas, trasfondos y conjuros que ves.</p><div class="source-grid">${books}</div></details></section>`;
+  }
+  async function join(code) {
+    const err = host.querySelector('#creator-error');
+    code = String(code || '')
+      .trim()
+      .toUpperCase();
+    if (!/^[A-Z0-9]{6}$/.test(code)) throw Error('El código de la mesa tiene 6 letras o números.');
+    if (err) err.textContent = 'Conectando con la mesa…';
+    const t = await window.Cloud.joinOnly(code, ui.display || '');
+    d.campaignSources = t.settings.sources.slice();
+    d.level = t.settings.startLevel;
+    ui.code = '';
+    save();
+    draw();
   }
 
   // ---------- 1. Clase ----------
@@ -833,6 +869,12 @@ const Creator = (() => {
     const fd = new FormData(f),
       id = current();
     if (id === 'class' && fd.has('level')) d.level = Number(fd.get('level'));
+    if (id === 'class' && host.querySelector('[name=source]')) {
+      d.campaignSources = ['PHB', ...fd.getAll('source')];
+      ui.booksOpen = host.querySelector('.creator-books')?.open;
+    }
+    if (fd.has('tableCode')) ui.code = String(fd.get('tableCode'));
+    if (fd.has('tableDisplay')) ui.display = String(fd.get('tableDisplay'));
     if (id === 'background' && fd.has('background')) d.background = String(fd.get('background')).trim();
     if (id === 'race' && fd.has('race')) d.race = String(fd.get('race')).trim();
     if (id === 'abilities') {
@@ -903,6 +945,15 @@ const Creator = (() => {
         const target = Number(t.dataset.i);
         for (let i = step; i < target; i++) validate(steps()[i][0]);
         return go(target);
+      }
+      if (a === 'join' || a === 'join-current') {
+        const code = a === 'join' ? ui.code : window.Cloud.link(KEY)?.code;
+        join(code).catch(fail);
+        return;
+      }
+      if (a === 'leave-table') {
+        if (!confirm('¿Crear el personaje sin mesa? Podés unirlo a una mesa más tarde desde «Mesa».')) return;
+        window.Cloud.clearPending();
       }
       if (a === 'filter') ui.filter = t.dataset.v;
       if (a === 'class') {
@@ -989,7 +1040,21 @@ const Creator = (() => {
       }
       save();
       // Redibujar solo cuando cambia la estructura (los textos se guardan sin perder el foco).
-      if (!['name', 'languages', 'background', 'race', 'hp', 'speed', 'gear', 'gold'].includes(n)) draw();
+      if (
+        ![
+          'name',
+          'languages',
+          'background',
+          'race',
+          'hp',
+          'speed',
+          'gear',
+          'gold',
+          'tableCode',
+          'tableDisplay',
+        ].includes(n)
+      )
+        draw();
       host.querySelector(`[name="${CSS.escape(n)}"]`)?.focus({ preventScroll: true });
     } catch (err) {
       fail(err);

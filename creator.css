@@ -182,6 +182,31 @@ body.creator-open {
 .creator-tags .cx-3 {
   color: var(--red);
 }
+.creator-table {
+  margin-bottom: 16px;
+}
+.creator-table h2 {
+  margin: 0 0 4px;
+  font-size: 1.1rem;
+}
+.creator-join {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+.creator-books {
+  margin-top: 10px;
+}
+.creator-books summary {
+  cursor: pointer;
+  color: var(--gold);
+}
+@media (max-width: 640px) {
+  .creator-join {
+    grid-template-columns: 1fr;
+  }
+}
 .creator-detail {
   margin-top: 14px;
 }
