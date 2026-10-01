@@ -1,5 +1,5 @@
 const PREFIX = 'darien:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v22-polish-login';
+const CACHE = PREFIX + 'v23-combat';
 const FILES = [
   './',
   './index.html',

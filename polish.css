@@ -741,3 +741,7 @@ label.check:has(input[name='heroic']:checked) {
 .attack-log .hit {
   color: #9fe0b5;
 }
+
+.saves-card {
+  border-color: #ab8a50;
+}

@@ -248,6 +248,7 @@ function draw() {
     }</div>
     ${feedCard()}
   </div><div class="stack">
+    ${savesCard()}
     ${initiativeCard(t)}
     ${TableExtras.dmHtml(party)}
     <section class="card"><div class="card-header"><h2>Notas del DM</h2></div><label class="field"><span class="visually-hidden">Notas privadas</span><textarea id="dm-notes" style="min-height:160px" placeholder="Solo se guardan en este dispositivo.">${esc(localStorage.getItem(notesKey()) || '')}</textarea></label></section>
@@ -282,6 +283,72 @@ addEventListener('cloud-login', () => {
   merged = false;
   if (!current) drawHome();
 });
+
+// Salvaciones que pidieron los jugadores y todavía no se resolvieron.
+function pendingSaves() {
+  const done = new Set(
+    feed.filter(e => e.kind === 'creature-save-result').map(e => e.payload.requestId + ':' + e.payload.targetId),
+  );
+  return feed
+    .filter(e => e.kind === 'creature-save')
+    .map(e => ({ ev: e, targets: (e.payload.targets || []).filter(t => !done.has(e.id + ':' + t.id)) }))
+    .filter(x => x.targets.length && tracker().entries.some(c => x.targets.some(t => t.id === c.id)));
+}
+function savesCard() {
+  const list = pendingSaves();
+  if (!list.length) return '';
+  const ABIL = { str: 'FUE', dex: 'DES', con: 'CON', int: 'INT', wis: 'SAB', cha: 'CAR' };
+  return `<section class="card saves-card"><div class="card-header"><h2>Salvaciones pendientes</h2></div>${list
+    .map(
+      ({ ev, targets }) =>
+        `<div class="feature"><p><b>${esc(ev.payload.caster)}</b> lanzó <b>${esc(ev.payload.spell)}</b>: ${ABIL[ev.payload.ability] || esc(ev.payload.ability)} CD ${esc(ev.payload.dc)} · ${esc(ev.payload.damage)} de daño${ev.payload.half ? ' (mitad si salva)' : ''}</p><div class="party-list">${targets
+          .map(t => {
+            const c = tracker().entries.find(x => x.id === t.id);
+            return `<div class="list-row"><span>${esc(t.name)} <small class="muted">${c ? sign(c.saves?.[ev.payload.ability] ?? 0) : ''}</small></span>${button('Resolver', 'save-resolve', 'secondary', `data-req="${ev.id}" data-target="${t.id}"`)}</div>`;
+          })
+          .join(
+            '',
+          )}</div>${targets.length > 1 ? `<div class="actions">${button('Tirar todas', 'save-all', '', `data-req="${ev.id}"`)}</div>` : ''}</div>`,
+    )
+    .join('')}</section>`;
+}
+async function resolveSave(req, targetId, own = null) {
+  const p = req.payload,
+    c = tracker().entries.find(x => x.id === targetId),
+    t = (p.targets || []).find(x => x.id === targetId);
+  if (!c || !t) throw Error('Esa criatura ya no está en el encuentro.');
+  const bonus = Number(c.saves?.[p.ability] ?? 0),
+    natural = own ?? d20(),
+    total = natural + bonus,
+    success = natural !== 1 && (natural === 20 || total >= Number(p.dc)),
+    dmg = Number(p.damage) || 0,
+    damage = success ? (p.half ? Math.floor(dmg / 2) : 0) : dmg,
+    hp = Math.max(0, (c.hp ?? 0) - damage);
+  if (damage) await Cloud.updateSecret(c.id, { hp });
+  const max = c.max || 1,
+    status =
+      hp <= 0
+        ? 'derrotado'
+        : hp * 4 < max
+          ? 'a punto de caer'
+          : hp * 2 < max
+            ? 'malherido'
+            : hp < max
+              ? 'herido'
+              : 'ileso';
+  await send('creature-save-result', {
+    requestId: req.id,
+    targetId,
+    name: t.name,
+    spell: p.spell,
+    roll: natural,
+    total,
+    success,
+    damage,
+    status,
+  });
+  return { name: t.name, natural, total, success, damage };
+}
 
 const STATUS_LABEL = {
   ileso: 'Ileso',
@@ -556,6 +623,44 @@ const actions = {
       },
       'Tirar',
     ),
+  'save-resolve': e => {
+    const req = feed.find(x => x.id === Number(e.dataset.req)),
+      t = req?.payload.targets.find(x => x.id === e.dataset.target),
+      c = tracker().entries.find(x => x.id === e.dataset.target);
+    if (!req || !t || !c) throw Error('Ese pedido ya no está.');
+    modal(
+      `${t.name}: salvación (${req.payload.spell})`,
+      `<p>CD <b>${esc(req.payload.dc)}</b> · bono de la criatura <b>${sign(c.saves?.[req.payload.ability] ?? 0)}</b> · ${esc(req.payload.damage)} de daño${req.payload.half ? ' (mitad si salva)' : ''}.</p>${field('Mi d20 (opcional: si lo tiré en la mesa)', 'own', '', 'number', 'min="1" max="20" inputmode="numeric"')}<p class="small">Sin dado propio, la pantalla tira por la criatura.</p>`,
+      async fd => {
+        const own = fd.get('own') ? int(fd, 'own', 1, 20) : null;
+        const r = await resolveSave(req, t.id, own);
+        await refresh();
+        RollFX.show({
+          label: r.name + ' · salvación',
+          total: r.total,
+          face: r.natural,
+          detail: r.success
+            ? 'supera' + (r.damage ? ' · ' + r.damage + ' de daño' : '')
+            : 'falla · ' + r.damage + ' de daño',
+          crit: r.natural === 20,
+          fumble: r.natural === 1,
+        });
+      },
+      'Resolver',
+    );
+  },
+  'save-all': async e => {
+    const req = feed.find(x => x.id === Number(e.dataset.req));
+    const item = pendingSaves().find(x => x.ev.id === req?.id);
+    if (!item) return;
+    const lines = [];
+    for (const t of item.targets) {
+      const r = await resolveSave(req, t.id);
+      lines.push(`${r.name} ${r.success ? 'supera' : 'falla'} (${r.total}) · ${r.damage} de daño`);
+    }
+    await refresh();
+    toast(lines.join(' · '));
+  },
   'init-party': () =>
     encounterChange(async () => {
       const t = tracker();
