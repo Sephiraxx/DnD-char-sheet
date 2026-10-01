@@ -46,11 +46,37 @@
     });
     return client;
   }
+  // Verificación anti-bots (Cloudflare Turnstile), solo la primera vez que el navegador se conecta.
+  function captcha() {
+    return new Promise((resolve, reject) => {
+      const box = document.createElement('div');
+      box.className = 'captcha-box';
+      box.innerHTML = '<p>Verificando que no sos un bot…</p><div></div>';
+      document.body.append(box);
+      const done = fn => v => {
+        box.remove();
+        fn(v);
+      };
+      const draw = () =>
+        root.turnstile.render(box.lastChild, {
+          sitekey: cfg.captchaSiteKey,
+          callback: done(resolve),
+          'error-callback': done(() => reject(Error('No se pudo completar la verificación anti-bots. Reintentá.'))),
+        });
+      if (root.turnstile) return draw();
+      const s = document.createElement('script');
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      s.onload = draw;
+      s.onerror = done(() => reject(Error('No se pudo cargar la verificación anti-bots. Revisá tu conexión.')));
+      document.head.append(s);
+    });
+  }
   async function user() {
     const c = await api();
     const { data } = await c.auth.getSession();
     if (data.session) return data.session.user;
-    const r = await c.auth.signInAnonymously();
+    const captchaToken = cfg.captchaSiteKey ? await captcha() : undefined;
+    const r = await c.auth.signInAnonymously(captchaToken ? { options: { captchaToken } } : undefined);
     if (r.error) throw friendly(r.error);
     return r.data.user;
   }

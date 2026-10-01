@@ -192,3 +192,18 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+.captcha-box {
+  position: fixed;
+  inset: auto 16px 16px auto;
+  z-index: 1000;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 8px 30px #0008;
+}
+.captcha-box p {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
