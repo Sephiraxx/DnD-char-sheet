@@ -924,3 +924,273 @@ body.enc-shake .workspace {
   width: 20px;
   height: 20px;
 }
+
+/* ---------- Combate: vista compacta ---------- */
+.cc {
+  display: grid;
+  gap: 12px;
+}
+.cc-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.cc-bar .eyebrow {
+  margin: 0;
+}
+.cc-bar .button {
+  min-height: 38px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+.cc-stats {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  gap: 8px;
+  padding: 8px 0;
+  background: var(--bg);
+}
+.cc-stat {
+  flex: 1 1 0;
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 2px;
+  min-height: 62px;
+  padding: 6px 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+}
+.cc-stat b {
+  font-size: 1.45rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.cc-stat b small {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.cc-stat span {
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+button.cc-stat {
+  cursor: pointer;
+}
+.cc-hp {
+  flex-grow: 1.7;
+  border-color: var(--gold);
+}
+.cc-hp b {
+  font-size: 1.8rem;
+  color: var(--gold);
+}
+.cc-hp.low {
+  border-color: var(--red);
+}
+.cc-hp.low b {
+  color: var(--red);
+}
+.cc-focus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  font-size: 0.88rem;
+}
+.cc-focus.alert {
+  border-color: var(--gold);
+}
+.cc-focus .button,
+.cc-turn .button {
+  min-height: 40px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+}
+.cc-conditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+}
+.cc-turn {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: 8px;
+  align-items: stretch;
+}
+.cc-turn .turn-token {
+  min-height: 52px;
+  padding: 8px 10px;
+}
+.cc-turn .turn-token span {
+  margin-bottom: 2px;
+}
+.cc-turn .actions {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+.cc-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #10292b;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+}
+.cc-pill span {
+  color: var(--muted);
+}
+.cc-pill b {
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+.cc-pill.empty b {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.cc-list {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+.cc-list .battle-choice {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+}
+.cc-list .battle-choice > div:first-child {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+/* «Ver detalles» queda como un botón chico «?» para no tapar el nombre del conjuro. */
+.cc-list [data-action='combat-spell-info'] {
+  font-size: 0;
+  min-width: 40px;
+  padding: 6px;
+}
+.cc-list [data-action='combat-spell-info']::after {
+  content: '?';
+  font-size: 1rem;
+}
+.cc-list .battle-choice h3 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+.cc-list .battle-choice h3 + p,
+.cc-list .battle-choice p:not(.choice-reason),
+.cc-list .battle-choice .eyebrow,
+.cc-list [data-action='attack-settings'],
+.cc-list [data-action='spell-roll'] {
+  display: none;
+}
+.cc-list .battle-choice .actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  margin: 0;
+}
+.cc-list .battle-choice .actions .button {
+  flex: 0 0 auto;
+  width: auto;
+}
+.cc-list .battle-choice .button {
+  min-height: 40px;
+  padding: 6px 12px;
+}
+.cc-list .spell-choice .eyebrow {
+  display: block;
+  font-size: 0.6rem;
+}
+.cc-list .attack-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 0;
+}
+.cc-list .attack-stats span {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 8px;
+}
+.cc-list .attack-stats b {
+  font-size: 0.95rem;
+}
+.cc-list .choice-reason {
+  font-size: 0.72rem;
+  margin: 0 0 4px;
+}
+.cc-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.fav-star {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 2px 4px;
+  min-height: 0;
+  vertical-align: middle;
+  cursor: pointer;
+}
+.fav-star.on {
+  color: var(--gold);
+}
+@media (max-width: 560px) {
+  .cc-stats {
+    gap: 6px;
+  }
+  .cc-stat span {
+    font-size: 0.6rem;
+    letter-spacing: 0.02em;
+  }
+  .cc-stat b {
+    font-size: 1.2rem;
+  }
+  .cc-hp b {
+    font-size: 1.5rem;
+  }
+  .cc-turn {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .cc-turn .actions {
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr 1fr;
+  }
+  .cc-list .battle-choice {
+    flex-wrap: wrap;
+  }
+  .cc-list .choice-bottom {
+    margin-left: auto;
+  }
+}

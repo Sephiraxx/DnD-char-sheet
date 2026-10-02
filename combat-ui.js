@@ -1,6 +1,7 @@
 /* Mesa de combate: opciones de la ficha actual y registro explícito de recursos. */
 let combatTab = 'action',
-  combatLevel = 'all';
+  combatLevel = 'all',
+  combatAllSpells = false;
 const combatLabels = { action: 'Acción', bonus: 'Acción adicional', reaction: 'Reacción' };
 const combatOptions = [
   {
@@ -114,9 +115,149 @@ function combatChoice(o) {
 function combatSpell(sp) {
   const reason = Combat.spellBlock(state, sp),
     d = R.stats(state);
-  return `<article class="battle-choice spell-choice"><div><span class="eyebrow">${sp.level ? 'Nivel ' + sp.level : 'Nivel 0 · Truco'}${sp.concentration ? ' · Concentración' : ''}</span><h3>${esc(sp.name)}</h3>${PartyUI.automaticSpellNote(state, sp.id)}<p>${esc(sp.brief)}</p><div class="small">${esc(sp.range)} · ${esc(sp.components)}${state.extras.includes(sp.id) ? ' · Extra DM' : ''}</div></div><div class="choice-bottom">${reason ? `<p class="choice-reason">${esc(reason)}</p>` : ''}<div class="actions">${button('Ver detalles', 'combat-spell-info', 'secondary', `data-id="${esc(sp.id)}"`)}${RollUI.rollable(sp) ? button('Solo tirar', 'spell-roll', 'secondary', `data-id="${esc(sp.id)}"`) : ''}${button(sp.level ? 'Lanzar' : 'Usar truco', 'cast', '', `data-id="${esc(sp.id)}" ${reason ? 'disabled' : ''}`)}</div></div></article>`;
+  return `<article class="battle-choice spell-choice"><div><span class="eyebrow">${sp.level ? 'Nivel ' + sp.level : 'Nivel 0 · Truco'}${sp.concentration ? ' · Concentración' : ''}</span><h3>${esc(sp.name)} <button type="button" class="fav-star ${favoriteIds().includes(sp.id) ? 'on' : ''}" data-action="spell-fav" data-id="${esc(sp.id)}" aria-pressed="${favoriteIds().includes(sp.id)}" aria-label="Favorito" title="Favorito para la vista compacta">${favoriteIds().includes(sp.id) ? '★' : '☆'}</button></h3>${PartyUI.automaticSpellNote(state, sp.id)}<p>${esc(sp.brief)}</p><div class="small">${esc(sp.range)} · ${esc(sp.components)}${state.extras.includes(sp.id) ? ' · Extra DM' : ''}</div></div><div class="choice-bottom">${reason ? `<p class="choice-reason">${esc(reason)}</p>` : ''}<div class="actions">${button('Ver detalles', 'combat-spell-info', 'secondary', `data-id="${esc(sp.id)}"`)}${RollUI.rollable(sp) ? button('Solo tirar', 'spell-roll', 'secondary', `data-id="${esc(sp.id)}"`) : ''}${button(sp.level ? 'Lanzar' : 'Usar truco', 'cast', '', `data-id="${esc(sp.id)}" ${reason ? 'disabled' : ''}`)}</div></div></article>`;
 }
+// Vista compacta: todo lo del turno en una pantalla (preferencia de este dispositivo).
+const COMPACT_KEY = 'dnd-combat-compact';
+function combatCompactOn() {
+  try {
+    return localStorage.getItem(COMPACT_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+function favoriteIds() {
+  return state.favorites || [];
+}
+function combatSpeed() {
+  const pen = state.equipmentDefense ? Equipment.defense(state).speedPenalty : 0;
+  return Math.max(0, (state.speed ?? 30) - pen);
+}
+function combatCompact() {
+  const d = R.stats(state),
+    c = Combat.data(state),
+    on = c.active && c.onTurn;
+  const all = [...new Set(Classes.usable(state))].map(spellById).filter(Boolean),
+    favs = favoriteIds(),
+    ofKind = all.filter(x => Combat.kind(x) === combatTab),
+    shown = (favs.length && !combatAllSpells ? ofKind.filter(x => favs.includes(x.id)) : ofKind).sort(
+      (a, b) => a.level - b.level || a.name.localeCompare(b.name),
+    );
+  const left = (max, used) => (used === null ? '—' : max - used);
+  const pill = (label, value, action, data = '', cls = '') =>
+    `<button type="button" class="cc-pill ${cls}" data-action="${action}" ${data}><span>${label}</span><b>${value}</b></button>`;
+  const pills = [
+    ...d.slots.map((max, i) =>
+      max
+        ? pill(
+            (Classes.id(state) === 'warlock' ? 'Pacto ' : 'Nv ') + (i + 1),
+            left(max, state.slotsSpent[i]) + '/' + max,
+            'pool-edit',
+            `data-type="slot" data-index="${i}"`,
+            state.slotsSpent[i] !== null && state.slotsSpent[i] >= max ? 'empty' : '',
+          )
+        : '',
+    ),
+    d.pact
+      ? pill(
+          'Pacto Nv ' + d.pact.level,
+          left(d.pact.max, state.pactSpent ?? 0) + '/' + d.pact.max,
+          'pool-edit',
+          'data-type="pact"',
+        )
+      : '',
+    Classes.id(state) === 'bard'
+      ? pill(
+          'Inspiración d' + d.inspirationDie,
+          left(d.inspirationMax, state.inspirationSpent) + '/' + d.inspirationMax,
+          'pool-edit',
+          'data-type="inspiration"',
+        )
+      : '',
+    ...Classes.resources(state).map(r => {
+      const used = Classes.spent(state, r);
+      return pill(
+        esc(r.name),
+        used === null ? '—' : r.max === 999 ? '∞' : Math.max(0, r.max - used) + '/' + r.max,
+        'class-resource',
+        `data-id="${r.id}"`,
+        used !== null && r.max !== 999 && used >= r.max ? 'empty' : '',
+      );
+    }),
+    pill(
+      'Dados de Golpe',
+      left(R.totalLevel(state), state.hdSpent) + '/' + R.totalLevel(state),
+      'pool-edit',
+      'data-type="hd"',
+    ),
+    ...state.extraResources.map(x =>
+      pill(esc(x.name), left(x.max, x.spent) + '/' + x.max, 'pool-edit', `data-type="extra" data-index="${esc(x.id)}"`),
+    ),
+  ].join('');
+  const options = combatOptions.filter(o => o.kind === combatTab && combatOptionAllowed(o));
+  const effects = Effects.list(state);
+  return `<div class="cc">
+  <div class="cc-bar"><p class="eyebrow">${esc(state.name)} · ${c.active ? (on ? 'ES TU TURNO' : 'TURNO AJENO') : 'COMBATE'}${c.active ? ' · turno ' + c.turn : ''}</p><div class="actions">${button('Tirar dados', 'dice')}${button('Vista completa', 'combat-compact')}</div></div>
+  <div class="cc-stats">
+    <button type="button" class="cc-stat cc-hp ${state.hp !== null && state.hp <= d.maxHP / 4 ? 'low' : ''}" data-action="combat-hp"><b>${state.hp ?? '—'}<small>/${d.maxHP}</small></b><span>PG${state.temp ? ' · +' + state.temp + ' temp' : ''}</span></button>
+    <div class="cc-stat"><b>${d.ac}</b><span>CA</span></div>
+    <button type="button" class="cc-stat" data-action="roll" data-bonus="${d.initiative}" data-label="Iniciativa"><b>${sign(d.initiative)}</b><span>Iniciativa</span></button>
+    ${all.length ? `<div class="cc-stat"><b>${d.dc}</b><span>CD</span></div>` : ''}
+    <div class="cc-stat"><b>${combatSpeed()}</b><span>Pies</span></div>
+  </div>
+  ${state.hp === 0 ? `<section class="banner"><p><b>A 0 PG.</b> Salvaciones de muerte: ${state.death.success}/3 éxitos · ${state.death.failure}/3 fallos.</p><div class="actions">${button('Tirar salvación de muerte', 'death-roll', '')}${button('Reiniciar', 'death-reset')}</div></section>` : ''}
+  ${state.heroicInspiration ? `<button class="text-btn heroic" data-action="heroic-toggle">★ Inspiración del DM</button>` : ''}
+  ${state.concentration ? `<div class="cc-focus ${c.checks.length ? 'alert' : ''}"><span><b>${c.checks.length ? '⚠ Salvación de concentración' : 'Concentración'}</b> · ${esc(spellName(state.concentration))}${c.checks.length ? ' · CON ' + sign(R.saveBonus(state, 'con')) + ' vs CD ' + c.checks[0] : ''}</span><div class="actions">${c.checks.length ? button('Tirar', 'concentration-roll', '') + button('Superada', 'combat-concentration-pass') + button('Fallada', 'combat-concentration-fail', 'danger') : button('Terminar', 'concentration-end')}</div></div>` : ''}
+  ${state.conditions.length ? `<p class="cc-conditions">${state.conditions.map(x => `<button class="chip selected" data-action="condition" data-condition="${esc(x)}" title="Quitar">${esc(x)} ×</button>`).join('')}</p>` : ''}
+  <div class="cc-turn">${[
+    ['action', 'Acción', c.action],
+    ['bonus', 'Adicional', c.bonus],
+    ['reaction', 'Reacción', state.reactionUsed ? 'Gastada' : null],
+  ]
+    .map(
+      ([k, label, used]) =>
+        `<button class="turn-token ${used ? 'used' : ''} ${combatTab === k ? 'current' : ''}" data-action="combat-tab" data-tab="${k}" aria-pressed="${combatTab === k}"><span>${label}</span><strong>${used ? esc(used) : 'Libre'}</strong></button>`,
+    )
+    .join(
+      '',
+    )}<div class="actions">${button(c.active ? 'Mi turno' : 'Iniciar turno', 'turn', '')}${on ? button('Terminar', 'combat-end') : ''}</div></div>
+  <div class="cc-pills" aria-label="Recursos">${pills}</div>
+  <div class="battle-choices cc-list">${AttackUI.choices(combatTab)}${PartyUI.combatAbilities(combatTab)}${options
+    .filter(o => combatTab !== 'action' || o.weapon)
+    .map(combatChoice)
+    .join('')}${shown.map(combatSpell).join('')}</div>
+  ${ofKind.length ? `<p class="small muted">${!favs.length ? 'Tocá ☆ en un conjuro para dejar solo tus favoritos en esta vista.' : combatAllSpells ? 'Todos tus conjuros de ' + combatLabels[combatTab].toLowerCase() + '.' : shown.length ? 'Solo tus conjuros ★ favoritos.' : 'Ningún favorito usa ' + combatLabels[combatTab].toLowerCase() + '.'} ${favs.length && (combatAllSpells || ofKind.length !== shown.length) ? button(combatAllSpells ? 'Solo favoritos' : 'Ver los ' + ofKind.length, 'combat-all-spells', 'text-btn') : ''}</p>` : ''}
+  ${
+    combatTab === 'action'
+      ? `<details class="battle-rule"><summary>Esquivar, Destrabarse, Ayudar…</summary><div class="battle-choices cc-list section-space">${options
+          .filter(o => !o.weapon)
+          .map(combatChoice)
+          .join('')}</div></details>`
+      : ''
+  }
+  ${effects.length ? `<div class="cc-effects">${effects.map(x => `<span class="tag">${esc(x.name)} · ${esc(Effects.remaining(x))}</span>`).join('')}</div>` : ''}
+  <details class="battle-rule"><summary>Condiciones</summary><div class="chips section-space">${CONDITIONS.map(x => `<button class="chip ${state.conditions.includes(x) ? 'selected' : ''}" data-action="condition" data-condition="${x}" aria-pressed="${state.conditions.includes(x)}">${x}</button>`).join('')}</div></details>
+  <div class="actions section-space">${button('Descansar', 'rest')}${button('Otra opción del DM', 'combat-custom')}${c.active ? button('Salir de combate', 'combat-finish') : ''}</div>
+</div>`;
+}
+const CONDITIONS = [
+  'Derribado',
+  'Asustado',
+  'Hechizado',
+  'Envenenado',
+  'Incapacitado',
+  'Inconsciente',
+  'Agarrado',
+  'Restringido',
+  'Cegado',
+  'Ensordecido',
+  'Paralizado',
+  'Aturdido',
+  'Invisible',
+  'Petrificado',
+];
 function combatView() {
+  if (combatCompactOn()) return combatCompact();
   const d = R.stats(state),
     c = Combat.data(state),
     on = c.active && c.onTurn;
@@ -129,7 +270,10 @@ function combatView() {
     header(
       'Tu próxima jugada.',
       `${esc(state.name)} · ${MulticlassUI.label(state)}${Classes.id(state) === 'bard' && state.subclass === 'eloquence' && state.level >= 3 ? ' de Elocuencia' : ''} · Reglas 2014`,
-      button('Descansar', 'rest') + button('Tirar dados', 'dice') + button('Dados y siglas', 'rules-help'),
+      button('Vista compacta', 'combat-compact', '') +
+        button('Descansar', 'rest') +
+        button('Tirar dados', 'dice') +
+        button('Dados y siglas', 'rules-help'),
     ) +
     `${!state.hpConfirmed || state.hp === null || (Classes.id(state) === 'bard' && state.inspirationSpent === null) || d.slots.some((max, i) => max && state.slotsSpent[i] === null) || Classes.resources(state).some(r => Classes.spent(state, r) === null) ? `<div class="banner"><p><b>Recursos sin confirmar.</b> Ingresá lo que te queda después de la pelea.</p>${button('Ajustar recursos', 'resources')}</div>` : ''}` +
     `${state.classId && Classes.tasks(state).length ? `<div class="banner"><p><b>Tu ficha tiene elecciones pendientes.</b> Revisá los conjuros y rasgos de tu nivel.</p>${button('Completar ficha', 'class-open')}</div>` : ''}<section class="turn-console card"><div class="card-header"><div><p class="eyebrow">${c.active ? (on ? 'ES TU TURNO' : 'TURNO AJENO') : 'SEGUIMIENTO DE COMBATE'}</p><h2>${c.active ? 'Turno propio ' + c.turn : '¿Qué vas a hacer?'}</h2></div><div class="actions">${button(c.active ? 'Mi turno' : 'Iniciar mi turno', 'turn', '')}${on ? button('Terminar turno', 'combat-end') : ''}${c.active ? button('Salir de combate', 'combat-finish') : ''}</div></div><p class="small">${c.active ? '«Mi turno» recupera acción, adicional y reacción. Terminar tu turno conserva la reacción gastada.' : 'Activá el seguimiento cuando empiece tu turno. Fuera de combate podés consultar opciones y registrar recursos sin limitar acciones por turno.'}</p><div class="turn-status">${[
@@ -288,6 +432,26 @@ function installCombatActions() {
       combatTab = e.dataset.tab;
       combatLevel = 'all';
       render();
+    },
+    'combat-compact': () => {
+      try {
+        localStorage.setItem(COMPACT_KEY, combatCompactOn() ? '0' : '1');
+      } catch {
+        throw Error('Este navegador no permite guardar la preferencia.');
+      }
+      render();
+      window.scrollTo(0, 0);
+    },
+    'combat-all-spells': () => {
+      combatAllSpells = !combatAllSpells;
+      render();
+    },
+    'spell-fav': e => {
+      const id = e.dataset.id,
+        on = favoriteIds().includes(id);
+      commit(on ? 'Quitado de favoritos' : 'Marcado como favorito', s => {
+        s.favorites = on ? (s.favorites || []).filter(x => x !== id) : [...(s.favorites || []), id].slice(-60);
+      });
     },
     'combat-level': e => {
       combatLevel = e.dataset.level;

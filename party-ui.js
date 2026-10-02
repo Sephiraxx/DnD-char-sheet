@@ -37,7 +37,7 @@ const PartyUI = (() => {
     }
     modal(
       'Personajes de este dispositivo',
-      `<p>Cada ficha tiene su propio progreso, recursos y equipo. Tus compañeros pueden abrir esta página y crear sus personajes en sus dispositivos.</p><p class="small">No se sincronizan entre personas ni navegadores. Usá exportar e importar para trasladar una ficha.</p><div class="party-list">${items
+      `<p>Cada ficha tiene su propio progreso, recursos y equipo. Tus compañeros pueden abrir esta página y crear sus personajes en sus dispositivos.</p><p class="small">Las fichas que están en una mesa se sincronizan con ella y, con tu acceso guardado (Mesa → Tu acceso), se abren en tus otros dispositivos. Las demás quedan en este navegador: usá exportar e importar para trasladarlas.</p><div class="party-list">${items
         .map(x => {
           let label = x.name;
           try {

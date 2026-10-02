@@ -625,6 +625,8 @@
     if (o.inspirationSpent !== null && !int(o.inspirationSpent, 0, stats(o).inspirationMax)) fail();
     if (o.hdSpent !== null && !int(o.hdSpent, 0, totalLevel(o))) fail();
     if (o.heroicInspiration !== undefined && typeof o.heroicInspiration !== 'boolean') fail();
+    // Conjuros favoritos de la vista compacta de combate.
+    if (o.favorites !== undefined && (!list(o.favorites, 60) || o.favorites.some(x => !txt(x, 100)))) fail();
     if (root.Effects && !root.Effects.valid(o)) fail();
     if (
       o.bonusDice !== undefined &&
