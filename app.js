@@ -256,7 +256,7 @@ function gear() {
 function journal() {
   return (
     header('El viaje continúa.', 'Notas, compañeros e historial de cambios.', button('Exportar copia', 'backup')) +
-    `<div class="columns"><div class="stack"><section class="card"><h2>Notas de la sesión</h2><label class="field"><span class="visually-hidden">Notas</span><textarea id="journal-notes" style="min-height:230px">${esc(state.notes)}</textarea></label>${button('Guardar notas', 'notes-save', '')}</section><section class="card"><div class="card-header"><h2>Compañeros y mascotas</h2><button class="text-btn" data-action="companion">Editar</button></div><div class="companion">${state.classId ? '' : '<img src="./assets/companion.webp" alt="Retrato de la compañera de viaje" width="768" height="1152">'}<div>${state.companion.name || state.companion.notes ? `<h3>${esc(state.companion.name)}</h3><p>${esc(state.companion.notes)}</p>` : '<p class="muted">Anotá familiares, mascotas, monturas o PNJ que viajan con vos.</p>'}</div></div></section><section class="card"><h2>Progresión registrada</h2>${state.levelHistory.length ? state.levelHistory.map(x => `<div class="feature"><h3>Nivel ${x.level}</h3><p>${esc(x.note)}</p></div>`).join('') : '<p class="muted">Las próximas subidas de nivel quedarán registradas acá.</p>'}</section></div><section class="card"><div class="card-header"><h2>Últimos cambios</h2><button class="text-btn" data-action="undo">Deshacer</button></div><div class="log">${
+    `<div class="columns"><div class="stack"><section class="card"><h2>Notas de la sesión</h2><label class="field"><span class="visually-hidden">Notas</span><textarea id="journal-notes" style="min-height:230px">${esc(state.notes)}</textarea></label>${button('Guardar notas', 'notes-save', '')}</section>${CompanionsUI.card()}<section class="card"><h2>Progresión registrada</h2>${state.levelHistory.length ? state.levelHistory.map(x => `<div class="feature"><h3>Nivel ${x.level}</h3><p>${esc(x.note)}</p></div>`).join('') : '<p class="muted">Las próximas subidas de nivel quedarán registradas acá.</p>'}</section></div><section class="card"><div class="card-header"><h2>Últimos cambios</h2><button class="text-btn" data-action="undo">Deshacer</button></div><div class="log">${
       state.log.length
         ? state.log
             .slice(0, 40)
@@ -736,10 +736,10 @@ const actions = {
       return toast('No recibís daño' + why + '.');
     }
     const conc = state.concentration;
+    let wild = null;
     commit('Daño recibido: ' + n, s => {
-      const absorbed = Math.min(s.temp, n);
-      s.temp -= absorbed;
-      s.hp = Math.max(0, s.hp - (n - absorbed));
+      wild = Companions.absorb(s, n);
+      s.hp = Math.max(0, s.hp - wild.toCharacter);
       if (s.hp === 0) {
         s.concentration = null;
         Combat.data(s).checks = [];
@@ -748,6 +748,12 @@ const actions = {
       } else if (conc) Combat.data(s).checks.push(Math.max(10, Math.floor(n / 2)));
     });
     $('#modal').close();
+    if (wild?.beast)
+      return toast(
+        wild.reverted
+          ? `Tu forma salvaje cae (${wild.beast} de daño): volvés a tu forma${wild.toCharacter ? ' y recibís ' + wild.toCharacter : ''}.`
+          : `La bestia recibe ${wild.beast} de daño${why}.`,
+      );
     toast(
       conc && state.hp > 0
         ? `Daño registrado: ${n}${why}. Resolvé la salvación de concentración en «En curso».`
@@ -988,6 +994,7 @@ MulticlassUI.install();
 RollUI.install();
 SheetStatus.install();
 MagicUI.install();
+CompanionsUI.install();
 document.addEventListener('click', e => {
   if (e.target.closest('[data-close]')) {
     $('#modal').close();

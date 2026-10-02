@@ -1292,3 +1292,67 @@ button.cc-stat {
 .magic-pick[hidden] {
   display: none;
 }
+
+/* ---------- Compañeros y forma salvaje ---------- */
+.cmp-list {
+  display: grid;
+  gap: 10px;
+}
+.cmp {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #0e2026;
+}
+.cmp.down {
+  opacity: 0.6;
+}
+.cmp-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.cmp-head h3 {
+  margin: 2px 0 0;
+}
+.cmp-head .eyebrow {
+  margin: 0;
+  font-size: 0.62rem;
+}
+.cmp-stats {
+  display: flex;
+  gap: 8px;
+}
+.cmp-stats .cc-stat {
+  min-width: 64px;
+  min-height: 54px;
+}
+.cmp-attack {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+  font-size: 0.88rem;
+}
+.cmp-attack .actions {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+}
+.cmp-attack .button,
+.cmp .actions .button {
+  min-height: 36px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+}
+.wild-shape {
+  border-color: var(--teal);
+}
+.wild-shape .cmp-stats {
+  margin: 8px 0;
+}

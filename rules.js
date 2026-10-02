@@ -615,6 +615,7 @@
     if (root.Defenses) root.Defenses.validate(o);
     if (root.FeatFX) root.FeatFX.validate(o);
     if (root.MagicItems) root.MagicItems.validate(o);
+    if (root.Companions) root.Companions.validate(o);
     if (root.Equipment) root.Equipment.validate(o);
     if (!['eloquence', 'manual'].includes(o.subclass)) fail();
     for (let k in attrs) if (!int(o.abilities?.[k], 1, 30)) fail();
