@@ -138,25 +138,6 @@
   --f1: #eaff6a;
   --f2: #6a8f00;
 }
-.fx-dragon {
-  left: 50%;
-  top: 50%;
-  width: min(85vw, 640px);
-  translate: -50% -50%;
-  fill: #05080a;
-  filter: drop-shadow(0 0 10px var(--f2));
-  animation: fx-fly 2.4s 0.1s cubic-bezier(0.15, 0.7, 0.85, 0.3) both;
-}
-.fx-dragon .bone {
-  fill: none;
-  stroke: #1d2a2f;
-  stroke-width: 2;
-}
-.fx-dragon .wing {
-  transform-box: view-box;
-  transform-origin: 188px 100px;
-  animation: fx-flap 0.42s ease-in-out infinite alternate;
-}
 .fx-bolts {
   inset: 0;
   width: 100%;
@@ -500,22 +481,6 @@ body.enc-stomp .workspace {
   to {
     transform: translate(var(--x), -60vh);
     opacity: 0;
-  }
-}
-@keyframes fx-fly {
-  from {
-    transform: translate(-75vw, 45vh) rotate(40deg) scale(0.5);
-  }
-  to {
-    transform: translate(75vw, -65vh) rotate(40deg) scale(1.35);
-  }
-}
-@keyframes fx-flap {
-  from {
-    transform: scaleX(1);
-  }
-  to {
-    transform: scaleX(0.55);
   }
 }
 @keyframes fx-bolt {

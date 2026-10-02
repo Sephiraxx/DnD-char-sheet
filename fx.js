@@ -116,12 +116,6 @@ const EncounterFX = (() => {
     );
     return `<svg class="fx-fire" viewBox="0 0 400 200" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="fx-fire-g" x1="0" y1="1" x2="0" y2="0"><stop offset="0" style="stop-color:var(--f2)"/><stop offset="0.7" style="stop-color:var(--f1)"/><stop offset="1" style="stop-color:var(--f1);stop-opacity:0"/></linearGradient></defs>${outer.join('')}${inner.join('')}</svg>${embers}`;
   };
-  // Dragón visto desde abajo: cabeza, cuello, cuerpo, cola y dos alas de murciélago que aletean.
-  const WING =
-    'M186 96 L150 74 L96 44 L34 30 L8 52 Q30 64 40 84 Q58 78 70 100 Q88 92 100 116 Q120 108 130 134 Q156 126 190 146 Z';
-  const BONES = 'M186 96 L34 30 M150 74 L40 84 M130 80 L70 100 M120 90 L100 116 M150 100 L130 134';
-  const dragonShape = () =>
-    `<svg class="fx-dragon" viewBox="0 0 400 260" aria-hidden="true"><g class="wing left"><path d="${WING}"/><path class="bone" d="${BONES}"/></g><g transform="translate(400 0) scale(-1 1)"><g class="wing flap"><path d="${WING}"/><path class="bone" d="${BONES}"/></g></g><path d="M200 18 C210 20 214 32 208 44 C214 58 220 76 222 100 C226 130 222 160 212 180 C206 200 214 226 236 250 C218 244 200 224 196 200 C186 178 178 150 180 110 C181 80 188 58 194 44 C186 32 190 20 200 18 Z"/><path d="M196 22 L186 6 L198 16 Z M204 22 L214 6 L202 16 Z"/></svg>`;
   const bolts = () =>
     `<svg class="fx-bolts" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden="true"><path d="M90 0 L70 70 L100 74 L60 170 L120 90 L88 86 L120 0 Z"/><path d="M310 0 L290 60 L318 64 L280 150 L338 80 L306 76 L334 0 Z"/></svg>`;
   const rising = (n, glyph) =>
@@ -138,7 +132,7 @@ const EncounterFX = (() => {
     arcane: () =>
       `${circle()}${many(14, () => `<span class="fx-spark" style="left:${rand(10, 90).toFixed(0)}%;top:${rand(10, 90).toFixed(0)}%;--d:${rand(0, 1.4).toFixed(2)}s"></span>`)}`,
     cult: () => `${circle()}<div class="fx-fog"></div>`,
-    dragon: v => `${flames(14)}${v === 'lightning' ? bolts() : ''}${dragonShape()}`,
+    dragon: v => `${flames(14)}${v === 'lightning' ? bolts() : ''}`,
     giant: () =>
       `<svg class="fx-cracks" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden="true"><path d="M200 300 L190 250 L215 210 L195 160 L220 120 L205 70"/><path d="M200 300 L240 260 L230 225 L280 200 L300 150"/><path d="M200 300 L150 270 L160 230 L110 205 L95 160"/><path d="M215 210 L260 185"/><path d="M195 160 L150 140"/></svg>`,
     fiend: () =>
