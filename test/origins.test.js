@@ -42,3 +42,14 @@ test('armadura natural de los linajes nuevos', () => {
   s.raceId = 'tortle-base-TTP';
   assert.equal(E.defense(s).total, 17);
 });
+
+test('la magia de linaje se habilita por nivel y separa lo fijo de lo que se elige', () => {
+  const s = g.Rules.validate(fixture('wizard-3.json'));
+  s.raceId = 'tiefling-base-PHB';
+  const at3 = g.Campaign.raceSpells(s).spells.map(x => x.id);
+  assert.equal(JSON.stringify(at3), JSON.stringify(['thaumaturgy', 'hellish-rebuke']));
+  s.raceId = 'elf-high-PHB';
+  const elf = g.Campaign.raceSpells(s);
+  assert.equal(elf.spells.length, 0);
+  assert.equal(g.Campaign.choiceText(elf.choices[0].text), 'un truco de mago');
+});

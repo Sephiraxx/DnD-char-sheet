@@ -8,6 +8,8 @@ const LOGIC = [
   'catalog.js',
   'class-data.js',
   'names-es.js',
+  'feat-data.js',
+  'feats.js',
   'campaign-data.js',
   'equipment-data.js',
   'equipment.js',

@@ -8,3 +8,4 @@ node_modules
 vendor/
 monsters-data.js
 .tmp-test
+feat-data.js

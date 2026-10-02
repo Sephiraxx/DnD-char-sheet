@@ -898,6 +898,8 @@ const Creator = (() => {
         : L.type === 'prepared'
           ? picks.known.slice()
           : [];
+    // Magia de linaje fija (Taumaturgia del tiefling…): entra como extra desde el principio.
+    if (typeof SheetStatus !== 'undefined') SheetStatus.addRaceSpells(s);
     R.validate(s);
     const id = CharacterStorage.add(s);
     if (window.Cloud?.pendingTable?.()) localStorage.setItem('dnd-pending-attach-v1', id);

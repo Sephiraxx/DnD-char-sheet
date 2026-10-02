@@ -131,7 +131,7 @@ function favoriteIds() {
 }
 function combatSpeed() {
   const pen = state.equipmentDefense ? Equipment.defense(state).speedPenalty : 0;
-  return Math.max(0, (state.speed ?? 30) - pen);
+  return Math.max(0, R.stats(state).speed - pen);
 }
 function combatCompact() {
   const d = R.stats(state),
@@ -298,7 +298,7 @@ function combatView() {
        `<button class="chip ${combatTab === k ? 'selected' : ''}" aria-pressed="${combatTab === k}" data-action="combat-tab" data-tab="${k}">${l}</button>`,
    )
    .join('')}</div>
- ${combatTab === 'reaction' ? '<p class="small">Necesitás el desencadenante de cada reacción. Tenés una hasta el inicio de tu próximo turno; no es una acción extra libre.</p>' : combatTab === 'bonus' ? '<p class="small">Elegí una sola acción adicional por turno entre las opciones de tus rasgos y conjuros.</p>' : `<p class="small">Podés moverte antes y después de actuar. Tu velocidad es ${Math.max(0, (state.speed ?? 30) - (state.equipmentDefense ? Equipment.defense(state).speedPenalty : 0))} pies${state.equipmentDefense && Equipment.defense(state).speedPenalty ? ' (penalización por armadura incluida)' : ''}; condiciones y terreno pueden reducirla.</p>`}
+ ${combatTab === 'reaction' ? '<p class="small">Necesitás el desencadenante de cada reacción. Tenés una hasta el inicio de tu próximo turno; no es una acción extra libre.</p>' : combatTab === 'bonus' ? '<p class="small">Elegí una sola acción adicional por turno entre las opciones de tus rasgos y conjuros.</p>' : `<p class="small">Podés moverte antes y después de actuar. Tu velocidad es ${combatSpeed()} pies${state.equipmentDefense && Equipment.defense(state).speedPenalty ? ' (penalización por armadura incluida)' : ''}; condiciones y terreno pueden reducirla.</p>`}
  <h3 class="section-space">Tus conjuros</h3><div class="level-filters" role="group" aria-label="Nivel de conjuro">${[['all', 'Todos'], [0, '0 · Trucos'], ...[...new Set([...d.slots.flatMap((max, i) => (max ? [i + 1] : [])), ...all.filter(x => x.level > 0).map(x => x.level)])].sort((a, b) => a - b).map(l => [l, 'Nivel ' + l])].map(([k, l]) => `<button class="chip ${String(k) === combatLevel ? 'selected' : ''}" data-action="combat-level" data-level="${k}" aria-pressed="${String(k) === combatLevel}">${l}</button>`).join('')}</div><p class="small">El filtro indica el nivel del conjuro. Al lanzarlo elegís qué nivel de espacio gastar.</p><div class="battle-choices">${spells.length ? spells.map(combatSpell).join('') : '<p class="empty">No conocés conjuros de este nivel que usen ' + combatLabels[combatTab].toLowerCase() + '.</p>'}</div>
  <details class="battle-rule"><summary>Conjuros de acción adicional · regla de 2014</summary><p>Si lanzás un conjuro de acción adicional, los otros conjuros de ese mismo turno solo pueden ser trucos de una acción. En el turno de otra criatura podés volver a lanzar una reacción si te queda disponible. Inspirar y Palabras perturbadoras son rasgos, no conjuros.</p></details>
  <h3 class="section-space">${combatTab === 'bonus' ? 'Tus habilidades' : combatTab === 'reaction' ? 'Otras reacciones' : 'Armas y otras acciones'}</h3><div class="battle-choices">${AttackUI.choices(combatTab)}${PartyUI.combatAbilities(combatTab)}${options

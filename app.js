@@ -650,7 +650,7 @@ function settings() {
 function sources() {
   modal(
     'Reglas y créditos',
-    `<p>Ficha para <b>D&D 5e 2014</b>. Las reglas de mesa del DM prevalecen sobre la referencia. Los cálculos automáticos cubren las 13 clases, la multiclase básica y los ataques con armas; las dotes, objetos mágicos y otras excepciones se registran y ajustan manualmente.</p><p><a href="https://media.wizards.com/2023/downloads/dnd/SRD_CC_v5.1.pdf" target="_blank" rel="noopener">SRD 5.1</a></p><p class="small">Referencias resumidas para uso de mesa de los libros de la línea 2014. Los libros se habilitan en cada ficha o los elige el DM para su mesa. Los conjuros incluyen resúmenes de uso en español; las excepciones y tablas se consultan en su fuente. Aplicación no oficial, sin afiliación con Wizards of the Coast.</p><p class="small">This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.</p><p class="small"><b>Tus datos.</b> Tus fichas se guardan en este dispositivo. Si te unís a una mesa, esa ficha, tus tiradas y tu nombre de jugador se comparten con la mesa a través de su servidor (Supabase); el ingreso usa Cloudflare Turnstile contra bots y, si lo elegís, tu email para abrir tus fichas en otros dispositivos. Nada se comparte si no te unís a una mesa.</p>`,
+    `<p>Ficha para <b>D&D 5e 2014</b>. Las reglas de mesa del DM prevalecen sobre la referencia. Los cálculos automáticos cubren las 13 clases, la multiclase, los ataques con armas, las dotes más comunes y la magia de linaje; los objetos mágicos y otras excepciones se registran y ajustan manualmente.</p><p><a href="https://media.wizards.com/2023/downloads/dnd/SRD_CC_v5.1.pdf" target="_blank" rel="noopener">SRD 5.1</a></p><p class="small">Referencias resumidas para uso de mesa de los libros de la línea 2014. Los libros se habilitan en cada ficha o los elige el DM para su mesa. Los conjuros incluyen resúmenes de uso en español; las excepciones y tablas se consultan en su fuente. Aplicación no oficial, sin afiliación con Wizards of the Coast.</p><p class="small">This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.</p><p class="small"><b>Tus datos.</b> Tus fichas se guardan en este dispositivo. Si te unís a una mesa, esa ficha, tus tiradas y tu nombre de jugador se comparten con la mesa a través de su servidor (Supabase); el ingreso usa Cloudflare Turnstile contra bots y, si lo elegís, tu email para abrir tus fichas en otros dispositivos. Nada se comparte si no te unís a una mesa.</p>`,
   );
 }
 const actions = {
@@ -978,6 +978,7 @@ TableUI.install();
 AttackUI.install();
 MulticlassUI.install();
 RollUI.install();
+SheetStatus.install();
 document.addEventListener('click', e => {
   if (e.target.closest('[data-close]')) {
     $('#modal').close();

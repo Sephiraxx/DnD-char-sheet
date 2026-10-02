@@ -133,8 +133,24 @@ const RollUI = (() => {
     (r.heroic ? ' (Inspiración)' : '');
 
   // Diálogo de d20: pruebas, salvaciones, iniciativa, pedidos del DM.
-  function d20({ title, label, bonus, kind = 'check', ability = '', skill = '', share = true, min = 0, onDone }) {
+  function d20({
+    title,
+    label,
+    bonus,
+    kind = 'check',
+    ability = '',
+    skill = '',
+    share = true,
+    min = 0,
+    advantage = '',
+    onDone,
+  }) {
     const mods = conditionMods(state, kind, ability);
+    // Ventaja propia de la tirada (por ejemplo, Lanzador de guerra en concentración).
+    if (advantage) {
+      mods.mode = mods.mode === 'dis' ? '' : 'adv';
+      mods.notes.push('Ventaja por ' + advantage);
+    }
     modal(
       title,
       `<p>Bono: <b>${sign(bonus)}</b>${min ? ` · Lengua de plata: un d20 menor que ${min} cuenta como ${min}` : ''}</p>${d20Fields(mods, '', { kind: kind === 'death' ? '' : kind, skill })}${mods.autoFail ? '<p class="small">Podés registrar la falla sin tirar.</p>' : ''}`,
@@ -182,6 +198,7 @@ const RollUI = (() => {
       bonus: R.saveBonus(state, 'con'),
       kind: 'save',
       ability: 'con',
+      advantage: globalThis.FeatFX?.concentrationAdvantage(state) ? 'Lanzador de guerra' : '',
       onDone: r =>
         setTimeout(() => {
           if (r.total >= dc) {

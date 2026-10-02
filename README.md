@@ -25,7 +25,7 @@ El creador y **Personaje → Elegir / cambiar** incluyen **155 razas o variantes
 
 Las razas y trasfondos se generan con `node tools/build-origins.js <carpeta con races.json y backgrounds.json de 5etools>`, que solo toma nombres, números y competencias; `--check` compara la conversión con lo existente sin escribir.
 
-Las tarjetas muestran fuente, tamaño, velocidad, aumentos de referencia, competencias, magia de linaje y decisiones pendientes. **Elegir una raza no suma automáticamente sus bonos a las puntuaciones o CA**: las puntuaciones ingresadas ya son finales. Por ejemplo, el +1 de CA del Forjado se registra una vez en bonos de CA. Dotes, equipo, usos de magia racial y condiciones de vuelo se completan según el rasgo. No se añaden objetos o monedas inventados.
+Las tarjetas muestran fuente, tamaño, velocidad, aumentos de referencia, competencias, magia de linaje y decisiones pendientes. **Elegir una raza no suma automáticamente sus bonos a las puntuaciones o CA**: las puntuaciones ingresadas ya son finales. Por ejemplo, el +1 de CA del Forjado se registra una vez en bonos de CA. Los conjuros fijos de la magia de linaje se agregan solos como extras; los que se eligen, el equipo y las condiciones de vuelo se completan según el rasgo. No se añaden objetos o monedas inventados.
 
 Algunos trasfondos de Strixhaven y Ravnica y las marcas de Eberron amplían la lista de la clase: esos conjuros aparecen como opciones normales al tener acceso al nivel. Esto **no significa conocerlos ni tenerlos preparados**, ni concede espacios extra. Las dotes y magia innata son elecciones separadas, con su propia característica y límites. Por ejemplo, elegí y registrá Iniciado de Strixhaven para el trasfondo que lo otorga.
 
@@ -51,7 +51,11 @@ Deshabilitar un libro conserva las elecciones previas. **Todo el catálogo → E
 
 **Subir de nivel** abre una guía paso a paso a pantalla completa, con solo los pasos que corresponden: qué ganás (rasgos, espacios, competencia), PG (promedio o tirada, digital o con tu dado), subclase, mejora de características o dote (con buscador), conjuros nuevos (trucos, conocidos, libro de mago y preparados, con sus límites) y opciones de clase (estilos, invocaciones, Metamagia, maniobras…) con sus requisitos; las invocaciones que piden un pacto se habilitan al elegirlo. Los PG actuales y recursos gastados se conservan: subir no equivale a descansar. Lo que quede sin elegir aparece como pendiente en Clase.
 
-Las opciones muestran requisitos de referencia. Los efectos de una dote, raza o elección especial deben aplicarse explícitamente en la ficha; un selector no sustituye la revisión de esos requisitos. Para decisiones internas de los rasgos (terrenos, enemigos, ascendencia, formas, objetos infundidos, etc.) usá **Notas de clase**. Podés añadir rasgos y contadores personalizados. Los rasgos opcionales se habilitan desde **Subclase y Pericias**; revisá cuáles reemplazan otros.
+Las opciones muestran requisitos de referencia; un selector no sustituye la revisión de esos requisitos.
+
+**Dotes que funcionan en la ficha.** Al elegir una dote, la guía pide lo que haga falta (la característica que sube, habilidades, pericia) y la ficha aplica sola: aumentos de características (incluidos los fijos, como Duro de pelar), competencia en salvaciones (Resistente), armaduras, resistencias, PG por nivel (Robusto), iniciativa (Alerta), velocidad (Móvil), percepción pasiva (Observador), ventaja en concentración (Lanzador de guerra) y usos por descanso (Afortunado, Adepto marcial, Toque feérico…). Lo que depende de la mesa (ataques de oportunidad, −5/+10 de Tirador de primera, etc.) queda como recordatorio.
+
+**Tu ficha al día** (en Clase) separa lo que la ficha calcula sola —clase, raza, magia de linaje, dotes, equipo— de lo que te falta elegir y lo que conviene recordar en la mesa. Los conjuros fijos de la raza (Taumaturgia del tiefling, por ejemplo) se agregan solos al crear el personaje y al subir de nivel; si faltan, un botón los agrega. Para decisiones internas de los rasgos (terrenos, enemigos, ascendencia, formas, objetos infundidos, etc.) usá **Notas de clase**. Podés añadir rasgos y contadores personalizados. Los rasgos opcionales se habilitan desde **Subclase y Pericias**; revisá cuáles reemplazan otros.
 
 ## Agregar cualquier conjuro
 
