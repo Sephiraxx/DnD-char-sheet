@@ -65,3 +65,17 @@ test('en forma salvaje no se lanzan conjuros', () => {
   K.startWildShape(s, wolf);
   assert.match(g.Combat.spellBlock(s, sp), /forma salvaje/);
 });
+
+test('en forma salvaje FUE, DES y CON de pruebas, salvaciones e iniciativa son de la bestia', () => {
+  const s = druid(4);
+  s.abilities.str = 8;
+  s.abilities.dex = 10;
+  const hp = g.Rules.stats(s).maxHP,
+    save = g.Rules.saveBonus(s, 'dex');
+  K.startWildShape(s, wolf);
+  assert.equal(g.Rules.saveBonus(s, 'dex'), save + 2, 'DES 15 del lobo');
+  assert.equal(g.Rules.skillBonus(s, 'athletics') - g.Rules.skillBonus({ ...s, wildShape: undefined }, 'athletics'), 2);
+  assert.equal(g.Rules.stats(s).initiative, 2);
+  assert.equal(g.Rules.stats(s).maxHP, hp, 'los PG máximos del druida no cambian');
+  assert.equal(g.Rules.saveBonus(s, 'wis'), g.Rules.saveBonus({ ...s, wildShape: undefined }, 'wis'));
+});

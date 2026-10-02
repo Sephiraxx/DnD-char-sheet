@@ -146,7 +146,7 @@
           ? Math.max(1, m[cast.ability] + (['artificer', 'paladin'].includes(id(s)) ? Math.floor(l / 2) : l))
           : 0,
       initiative:
-        m.dex +
+        (s.wildShape?.ab ? mod(s.wildShape.ab[1]) : m.dex) +
         (views(s).some(v => id(v) === 'bard' && v.level >= 2) ? Math.floor(p / 2) : 0) +
         (root.FeatFX?.initiative(s) || 0) +
         (mi?.check(s) || 0),

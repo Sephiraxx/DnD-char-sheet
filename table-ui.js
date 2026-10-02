@@ -289,11 +289,7 @@ const TableUI = (() => {
         const amount = n(p.amount);
         if (!amount || state.hp === null) return 'Curación del DM pendiente: confirmá tus PG actuales.';
         commit((p.from || 'DM') + ': curación ' + amount, s => {
-          s.hp = Math.min(R.stats(s).maxHP, s.hp + amount);
-          if (s.hp > 0) {
-            s.death = { success: 0, failure: 0 };
-            s.conditions = s.conditions.filter(x => x !== 'Inconsciente');
-          }
+          Companions.heal(s, amount);
         });
         return `${p.from || 'El DM'} te curó ${amount} PG${p.source ? ' (' + p.source + ')' : ''}.`;
       }

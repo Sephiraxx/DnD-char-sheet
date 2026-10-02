@@ -416,6 +416,14 @@
     const set = root.MagicItems?.setScores(s) || {};
     return Object.fromEntries(Object.entries(s.abilities).map(([k, v]) => [k, Math.max(v, set[k] || 0)]));
   }
+  // En forma salvaje, FUE, DES y CON son las de la bestia para pruebas y salvaciones
+  // (se conservan las competencias; los PG máximos siguen usando tu propia CON).
+  function formScores(s) {
+    const sc = scores(s),
+      ab = s.wildShape?.ab;
+    if (Array.isArray(ab) && ab.length === 6) [sc.str, sc.dex, sc.con] = ab;
+    return sc;
+  }
   function stats(s) {
     if (root.Classes) return root.Classes.stats(s);
     let p = prof(s.level),
@@ -450,7 +458,7 @@
     if (!a) throw Error('Habilidad inválida');
     let p = prof(totalLevel(s));
     return (
-      mod(scores(s)[a[2]]) +
+      mod(formScores(s)[a[2]]) +
       (root.MagicItems?.check(s) || 0) +
       (s.expertise.includes(id)
         ? 2 * p
@@ -464,7 +472,7 @@
   }
   function saveBonus(s, a) {
     return (
-      mod(scores(s)[a]) +
+      mod(formScores(s)[a]) +
       (root.MagicItems?.save(s) || 0) +
       ((s.classId === 'monk' && s.level >= 14
         ? Object.keys(attrs)
@@ -785,6 +793,7 @@
     initial,
     stats,
     scores,
+    formScores,
     skillBonus,
     saveBonus,
     allSpells,

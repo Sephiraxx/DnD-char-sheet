@@ -80,7 +80,23 @@ const CompanionsUI = (() => {
     );
     modal(
       wild ? 'Forma salvaje' : 'Añadir compañero',
-      `${wild ? `<p class="small">Druida nivel ${lim.level}: bestias de VD ${crText(lim.cr)} o menos${lim.fly ? '' : ', sin vuelo'}${lim.swim ? '' : ', sin nado'}. Gasta un uso de Forma salvaje.</p>` : select('Tipo', 'kind', Object.entries(K.KINDS), 'familiar')}<input class="control" id="cmp-search" type="search" placeholder="Buscar criatura (español o inglés)" aria-label="Buscar criatura"><div class="magic-pick-list">${list
+      `${
+        wild
+          ? `<p class="small">Druida nivel ${lim.level}: bestias de VD ${crText(lim.cr)} o menos${lim.fly ? '' : ', sin vuelo'}${lim.swim ? '' : ', sin nado'}. Gasta un uso de Forma salvaje.</p>${
+              Classes.views(state).some(v => v.classId === 'druid' && v.classSubclass === 'druid-circle-of-the-moon')
+                ? select(
+                    'Acción de transformación',
+                    'wildAction',
+                    [
+                      ['action', 'Acción'],
+                      ['bonus', 'Acción adicional (Círculo de la Luna)'],
+                    ],
+                    'bonus',
+                  )
+                : ''
+            }`
+          : select('Tipo', 'kind', Object.entries(K.KINDS), 'familiar')
+      }<input class="control" id="cmp-search" type="search" placeholder="Buscar criatura (español o inglés)" aria-label="Buscar criatura"><div class="magic-pick-list">${list
         .slice(0, 400)
         .map(
           m =>
@@ -102,13 +118,10 @@ const CompanionsUI = (() => {
     toast(`${m.name} se sumó a tus compañeros.`);
   }
   function startWild(id) {
-    const m = MonsterData.find(x => x.id === id),
-      res = Classes.resources(state).find(r => r.id === 'wild-shape');
-    if (res && res.max !== 999 && Classes.spent(state, res) !== null && Classes.spent(state, res) >= res.max)
-      throw Error('No te quedan usos de Forma salvaje. Se recuperan con un descanso corto o largo.');
+    const m = MonsterData.find(x => x.id === id);
+    const action = document.querySelector('#dialog-form [name=wildAction]')?.value || 'action';
     commit('Forma salvaje: ' + m.name, s => {
-      K.startWildShape(s, m);
-      if (res && res.max !== 999 && Classes.spent(s, res) !== null) Classes.spend(s, 'wild-shape', 1);
+      K.transform(s, m, action);
     });
     $('#modal').close();
     toast(`Te transformás en ${m.name}.`);
@@ -208,7 +221,10 @@ const CompanionsUI = (() => {
       'ws-start': () => picker('wild'),
       'ws-pick': e => startWild(e.dataset.id),
       'ws-end': () => {
-        commit('Fin de la forma salvaje', s => K.endWildShape(s));
+        commit('Fin de la forma salvaje', s => {
+          Combat.use(s, 'bonus', 'Volver a tu forma');
+          K.endWildShape(s);
+        });
         toast('Volvés a tu forma.');
       },
     });

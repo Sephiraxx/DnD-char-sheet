@@ -533,6 +533,23 @@ html {
 .monster-hp .text-btn {
   padding: 4px 6px;
 }
+@media (max-width: 600px) {
+  .initiative-list li {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+  .initiative-list .init {
+    grid-row: 1 / span 2;
+  }
+  .initiative-list .who {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .initiative-list .monster-hp {
+    grid-column: 2;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+}
 .dm-layout > .stack > .party-grid {
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
 }

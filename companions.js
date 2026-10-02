@@ -89,6 +89,42 @@
     delete s.wildShape;
     return s;
   }
+  function transform(s, m, action = 'action') {
+    if (!isDruid(s)) throw Error('Forma salvaje requiere druida de nivel 2.');
+    if (!['action', 'bonus'].includes(action) || (action === 'bonus' && !moon(s)))
+      throw Error('Esta transformación requiere una acción.');
+    const reason = canBecome(s, m);
+    if (reason) throw Error(reason);
+    const res = root.Classes.resources(s).find(r => r.id === 'wild-shape');
+    if (!res || root.Classes.spent(s, res) === null) throw Error('Confirmá tus usos de Forma salvaje.');
+    const blocked = root.Combat.blocked(s, action);
+    if (blocked) throw Error(blocked);
+    if (res.max !== 999) root.Classes.spend(s, res.id, 1);
+    root.Combat.use(s, action, 'Forma salvaje');
+    return startWildShape(s, m);
+  }
+  // La curación se aplica a la reserva activa, incluida la de la bestia.
+  function heal(s, amount) {
+    if (s.wildShape) {
+      const ws = s.wildShape;
+      const restored = Math.min(amount, ws.maxHp - ws.hp);
+      ws.hp += restored;
+      return restored;
+    }
+    const before = s.hp ?? 0;
+    s.hp = Math.min(root.Rules.stats(s).maxHP, before + amount);
+    if (s.hp > 0) {
+      s.death = { success: 0, failure: 0 };
+      s.conditions = s.conditions.filter(c => c !== 'Inconsciente');
+    }
+    return s.hp - before;
+  }
+  function vitals(s, stats = root.Rules.stats(s)) {
+    const ws = s.wildShape;
+    return ws
+      ? { hp: ws.hp, maxHP: ws.maxHp, ac: ws.ac, speed: Number.parseInt(ws.speed, 10) || 0 }
+      : { hp: s.hp, maxHP: stats.maxHP, ac: stats.ac, speed: stats.speed };
+  }
   // Daño que llega al personaje: primero PG temporales, después la bestia y el exceso al personaje.
   // Devuelve { toCharacter, beast, reverted }.
   function absorb(s, amount) {
@@ -155,7 +191,10 @@
     limits,
     canBecome,
     startWildShape,
+    transform,
     endWildShape,
+    heal,
+    vitals,
     absorb,
     validate,
   };

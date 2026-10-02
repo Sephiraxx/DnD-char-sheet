@@ -203,16 +203,11 @@ const MagicUI = (() => {
       m = /^(\d+)d(\d+)\+(\d+)$/.exec(x.magic.heal);
     if (!m) throw Error('Esta poción no tiene una curación reconocible.');
     const rolls = window.roll(Number(m[2]), Number(m[1])),
-      total = rolls.reduce((a, b) => a + b, 0) + Number(m[3]),
-      max = R.stats(state).maxHP;
+      total = rolls.reduce((a, b) => a + b, 0) + Number(m[3]);
     commit(`${x.name}: +${total} PG`, s => {
       const r = s.inventory.find(y => y.id === id);
       r.qty = Math.max(0, r.qty - 1);
-      s.hp = Math.min(max, (s.hp ?? 0) + total);
-      if (s.hp > 0) {
-        s.death = { success: 0, failure: 0 };
-        s.conditions = s.conditions.filter(c => c !== 'Inconsciente');
-      }
+      Companions.heal(s, total);
     });
     if (typeof RollFX !== 'undefined') RollFX.show({ label: x.name, total, face: rolls[0] });
     toast(`${x.name}: ${x.magic.heal} → ${rolls.join(' + ')} + ${m[3]} = ${total} PG.`);

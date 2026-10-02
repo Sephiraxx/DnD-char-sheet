@@ -33,11 +33,11 @@
       name: s.name,
       line: classLine(s),
       race: s.race || '',
-      level: s.level,
-      hp: s.hp,
-      maxHP: st.maxHP,
+      level: root.Rules.totalLevel(s),
+      hp: s.wildShape ? s.wildShape.hp : s.hp,
+      maxHP: s.wildShape ? s.wildShape.maxHp : st.maxHP,
       temp: s.temp || 0,
-      ac: st.ac,
+      ac: s.wildShape ? s.wildShape.ac : st.ac,
       initiative: st.initiative,
       speed: st.speed ?? (s.speed || 30),
       passive: {
@@ -58,7 +58,10 @@
           ? s.portrait.data
           : '',
       caster: root.Classes.casting(s).type !== 'none',
-      effects: (s.timedEffects || []).map(x => x.name + (x.rounds !== null ? ' (' + x.rounds + ')' : '')),
+      effects: [
+        ...(s.wildShape ? ['Forma salvaje: ' + s.wildShape.name] : []),
+        ...(s.timedEffects || []).map(x => x.name + (x.rounds !== null ? ' (' + x.rounds + ')' : '')),
+      ],
       bonusDice: (s.bonusDice || []).map(b => 'd' + b.die + (b.reason ? ' · ' + b.reason : '')),
       inCombat: Boolean(c.active),
       gold: s.gold,
