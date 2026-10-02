@@ -731,6 +731,11 @@ function text(t) {
         `Hace ${NUMF[n]} ataques${k === 'melee ' ? ' cuerpo a cuerpo' : k === 'ranged ' ? ' a distancia' : ''}.`,
     )
     .replace(/, and the target must/g, ', y the target must')
+    .replace(
+      /^The [\w\s'-]+? exhales (fire|frost|cold|acid|lightning|poisonous gas|sleep gas|repulsion energy|paralyzing gas|gas) in an? /,
+      (m, w) =>
+        `Exhala ${{ fire: 'fuego', frost: 'escarcha', cold: 'frío', acid: 'ácido', lightning: 'relámpagos', 'poisonous gas': 'gas venenoso', 'sleep gas': 'gas somnífero', 'repulsion energy': 'energía de repulsión', 'paralyzing gas': 'gas paralizante', gas: 'gas' }[w]} en un `,
+    )
     .replace(/If the target is a creature, it must succeed on a /g, 'Si el objetivo es una criatura, debe superar una ')
     .replace(/[Tt]he target must succeed on a /g, 'el objetivo debe superar una ')
     .replace(/[Tt]he target must make a /g, 'el objetivo debe hacer una ')

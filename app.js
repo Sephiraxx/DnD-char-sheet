@@ -119,8 +119,15 @@ function download(name, data, type = 'application/json') {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([data], { type }));
   a.download = name;
+  a.hidden = true;
+  // Algunos navegadores (Safari en iPhone, Firefox viejos) solo descargan si el enlace está en la página
+  // y si el archivo sigue disponible unos segundos.
+  document.body.append(a);
   a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  setTimeout(() => {
+    URL.revokeObjectURL(a.href);
+    a.remove();
+  }, 30000);
 }
 function roll(sides, count = 1) {
   const a = [];
