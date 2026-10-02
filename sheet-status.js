@@ -44,6 +44,18 @@ const SheetStatus = (() => {
   }
   function pending(s) {
     const out = [];
+    // Clases secundarias: conjuros y opciones que faltan elegir, con su botón.
+    for (const v of Classes.views(s).slice(1))
+      for (const t of Classes.taskDetails(v).filter(t => t.action !== 'class-config'))
+        out.push({
+          text: Classes.info(v).name + ': ' + t.text,
+          action: button(
+            'Elegir',
+            t.action === 'spell-manage' ? 'mc-spells' : 'mc-options',
+            '',
+            'data-id="' + v.classId + '"',
+          ),
+        });
     const miss = missingRaceSpells(s);
     if (miss.length)
       out.push({
@@ -69,9 +81,10 @@ const SheetStatus = (() => {
     const s = state,
       auto = automatic(s),
       todo = pending(s),
-      notes = reminders(s);
+      notes = reminders(s),
+      open = todo.length + Classes.taskDetails(s).length;
     const rows = list => list.map(([t, txt]) => `<li><b>${esc(t)}:</b> ${esc(txt)}</li>`).join('');
-    return `<section class="card section-space sheet-status"><div class="card-header"><h2>Tu ficha al día</h2>${todo.length ? `<span class="tag">${todo.length} por completar</span>` : '<span class="tag">Completa</span>'}</div><div class="grid two"><div><h3>Se calcula solo</h3><ul class="status-list ok">${rows(auto)}</ul></div><div>${
+    return `<section class="card section-space sheet-status"><div class="card-header"><h2>Tu ficha al día</h2>${open ? `<span class="tag">${open} por completar</span>` : '<span class="tag">Completa</span>'}</div><div class="grid two"><div><h3>Se calcula solo</h3><ul class="status-list ok">${rows(auto)}</ul></div><div>${
       todo.length
         ? `<h3>Te falta</h3><div class="pending-list">${todo.map(t => `<div class="pending-row"><span>${esc(t.text)}</span>${t.action}</div>`).join('')}</div>`
         : ''

@@ -1,4 +1,5 @@
-/* Multiclase en la ficha: elegir en qué clase subir, sumar una clase nueva y ver sus rasgos. */
+/* Multiclase en la ficha: elegir en qué clase subir, sumar una clase nueva y ver sus rasgos,
+   conjuros y opciones. La subida en sí la guía LevelUp, igual que para la clase principal. */
 const MulticlassUI = (() => {
   'use strict';
   const C = Classes;
@@ -50,54 +51,23 @@ const MulticlassUI = (() => {
       fd => {
         const t = fd.get('target');
         if (t === 'primary') PartyUI.levelup();
-        else secondary(t === 'new' ? fd.get('newClass') : t);
+        else LevelUp.startFor(t === 'new' ? fd.get('newClass') : t);
         return false;
       },
       'Continuar',
     );
   }
 
-  function secondary(classId) {
+  // Aviso del primer paso de la guía: requisitos y, si la clase es nueva, competencias que da.
+  function joinNotes(s, classId, isNew) {
     const c = ClassData.classes[classId],
-      mc = (state.multiclass || []).find(x => x.classId === classId),
-      next = (mc?.level || 0) + 1,
-      needsSub = next >= c.subclassLevel && !mc?.subclass,
       warn = [
-        !C.meetsPrereq(state, classId) ? `${c.name} pide ${prereqText(classId)}.` : '',
-        !mc && !C.meetsPrereq(state, state.classId)
-          ? `Tu clase principal pide ${prereqText(state.classId)} para multiclasear.`
+        !C.meetsPrereq(s, classId) ? `${c.name} pide ${prereqText(classId)}.` : '',
+        isNew && !C.meetsPrereq(s, s.classId)
+          ? `Tu clase principal pide ${prereqText(s.classId)} para multiclasear.`
           : '',
       ].filter(Boolean);
-    modal(
-      (mc ? 'Subir a ' : 'Sumar ') + c.name + ' ' + next,
-      `${warn.length ? `<div class="banner"><p><b>Requisitos:</b> ${esc(warn.join(' '))} Seguí solo si tu mesa lo permite.</p></div>` : ''}
-      ${mc ? '' : `<p><b>Competencias que ganás:</b> ${esc(GAINS[classId])}</p>`}
-      <div class="form-grid">${select(
-        'Aumento de PG',
-        'hpMethod',
-        [
-          ['fixed', 'Fijo: ' + (c.die / 2 + 1) + ' + CON'],
-          ['rolled', 'Tirada de d' + c.die + ' + CON'],
-        ],
-        'fixed',
-      )}${field('Resultado del dado (si tiraste)', 'hpRoll', c.die / 2 + 1, 'number', `min="1" max="${c.die}" required`)}</div>
-      ${needsSub ? select('Subclase', 'subclass', [['', 'Elegir…'], ...ClassData.subclasses.filter(x => x.classId === classId).map(x => [x.id, x.name + ' · ' + x.source])]) : ''}
-      <p class="small">Los rasgos y recursos de ${esc(c.name)} se suman a la ficha. Los espacios de conjuro usan la tabla de multiclase; el pacto mágico del brujo va aparte. Agregá los conjuros de esta clase desde <b>Conjuros → Todo el catálogo</b>. Si este nivel da Mejora de características, ajustala en Características.</p>`,
-      fd => {
-        const result = C.levelUpSecondary(state, {
-          classId,
-          hpMethod: fd.get('hpMethod'),
-          hpRoll: Number(fd.get('hpRoll')),
-          subclass: fd.get('subclass') || '',
-        });
-        commit(`Subida de nivel: ${c.name} ${next} (personaje ${C.totalLevel(result)})`, s => {
-          for (const k of Object.keys(s)) delete s[k];
-          Object.assign(s, result);
-        });
-        toast(`${c.name} ${next}. Revisá los rasgos nuevos en Clase.`);
-      },
-      'Subir de nivel',
-    );
+    return `${warn.length ? `<div class="banner"><p><b>Requisitos:</b> ${esc(warn.join(' '))} Seguí solo si tu mesa lo permite.</p></div>` : ''}${isNew ? `<section class="card"><h2>Sumás ${esc(c.name)}</h2><p><b>Competencias que ganás:</b> ${esc(GAINS[classId])}</p><p class="small">Los espacios de conjuro se calculan con la tabla de multiclase; los conjuros que conocés o preparás siguen la tabla de cada clase por separado.</p></section>` : ''}`;
   }
 
   // Tarjetas de clases secundarias para la pestaña Clase.
@@ -111,8 +81,24 @@ const MulticlassUI = (() => {
           ? list
               .map(v => {
                 const sc = C.sub(v),
-                  feats = C.features(v);
-                return `<details class="battle-rule"><summary><b>${esc(C.info(v).name)} ${v.level}</b>${sc ? ' · ' + esc(sc.name) : ''}</summary><div class="section-space">${feats.map(f => `<div class="feature"><h3>${esc(f.name)} <span class="small muted">· nivel ${f.level}</span></h3></div>`).join('') || '<p class="muted">Sin rasgos registrados.</p>'}</div></details>`;
+                  feats = C.features(v),
+                  cast = C.casting(v),
+                  st = Rules.stats(v),
+                  spellNames = ids =>
+                    ids.map(id => Rules.allSpells(state).find(x => x.id === id)?.name || id).join(', '),
+                  usable = (v.known || []).filter(
+                    id =>
+                      !['prepared', 'book'].includes(cast.type) ||
+                      (v.prepared || []).includes(id) ||
+                      Rules.allSpells(state).find(x => x.id === id)?.level === 0,
+                  ),
+                  opts = Object.entries(v.classChoices || {}).filter(([, ids]) => ids.length),
+                  pending = C.taskDetails(v).filter(t => t.action !== 'class-config');
+                return `<details class="battle-rule" ${pending.length ? 'open' : ''}><summary><b>${esc(C.info(v).name)} ${v.level}</b>${sc ? ' · ' + esc(sc.name) : ''}${pending.length ? ' · <span class="tag">' + pending.length + ' pendiente(s)</span>' : ''}</summary><div class="section-space">${
+                  cast.caster
+                    ? `<p class="small">Conjuros de ${esc(C.info(v).name)} · CD ${st.dc} · Ataque ${sign(st.attack)} (${esc(Rules.attrs[cast.ability])})</p><p>${usable.length ? esc(spellNames(usable)) : '<span class="muted">Sin conjuros elegidos.</span>'}</p>${C.granted(v).prepared.length + C.granted(v).known.length ? `<p class="small">Siempre preparados por la subclase: ${esc(spellNames([...C.granted(v).prepared, ...C.granted(v).known]))}</p>` : ''}`
+                    : ''
+                }${opts.map(([g, ids]) => `<p class="small"><b>${esc(NamesEs.choice(g))}:</b> ${esc(ids.map(id => ClassData.options.find(o => o.id === id)?.name || id).join(', '))}</p>`).join('')}${pending.length ? `<ul class="small">${pending.map(t => `<li>${esc(t.text)}</li>`).join('')}</ul>` : ''}<div class="actions">${cast.caster ? button('Conjuros', 'mc-spells', 'secondary', `data-id="${v.classId}"`) : ''}${C.choices(v).length ? button('Opciones', 'mc-options', 'secondary', `data-id="${v.classId}"`) : ''}</div>${feats.map(f => `<div class="feature"><h3>${esc(f.name)} <span class="small muted">· nivel ${f.level}</span></h3></div>`).join('') || '<p class="muted">Sin rasgos registrados.</p>'}</div></details>`;
               })
               .join('')
           : '<p class="small muted">Una sola clase. Con «Subir de nivel» podés sumar otra clase (multiclase).</p>'
@@ -122,7 +108,9 @@ const MulticlassUI = (() => {
   function install() {
     Object.assign(actions, {
       levelup: () => chooser(),
+      'mc-spells': e => LevelUp.startFor(e.dataset.id, 'spells'),
+      'mc-options': e => LevelUp.startFor(e.dataset.id, 'options'),
     });
   }
-  return { label, section, install };
+  return { label, section, joinNotes, install };
 })();

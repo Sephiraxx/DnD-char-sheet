@@ -80,3 +80,30 @@ test('subclase obligatoria al llegar a su nivel', () => {
 test('los requisitos se pueden mostrar para cada clase', () => {
   for (const id of Object.keys(g.ClassData.classes)) assert.ok(C.PREREQ[id]?.length, id);
 });
+
+test('los conjuros de una clase secundaria se lanzan con su propia característica', () => {
+  const s = g.Rules.validate(fixture('wizard-3.json')),
+    id = e => g.Catalog.spells.find(x => x.english === e).id;
+  s.abilities.wis = 16;
+  s.multiclass = [
+    {
+      classId: 'cleric',
+      level: 1,
+      subclass: 'cleric-life-domain',
+      notes: '',
+      spells: [id('Guidance'), id('Bless'), id('Healing Word')],
+      prepared: [id('Bless')],
+    },
+  ];
+  g.Rules.validate(s);
+  const usable = g.Classes.usable(s);
+  assert.ok(usable.includes(id('Guidance')), 'trucos siempre');
+  assert.ok(usable.includes(id('Bless')), 'preparado');
+  assert.ok(!usable.includes(id('Healing Word')), 'no preparado');
+  const caster = g.Classes.spellCaster(s, id('Bless'));
+  assert.equal(caster.classId, 'cleric');
+  assert.equal(g.Rules.stats(caster).dc, 8 + g.Rules.stats(s).prof + 3);
+  assert.equal(g.Classes.spellCaster(s, s.known[0]).classId, 'wizard');
+  s.multiclass[0].spells = 'Bless';
+  assert.throws(() => g.Rules.validate(s));
+});
