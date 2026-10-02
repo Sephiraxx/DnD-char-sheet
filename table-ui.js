@@ -643,7 +643,8 @@ const TableUI = (() => {
     else if (p.type === 'save') {
       bonus = R.saveBonus(state, p.id);
       kind = 'save';
-    } else if (p.type === 'ability') bonus = Math.floor((state.abilities[p.id] - 10) / 2);
+    } else if (p.type === 'ability')
+      bonus = Math.floor((R.scores(state)[p.id] - 10) / 2) + (window.MagicItems?.check(state) || 0);
     else if (p.type === 'initiative') bonus = R.stats(state).initiative;
     RollUI.d20({
       title: 'El DM pide: ' + p.label,

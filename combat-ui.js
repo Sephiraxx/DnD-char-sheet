@@ -190,6 +190,7 @@ function combatCompact() {
       'pool-edit',
       'data-type="hd"',
     ),
+    typeof MagicUI !== 'undefined' ? MagicUI.pills() : '',
     ...state.extraResources.map(x =>
       pill(esc(x.name), left(x.max, x.spent) + '/' + x.max, 'pool-edit', `data-type="extra" data-index="${esc(x.id)}"`),
     ),

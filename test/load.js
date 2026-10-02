@@ -10,6 +10,7 @@ const LOGIC = [
   'names-es.js',
   'feat-data.js',
   'feats.js',
+  'magic-items.js',
   'campaign-data.js',
   'equipment-data.js',
   'equipment.js',

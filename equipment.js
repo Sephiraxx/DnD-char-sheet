@@ -208,7 +208,8 @@ const Equipment = (() => {
       armor = item(armorRow?.equipmentId)?.armor,
       shield = item(shieldRow?.equipmentId)?.armor?.type === 'shield' ? shieldRow : null;
     const worn = armor && armor.type !== 'shield' ? armor : null,
-      m = Object.fromEntries(Object.entries(s.abilities).map(([k, v]) => [k, mod(v)])),
+      m = Object.fromEntries(Object.entries(Rules.scores(s)).map(([k, v]) => [k, mod(v)])),
+      magic = globalThis.MagicItems,
       c = cid(s),
       sc = sub(s),
       race = Campaign.race(s),
@@ -255,6 +256,14 @@ const Equipment = (() => {
       'Thri-kreen': [13, 'dex', 'Caparazón camaleónico de thri-kreen'],
       Tortle: [17, null, 'Armadura natural de tortuguino'],
     }[race?.english];
+    const robe = magic?.unarmoredBase(s);
+    if (robe && !worn)
+      candidates.push({
+        id: 'magic',
+        label: 'Objeto mágico sin armadura',
+        value: robe + m.dex,
+        formula: robe + ' ' + sg(m.dex) + ' DES',
+      });
     if (natural && !worn)
       candidates.push({
         id: 'natural',
@@ -273,6 +282,15 @@ const Equipment = (() => {
       chosen = candidates.find(x => x.id === cfg.formula) || best,
       bonuses = [];
     if (shield) bonuses.push({ label: 'Escudo', value: 2 });
+    if (magic)
+      bonuses.push(
+        ...magic.acBonuses(s, {
+          worn: !!worn,
+          shield: !!shield,
+          armorId: worn ? cfg.armorId : '',
+          shieldId: shield ? cfg.shieldId : '',
+        }),
+      );
     if (race?.id === 'warforged-base-ERLW') bonuses.push({ label: 'Protección integrada', value: 1 });
     if (s.raceId === 'simic-hybrid-base-GGR' && Number(s.level) >= 5 && cfg.simicCarapace && worn?.type !== 'heavy')
       bonuses.push({ label: 'Caparazón simic', value: 1 });
@@ -288,8 +306,10 @@ const Equipment = (() => {
       warnings.push(
         'Falta competencia con la armadura o el escudo: desventaja en pruebas, salvaciones y ataques con FUE/DES; no podés lanzar conjuros. Si un rasgo te la concede, registrá esa excepción.',
       );
-    if (worn?.stealth) warnings.push('Esta armadura impone desventaja en Sigilo.');
-    const speedPenalty = worn?.strength > Number(s.abilities.str) && !s.raceId?.startsWith('dwarf-') ? 10 : 0;
+    const mithral = armorRow?.magic?.id === 'mithral-armor';
+    if (worn?.stealth && !mithral) warnings.push('Esta armadura impone desventaja en Sigilo.');
+    const speedPenalty =
+      worn?.strength > Number(Rules.scores(s).str) && !s.raceId?.startsWith('dwarf-') && !mithral ? 10 : 0;
     if (speedPenalty)
       warnings.push('No alcanzás FUE ' + worn.strength + ': esta armadura reduce tu velocidad en 10 pies.');
     if (
