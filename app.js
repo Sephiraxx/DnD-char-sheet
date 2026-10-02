@@ -718,8 +718,15 @@ const actions = {
     ),
   damage: () => {
     if (state.hp === null) throw Error('Confirmá primero tus PG actuales.');
-    const n = Number($('#hp-amount').value);
-    if (!Number.isInteger(n) || n < 1 || n > 9999) throw Error('Usá una cantidad de daño válida.');
+    const raw = Number($('#hp-amount').value);
+    if (!Number.isInteger(raw) || raw < 1 || raw > 9999) throw Error('Usá una cantidad de daño válida.');
+    const adj = Defenses.apply(state, [{ amount: raw, type: $('#hp-type')?.value }]),
+      n = adj.total;
+    const why = adj.notes.length ? ' (' + adj.notes.join('; ') + ')' : '';
+    if (!n) {
+      $('#modal').close();
+      return toast('No recibís daño' + why + '.');
+    }
     const conc = state.concentration;
     commit('Daño recibido: ' + n, s => {
       const absorbed = Math.min(s.temp, n);
@@ -735,8 +742,8 @@ const actions = {
     $('#modal').close();
     toast(
       conc && state.hp > 0
-        ? 'Daño registrado. Resolvé la salvación de concentración en «En curso».'
-        : 'Daño registrado. Si estabas a 0 PG, ajustá las salvaciones de muerte según el impacto.',
+        ? `Daño registrado: ${n}${why}. Resolvé la salvación de concentración en «En curso».`
+        : `Daño registrado: ${n}${why}. Si estabas a 0 PG, ajustá las salvaciones de muerte según el impacto.`,
     );
   },
   heal: () => {

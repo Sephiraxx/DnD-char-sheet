@@ -907,3 +907,20 @@ body.enc-shake .workspace {
   margin: 0 0 12px;
   color: var(--muted);
 }
+
+/* Defensas anotadas: tabla de tipos de daño */
+.defenses-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr));
+  gap: 8px 10px;
+  align-items: center;
+}
+.defenses-grid b {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.defenses-grid input {
+  justify-self: center;
+  width: 20px;
+  height: 20px;
+}

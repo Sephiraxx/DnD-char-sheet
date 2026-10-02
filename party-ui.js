@@ -378,11 +378,44 @@ const PartyUI = (() => {
         )
         .join(
           '',
-        )}<p class="small section-space">Competencia de clase: ${c.saves.map(k => R.attrs[k]).join(', ')}.</p></section></div></div>${EquipmentUI.panel(state)}${Campaign.sheetOrigins()}<section class="card section-space"><h2>Rasgos y notas</h2>${state.features
+        )}<p class="small section-space">Competencia de clase: ${c.saves.map(k => R.attrs[k]).join(', ')}.</p></section></div></div>${EquipmentUI.panel(state)}${defensesCard()}${Campaign.sheetOrigins()}<section class="card section-space"><h2>Rasgos y notas</h2>${state.features
         .map(x => `<div class="feature"><h3>${esc(x.name)}</h3><p>${esc(x.text)}</p></div>`)
         .join(
           '',
         )}<div class="actions">${button('Ver clase y todos sus niveles', 'class-open')}${button('Añadir rasgo', 'feature-new')}${button('Editar rasgos propios', 'feature-manage')}</div></section>`
+    );
+  }
+  // Resistencias, inmunidades y vulnerabilidades con su origen; las anotadas se editan acá.
+  function defensesCard() {
+    const d = Defenses.of(state),
+      row = (title, map) =>
+        map.size
+          ? `<p><b>${title}:</b> ${[...map].map(([t, why]) => `${esc(Defenses.label(t))} <span class="small muted">(${esc(why)})</span>`).join(', ')}</p>`
+          : '';
+    const body =
+      row('Resistencia', d.resist) +
+      row('Inmunidad', d.immune) +
+      row('Vulnerabilidad', d.vulnerable) +
+      (d.conditions.length
+        ? `<p><b>Inmune a:</b> ${esc(d.conditions.map(Defenses.conditionLabel).join(', '))}</p>`
+        : '');
+    return `<section class="card section-space"><div class="card-header"><h2>Defensas</h2>${button('Editar', 'defenses-edit')}</div>${body || '<p class="small muted">Sin resistencias. Anotá las de objetos, conjuros o rasgos con «Editar».</p>'}<p class="small">El daño con tipo (del DM, de monstruos, de conjuros o el que anotás) se ajusta solo.</p></section>`;
+  }
+  function defensesEdit() {
+    const own = state.defenses || {},
+      box = (kind, t) =>
+        `<input type="checkbox" name="${kind}" value="${t}" ${(own[kind] || []).includes(t) ? 'checked' : ''} aria-label="${kind} ${Defenses.label(t)}">`;
+    modal(
+      'Defensas anotadas',
+      `<p class="small">Marcá las que te dan objetos, conjuros o rasgos. Las de tu raza y la Furia ya se cuentan solas.</p><div class="defenses-grid"><b>Tipo</b><b>Resistencia</b><b>Inmunidad</b><b>Vulnerable</b>${Defenses.TYPES.map(([t, l]) => `<span>${esc(l)}</span>${box('resist', t)}${box('immune', t)}${box('vulnerable', t)}`).join('')}</div>`,
+      fd =>
+        commit('Defensas actualizadas', s => {
+          s.defenses = {
+            resist: fd.getAll('resist'),
+            immune: fd.getAll('immune'),
+            vulnerable: fd.getAll('vulnerable'),
+          };
+        }),
     );
   }
   function automaticSpellNote(s, id, grants = C.granted(s)) {
@@ -947,6 +980,7 @@ const PartyUI = (() => {
       'class-resource': e => useResource(e.dataset.id),
       'class-resource-edit': e => useResource(e.dataset.id, true),
       'class-rage-end': () => commit('Rabia terminada', s => (s.raging = false)),
+      'defenses-edit': defensesEdit,
       'class-notes-save': () => {
         const txt = document.getElementById('class-notes').value;
         commit('Notas de clase guardadas', s => (s.classNotes = txt));

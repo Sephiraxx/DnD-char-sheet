@@ -18,6 +18,7 @@ const LOGIC = [
   'rules.js',
   'attacks.js',
   'campaign.js',
+  'defenses.js',
   'creation-skills.js',
 ];
 

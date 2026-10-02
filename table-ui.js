@@ -259,8 +259,14 @@ const TableUI = (() => {
     const n = v => Math.max(0, Math.min(9999, Math.floor(Number(v) || 0)));
     switch (ev.kind) {
       case 'damage': {
-        const amount = n(p.amount);
-        if (!amount || state.hp === null) return 'Daño del DM pendiente: confirmá tus PG actuales.';
+        if (state.hp === null) return 'Daño del DM pendiente: confirmá tus PG actuales.';
+        const parts = Defenses.partsOf(p),
+          raw = parts.reduce((t, x) => t + n(x.amount), 0),
+          adj = Defenses.apply(state, parts),
+          amount = n(adj.total),
+          why = adj.notes.length ? ' (' + adj.notes.join('; ') + ')' : '';
+        if (!raw) return '';
+        if (!amount) return `No recibís daño${why}.`;
         const conc = state.concentration;
         commit((p.from || 'DM') + ': daño recibido ' + amount + (p.source ? ' (' + p.source + ')' : ''), s => {
           const absorbed = Math.min(s.temp, amount);
@@ -273,7 +279,8 @@ const TableUI = (() => {
           } else if (conc) Combat.data(s).checks.push(Math.max(10, Math.floor(amount / 2)));
         });
         return (
-          `El DM te aplicó ${amount} de daño.` + (conc && state.hp > 0 ? ' Tirá la salvación de concentración.' : '')
+          `${p.from ? p.from + ' te hizo' : 'El DM te aplicó'} ${amount} de daño${why}.` +
+          (conc && state.hp > 0 ? ' Tirá la salvación de concentración.' : '')
         );
       }
       case 'heal': {
@@ -688,7 +695,8 @@ const TableUI = (() => {
           const success = !out && r.kept !== 1 && (r.kept === 20 || r.total >= Number(p.dc));
           const amount = success ? (p.half ? Math.floor(Number(p.damage) / 2) : 0) : Number(p.damage) || 0;
           const conc = state.concentration;
-          if (amount) applyCommand({ kind: 'damage', payload: { amount, source: p.spell, from: p.caster } });
+          if (amount)
+            applyCommand({ kind: 'damage', payload: { amount, type: p.types, source: p.spell, from: p.caster } });
           toast(
             `${success ? 'Salvaste' : 'Fallaste'}: ${amount ? amount + ' de daño' : 'sin daño'} (${p.spell}).` +
               (amount && conc && state.hp > 0 ? ' Tirá la salvación de concentración.' : ''),
