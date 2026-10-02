@@ -3,7 +3,46 @@
 const AccountUI = (() => {
   'use strict';
   const esc = PartyView.esc;
-  let rows = [];
+  let rows = [],
+    clouds = [];
+  const ago = iso => {
+    if (!iso) return 'nunca';
+    const min = Math.round((Date.now() - new Date(iso)) / 60000);
+    return min < 1
+      ? 'recién'
+      : min < 60
+        ? `hace ${min} min`
+        : min < 1440
+          ? `hace ${Math.round(min / 60)} h`
+          : new Date(iso).toLocaleDateString('es-AR');
+  };
+  const localIds = () =>
+    new Set(CharacterStorage.list().map(x => (x.key.startsWith('dnd-character-') ? x.key.slice(14) : 'darien')));
+  // Copia en la nube: estado de este dispositivo y fichas que están en la nube pero no acá.
+  function backupHtml(list, opening = false) {
+    if (list === null)
+      return '<div class="cloud-backup"><h3>Copia en la nube</h3><p class="small muted">Todavía no está disponible: falta actualizar la base de datos (migración 007).</p></div>';
+    const here = localIds(),
+      times = Cloud.backupTimes(),
+      mine = CharacterStorage.list(),
+      copied = mine.filter(x => times[x.key.startsWith('dnd-character-') ? x.key.slice(14) : 'darien']).length,
+      away = list.filter(r => !here.has(r.local_id));
+    const last = Object.values(times).sort().at(-1);
+    return `<div class="cloud-backup"><h3>Copia en la nube</h3>${
+      opening
+        ? ''
+        : `<p class="small">Cada cambio de tus fichas se copia solo a tu cuenta, también las que no están en una mesa. Este dispositivo: <b>${copied} de ${mine.length}</b> ficha(s) copiada(s) · última copia ${ago(last)}.</p><div class="actions"><button type="button" class="button secondary" data-backup="now">Copiar ahora</button></div>`
+    }${
+      away.length
+        ? `<p class="small section-space">${opening ? 'Fichas guardadas en tu cuenta:' : 'En la nube, pero no en este dispositivo:'}</p><div class="party-list">${away
+            .map(
+              r =>
+                `<div class="list-row"><div><b>${esc(r.name || 'Sin nombre')}</b><p class="small muted">Copia ${esc(ago(r.updated_at))}</p></div><div class="actions"><button type="button" class="button" data-backup-restore="${esc(r.local_id)}">${opening ? 'Abrir' : 'Traer'}</button>${opening ? '' : `<button type="button" class="button secondary" data-backup-delete="${esc(r.local_id)}" data-name="${esc(r.name)}">Borrar</button>`}</div></div>`,
+            )
+            .join('')}</div>`
+        : ''
+    }</div>`;
+  }
 
   function card(kind) {
     setTimeout(() => fill(kind));
@@ -41,7 +80,7 @@ const AccountUI = (() => {
               )
               .join('')}</div>`
           : '<p class="muted">No tenés fichas en ninguna mesa con este acceso.</p>'
-      }<p class="small section-space"><a href="./dm.html">Pantalla del DM</a>: tus mesas aparecen ahí.</p>`;
+      }${clouds === null || clouds.length || CharacterStorage.list().length ? backupHtml(clouds) : ''}<p class="small section-space"><a href="./dm.html">Pantalla del DM</a>: tus mesas aparecen ahí.</p>`;
     }
     return loginBlock('Entrá con el email y la contraseña con los que guardaste tu acceso.');
   }
@@ -56,7 +95,8 @@ const AccountUI = (() => {
         await Cloud.finishMerge().catch(() => {});
         me = await Cloud.currentUser();
       }
-      box.innerHTML = kind === 'restore' ? await restoreHtml(me) : accountHtml(me);
+      clouds = me ? await Cloud.backups().catch(() => null) : [];
+      box.innerHTML = kind === 'restore' ? await restoreHtml(me) : accountHtml(me) + (me ? backupHtml(clouds) : '');
     } catch (e) {
       box.innerHTML = `<p class="small muted">${esc(e.message)}</p>`;
     }
@@ -121,6 +161,37 @@ const AccountUI = (() => {
       }
     };
   }
+  document.addEventListener('click', async e => {
+    const t = e.target.closest('[data-backup], [data-backup-restore], [data-backup-delete]');
+    if (!t) return;
+    const box = t.closest('.cloud-backup');
+    t.disabled = true;
+    try {
+      if (t.dataset.backup === 'now') {
+        const n = await Cloud.backupAll();
+        if (typeof toast === 'function') toast(`Copia en la nube: ${n} ficha(s) actualizada(s).`);
+        refill();
+      } else if (t.dataset.backupRestore) {
+        const id = await Cloud.restoreBackup(t.dataset.backupRestore);
+        CharacterStorage.activate(id);
+      } else if (t.dataset.backupDelete) {
+        if (
+          !confirm(`¿Borrar de la nube la copia de «${t.dataset.name || 'esta ficha'}»? No está en este dispositivo.`)
+        ) {
+          t.disabled = false;
+          return;
+        }
+        await Cloud.deleteBackup(t.dataset.backupDelete);
+        refill();
+      }
+    } catch (err) {
+      t.disabled = false;
+      const p = document.createElement('p');
+      p.className = 'form-error';
+      p.textContent = err.message;
+      box?.append(p);
+    }
+  });
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-account-restore]');
     if (!b) return;
@@ -133,6 +204,7 @@ const AccountUI = (() => {
     }
   });
   // Al volver de un enlace viejo por correo, o al entrar/guardar desde otra tarjeta.
+  addEventListener('cloud-backup', () => document.querySelector('#account-account .cloud-backup') && refill());
   addEventListener('cloud-login', e => {
     if (e.detail?.error) {
       const t = document.getElementById('toast');
