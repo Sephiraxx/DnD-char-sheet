@@ -1,5 +1,7 @@
 const PREFIX = 'darien:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v38-leftovers';
+// BUILD es un resumen del contenido de FILES: lo escribe `npm run stamp` y los tests fallan si quedó viejo.
+const BUILD = '112f90ed5003';
+const CACHE = PREFIX + BUILD;
 const FILES = [
   './',
   './index.html',
@@ -42,6 +44,7 @@ const FILES = [
   './attack-ui.js',
   './multiclass-ui.js',
   './rolls-ui.js',
+  './updates.js',
   './dm.html',
   './dm.js',
   './monsters-ui.js',
@@ -49,13 +52,21 @@ const FILES = [
   './sessions.js',
   './vendor/supabase.js',
 ];
+// En la compu de desarrollo se sigue pidiendo todo a la red para ver los cambios al recargar.
+const DEV = /^(localhost|127\.|\[::1\]$)/.test(self.location.hostname) || self.location.hostname.endsWith('.localhost');
+
 self.addEventListener('install', event => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then(cache => cache.addAll(FILES))
-      .then(() => self.skipWaiting()),
+      // cache: 'reload' saltea la caché HTTP: la versión nueva se guarda entera y con archivos frescos.
+      .then(cache => cache.addAll(FILES.map(f => new Request(f, { cache: 'reload' }))))
+      // La primera vez se activa enseguida; si ya había una versión, espera a que la página lo pida.
+      .then(() => (!self.registration.active || DEV ? self.skipWaiting() : undefined)),
   );
+});
+self.addEventListener('message', event => {
+  if (event.data === 'skip-waiting') self.skipWaiting();
 });
 self.addEventListener('activate', event => {
   event.waitUntil(
@@ -65,28 +76,34 @@ self.addEventListener('activate', event => {
       .then(() => self.clients.claim()),
   );
 });
+
+const offline = request =>
+  request.mode === 'navigate'
+    ? caches.open(CACHE).then(c => c.match(new URL('./index.html', self.registration.scope)))
+    : Response.error();
+
 self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET' || !event.request.url.startsWith(self.registration.scope)) return;
-  // Siempre revalida con el servidor: GitHub Pages permite reusar archivos 10 minutos y, tras una
-  // actualización, el navegador podía mezclar scripts nuevos y viejos. Un 304 cuesta casi nada.
-  const fresh =
-    event.request.mode === 'navigate'
-      ? new Request(event.request.url, { cache: 'no-cache', credentials: 'same-origin' })
-      : new Request(event.request, { cache: 'no-cache' });
+  const { request } = event;
+  if (request.method !== 'GET' || !request.url.startsWith(self.registration.scope)) return;
+  if (DEV) {
+    const fresh =
+      request.mode === 'navigate'
+        ? new Request(request.url, { cache: 'no-cache', credentials: 'same-origin' })
+        : new Request(request, { cache: 'no-cache' });
+    return event.respondWith(fetch(fresh).catch(async () => (await caches.match(request)) || offline(request)));
+  }
+  // Todo sale de la caché de esta versión: abre al instante y nunca mezcla archivos de dos versiones.
   event.respondWith(
-    fetch(fresh)
-      .then(response => {
-        if (response.ok) {
-          const copy = response.clone();
-          event.waitUntil(caches.open(CACHE).then(c => c.put(event.request, copy)));
-        }
+    caches.open(CACHE).then(async cache => {
+      const hit = await cache.match(request, { ignoreSearch: request.mode === 'navigate' });
+      if (hit) return hit;
+      try {
+        const response = await fetch(request);
+        if (response.ok) event.waitUntil(cache.put(request, response.clone()));
         return response;
-      })
-      .catch(async () => {
-        const cached = await caches.match(event.request);
-        if (cached) return cached;
-        if (event.request.mode === 'navigate') return caches.match(new URL('./index.html', self.registration.scope));
-        return Response.error();
-      }),
+      } catch {
+        return offline(request);
+      }
+    }),
   );
 });

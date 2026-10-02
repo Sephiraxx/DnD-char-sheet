@@ -152,8 +152,9 @@ La aplicación no tiene paso de compilación: los archivos de la raíz se public
 ```bash
 npm install        # instala Prettier
 npm run serve      # sirve la app en http://localhost:8080
-npm run format     # formatea el código (los archivos de datos quedan compactos)
+npm run format     # formatea el código y actualiza la versión de sw.js
+npm run stamp      # solo actualiza la versión de sw.js
 npm run check      # verifica formato y corre las pruebas (node --test)
 ```
 
-Las pruebas cargan los scripts del navegador en Node (`test/load.js`) y usan fichas de ejemplo de `test/fixtures/`. Al cambiar los archivos precargados sin conexión, actualizá también la lista y la versión de `sw.js`.
+Las pruebas cargan los scripts del navegador en Node (`test/load.js`) y usan fichas de ejemplo de `test/fixtures/`. La app abre desde la caché del service worker (al instante y sin red). La versión de esa caché es un resumen del contenido de los archivos: después de cualquier cambio corré `npm run stamp` (o `npm run format`), y `npm run check` falla si te lo olvidás. Un archivo nuevo de la app va también en la lista `FILES` de `sw.js`. Los celulares instalan la versión nueva en segundo plano: si la app recién se abrió se recarga sola; si está en uso, aparece «Hay una versión nueva» con un botón para actualizar. En localhost el service worker sigue pidiendo todo a la red.

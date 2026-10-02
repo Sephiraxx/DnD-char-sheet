@@ -231,11 +231,14 @@ const RollUI = (() => {
   }
 
   // ---------- Conjuros: ataque, salvación y daño o curación ----------
+  // sp.srd: pistas sacadas del texto SRD en inglés al generar el catálogo (dados, mejora por espacio, dardos…).
+  const halfOnSave = sp => /mitad|half/i.test(sp.text || '') || !!sp.srd?.half;
   function spellInfo(sp, slot) {
-    const all = [sp.brief, sp.text, sp.srdOriginal].filter(Boolean).join('\n');
+    const all = [sp.brief, sp.text].filter(Boolean).join('\n'),
+      hint = sp.srd || {};
     // «1d4 + 1»: el bono fijo acompaña a los dados (no confundir con «+ 4d8» ni «+ tu modificador»).
     const DICE = /(\d+)d(\d+)(?:\s*\+\s*(\d+)(?![\dd]))?/;
-    const m = DICE.exec(sp.brief || '') || DICE.exec(sp.text || '') || DICE.exec(sp.srdOriginal || '');
+    const m = DICE.exec(sp.brief || '') || DICE.exec(sp.text || '') || DICE.exec(hint.dice || '');
     const heal = /recupera|regains?/i.test(sp.brief || sp.text || '') && !(sp.damageTypes || []).length;
     let count = m ? Number(m[1]) : 0,
       notes = [];
@@ -244,14 +247,15 @@ const RollUI = (() => {
     const total = R.totalLevel ? R.totalLevel(state) : state.level;
     if (sp.level === 0 && m) {
       const tier = 1 + (total >= 5) + (total >= 11) + (total >= 17);
-      if (/rayo|beam/i.test(all)) notes.push(`Nivel ${total}: ${tier} rayo(s), cada uno con su propio ataque.`);
+      if (/rayo|beam/i.test(all) || hint.beam)
+        notes.push(`Nivel ${total}: ${tier} rayo(s), cada uno con su propio ataque.`);
       else if (tier > 1) {
         count *= tier;
         notes.push(`Truco escalado por nivel de personaje ${total}.`);
       }
     }
     // Proyectil mágico: tres dardos y uno más por cada nivel de espacio superior.
-    if (m && /three glowing darts/i.test(sp.srdOriginal || '')) {
+    if (m && hint.darts) {
       const darts = 3 + Math.max(0, slot - sp.level);
       count *= darts;
       flat *= darts;
@@ -259,10 +263,10 @@ const RollUI = (() => {
         `${darts} dardos de 1d${sides}${m[3] ? ' + ' + m[3] : ''} (todos al mismo objetivo; si los repartís, ajustá el daño).`,
       );
     }
-    const up = /increases by (\d+)d(\d+) for each slot level above/i.exec(sp.srdOriginal || '');
-    if (up && slot > sp.level && Number(up[2]) === sides) {
-      count += Number(up[1]) * (slot - sp.level);
-      notes.push(`Espacio de nivel ${slot}: +${Number(up[1]) * (slot - sp.level)}d${sides}.`);
+    const up = hint.up;
+    if (up && slot > sp.level && up[1] === sides) {
+      count += up[0] * (slot - sp.level);
+      notes.push(`Espacio de nivel ${slot}: +${up[0] * (slot - sp.level)}d${sides}.`);
     }
     return {
       attack: (sp.attackKind || []).length > 0,
@@ -271,7 +275,7 @@ const RollUI = (() => {
       // Solo cuentan como daño los dados de conjuros con tipo de daño (o curación): el 1d4 de Bendecir es un bono.
       dice: m && (heal || (sp.damageTypes || []).length) ? count + 'd' + sides + (flat ? '+' + flat : '') : '',
       heal,
-      addMod: /modificador de lanzamiento|spellcasting ability modifier/i.test(all),
+      addMod: /modificador de lanzamiento|spellcasting ability modifier/i.test(all) || !!hint.mod,
       types: (sp.damageTypes || []).join(', '),
       notes,
     };
@@ -333,7 +337,7 @@ const RollUI = (() => {
     modal(
       sp.name + (slot > sp.level ? ' · nivel ' + slot : ''),
       `${targetFields(info, sp)}${!info.dice && !info.attack && !info.save ? `<p class="small">${esc(sp.brief || '')}</p><div class="actions">${button('Aplicar efecto', 'spell-apply-effect', '')}</div>` : ''}${info.attack ? `<h3>Ataque de conjuro ${sign(st.attack)}</h3>${d20Fields(mods, '', { kind: 'attack' })}<div class="actions">${button('Tirar ataque', 'spell-roll-attack', '')}</div>` : ''}
-      ${info.save ? `<p class="banner">Cada objetivo tira una salvación de <b>${esc(info.saveName)}</b> contra tu CD <b>${st.dc}</b>.${/mitad|half/i.test(sp.text || sp.srdOriginal || '') ? ' Si la supera, suele recibir la mitad.' : ''}</p>` : ''}
+      ${info.save ? `<p class="banner">Cada objetivo tira una salvación de <b>${esc(info.saveName)}</b> contra tu CD <b>${st.dc}</b>.${halfOnSave(sp) ? ' Si la supera, suele recibir la mitad.' : ''}</p>` : ''}
       ${
         info.dice || info.attack || info.save
           ? `<h3 class="section-space">${info.heal ? 'Curación' : 'Daño'}${info.types ? ' · ' + esc(info.types) : ''}</h3><div class="form-grid">${field('Dados', 'spellDice', info.dice, 'text', 'maxlength="20" placeholder="2d8"')}<label class="check"><input type="checkbox" name="spellMod" ${info.addMod ? 'checked' : ''}>Sumar modificador de lanzamiento (${sign(mod)})</label></div>${info.notes.length ? `<p class="small">${esc(info.notes.join(' '))}</p>` : ''}<details class="physical-dice"><summary>Uso mis propios dados</summary>${field('Suma de mis dados', 'myDamage', '', 'number', 'min="0" max="999" inputmode="numeric"')}</details><div class="actions">${button(info.heal ? 'Tirar curación' : 'Tirar daño', 'spell-roll-damage', info.attack ? 'secondary' : '')}</div>`
@@ -502,7 +506,7 @@ const RollUI = (() => {
         ability: info.save,
         abilityName: info.saveName,
         dc: st.dc,
-        half: /mitad|half/i.test(sp.text || sp.srdOriginal || ''),
+        half: halfOnSave(sp),
         damage: total,
         types: info.types,
       };
