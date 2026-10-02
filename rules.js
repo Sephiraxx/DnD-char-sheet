@@ -122,7 +122,7 @@
       false,
       false,
       '5d8 PG de criaturas dentro de un radio de 20 pies; sin salvación.',
-      'Elegí un punto en alcance. Criaturas a 20 pies de él, incluidos aliados y animales: tirá 5d8. Resolvé de menor a mayor PG actuales, ignorando inconscientes. Cada criatura se duerme si sus PG caben completos en el total restante; restalos y seguí. No inflige daño. Despierta al recibir daño, terminar el minuto o si alguien gasta una acción sacudiéndola. No afecta a no muertos ni inmunes a hechizado; tampoco a Darien, inmune al sueño mágico. +2d8 por nivel de espacio superior a 1. Los obstáculos pueden bloquear el área.',
+      'Elegí un punto en alcance. Criaturas a 20 pies de él, incluidos aliados y animales: tirá 5d8. Resolvé de menor a mayor PG actuales, ignorando inconscientes. Cada criatura se duerme si sus PG caben completos en el total restante; restalos y seguí. No inflige daño. Despierta al recibir daño, terminar el minuto o si alguien gasta una acción sacudiéndola. No afecta a no muertos ni inmunes a hechizado. +2d8 por nivel de espacio superior a 1. Los obstáculos pueden bloquear el área.',
     ),
     S(
       'faeriefire',
@@ -161,7 +161,7 @@
       true,
       true,
       'Sentís magia; una acción permite ver el aura de objetivos visibles.',
-      'Sentís presencia de magia a 30 pies. Si la detectás, una acción permite ver el aura de una criatura u objeto visible y conocer su escuela, si existe. No identifica todas las propiedades. Lo bloquean 1 pie de piedra, 1 pulgada de metal común, una lámina de plomo o 3 pies de madera o tierra. Ritual: 11 minutos, sin gastar espacio; requiere concentración durante el lanzamiento. Concedido a Darien adicionalmente por el DM. Lanzarlo como acción normalmente gasta espacio.',
+      'Sentís presencia de magia a 30 pies. Si la detectás, una acción permite ver el aura de una criatura u objeto visible y conocer su escuela, si existe. No identifica todas las propiedades. Lo bloquean 1 pie de piedra, 1 pulgada de metal común, una lámina de plomo o 3 pies de madera o tierra. Ritual: 11 minutos, sin gastar espacio; requiere concentración durante el lanzamiento. Lanzarlo como acción normalmente gasta espacio.',
     ),
     S(
       'silvery',
@@ -347,7 +347,6 @@
         t
           .replaceAll('tu modificador de CAR', 'tu modificador de lanzamiento')
           .replaceAll('+ CAR', '+ tu modificador de lanzamiento')
-          .replace('; tampoco a Darien, inmune al sueño mágico', '')
           .replace('No deja acción adicional para Inspiración.', 'Solo tenés una acción adicional por turno.');
       old.text = general(spanishText);
       old.brief = general(spanishBrief);
@@ -375,17 +374,18 @@
         feats: false,
         learnedFeats: [],
       },
-      name: 'Darien Voss',
-      level: 2,
-      subclass: 'eloquence',
-      abilities: { str: 8, dex: 15, con: 14, int: 12, wis: 10, cha: 17 },
-      proficiencies: ['stealth', 'arcana', 'investigation', 'perception', 'insight', 'deception', 'persuasion'],
+      name: 'Nuevo personaje',
+      classId: 'bard',
+      level: 1,
+      subclass: 'manual',
+      abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
+      proficiencies: [],
       expertise: [],
-      hpBase: 13,
+      hpBase: 8,
       hpConfirmed: false,
       hp: null,
       temp: 0,
-      acBase: 11,
+      acBase: 10,
       acBonus: 0,
       slotsSpent: Array(9).fill(null),
       inspirationSpent: null,
@@ -394,49 +394,17 @@
       concentration: null,
       conditions: [],
       death: { success: 0, failure: 0 },
-      known: ['mockery', 'illusion', 'healingword', 'sleep', 'faeriefire', 'laughter'],
-      extras: ['detectmagic'],
+      known: [],
+      extras: [],
       customSpells: [],
       features: [],
       extraResources: [],
-      gold: { cp: 0, sp: 0, ep: 0, gp: 15, pp: 0 },
+      gold: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
       goldConfirmed: false,
-      inventory: [
-        ['Estoque', 1, 'Armas', '1d8 + DES perforante. Sutileza.'],
-        ['Daga', 1, 'Armas', '1d4 + DES perforante. Ligera, sutileza; arrojada 20/60 pies.'],
-        ['Armadura de cuero', 1, 'Equipo', 'CA 11 + DES.'],
-        ['Flauta', 1, 'Equipo', 'Foco de bardo.'],
-        ['Cofre', 1, 'Paquete', 'Contenedor del paquete de diplomático.'],
-        ['Estuche de mapas y pergaminos', 2, 'Paquete', 'Vacíos; sin mapas ni pergaminos mágicos.'],
-        ['Ropa fina', 1, 'Paquete', 'Un conjunto.'],
-        ['Frasco de tinta', 1, 'Paquete', ''],
-        ['Pluma de escritura', 1, 'Paquete', ''],
-        ['Lámpara', 1, 'Paquete', 'Luz brillante 15 pies, tenue otros 30. Aceite: 6 horas por frasco.'],
-        ['Frasco de aceite', 2, 'Consumibles', 'No se enciende automáticamente.'],
-        ['Hoja de papel', 5, 'Consumibles', ''],
-        ['Vial de perfume', 1, 'Paquete', ''],
-        ['Lacre', 1, 'Paquete', 'Cantidad sin especificar; 1 entrada de inventario.'],
-        ['Jabón', 1, 'Paquete', 'Cantidad sin especificar; 1 entrada de inventario.'],
-        ['Carta de presentación del gremio', 1, 'Equipo', ''],
-        ['Ropa de viajero', 1, 'Equipo', 'Un conjunto.'],
-        ['Bolsa de monedas', 1, 'Equipo', 'Las monedas se registran en la bolsa de oro.'],
-        ['Carro', 1, 'Transporte', '200 lb de peso estándar.'],
-      ].map((a, i) => ({
-        id: 'item' + i,
-        name: a[0],
-        qty: a[1],
-        category: a[2],
-        notes: a[3],
-        weight: null,
-        location: 'Sin asignar',
-      })),
-      mule: { name: 'Mula', hp: null, max: 11, notes: '' },
-      notes: 'Llegamos a la ciudad después de escapar de un dragón. Darien alcanzó nivel 2.',
-      companion: {
-        name: 'Nombre por definir',
-        notes:
-          'Elfa noble, sexta hija del rey. Esposa de Darien; autorizada a viajar con él. Pelo largo castaño claro y ropa elegante y práctica.',
-      },
+      inventory: [],
+      mule: { name: '', hp: null, max: 1, notes: '' },
+      notes: '',
+      companion: { name: '', notes: '' },
       log: [],
       levelHistory: [],
       universalSpent: 0,
@@ -556,7 +524,7 @@
         f.push(
           [
             'Inspiración infalible',
-            'Si una criatura usa tu dado de Inspiración y la tirada aun así falla, conserva ese dado. Esto no devuelve a Darien el uso ya gastado.',
+            'Si una criatura usa tu dado de Inspiración y la tirada aun así falla, conserva ese dado.',
           ],
           [
             'Discurso universal',
@@ -584,6 +552,14 @@
     return f.concat(s.features.map(x => [x.name, x.text]));
   }
   function validate(o) {
+    // Fichas de la primera versión (sin clase): pasan a ser de bardo, con Elocuencia si la tenían.
+    if (o && typeof o === 'object' && !o.classId && (o.schema === 1 || o.subclass)) {
+      o.classId = 'bard';
+      if (o.subclass === 'eloquence' && !o.classSubclass) o.classSubclass = 'bard-college-of-eloquence';
+      o.race = o.race || 'Semielfo';
+      o.background = o.background || 'Comerciante gremial';
+      if (o.portrait === undefined) o.legacyPortrait = true;
+    }
     if (o && typeof o === 'object') {
       if (o.combatState === undefined)
         o.combatState = {

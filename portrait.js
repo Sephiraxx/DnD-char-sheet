@@ -15,7 +15,7 @@ const Portrait = (() => {
   }
   function source(s) {
     if (valid(s?.portrait)) return s.portrait.data;
-    return s && !s.classId && s.portrait === undefined ? './assets/darien.webp' : '';
+    return s && s.legacyPortrait && s.portrait === undefined ? './assets/darien.webp' : '';
   }
   function position(s) {
     return valid(s?.portrait) ? s.portrait.position : 12;

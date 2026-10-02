@@ -220,50 +220,12 @@ function spellById(id) {
 function spellName(id) {
   return spellById(id)?.name || 'Conjuro';
 }
-function missing() {
-  return R.stats(state).known - Progression.spellCount(state);
-}
 function combat() {
   return combatView();
 }
 function spellCard(s) {
   const extra = state.extras.includes(s.id);
   return `<details class="spell" id="spell-${esc(s.id)}"><summary><div class="spell-title"><div><h2>${esc(s.name)}</h2><div class="spell-meta">${s.level ? 'Nivel ' + s.level : 'Truco'} · ${esc(s.time)} · ${esc(s.range)}</div></div>${extra ? '<span class="tag">Extra DM</span>' : s.concentration ? '<span class="tag">Conc.</span>' : ''}</div><p class="spell-brief">${esc(s.brief)}</p></summary><div class="spell-body"><p>${esc(s.text)}</p>${button('Explicación y requisitos', 'spell-help', 'secondary', `data-id="${esc(s.id)}"`)}<p class="small">Componentes: ${esc(s.components)}<br>Duración: ${esc(s.duration)}${s.concentration ? ' · Concentración' : ''}<br>Fuente: ${esc(s.source)}</p><div class="spell-footer">${button(s.level ? 'Lanzar' : 'Usar truco', 'cast', '', `data-id="${esc(s.id)}"`)}${Classes.ritualAllowed(state, s) ? button('Ritual · sin espacio', 'ritual', 'secondary', `data-id="${esc(s.id)}"`) : ''}${button('Editar', 'spell-edit', 'secondary', `data-id="${esc(s.id)}"`)}</div></div></details>`;
-}
-function legacySpellPage() {
-  let list = [...state.known, ...state.extras]
-    .map(spellById)
-    .filter(Boolean)
-    .filter(
-      s =>
-        (filter === 'all' ||
-          (filter === 'ritual' && s.ritual) ||
-          (filter === 'concentration' && s.concentration) ||
-          (filter === 'reaction' && s.time === 'Reacción')) &&
-        s.name.toLowerCase().includes(query.toLowerCase()),
-    );
-  list.sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
-  let d = R.stats(state);
-  return (
-    header(
-      'Tu repertorio.',
-      `CD ${d.dc} · Ataques ${sign(d.attack)} · ${Progression.spellCount(state)}/${d.known} conjuros de bardo + ${state.extras.length} adicional del DM`,
-      button('Fuentes y opciones', 'learning-config') +
-        button('Catálogo completo', 'spell-catalog') +
-        button('Gestionar conjuros', 'spell-manage') +
-        button('Crear conjuro', 'spell-new', ''),
-    ) +
-    `${missing() > 0 ? `<div class="banner"><p>Te falta elegir ${missing()} conjuro${missing() > 1 ? 's' : ''}. Silvery Barbs está disponible en el catálogo; Detectar magia no ocupa esta elección.</p>${button('Elegir', 'spell-manage')}</div>` : ''}<div class="toolbar"><input class="control" id="spell-search" type="search" placeholder="Buscar en tus conjuros…" aria-label="Buscar conjuros" value="${esc(query)}"><select class="control" id="spell-filter" aria-label="Filtrar conjuros">${[
-      ['all', 'Todos'],
-      ['concentration', 'Concentración'],
-      ['ritual', 'Rituales'],
-      ['reaction', 'Reacciones'],
-    ]
-      .map(([v, t]) => `<option value="${v}" ${v === filter ? 'selected' : ''}>${t}</option>`)
-      .join(
-        '',
-      )}</select></div><div class="spell-grid">${list.length ? list.map(spellCard).join('') : '<div class="empty">No hay conjuros con ese filtro.</div>'}</div>`
-  );
 }
 function gear() {
   const total = state.gold.cp + state.gold.sp * 10 + state.gold.ep * 50 + state.gold.gp * 100 + state.gold.pp * 1000;
@@ -285,38 +247,7 @@ function gear() {
       .map(([k, l]) => `<div class="coin"><strong>${state.gold[k]}</strong><span class="small">${l}</span></div>`)
       .join(
         '',
-      )}</div><p class="small section-space">Equivalente: ${(total / 100).toLocaleString('es-AR', { maximumFractionDigits: 2 })} po. ${state.goldConfirmed ? '' : 'Saldo inicial de 15 po; confirmá gastos y recompensas.'}</p><div class="actions">${button('Ingreso / gasto', 'gold-transaction', '')}</div></section><section class="card ${state.classId ? 'legacy-only' : ''}"><div class="card-header"><h2>${esc(state.mule.name)}</h2><span class="tag">CA 10</span></div><div class="hp-number" style="font-size:2.8rem">${state.mule.hp ?? '—'}<small> / ${state.mule.max} PG</small></div><p class="small section-space">40 pies · Iniciativa +0 · Mediana<br>Pezuñas +2 · 1d4 + 2 contundente<br>Paso firme: ventaja FUE/DES contra derribo.</p><p class="small">Carga: 420 lb. Con carro: 2.100 lb incluido el carro. El DM maneja su conducta; no es un ataque adicional automático. Darien puede ir en el carro; la mula no es de un tamaño mayor que él.</p>${button('Editar mula', 'mule')}</section><section class="card ${state.classId ? 'legacy-only' : ''}"><h2>Comerciante gremial</h2><p class="small">Cuota: 5 po al mes. Herramientas de navegante: competencia confirmada, juego físico por confirmar. No se añadieron raciones, cuerda ni otros objetos que no tuvieras.</p></section></div></div>`
-  );
-}
-function legacyCharacter() {
-  const d = R.stats(state);
-  return (
-    header(
-      'La ficha de Darien.',
-      `Semielfo · Bardo ${state.level} · ${state.level >= 3 ? (state.subclass === 'eloquence' ? 'Colegio de la Elocuencia' : 'Subclase manual') : 'Colegio en nivel 3'}`,
-      button('Editar características', 'stats') + button('Subir de nivel', 'levelup', ''),
-    ) +
-    `<div class="ability-grid">${Object.entries(R.attrs)
-      .map(
-        ([k, label]) =>
-          `<section class="card ability-box"><span>${label}</span><strong>${sign(d.mods[k])}</strong><span>Puntuación ${state.abilities[k]}</span></section>`,
-      )
-      .join(
-        '',
-      )}</div><div class="grid two section-space"><section class="card"><h2>Habilidades</h2><div class="skill-list">${R.skills.map(([id, name]) => `<div class="list-row"><span>${esc(name)}${state.expertise.includes(id) ? ' ◆' : state.proficiencies.includes(id) ? ' •' : ''}</span><button class="roll-button" data-action="skill-roll" data-id="${id}">${sign(R.skillBonus(state, id))}</button></div>`).join('')}</div><p class="small section-space">• Competencia · ◆ Pericia. Todos los bonos ya están incluidos. Percepción pasiva: ${10 + R.skillBonus(state, 'perception')}.</p></section><section class="card"><h2>Salvaciones</h2>${Object.entries(
-      R.attrs,
-    )
-      .map(
-        ([k, label]) =>
-          `<div class="list-row"><span>${label}</span><button class="roll-button" data-action="roll-save" data-ability="${k}">${sign(R.saveBonus(state, k))}</button></div>`,
-      )
-      .join(
-        '',
-      )}<div class="divider"></div><h3>Idiomas y competencias</h3><p class="small">Común, Élfico, Enano y Gnómico. Armaduras ligeras. Armas simples, ballesta de mano, espada larga, estoque y espada corta. Flauta, laúd, viola y herramientas de navegante.</p></section></div><section class="card section-space"><div class="card-header"><h2>Lo que podés hacer</h2>${button('Rasgo personalizado', 'feature-new')}</div>${R.features(
-      state,
-    )
-      .map(([name, text]) => `<div class="feature"><h3>${esc(name)}</h3><p>${esc(text)}</p></div>`)
-      .join('')}${state.features.length ? button('Editar rasgos propios', 'feature-manage') : ''}</section>`
+      )}</div><p class="small section-space">Equivalente: ${(total / 100).toLocaleString('es-AR', { maximumFractionDigits: 2 })} po. ${state.goldConfirmed ? '' : 'Confirmá gastos y recompensas.'}</p><div class="actions">${button('Ingreso / gasto', 'gold-transaction', '')}</div></section><section class="card ${state.classId ? 'legacy-only' : ''}"><div class="card-header"><h2>${esc(state.mule.name)}</h2><span class="tag">CA 10</span></div><div class="hp-number" style="font-size:2.8rem">${state.mule.hp ?? '—'}<small> / ${state.mule.max} PG</small></div><p class="small section-space">40 pies · Iniciativa +0 · Mediana<br>Pezuñas +2 · 1d4 + 2 contundente<br>Paso firme: ventaja FUE/DES contra derribo.</p><p class="small">Carga: 420 lb. Con carro: 2.100 lb incluido el carro. El DM maneja su conducta; no es un ataque adicional automático. Un personaje puede ir en el carro; la mula no es de un tamaño mayor que él.</p>${button('Editar mula', 'mule')}</section><section class="card ${state.classId ? 'legacy-only' : ''}"><h2>Comerciante gremial</h2><p class="small">Cuota: 5 po al mes. Herramientas de navegante: competencia confirmada, juego físico por confirmar. No se añadieron raciones, cuerda ni otros objetos que no tuvieras.</p></section></div></div>`
   );
 }
 function journal() {
@@ -470,46 +401,6 @@ function cast(id, ritual = false) {
         );
     },
     ritual ? 'Iniciar ritual' : 'Registrar lanzamiento',
-  );
-}
-function spellManage() {
-  const d = R.stats(state),
-    list = R.allSpells(state).filter(
-      x => x.level <= d.slots.length || state.known.includes(x.id) || state.extras.includes(x.id),
-    );
-  modal(
-    'Corregir repertorio',
-    `<p class="small">Para aprender al subir usá la guía. Acá podés corregir la ficha: ${d.known} conjuros conocidos (incluye Secretos mágicos) y ${d.cantrips} trucos normales. Extra DM no cuenta.</p><div class="catalog">${list.map(x => `<div class="list-row"><div><b>${esc(x.name)}</b><p>${x.level ? 'Nivel ' + x.level : 'Truco'} · ${esc(x.sourceKey || x.source)}</p></div><select class="control" style="max-width:150px" name="spell-${esc(x.id)}" aria-label="Estado de ${esc(x.name)}"><option value="no">No conocido</option><option value="known" ${state.known.includes(x.id) && !Progression.secret(state).includes(x.id) ? 'selected' : ''}>Conocido</option><option value="secret" ${Progression.secret(state).includes(x.id) ? 'selected' : ''}>Secreto mágico</option><option value="extra" ${state.extras.includes(x.id) ? 'selected' : ''}>Extra del DM</option></select></div>`).join('')}</div>`,
-    fd => {
-      let k = [],
-        ex = [],
-        sk = [];
-      for (let sp of list) {
-        let v = fd.get('spell-' + sp.id);
-        if (v === 'known' || v === 'secret') k.push(sp.id);
-        if (v === 'secret') sk.push(sp.id);
-        if (v === 'extra') ex.push(sp.id);
-        if (
-          v === 'known' &&
-          !state.known.includes(sp.id) &&
-          (!Progression.bard(sp, Progression.config(state)) || !Progression.enabled(sp, Progression.config(state)))
-        )
-          throw Error(
-            'Esa opción requiere otra fuente, la lista ampliada, Secretos mágicos o un regalo del DM. Habilitá fuentes en la guía.',
-          );
-      }
-      const maxSecrets = 2 * [10, 14, 18].filter(n => state.level >= n).length;
-      if (sk.length > maxSecrets) throw Error('Todavía no ganaste tantos Secretos mágicos.');
-      let trial = { ...state, known: k, secretKnown: sk };
-      if (Progression.spellCount(trial) > d.known || Progression.cantripCount(trial) > d.cantrips)
-        throw Error('Superás el máximo de conjuros o trucos conocidos.');
-      commit('Repertorio corregido', s => {
-        s.known = k;
-        s.extras = ex;
-        s.secretKnown = sk;
-        if (s.concentration && !k.includes(s.concentration) && !ex.includes(s.concentration)) s.concentration = null;
-      });
-    },
   );
 }
 function customSpell(id) {
@@ -752,7 +643,7 @@ function spellPage() {
 function settings() {
   modal(
     'Mi ficha',
-    `${field('Nombre', 'nombre', state.name, 'text', 'required maxlength="100"')}<div class="actions">${button('Ajustar recursos', 'resources')}${button('Características', 'stats')}${button('Foto del personaje', 'portrait-edit')}${button('Recurso personalizado', 'resource-new')}</div><div class="divider"></div><h3>Copias y dispositivos</h3><p class="small">Cada navegador guarda su propia ficha. Exportá un archivo JSON e importalo en el otro dispositivo. Borrar datos del navegador también borra la ficha local. No hay sincronización automática ni cuentas.</p><div class="actions">${button('Exportar JSON', 'backup', '')}${button('Importar JSON', 'import')}${button('Recuperar copia anterior', 'recover')}${rawBroken ? button('Descargar datos no legibles', 'raw-backup') : ''}</div><div class="divider"></div><p class="small">El nivel actual es ${state.level}. Los PG máximos ${state.hpConfirmed ? 'fueron confirmados' : 'están sugeridos con aumento fijo'}. Para impresiones, usá la versión PDF de tu ficha o la función del navegador.</p>${button('Reiniciar ficha', 'reset', 'danger')}`,
+    `${field('Nombre', 'nombre', state.name, 'text', 'required maxlength="100"')}<div class="actions">${button('Ajustar recursos', 'resources')}${button('Características', 'stats')}${button('Foto del personaje', 'portrait-edit')}${button('Recurso personalizado', 'resource-new')}</div><div class="divider"></div><h3>Copias y dispositivos</h3><p class="small">Cada navegador guarda su propia ficha. Exportá un archivo JSON e importalo en el otro dispositivo. Borrar datos del navegador también borra la ficha local. No hay sincronización automática ni cuentas.</p><div class="actions">${button('Exportar JSON', 'backup', '')}${button('Importar JSON', 'import')}${button('Recuperar copia anterior', 'recover')}${rawBroken ? button('Descargar datos no legibles', 'raw-backup') : ''}</div><div class="divider"></div><p class="small">El nivel actual es ${state.level}. Los PG máximos ${state.hpConfirmed ? 'fueron confirmados' : 'están sugeridos con aumento fijo'}. Para impresiones, usá la versión PDF de tu ficha o la función del navegador.</p>${button('Eliminar personaje', 'reset', 'danger')}`,
     fd => commit('Nombre actualizado', s => (s.name = String(fd.get('nombre')).trim())),
   );
 }
@@ -772,8 +663,6 @@ const actions = {
   'long-rest': longRest,
   levelup: levelup,
   'spell-manage': () => PartyUI.manageSpells(),
-  'spell-catalog': () => Learning.catalog(),
-  'learning-config': () => Learning.configure(),
   'spell-new': () => customSpell(),
   'spell-edit': e => customSpell(e.dataset.id),
   cast: e => cast(e.dataset.id),
@@ -822,17 +711,10 @@ const actions = {
   },
   reset: () =>
     confirmAction(
-      'Reiniciar ficha',
-      'Volverá a Darien nivel 2 y sus objetos iniciales. Exportá tu ficha si querés conservarla.',
-      () => {
-        const before = clone(state);
-        history.push(before);
-        state = R.initial();
-        rawBroken = null;
-        persist(before);
-        render();
-      },
-      'Reiniciar',
+      'Eliminar personaje',
+      'Se borra este personaje de este dispositivo. Exportá una copia antes si querés conservarlo.',
+      () => CharacterStorage.removeActive(),
+      'Eliminar',
     ),
   damage: () => {
     if (state.hp === null) throw Error('Confirmá primero tus PG actuales.');

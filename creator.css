@@ -2,14 +2,16 @@
 body.creator-open {
   overflow: hidden;
 }
-#creator {
+#creator,
+#levelup {
   position: fixed;
   inset: 0;
   z-index: 60;
   background: var(--bg);
   overflow: hidden;
 }
-#creator[hidden] {
+#creator[hidden],
+#levelup[hidden] {
   display: none;
 }
 .creator-shell {
@@ -156,6 +158,13 @@ body.creator-open {
 .creator-meta {
   color: var(--muted);
   font-size: 0.78rem;
+}
+.creator-card:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.req-missing {
+  color: var(--red);
 }
 .creator-brief {
   color: var(--muted);

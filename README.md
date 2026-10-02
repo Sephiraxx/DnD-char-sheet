@@ -10,8 +10,8 @@ En la primera visita, elegí **Crear personaje** o **Importar una ficha JSON**. 
 - El paso de conjuros aparece solo si la clase lanza a ese nivel: trucos, conocidos, preparados o libro de mago con sus límites, y los siempre preparados de la subclase.
 - El borrador se guarda en el dispositivo: «Salir» (o Esc) lo conserva y al volver se retoma. La aplicación no elige por vos; lo que quede pendiente aparece en la ficha.
 - Hay 13 clases: artificiero, bárbaro, bardo, clérigo, druida, guerrero, monje, paladín, explorador, pícaro, hechicero, brujo y mago.
-- Cada ficha tiene guardado, respaldo, historial de la sesión y borrador de subida independientes. Crear otra nunca reemplaza a Darien.
-- La primera visita muestra únicamente Crear personaje e Importar ficha. No abre a Darien ni crea un personaje de ejemplo. Si ya tenés una ficha guardada, abre la última seleccionada; los guardados antiguos de Darien se conservan.
+- Cada ficha tiene guardado, respaldo, historial de la sesión y borrador de subida independientes. Crear otra nunca reemplaza a las demás.
+- La primera visita muestra únicamente Crear personaje e Importar ficha. No crea un personaje de ejemplo. Si ya tenés una ficha guardada, abre la última seleccionada. Las fichas de la primera versión (sin clase) se convierten solas en fichas de bardo.
 - Elegí si empezás con recursos completos o si necesitás confirmar los actuales. Los objetos escritos en el inventario no modifican la CA automáticamente.
 - **Personaje → Características y armadura** permite ajustar velocidad, fórmula de CA y característica de lanzamiento.
 
@@ -47,7 +47,7 @@ Deshabilitar un libro conserva las elecciones previas. **Todo el catálogo → E
 
 **Clase** muestra la progresión de nivel 1 a 20, rasgos nuevos, subclase y elecciones pendientes. Incluye un índice de **118 subclases**, **151 opciones de rasgos** y **102 dotes** de las fuentes incluidas: estilos, maniobras, infusiones, Metamagia, invocaciones y pactos, entre otras.
 
-Al subir se registra el Dado de Golpe de tu clase, aumento de PG, competencia, espacios, subclase cuando corresponda y mejora de características o dote. Después, la pestaña Clase indica las elecciones de conjuros, preparación, Pericias y rasgos pendientes. Los PG actuales y recursos gastados se conservan: subir no equivale a descansar. Darien mantiene su guía de bardo y Elocuencia existente.
+**Subir de nivel** abre una guía paso a paso a pantalla completa, con solo los pasos que corresponden: qué ganás (rasgos, espacios, competencia), PG (promedio o tirada, digital o con tu dado), subclase, mejora de características o dote (con buscador), conjuros nuevos (trucos, conocidos, libro de mago y preparados, con sus límites) y opciones de clase (estilos, invocaciones, Metamagia, maniobras…) con sus requisitos; las invocaciones que piden un pacto se habilitan al elegirlo. Los PG actuales y recursos gastados se conservan: subir no equivale a descansar. Lo que quede sin elegir aparece como pendiente en Clase.
 
 Las opciones muestran requisitos de referencia. Los efectos de una dote, raza o elección especial deben aplicarse explícitamente en la ficha; un selector no sustituye la revisión de esos requisitos. Para decisiones internas de los rasgos (terrenos, enemigos, ascendencia, formas, objetos infundidos, etc.) usá **Notas de clase**. Podés añadir rasgos y contadores personalizados. Los rasgos opcionales se habilitan desde **Subclase y Pericias**; revisá cuáles reemplazan otros.
 
@@ -62,7 +62,7 @@ En **Conjuros → Agregar / preparar conjuros**:
 
 Se distinguen conjuros conocidos, preparados, libro de mago, conjuros siempre preparados por subclase, Secretos mágicos y Arcanum del brujo. El mago conserva los rituales del libro aunque no estén preparados. Los espacios de pacto tienen su nivel propio y se recuperan con descanso corto. Un conjuro extra no concede espacios adicionales.
 
-El catálogo contiene **524 conjuros**, todos con nombres de referencia y resúmenes de mesa en español. Se conservan las explicaciones detalladas previas de los conjuros principales de Darien. Los resúmenes explican la función del efecto; **no son traducciones íntegras de los libros** y no sustituyen sus tablas, estadísticas de invocaciones, excepciones ni todos los aumentos por espacio. Los nombres ingleses siguen disponibles para buscar. No se incluyen Unearthed Arcana ni las revisiones de 2024. Los 319 textos SRD originales se conservan en los datos como referencia, sin mostrarlos como descripción principal.
+El catálogo contiene **524 conjuros**, todos con nombres de referencia y resúmenes de mesa en español. Los resúmenes explican la función del efecto; **no son traducciones íntegras de los libros** y no sustituyen sus tablas, estadísticas de invocaciones, excepciones ni todos los aumentos por espacio. Los nombres ingleses siguen disponibles para buscar. No se incluyen Unearthed Arcana ni las revisiones de 2024. Los 319 textos SRD originales se conservan en los datos como referencia, sin mostrarlos como descripción principal.
 
 Caballero arcano y Embaucador arcano: las restricciones de escuelas y excepciones de aprendizaje se revisan en mesa. Los conjuros opcionales, reemplazos especiales y elecciones internas de listas de subclase pueden requerir registro manual.
 
@@ -141,7 +141,7 @@ El texto SRD está sujeto a esa licencia. La licencia de los datos estructurados
 
 ## Inicio sin personaje (v5.1)
 
-La pantalla inicial es genérica. Cancelar el creador o abrir un enlace directo a Combate o Conjuros no carga una ficha de ejemplo. El selector solo lista fichas realmente guardadas; las entradas vacías de versiones anteriores se ignoran. Si hay una ficha ilegible, se conserva y se ofrece descargar sus datos. Verificado el inicio nuevo, creación, importación, conservación de Darien y uso sin conexión.
+La pantalla inicial es genérica. Cancelar el creador o abrir un enlace directo a Combate o Conjuros no carga una ficha de ejemplo. El selector solo lista fichas realmente guardadas; las entradas vacías de versiones anteriores se ignoran. Si hay una ficha ilegible, se conserva y se ofrece descargar sus datos. Verificado el inicio nuevo, creación, importación, conversión de fichas antiguas y uso sin conexión.
 
 ## Desarrollo
 

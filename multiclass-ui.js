@@ -103,7 +103,6 @@ const MulticlassUI = (() => {
   // Tarjetas de clases secundarias para la pestaña Clase.
   function section() {
     const list = C.views(state).slice(1);
-    if (!state.classId) return '';
     const st = Rules.stats(state);
     return `<section class="card section-space"><div class="card-header"><h2>Multiclase</h2>${button('Subir de nivel', 'levelup', '')}</div>
       <p>Nivel de personaje <b>${C.totalLevel(state)}</b> · Competencia ${sign(st.prof)} · Dados de Golpe ${st.hitDiceSet.map(x => x.count + 'd' + x.die).join(' + ')}${st.pact ? ` · Pacto mágico: ${st.pact.max} espacio(s) de nivel ${st.pact.level}` : ''}</p>
@@ -122,7 +121,7 @@ const MulticlassUI = (() => {
 
   function install() {
     Object.assign(actions, {
-      levelup: () => (state.classId ? chooser() : PartyUI.levelup()),
+      levelup: () => chooser(),
     });
   }
   return { label, section, install };

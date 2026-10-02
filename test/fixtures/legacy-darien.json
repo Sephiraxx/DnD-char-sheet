@@ -1,0 +1,252 @@
+{
+  "schema": 1,
+  "combatState": {
+    "active": false,
+    "onTurn": false,
+    "turn": 0,
+    "action": null,
+    "bonus": null,
+    "spells": [],
+    "effects": [],
+    "checks": []
+  },
+  "secretKnown": [],
+  "progression": {
+    "sources": ["PHB"],
+    "expanded": false,
+    "versatility": false,
+    "magical": false,
+    "feats": false,
+    "learnedFeats": []
+  },
+  "name": "Darien Voss",
+  "level": 2,
+  "subclass": "eloquence",
+  "abilities": {
+    "str": 8,
+    "dex": 15,
+    "con": 14,
+    "int": 12,
+    "wis": 10,
+    "cha": 17
+  },
+  "proficiencies": ["stealth", "arcana", "investigation", "perception", "insight", "deception", "persuasion"],
+  "expertise": [],
+  "hpBase": 13,
+  "hpConfirmed": false,
+  "hp": null,
+  "temp": 0,
+  "acBase": 11,
+  "acBonus": 0,
+  "slotsSpent": [null, null, null, null, null, null, null, null, null],
+  "inspirationSpent": null,
+  "hdSpent": null,
+  "reactionUsed": false,
+  "concentration": null,
+  "conditions": [],
+  "death": {
+    "success": 0,
+    "failure": 0
+  },
+  "known": ["mockery", "illusion", "healingword", "sleep", "faeriefire", "laughter"],
+  "extras": ["detectmagic"],
+  "customSpells": [],
+  "features": [],
+  "extraResources": [],
+  "gold": {
+    "cp": 0,
+    "sp": 0,
+    "ep": 0,
+    "gp": 15,
+    "pp": 0
+  },
+  "goldConfirmed": false,
+  "inventory": [
+    {
+      "id": "item0",
+      "name": "Estoque",
+      "qty": 1,
+      "category": "Armas",
+      "notes": "1d8 + DES perforante. Sutileza.",
+      "weight": null,
+      "location": "Sin asignar"
+    },
+    {
+      "id": "item1",
+      "name": "Daga",
+      "qty": 1,
+      "category": "Armas",
+      "notes": "1d4 + DES perforante. Ligera, sutileza; arrojada 20/60 pies.",
+      "weight": null,
+      "location": "Sin asignar"
+    },
+    {
+      "id": "item2",
+      "name": "Armadura de cuero",
+      "qty": 1,
+      "category": "Equipo",
+      "notes": "CA 11 + DES.",
+      "weight": null,
+      "location": "Sin asignar"
+    },
+    {
+      "id": "item3",
+      "name": "Flauta",
+      "qty": 1,
+      "category": "Equipo",
+      "notes": "Foco de bardo.",
+      "weight": null,
+      "location": "Sin asignar"
+    },
+    {
+      "id": "item4",
+      "name": "Cofre",
+      "qty": 1,
+      "category": "Paquete",
+      "notes": "Contenedor del paquete de diplomático.",
+      "weight": null,
+      "location": "Sin asignar"
+    },
+    {
+      "id": "item5",
+      "name": "Estuche de mapas y pergaminos",
+      "qty": 2,
+      "category": "Paquete",
+      "notes": "Vacíos; sin mapas ni pergaminos mágicos.",
+      "weight": null,
+      "location": "Sin asignar"
+    },
+    {
+      "id": "item6",
+      "name": "Ropa fina",
+      "qty": 1,
+      "category": "Paquete",
+      "notes": "Un conjunto.",
+      "weight": null,
+      "location": "Sin asignar"
+    },
+    {
+      "id": "item7",
+      "name": "Frasco de tinta",
+      "qty": 1,
+      "category": "Paquete",
+      "notes": "",
+      "weight": null,
+      "location": "Sin asignar"
+    },
+    {
+      "id": "item8",
+      "name": "Pluma de escritura",
+      "qty": 1,
+      "category": "Paquete",
+      "notes": "",
+      "weight": null,
+      "location": "Sin asignar"
+    },
+    {
+      "id": "item9",
+      "name": "Lámpara",
+      "qty": 1,
+      "category": "Paquete",
+      "notes": "Luz brillante 15 pies, tenue otros 30. Aceite: 6 horas por frasco.",
+      "weight": null,
+      "location": "Sin asignar"
+    },
+    {
+      "id": "item10",
+      "name": "Frasco de aceite",
+      "qty": 2,
+      "category": "Consumibles",
+      "notes": "No se enciende automáticamente.",
+      "weight": null,
+      "location": "Sin asignar"
+    },
+    {
+      "id": "item11",
+      "name": "Hoja de papel",
+      "qty": 5,
+      "category": "Consumibles",
+      "notes": "",
+      "weight": null,
+      "location": "Sin asignar"
+    },
+    {
+      "id": "item12",
+      "name": "Vial de perfume",
+      "qty": 1,
+      "category": "Paquete",
+      "notes": "",
+      "weight": null,
+      "location": "Sin asignar"
+    },
+    {
+      "id": "item13",
+      "name": "Lacre",
+      "qty": 1,
+      "category": "Paquete",
+      "notes": "Cantidad sin especificar; 1 entrada de inventario.",
+      "weight": null,
+      "location": "Sin asignar"
+    },
+    {
+      "id": "item14",
+      "name": "Jabón",
+      "qty": 1,
+      "category": "Paquete",
+      "notes": "Cantidad sin especificar; 1 entrada de inventario.",
+      "weight": null,
+      "location": "Sin asignar"
+    },
+    {
+      "id": "item15",
+      "name": "Carta de presentación del gremio",
+      "qty": 1,
+      "category": "Equipo",
+      "notes": "",
+      "weight": null,
+      "location": "Sin asignar"
+    },
+    {
+      "id": "item16",
+      "name": "Ropa de viajero",
+      "qty": 1,
+      "category": "Equipo",
+      "notes": "Un conjunto.",
+      "weight": null,
+      "location": "Sin asignar"
+    },
+    {
+      "id": "item17",
+      "name": "Bolsa de monedas",
+      "qty": 1,
+      "category": "Equipo",
+      "notes": "Las monedas se registran en la bolsa de oro.",
+      "weight": null,
+      "location": "Sin asignar"
+    },
+    {
+      "id": "item18",
+      "name": "Carro",
+      "qty": 1,
+      "category": "Transporte",
+      "notes": "200 lb de peso estándar.",
+      "weight": null,
+      "location": "Sin asignar"
+    }
+  ],
+  "mule": {
+    "name": "Mula",
+    "hp": null,
+    "max": 11,
+    "notes": ""
+  },
+  "notes": "Llegamos a la ciudad después de escapar de un dragón. Darien alcanzó nivel 2.",
+  "companion": {
+    "name": "Nombre por definir",
+    "notes": "Elfa noble, sexta hija del rey. Esposa de Darien; autorizada a viajar con él. Pelo largo castaño claro y ropa elegante y práctica."
+  },
+  "log": [],
+  "levelHistory": [],
+  "universalSpent": 0,
+  "infectiousSpent": 0
+}

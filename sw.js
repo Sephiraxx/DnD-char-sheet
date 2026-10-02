@@ -1,5 +1,5 @@
 const PREFIX = 'darien:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v33-creature-fx';
+const CACHE = PREFIX + 'v35-cleanup';
 const FILES = [
   './',
   './index.html',
@@ -22,8 +22,6 @@ const FILES = [
   './combat-ui.js',
   './app.js',
   './catalog.js',
-  './progression.js',
-  './wizard.js',
   './manifest.webmanifest',
   './assets/icon.svg',
   './party.css',
@@ -31,6 +29,7 @@ const FILES = [
   './creature-fx.css',
   './creator.css',
   './creator.js',
+  './levelup.js',
   './fx.js',
   './config.js',
   './cloud.js',

@@ -225,7 +225,7 @@ function combatOption(id) {
             `min="1" max="${d.inspirationDie}" required`,
           ) + button('Tirar d' + d.inspirationDie, 'combat-inspiration-roll')
         : '<label class="check"><input type="checkbox" required>Es otra criatura a 60 pies que me oye y no tiene ya otro dado de Inspiración bárdica.</label>');
-  if (o.weapon || (id === 'opportunity' && !state.classId))
+  if (o.weapon)
     html += `<p class="roll-reference">Estoque: ataque ${sign(d.mods.dex + d.prof)} · daño 1d8 ${sign(d.mods.dex)}.<br>Daga: ataque ${sign(d.mods.dex + d.prof)} · daño 1d4 ${sign(d.mods.dex)}.</p><p class="small">Resolvé el d20 y el impacto en mesa. Registrar consume ${id === 'opportunity' ? 'la reacción' : 'la acción'}, aunque falle el ataque.</p>`;
   if (id === 'opportunity' && state.classId)
     html +=

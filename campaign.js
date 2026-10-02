@@ -327,9 +327,8 @@ const Campaign = (() => {
   }
   // Origen e identidad: raza, trasfondo, idiomas, competencias y velocidad en una sola tarjeta.
   function sheetOrigins() {
-    const legacy = !state.classId,
-      p = legacy ? null : proficiencyText(state);
-    return `<section class="card section-space"><div class="card-header"><h2>Origen e identidad</h2>${button('Editar', 'party-identity')}</div><div class="grid two"><div><h3>${esc(state.race || (legacy ? 'Semielfo' : 'Raza por registrar'))}</h3>${originInfo(race(state), 'race')}</div><div><h3>${esc(state.background || (legacy ? 'Comerciante gremial' : 'Trasfondo por registrar'))}</h3>${originInfo(background(state), 'background')}</div></div><div class="divider"></div><p><b>Idiomas que hablás:</b> ${state.languages ? esc(state.languages) : legacy ? 'Común, Élfico, Enano, Gnómico' : '<span class="muted">elegilos con «Editar»; la raza y el trasfondo indican cuántos</span>'}</p>${p ? `<p><b>Armaduras:</b> ${esc(p.armor)}. <b>Armas:</b> ${esc(p.weapons)}.</p><p class="small muted">Calculado con tu clase, subclase, raza y multiclase. Herramientas y otras competencias: «Competencias» o «Rasgos y notas».</p>` : ''}</section>`;
+    const p = proficiencyText(state);
+    return `<section class="card section-space"><div class="card-header"><h2>Origen e identidad</h2>${button('Editar', 'party-identity')}</div><div class="grid two"><div><h3>${esc(state.race || 'Raza por registrar')}</h3>${originInfo(race(state), 'race')}</div><div><h3>${esc(state.background || 'Trasfondo por registrar')}</h3>${originInfo(background(state), 'background')}</div></div><div class="divider"></div><p><b>Idiomas que hablás:</b> ${state.languages ? esc(state.languages) : '<span class="muted">elegilos con «Editar»; la raza y el trasfondo indican cuántos</span>'}</p>${p ? `<p><b>Armaduras:</b> ${esc(p.armor)}. <b>Armas:</b> ${esc(p.weapons)}.</p><p class="small muted">Calculado con tu clase, subclase, raza y multiclase. Herramientas y otras competencias: «Competencias» o «Rasgos y notas».</p>` : ''}</section>`;
   }
   function glossary() {
     const d = Rules.stats(state),
