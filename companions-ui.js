@@ -80,11 +80,11 @@ const CompanionsUI = (() => {
     );
     modal(
       wild ? 'Forma salvaje' : 'Añadir compañero',
-      `${wild ? `<p class="small">Druida nivel ${lim.level}: bestias de VD ${crText(lim.cr)} o menos${lim.fly ? '' : ', sin vuelo'}${lim.swim ? '' : ', sin nado'}. Gasta un uso de Forma salvaje.</p>` : select('Tipo', 'kind', Object.entries(K.KINDS), 'familiar')}<input class="control" id="cmp-search" type="search" placeholder="Buscar criatura (en inglés)" aria-label="Buscar criatura"><div class="magic-pick-list">${list
+      `${wild ? `<p class="small">Druida nivel ${lim.level}: bestias de VD ${crText(lim.cr)} o menos${lim.fly ? '' : ', sin vuelo'}${lim.swim ? '' : ', sin nado'}. Gasta un uso de Forma salvaje.</p>` : select('Tipo', 'kind', Object.entries(K.KINDS), 'familiar')}<input class="control" id="cmp-search" type="search" placeholder="Buscar criatura (español o inglés)" aria-label="Buscar criatura"><div class="magic-pick-list">${list
         .slice(0, 400)
         .map(
           m =>
-            `<button type="button" class="magic-pick cmp-pick" data-action="${wild ? 'ws-pick' : 'cmp-pick'}" data-id="${esc(m.id)}" data-q="${esc(m.name.toLowerCase())}"><b>${esc(m.name)}</b><span class="small muted">VD ${crText(m.cr)} · CA ${m.ac} · PG ${m.hp} · ${esc(K.speedEs(m.speed))}</span></button>`,
+            `<button type="button" class="magic-pick cmp-pick" data-action="${wild ? 'ws-pick' : 'cmp-pick'}" data-id="${esc(m.id)}" data-q="${esc((m.name + ' ' + (m.english || '')).toLowerCase())}"><b>${esc(m.name)}</b><span class="small muted">VD ${crText(m.cr)} · CA ${m.ac} · PG ${m.hp} · ${esc(K.speedEs(m.speed))}</span></button>`,
         )
         .join(
           '',

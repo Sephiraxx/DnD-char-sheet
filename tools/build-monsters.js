@@ -106,7 +106,7 @@ const monsters = src.map(m => ({
 const out =
   '/* Monstruos del SRD 5.1 (CC-BY-4.0, Wizards of the Coast), datos de 5e-bits. Generado por tools/build-monsters.js. */\n' +
   '(function(r){r.MonsterData=' +
-  JSON.stringify(monsters) +
+  JSON.stringify(monsters.map(require('./monsters-es.js').translate)) +
   ';})(typeof window!=="undefined"?window:globalThis);\n';
 fs.writeFileSync('monsters-data.js', out);
 console.log(monsters.length + ' monstruos, ' + Math.round(out.length / 1024) + ' KB');

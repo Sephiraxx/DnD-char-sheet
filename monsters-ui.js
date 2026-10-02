@@ -129,7 +129,9 @@ const MonsterUI = (() => {
     if (!box) return;
     const q = query.trim().toLowerCase();
     const list = MonsterData.filter(
-      m => (!q || m.name.toLowerCase().includes(q) || m.type.includes(q)) && (crMax === '' || m.cr <= Number(crMax)),
+      m =>
+        (!q || (m.name + ' ' + (m.english || '')).toLowerCase().includes(q) || m.type.includes(q)) &&
+        (crMax === '' || m.cr <= Number(crMax)),
     )
       .sort((a, b) => a.cr - b.cr || a.name.localeCompare(b.name))
       .slice(0, 40);
@@ -210,11 +212,19 @@ const MonsterUI = (() => {
   }
   function saveBonuses(m) {
     const out = Object.fromEntries(ABIL.map((a, i) => [a, mod(m.ab[i])]));
-    const names = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' };
+    // Abreviaturas en inglés (datos viejos) o en español (FUE, DES, CON, INT, SAB, CAR).
+    const names = {
+      str: ['STR', 'FUE'],
+      dex: ['DEX', 'DES'],
+      con: ['CON'],
+      int: ['INT'],
+      wis: ['WIS', 'SAB'],
+      cha: ['CHA', 'CAR'],
+    };
     for (const part of String(m.saves || '').split(',')) {
       const x = /([A-Z]{3})\s*\+(\d+)/i.exec(part.trim());
       if (!x) continue;
-      const key = Object.keys(names).find(k => names[k] === x[1].toUpperCase());
+      const key = Object.keys(names).find(k => names[k].includes(x[1].toUpperCase()));
       if (key) out[key] = Number(x[2]);
     }
     return out;

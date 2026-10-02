@@ -66,8 +66,8 @@
       sp = String(m.speed || '');
     if (m.type !== 'bestia') return 'Solo bestias.';
     if (m.cr > lim.cr) return `VD máximo ${lim.cr < 1 ? (lim.cr === 0.25 ? '1/4' : '1/2') : lim.cr} a tu nivel.`;
-    if (/fly/.test(sp) && !lim.fly) return 'Sin velocidad de vuelo hasta nivel 8.';
-    if (/swim/.test(sp) && !lim.swim) return 'Sin velocidad de nado hasta nivel 4.';
+    if (/fly|vuelo/.test(sp) && !lim.fly) return 'Sin velocidad de vuelo hasta nivel 8.';
+    if (/swim|nado/.test(sp) && !lim.swim) return 'Sin velocidad de nado hasta nivel 4.';
     return '';
   }
   function startWildShape(s, m) {
