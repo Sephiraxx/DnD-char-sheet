@@ -22,6 +22,11 @@
       classSubclass: mc.subclass || '',
       subclass: '',
       classChoices: mc.choices || {},
+      known: mc.spells || [],
+      prepared: mc.prepared || [],
+      extras: [],
+      secretKnown: [],
+      arcanum: {},
       castingAbility: undefined,
       multiclass: [],
       _total: totalLevel(s),
@@ -222,11 +227,32 @@
     };
   }
 
+  // Conjuros que puede lanzar una sola clase: trucos, conocidos y, si prepara, solo los preparados.
+  function ownUsable(v) {
+    const mode = casting(v).type,
+      g = granted(v);
+    return [
+      ...(v.known || []).filter(x => {
+        const sp = R()
+          .allSpells(v)
+          .find(y => y.id === x);
+        return sp?.level === 0 || !['book', 'prepared'].includes(mode) || (v.prepared || []).includes(x);
+      }),
+      ...g.prepared,
+      ...g.known,
+    ];
+  }
+  // Qué clase lanza un conjuro (para la CD y el ataque): la principal o una secundaria de la multiclase.
+  function spellCaster(s, spellId) {
+    if (s._total) return s;
+    return views(s).find(v => ownUsable(v).includes(spellId)) || s;
+  }
   function usable(s) {
     const mode = casting(s).type,
       g = granted(s);
     return [
       ...new Set([
+        ...(s._total ? [] : views(s).slice(1).flatMap(ownUsable)),
         ...s.known.filter(x => {
           const sp = R()
             .allSpells(s)
@@ -528,6 +554,17 @@
           throw Error('Subclase secundaria incompatible.');
         if (mc.notes !== undefined && (typeof mc.notes !== 'string' || mc.notes.length > 5000))
           throw Error('Notas de clase inválidas.');
+        const ids = x => Array.isArray(x) && x.length <= 300 && x.every(v => typeof v === 'string' && v.length <= 100);
+        if ((mc.spells !== undefined && !ids(mc.spells)) || (mc.prepared !== undefined && !ids(mc.prepared)))
+          throw Error('Conjuros de clase secundaria inválidos.');
+        if (
+          mc.choices !== undefined &&
+          (!mc.choices ||
+            typeof mc.choices !== 'object' ||
+            Array.isArray(mc.choices) ||
+            Object.values(mc.choices).some(v => !ids(v)))
+        )
+          throw Error('Opciones de clase secundaria inválidas.');
       }
       if (totalLevel(s) > 20) throw Error('El nivel total no puede superar 20.');
     }
@@ -708,6 +745,7 @@
     spellGrant,
     spellCounts,
     usable,
+    spellCaster,
     ritualAllowed,
     resources,
     spent,

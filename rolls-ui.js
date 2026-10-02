@@ -344,10 +344,13 @@ const RollUI = (() => {
   const chosen = fd => fd.getAll('who');
 
   let spellSession = null;
+  // Con multiclase, cada conjuro usa la CD y el ataque de la clase que lo lanza.
+  const caster = sp => Classes.spellCaster(state, sp.id);
+  const spellStats = sp => R.stats(caster(sp));
   function spell(sp, slot = sp.level) {
     const info = spellInfo(sp, slot),
-      st = R.stats(state),
-      ability = Classes.casting(state).ability,
+      st = spellStats(sp),
+      ability = Classes.casting(caster(sp)).ability,
       mod = st.mods[ability];
     spellSession = { sp, info, crit: false, hitTarget: null, slot };
     const mods = conditionMods(state, 'attack');
@@ -372,7 +375,7 @@ const RollUI = (() => {
   }
   function spellAttack() {
     const { sp } = spellSession,
-      st = R.stats(state),
+      st = spellStats(sp),
       fd = new FormData(document.getElementById('dialog-form')),
       r = readD20(fd),
       extra = readBonus(fd),
@@ -423,8 +426,8 @@ const RollUI = (() => {
   function spellDamage() {
     const { sp, info } = spellSession,
       fd = new FormData(document.getElementById('dialog-form')),
-      st = R.stats(state),
-      mod = fd.has('spellMod') ? st.mods[Classes.casting(state).ability] : 0;
+      st = spellStats(sp),
+      mod = fd.has('spellMod') ? st.mods[Classes.casting(caster(sp)).ability] : 0;
     const own = fd.get('myDamage'),
       m = /^\s*(\d+)d(\d+)\s*(?:\+\s*(\d+))?\s*$/.exec(String(fd.get('spellDice') || ''));
     // El bono fijo de los dados («3d4+3») también se suma a los dados físicos.
@@ -473,7 +476,7 @@ const RollUI = (() => {
   // Aplica el resultado del conjuro: curación a aliados, daño a la criatura impactada o salvaciones al DM.
   async function applySpellResult(fd, total) {
     const { sp, info } = spellSession,
-      st = R.stats(state),
+      st = spellStats(sp),
       who = chosen(fd),
       t = TableUI.targets();
     if (info.heal && who.length) {

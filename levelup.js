@@ -1,6 +1,8 @@
-/* Subir de nivel (clase principal), paso a paso y a pantalla completa como el creador:
-   qué ganás, PG, subclase, mejora o dote, conjuros nuevos, opciones de clase y revisión.
-   Solo aparecen los pasos que corresponden a ese nivel. Los datos los aplica Classes.levelUp. */
+/* Subir de nivel, paso a paso y a pantalla completa como el creador: qué ganás, PG, subclase,
+   mejora o dote, conjuros nuevos, opciones de clase y revisión. Solo aparecen los pasos que
+   corresponden a ese nivel. Funciona igual para la clase principal y para una clase secundaria
+   (multiclase): la secundaria se trabaja como una ficha virtual de esa clase y al final se copia
+   a su entrada de multiclase. Los datos los aplica Classes.levelUp. */
 const LevelUp = (() => {
   'use strict';
   const C = Classes,
@@ -30,8 +32,19 @@ const LevelUp = (() => {
   // ---------- Estado provisional ----------
   // El personaje como quedaría con las elecciones de hasta ahora (sin los conjuros ni opciones nuevas).
   // Modo «opciones de clase»: sin subir de nivel, se eligen o cambian estilos, invocaciones, maniobras…
-  let editMode = false;
+  let editMode = false,
+    spellsOnly = false,
+    target = '';
+  // Ficha virtual de una clase secundaria: su nivel, subclase, conjuros y opciones, con el resto del personaje.
+  function virtualOf(s, classId) {
+    const tmp = clone(s);
+    tmp.multiclass = [...(tmp.multiclass || [])];
+    if (!tmp.multiclass.some(x => x.classId === classId))
+      tmp.multiclass.push({ classId, level: 0, subclass: '', notes: '' });
+    return clone(C.views(tmp).find((v, i) => i && v.classId === classId));
+  }
   function next() {
+    if (spellsOnly) return clone(base);
     if (editMode) return { ...clone(base), classChoices: {} };
     // Con la mejora todavía incompleta se calcula sin aplicarla (una dote cualquiera solo para la vista previa).
     const nd = needs(),
@@ -88,6 +101,11 @@ const LevelUp = (() => {
       .filter(g => g.count > g.have);
   }
   function steps() {
+    if (spellsOnly)
+      return [
+        ['spells', 'Conjuros'],
+        ['review', 'Revisar'],
+      ];
     if (editMode)
       return [
         ['choices', 'Opciones de clase'],
@@ -109,14 +127,22 @@ const LevelUp = (() => {
   }
 
   // ---------- Abrir / cerrar ----------
-  function chooseOptions() {
-    if (!C.choices(state).length) throw Error('Tu clase no tiene opciones para elegir a este nivel.');
-    start(true);
+  function chooseOptions(classId = '') {
+    const v = classId ? virtualOf(state, classId) : state;
+    if (!C.choices(v).length) throw Error('Esa clase no tiene opciones para elegir a este nivel.');
+    start(true, classId);
   }
-  function start(options = false) {
+  // Clase secundaria: subir de nivel (o sumarla), elegir sus opciones o sus conjuros.
+  function startFor(classId, mode = 'levelup') {
+    if (mode === 'options') return chooseOptions(classId);
+    start(mode === 'spells' ? 'spells' : false, classId);
+  }
+  function start(options = false, classId = '') {
     editMode = options === true;
-    if (!editMode && R.totalLevel(state) >= 20) throw Error('Ya estás en nivel 20 de personaje.');
-    base = clone(state);
+    spellsOnly = options === 'spells';
+    target = classId && classId !== state.classId ? classId : '';
+    if (!editMode && !spellsOnly && R.totalLevel(state) >= 20) throw Error('Ya estás en nivel 20 de personaje.');
+    base = target ? virtualOf(state, target) : clone(state);
     const c = C.info(base);
     d = {
       hpMethod: 'fixed',
@@ -169,14 +195,14 @@ const LevelUp = (() => {
     const id = list[step][0],
       top = host.querySelector('.creator-body')?.scrollTop || 0,
       c = C.info(base);
-    host.innerHTML = `<div class="creator-shell"><header class="creator-head"><div><p class="eyebrow">${editMode ? `OPCIONES DE CLASE · ${esc(c.name).toUpperCase()} ${base.level}` : `SUBIR DE NIVEL · ${esc(c.name).toUpperCase()} ${base.level} → ${at()}`} · PASO ${step + 1} DE ${list.length}</p><h1>${esc(list[step][1])}</h1></div><div class="actions">${btn('Salir', 'close', 'secondary')}</div></header><nav class="creator-rail" aria-label="Pasos">${list
+    host.innerHTML = `<div class="creator-shell"><header class="creator-head"><div><p class="eyebrow">${editMode ? `OPCIONES DE CLASE · ${esc(c.name).toUpperCase()} ${base.level}` : spellsOnly ? `CONJUROS · ${esc(c.name).toUpperCase()} ${base.level}` : `${target && !base.level ? 'SUMAR CLASE' : 'SUBIR DE NIVEL'} · ${esc(c.name).toUpperCase()} ${target && !base.level ? at() : base.level + ' → ' + at()}`}${target ? ' · MULTICLASE' : ''} · PASO ${step + 1} DE ${list.length}</p><h1>${esc(list[step][1])}</h1></div><div class="actions">${btn('Salir', 'close', 'secondary')}</div></header><nav class="creator-rail" aria-label="Pasos">${list
       .map(
         ([, label], i) =>
           `<button type="button" class="creator-step ${i === step ? 'cur' : i < step ? 'done' : ''}" data-lv="go" data-i="${i}" ${i > step ? 'disabled' : ''}>${i < step ? '✓ ' : i + 1 + ' · '}${esc(label)}</button>`,
       )
       .join(
         '',
-      )}</nav><form class="creator-body" id="levelup-form" novalidate><div id="levelup-error" class="creator-error" role="alert"></div>${body(id)}</form><footer class="creator-foot"><p class="creator-summary">${summary()}</p><div class="actions">${step ? btn('Atrás', 'back', 'secondary') : ''}${btn(id === 'review' ? (editMode ? 'Guardar' : 'Confirmar subida') : 'Siguiente', 'next')}</div></footer></div>`;
+      )}</nav><form class="creator-body" id="levelup-form" novalidate><div id="levelup-error" class="creator-error" role="alert"></div>${body(id)}</form><footer class="creator-foot"><p class="creator-summary">${summary()}</p><div class="actions">${step ? btn('Atrás', 'back', 'secondary') : ''}${btn(id === 'review' ? (editMode || spellsOnly ? 'Guardar' : 'Confirmar subida') : 'Siguiente', 'next')}</div></footer></div>`;
     const b = host.querySelector('.creator-body');
     if (b) b.scrollTop = top;
   }
@@ -214,7 +240,9 @@ const LevelUp = (() => {
       nd.subclass ? '<li><b>Elegís tu subclase</b></li>' : '',
       nd.asi ? '<li><b>Mejora de características o dote</b></li>' : '',
     ].filter(Boolean);
-    return `<section class="card"><h2>${esc(C.info(base).name)} ${at()}</h2><ul class="creator-list levelup-gains">${items.join('') || '<li>Mejoras de recursos y de rasgos que ya tenés.</li>'}</ul><p class="small">Subir de nivel no es un descanso: los recursos gastados se conservan.</p></section>`;
+    const mcNote =
+      target && typeof MulticlassUI !== 'undefined' ? MulticlassUI.joinNotes(state, target, !base.level) : '';
+    return `${mcNote}<section class="card"><h2>${esc(C.info(base).name)} ${at()}${target ? ' · nivel de personaje ' + (R.totalLevel(state) + 1) : ''}</h2><ul class="creator-list levelup-gains">${items.join('') || '<li>Mejoras de recursos y de rasgos que ya tenés.</li>'}</ul><p class="small">Subir de nivel no es un descanso: los recursos gastados se conservan.</p></section>`;
   }
 
   // 2. PG
@@ -357,6 +385,8 @@ const LevelUp = (() => {
       );
       return `<section class="creator-spells"><div class="card-header"><h2>${title}</h2><span class="tag">${mine.length} de ${max}</span></div>${hint ? `<p class="small">${hint}</p>` : ''}<div class="creator-grid small-cards">${shown.map(s => card(kind, s, mine.includes(s.id))).join('')}</div></section>`;
     };
+    if (!sp.cantrips && !sp.known && !sp.book && !['prepared', 'book'].includes(sp.type))
+      return '<p>No hay conjuros nuevos para elegir en esta clase por ahora.</p>';
     let out = `<div class="creator-search"><input type="search" name="q" value="${esc(q)}" placeholder="Buscar conjuro" aria-label="Buscar conjuro"></div>`;
     if (sp.cantrips)
       out += section(
@@ -444,6 +474,18 @@ const LevelUp = (() => {
 
   // 7. Revisión
   function review() {
+    if (spellsOnly) {
+      const names = ids => ids.map(id => Catalog.spells.find(x => x.id === id)?.name || id).join(', ');
+      return `<section class="card"><h2>${esc(C.info(base).name)} · conjuros</h2><ul class="creator-list">${
+        [
+          d.cantrips.length ? `<li>Trucos nuevos: ${esc(names(d.cantrips))}</li>` : '',
+          d.known.length ? `<li>Conjuros nuevos: ${esc(names(d.known))}</li>` : '',
+          ['prepared', 'book'].includes(spellPlan().type)
+            ? `<li>Preparados: ${esc(names(d.prepared)) || 'ninguno'}</li>`
+            : '',
+        ].join('') || '<li>Sin cambios.</li>'
+      }</ul></section>`;
+    }
     if (editMode)
       return `<section class="card"><h2>${esc(base.name)} · opciones de clase</h2><ul class="creator-list">${
         Object.entries(d.choices)
@@ -470,6 +512,9 @@ const LevelUp = (() => {
         : '',
       d.cantrips.length ? `<li>Trucos: ${esc(names(d.cantrips))}</li>` : '',
       d.known.length ? `<li>Conjuros: ${esc(names(d.known))}</li>` : '',
+      ['prepared', 'book'].includes(spellPlan().type) && d.prepared.length
+        ? `<li>Preparados: ${esc(names(d.prepared))}</li>`
+        : '',
       ...Object.entries(d.choices)
         .filter(([, v]) => v.length)
         .map(
@@ -501,14 +546,91 @@ const LevelUp = (() => {
       else fx()?.checkPicks(d.feat, base, featPicks());
     }
   }
+  // Conjuros, opciones y dote elegidos, sobre la ficha ya subida (n).
+  function applyPicks(n, picks) {
+    const sp = spellPlan(n),
+      lvl = id => R.allSpells(n).find(x => x.id === id)?.level;
+    n.known = [...new Set([...(n.known || []), ...picks.cantrips, ...picks.known])];
+    if (sp.type === 'book') n.prepared = picks.prepared.filter(id => n.known.includes(id));
+    // Clérigo, druida, paladín y artífice: lo preparado es su repertorio (además de los trucos).
+    if (sp.type === 'prepared') {
+      n.prepared = picks.prepared.slice();
+      n.known = [...new Set([...n.known.filter(id => lvl(id) === 0), ...n.prepared])];
+    }
+    for (const [g, ids] of Object.entries(picks.choices))
+      n.classChoices = { ...(n.classChoices || {}), [g]: [...new Set([...(n.classChoices?.[g] || []), ...ids])] };
+    return n;
+  }
+  // Copia una clase secundaria trabajada en su ficha virtual (n) a la ficha real (s).
+  function writeBack(s, n, full) {
+    s.multiclass = [...(s.multiclass || [])];
+    let mc = s.multiclass.find(x => x.classId === target);
+    if (!mc) s.multiclass.push((mc = { classId: target, level: 0, subclass: '', notes: '' }));
+    const type = C.casting(n).type;
+    mc.level = n.level;
+    mc.subclass = n.classSubclass || mc.subclass || '';
+    mc.spells = (n.known || []).slice();
+    if (['prepared', 'book'].includes(type)) mc.prepared = (n.prepared || []).slice();
+    else delete mc.prepared;
+    mc.choices = clone(n.classChoices || {});
+    if (full)
+      for (const k of ['hpBase', 'abilities', 'proficiencies', 'expertise', 'progression', 'features'])
+        s[k] = clone(n[k]);
+  }
   function apply() {
     const picks = d;
+    if (spellsOnly) {
+      commit('Conjuros actualizados', s => {
+        const n = applyPicks(target ? virtualOf(s, target) : clone(s), { ...picks, choices: {} });
+        if (target) writeBack(s, n, false);
+        else Object.assign(s, { known: n.known, prepared: n.prepared });
+        Object.assign(s, R.validate(s));
+      });
+      close();
+      return toast('Conjuros guardados.');
+    }
+    if (target && !editMode) {
+      commit(`Subida de nivel: ${C.info(base).name} ${at()} (personaje ${R.totalLevel(state) + 1})`, s => {
+        const before = C.slots(s),
+          hpBefore = R.stats(s).maxHP;
+        const n = C.levelUp(virtualOf(s, target), {
+          hpMethod: picks.hpMethod,
+          hpRoll: picks.hpRoll,
+          subclass: picks.subclass || undefined,
+          asi: picks.asi,
+          a1: picks.a1,
+          a2: picks.a2,
+          feat: picks.feat,
+          reviewed: true,
+          featNotes: picks.featNotes,
+        });
+        applyPicks(n, picks);
+        if (picks.asi === 'feat' && picks.feat && needs().asi) fx()?.onGain(n, picks.feat, featPicks());
+        writeBack(s, n, true);
+        C.slots(s).forEach((x, i) => {
+          if (!before[i] && x) s.slotsSpent[i] = 0;
+        });
+        if (C.pact(s) && s.pactSpent === undefined) s.pactSpent = 0;
+        s.levelHistory.push({
+          level: R.totalLevel(s),
+          note: `${C.info(n).name} ${n.level}. PG máximos ${hpBefore} → ${R.stats(s).maxHP}.`,
+        });
+        if (typeof SheetStatus !== 'undefined') SheetStatus.addRaceSpells(s);
+        Object.assign(s, R.validate(s));
+      });
+      close();
+      location.hash = 'class';
+      return toast(`¡${state.name} es ahora ${C.label(state)}!`);
+    }
     if (editMode) {
       for (const gr of C.choices(base))
         if ((picks.choices[gr.name] || []).length > gr.count)
           throw Error(`En ${NamesEs.choice(gr.name)} podés tener ${gr.count}.`);
       commit('Opciones de clase actualizadas', s => {
-        s.classChoices = { ...(s.classChoices || {}), ...clone(picks.choices) };
+        if (target) {
+          const mc = s.multiclass.find(x => x.classId === target);
+          mc.choices = { ...(mc.choices || {}), ...clone(picks.choices) };
+        } else s.classChoices = { ...(s.classChoices || {}), ...clone(picks.choices) };
       });
       close();
       return toast('Opciones de clase guardadas.');
@@ -525,12 +647,7 @@ const LevelUp = (() => {
         reviewed: true,
         featNotes: picks.featNotes,
       });
-      const sp = spellPlan(n);
-      n.known = [...new Set([...(n.known || []), ...picks.cantrips, ...picks.known])];
-      if (sp.type === 'prepared' || sp.type === 'book')
-        n.prepared = picks.prepared.filter(id => sp.type === 'prepared' || n.known.includes(id));
-      for (const [g, ids] of Object.entries(picks.choices))
-        n.classChoices = { ...(n.classChoices || {}), [g]: [...new Set([...(n.classChoices?.[g] || []), ...ids])] };
+      applyPicks(n, picks);
       if (picks.asi === 'feat' && picks.feat) fx()?.onGain(n, picks.feat, featPicks());
       if (typeof SheetStatus !== 'undefined') SheetStatus.addRaceSpells(n);
       Object.assign(s, R.validate(n));
@@ -641,5 +758,5 @@ const LevelUp = (() => {
     el?.focus();
     el?.setSelectionRange(pos, pos);
   }
-  return { start, close, chooseOptions };
+  return { start, startFor, close, chooseOptions };
 })();
