@@ -99,7 +99,14 @@ const MonsterUI = (() => {
     return { label, xp, adjusted, each: Math.floor(xp / levels.length), sums };
   }
   function difficultyLine(t) {
-    if (!window.MonsterData) return '';
+    if (!window.MonsterData) {
+      // Después de recargar, el bestiario todavía no está: se carga y se vuelve a dibujar con la dificultad.
+      if (t.entries.some(e => e.monsterId))
+        load()
+          .then(() => typeof draw === 'function' && draw())
+          .catch(() => {});
+      return '';
+    }
     const d = difficulty(t);
     return d
       ? `<p class="small difficulty ${esc(d.label.toLowerCase())}"><b>Dificultad: ${d.label}</b> · ${d.adjusted} XP ajustado (${d.xp} XP, ${d.each} por personaje). Umbrales: ${d.sums.join(' / ')}.</p>`

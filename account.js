@@ -26,12 +26,14 @@ const AccountUI = (() => {
       times = Cloud.backupTimes(),
       mine = CharacterStorage.list(),
       copied = mine.filter(x => times[x.key.startsWith('dnd-character-') ? x.key.slice(14) : 'darien']).length,
-      away = list.filter(r => !here.has(r.local_id));
+      // Las fichas de mesa ya se ofrecen arriba con «Traer a este dispositivo»: no se repiten como copia.
+      tableNames = new Set((rows || []).map(r => r.name)),
+      away = list.filter(r => !here.has(r.local_id) && !tableNames.has(r.name));
     const last = Object.values(times).sort().at(-1);
     return `<div class="cloud-backup"><h3>Copia en la nube</h3>${
       opening
         ? ''
-        : `<p class="small">Cada cambio de tus fichas se copia solo a tu cuenta, también las que no están en una mesa. Este dispositivo: <b>${copied} de ${mine.length}</b> ficha(s) copiada(s) · última copia ${ago(last)}.</p><div class="actions"><button type="button" class="button secondary" data-backup="now">Copiar ahora</button></div>`
+        : `<p class="small">Cada cambio de tus fichas se copia solo a tu cuenta, también las que no están en una mesa. ${mine.length ? `Este dispositivo: <b>${copied} de ${mine.length}</b> ficha(s) copiada(s) · última copia ${ago(last)}.` : 'Este dispositivo todavía no tiene fichas.'}</p><div class="actions"><button type="button" class="button secondary" data-backup="now">Copiar ahora</button></div>`
     }${
       away.length
         ? `<p class="small section-space">${opening ? 'Fichas guardadas en tu cuenta:' : 'En la nube, pero no en este dispositivo:'}</p><div class="party-list">${away
@@ -150,6 +152,7 @@ const AccountUI = (() => {
           moved?.characters ? moved.characters + ' ficha(s)' : '',
           moved?.tables ? moved.tables + ' mesa(s) nueva(s)' : '',
           moved?.dm ? moved.dm + ' mesa(s) como DM' : '',
+          moved?.backups ? moved.backups + ' copia(s) en la nube' : '',
         ].filter(Boolean);
         const msg = `Listo: ahora entrás con ${email}.${parts.length ? ' Se sumaron ' + parts.join(', ') + ' de este dispositivo.' : ''}`;
         box.remove();

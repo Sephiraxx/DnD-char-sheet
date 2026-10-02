@@ -81,3 +81,23 @@ Selected evidence is in [docs/qa/2026-10-02](2026-10-02/). The printable screens
 7. **Other unexercised live branches:** email/password creation, password changes, account merging, destructive deletion, full airplane-mode/reconnect behavior, concurrent two-player loot races, prepared encounter launch animations, and the complete area-save/friendly-fire chain. Their presence in code, syntax checks or related unit tests is not a live end-to-end pass. No real credentials or user accounts were changed.
 
 The test matrix establishes broad data and regression coverage, not every optional rules exception or every combination of choices. Resolve items 1–2 before describing the new backup and Wild Shape features as fully working.
+
+## Follow-up — same day, after migration 007
+
+Played live against the configured server with a fresh table («QA seguimiento 2026-10-02», since deleted) and example.com test logins:
+
+| Item | Result |
+| --- | --- |
+| Difficulty line after reload (P3) | Fixed: the bestiary loads on its own and the line appears without opening a monster. |
+| JSON download round trip | Export link is now attached to the page and the file kept 30 s (iPhone Safari). Captured file re-imported as a new character, identical, with magic items and multiclass. |
+| Cloud backup (P1) | Works live, including a character outside any table. Fixed: joining a table or signing in now starts the backup right away (before, only on the next app open). |
+| Email access | Saving access works. Fixed: retrying after an interrupted save showed Supabase's English «should be different» error; it now counts as saved and refreshes the session. |
+| New device sign-in and restore | Lists table characters and cloud copies; a copy restores with the same id and later edits update the same row. Table characters are no longer listed twice. |
+| Password change | New password works; the old one is rejected. |
+| Account merge | Anonymous device with a table character → «Ese email ya tiene un acceso» → merge → signed in with email, character and cloud copy moved (the message now counts moved copies). |
+| Offline and reconnect | Change made without connection stays pending («offline»); on reconnect it uploads by itself and the server has it. |
+| Deletion | Deleting a cloud copy and the table (with name confirmation) works; the player keeps the character, unlinked. |
+| Prepared encounter launch | Players got the animation and the initiative request; both entered the order. |
+| Area save chain | Young red dragon's fire breath: DM dialog rolled 16d6, both sheets rolled their own DEX save and took 61 fire damage. Fixed: the breath text was half English. |
+
+Still not verified: native print dialog/PDF pages, phone layout of every player page, and two players claiming the same loot at the same moment (the server refusal of a second claim was verified earlier).

@@ -101,6 +101,8 @@
     const captchaToken = cfg.captchaSiteKey && !isLocal() ? await captcha() : undefined;
     const r = await c.auth.signInAnonymously(captchaToken ? { options: { captchaToken } } : undefined);
     if (r.error) throw friendly(r.error);
+    // Primera sesión de este navegador (por ejemplo, al unirse a una mesa): empieza la copia en la nube.
+    setTimeout(backupMissing, 0);
     return r.data.user;
   }
 
@@ -121,13 +123,23 @@
   // (en Supabase, «Confirm email» tiene que estar desactivado).
   async function linkEmail(email, password) {
     await user();
-    const r = await (await api()).auth.updateUser({ email, password });
+    const c = await api();
+    let r = await c.auth.updateUser({ email, password });
+    // Un intento anterior se cortó después de guardar (recarga, conexión): el servidor ya tiene ese email y
+    // esa contraseña y responde «should be different». Se toma como guardado y se refresca la sesión.
+    if (r.error && /should be different|same.*password/i.test(r.error.message)) {
+      const fresh = await c.auth.refreshSession();
+      if (fresh.data?.user?.email?.toLowerCase() === email.toLowerCase())
+        r = { data: { user: fresh.data.user }, error: null };
+    }
     if (r.error)
       throw /already.*registered|already been registered|exists/i.test(r.error.message)
         ? Object.assign(Error('Ese email ya tiene un acceso.'), { code: 'merge' })
         : friendly(r.error);
     if (r.data.user?.new_email && !r.data.user?.email)
       throw Error('El servidor todavía pide confirmar el email por correo. Avisale a quien administra la mesa.');
+    // La sesión guardada todavía dice «anónimo» hasta refrescarla.
+    await c.auth.refreshSession().catch(() => {});
     dispatchEvent(new CustomEvent('cloud-login', { detail: { error: '' } }));
     return r.data.user;
   }
@@ -153,6 +165,11 @@
       throw /invalid login|credentials/i.test(r.error.message)
         ? Error('Email o contraseña incorrectos.')
         : friendly(r.error);
+    // Otra cuenta: las marcas de «ya copiada» eran de la anterior; las fichas de acá se copian a esta.
+    try {
+      localStorage.removeItem(BACKUP_AT);
+    } catch {}
+    setTimeout(backupMissing, 0);
     dispatchEvent(new CustomEvent('cloud-login', { detail: { error: '' } }));
   }
   // Juntar cuentas: las fichas, mesas y membresías del acceso anónimo de este dispositivo pasan a la
