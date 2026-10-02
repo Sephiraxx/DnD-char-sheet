@@ -95,6 +95,8 @@ El combate automatiza recursos y acciones comunes, **no todos los efectos de las
 
 **Compañeros y Forma salvaje.** En Diario, «Compañeros» suma familiares, invocaciones, monturas, mascotas o aliados desde el bestiario (con PG, CA, velocidad y ataques) o a mano. Sus PG se ajustan con un toque y sus ataques se tiran desde la ficha; los que están en pie aparecen también en Combate. Los druidas tienen «Forma salvaje» en Combate: la lista respeta los límites de VD, vuelo y nado por nivel (y el Círculo de la Luna), gasta un uso y muestra los PG, la CA y los ataques de la bestia. El daño —tuyo o del DM— baja primero los PG de la bestia; si llegan a 0, volvés a tu forma y el exceso pasa a tus PG. En esa forma no se lanzan conjuros (salvo Conjuros bestiales, nivel 18).
 
+**Imprimir / PDF** (en Personaje y en Mi ficha): arma una ficha completa en hojas claras —características y salvaciones, habilidades, combate y defensas, ataques, competencias, rasgos, opciones y dotes; conjuros por nivel con CD, ataque y casillas de espacios por clase; equipo, monedas, objetos mágicos con sus cargas, compañeros y notas— y abre el diálogo de impresión del navegador, donde se elige «Guardar como PDF».
+
 ## Mesa compartida (party y DM)
 
 Opcional. Con la mesa configurada, cada jugador se une con un código y la party se ve en vivo:

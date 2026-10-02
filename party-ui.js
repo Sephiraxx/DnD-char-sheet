@@ -365,6 +365,7 @@ const PartyUI = (() => {
         `${esc(state.race || 'Linaje por registrar')} · ${MulticlassUI.label(state, true)}`,
         button('Características y armadura', 'stats') +
           button('Competencias', 'class-config') +
+          button('Imprimir / PDF', 'print-sheet') +
           button('Subir de nivel', 'levelup', '') +
           button('Libros habilitados', 'campaign-sources'),
       ) +
