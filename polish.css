@@ -1558,3 +1558,8 @@ button.cc-stat {
 .ps-notes {
   white-space: pre-wrap;
 }
+
+/* Bloques de estadísticas: las listas de conjuros de los monstruos van en renglones. */
+.monster-feature-text {
+  white-space: pre-line;
+}

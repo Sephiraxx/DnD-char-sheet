@@ -40,3 +40,25 @@ test('traducir dos veces no cambia nada (los datos estructurados quedan iguales)
   assert.equal(translate(m), m);
   assert.ok(m.actions.every(a => Array.isArray(a.dmg) || a.dmg === undefined));
 });
+
+test('el bestiario no tiene texto en inglés en nombres ni descripciones', () => {
+  const ENG = /\b(the|and|its|creature|target|saving throw|damage|hit points|feet)\b/;
+  const left = [];
+  for (const m of M) {
+    for (const [n, d] of m.traits) if (ENG.test(n + ' ' + d)) left.push(m.id + ' · ' + n);
+    for (const k of ['actions', 'legendary', 'reactions'])
+      for (const a of m[k]) if (ENG.test(a.n + ' ' + a.d)) left.push(m.id + ' · ' + a.n);
+  }
+  assert.equal(left.length, 0, left.slice(0, 5).join('\n'));
+  const lich = M.find(x => x.id === 'lich').traits.find(t => /lanzador/.test(t[1]))[1];
+  assert.match(lich, /proyectil mágico/, 'las listas de conjuros usan los nombres del catálogo');
+});
+
+test('las líneas de estadísticas (velocidad, sentidos, idiomas, defensas, alineamiento) están en español', () => {
+  const ENG = /\b(the|and|plus|any|understands|but|can't|speak|knew|from|aren't|wielded|hover|or|while|ft)\b/i;
+  const left = [];
+  for (const m of M)
+    for (const k of ['speed', 'senses', 'lang', 'res', 'imm', 'vuln', 'cimm', 'align', 'skills', 'saves'])
+      if (ENG.test(m[k] || '')) left.push(`${m.id}.${k}: ${m[k]}`);
+  assert.equal(left.length, 0, left.slice(0, 5).join('\n'));
+});

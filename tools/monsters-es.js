@@ -621,6 +621,64 @@ const ACT = {
   'Flying Sword': 'Espada voladora',
   'Slaying Longbow': 'Arco largo asesino',
   'Ethereal Stride': 'Paso etéreo',
+  'Invisible Passage': 'Paso invisible',
+  'Spiked Bone Club': 'Garrote de hueso con púas',
+  'Blind Senses': 'Sentidos ciegos',
+  'Luring Song': 'Canción seductora',
+  Fork: 'Tridente',
+  'Faultless Tracker': 'Rastreador infalible',
+  'Tentacle Attack or Fling': 'Ataque de tentáculo o Arrojar',
+  'Freedom of Movement': 'Libertad de movimiento',
+  'Intoxicating Touch': 'Toque embriagador',
+  'Hellish Rejuvenation': 'Rejuvenecimiento infernal',
+  Cantrip: 'Truco',
+  'Turn Resistance': 'Resistencia a expulsar',
+  'Tail Spike Regrowth': 'Púas que vuelven a crecer',
+  Adhesive: 'Adhesivo',
+  'Beast of Burden': 'Bestia de carga',
+  'Blasphemous Word': 'Palabra blasfema',
+  'Channel Negative Energy': 'Canalizar energía negativa',
+  'Whirlwind of Sand': 'Torbellino de arena',
+  'Horror Nimbus': 'Nimbo de horror',
+  'Nightmare Haunting': 'Acoso de pesadillas',
+  'Night Hag Items': 'Objetos de la saga nocturna',
+  'Confer Fire Resistance': 'Conferir resistencia al fuego',
+  'Ethereal Jaunt': 'Salto etéreo',
+  'Fear Aura': 'Aura de miedo',
+  'Divine Eminence': 'Eminencia divina',
+  'Keen Senses': 'Sentidos agudos',
+  'Limited Magic Immunity': 'Inmunidad mágica limitada',
+  'Grasping Tendrils': 'Zarcillos aferradores',
+  'Limited Amphibiousness': 'Anfibio limitado',
+  'Shark Telepathy': 'Telepatía con tiburones',
+  'Horrific Appearance': 'Apariencia horrible',
+  'Spell Storing': 'Almacenar conjuro',
+  'Searing Burst': 'Estallido abrasador',
+  'Blinding Gaze': 'Mirada cegadora',
+  'Heart Sight': 'Ver el corazón',
+  'Cunning Action': 'Acción astuta',
+  'Blood Drain': 'Drenar sangre',
+  'Rock Catching': 'Atrapar rocas',
+  Slow: 'Ralentizar',
+  'Lightning Strike': 'Golpe de relámpago',
+  'Draining Kiss': 'Beso drenante',
+  Beaks: 'Picos',
+  Chomp: 'Dentellada',
+  'Reflective Carapace': 'Caparazón reflectante',
+  'Animate Trees': 'Animar árboles',
+  'Shimmering Shield': 'Escudo resplandeciente',
+  'Heal Self': 'Curarse',
+  'Rotting Touch': 'Toque putrefacto',
+  Spores: 'Esporas',
+  'Stunning Screech': 'Chillido aturdidor',
+  Whelm: 'Arrollar',
+  Shock: 'Descarga',
+  'Consume Life': 'Consumir vida',
+  'Variable Illumination': 'Iluminación variable',
+  'Snow Camouflage': 'Camuflaje en la nieve',
+  'Create Specter': 'Crear espectro',
+  Stinger: 'Aguijón',
+  'Treasure Sense': 'Sentir tesoros',
 };
 // «(Boar or Hybrid Form Only)» → «(solo en forma de jabalí o híbrida)».
 const FORMWORD = {
@@ -634,6 +692,7 @@ const FORMWORD = {
   Vampire: 'de vampiro',
   Bat: 'de murciélago',
   Mist: 'de niebla',
+  Object: 'de objeto',
 };
 // Acciones con recarga o usos: «Fire Breath (Recharge 5–6)» → «Aliento de fuego (Recarga 5–6)».
 function action(n) {
@@ -806,7 +865,8 @@ const SPEED = t =>
     .replace(/\bswim\b/g, 'nado')
     .replace(/\bclimb\b/g, 'trepar')
     .replace(/\bburrow\b/g, 'excavar')
-    .replace(/\(hover\)/g, '(flotar)');
+    .replace(/\(hover\)/g, '(flotar)')
+    .replace(/, hover true/g, ' (flotar)');
 const SENSES = t =>
   SPEED(t)
     .replace(/\bdarkvision\b/g, 'visión en la oscuridad')
@@ -814,7 +874,8 @@ const SENSES = t =>
     .replace(/\btremorsense\b/g, 'sentido de la vibración')
     .replace(/\btruesight\b/g, 'visión verdadera')
     .replace(/\(blind beyond this radius\)/g, '(ciego más allá de este radio)')
-    .replace(/passive [Pp]erception/g, 'Percepción pasiva');
+    .replace(/passive [Pp]erception/g, 'Percepción pasiva')
+    .replace(/ or (\d+) pies while deafened/g, ' o $1 pies mientras está ensordecido');
 const SKILL = {
   Acrobatics: 'Acrobacias',
   'Animal Handling': 'Trato con animales',
@@ -875,14 +936,37 @@ const LANG = {
   'but speaks only through the use of its Mimicry trait': 'pero solo habla con su rasgo Imitación',
   "but can't speak, telepathy": 'pero no puede hablar, telepatía',
 };
+const LANG_PHRASES = [
+  [/Giant (Eagle|Elk|Owl)/g, (m, a) => ({ Eagle: 'águila gigante', Elk: 'alce gigante', Owl: 'búho gigante' })[a]],
+  [/plus up to (five|six) other languages/g, (m, n) => `y hasta ${n === 'five' ? 'cinco' : 'seis'} idiomas más`],
+  [/,? and /g, ' y '],
+  [/any one language \(usually Common\)/gi, 'un idioma cualquiera (normalmente Común)'],
+  [/one language known by its creator/gi, 'un idioma que conozca su creador'],
+  [/\(works only with creatures that understand (\w+)\)/gi, '(solo con criaturas que entiendan $1)'],
+  [/any languages it knew in life/gi, 'los idiomas que conocía en vida'],
+  [/all languages it knew in life/gi, 'todos los idiomas que conocía en vida'],
+  [/understands commands given in any language/gi, 'entiende órdenes dadas en cualquier idioma'],
+  [/but doesn't speak it/gi, 'pero no lo habla'],
+  [
+    /\(can't speak in (\w+) form\)/gi,
+    (m, f) =>
+      `(no puede hablar en forma de ${{ boar: 'jabalí', bear: 'oso', rat: 'rata', tiger: 'tigre', wolf: 'lobo' }[f] || f})`,
+  ],
+  [/any one language/gi, 'un idioma cualquiera'],
+  [/Thieves' cant/g, 'jerga de ladrones'],
+  [/\bDruidic\b/g, 'druídico'],
+  [/ plus /g, ' y '],
+];
 const LANGS = t => {
-  let out = SPEED(t);
+  let out = LANG_PHRASES.reduce((s, [re, to]) => s.replace(re, to), SPEED(t));
   for (const [en, es] of Object.entries(LANG).sort((a, b) => b[0].length - a[0].length))
     out = out.replace(new RegExp('\\b' + en.replace(/[()]/g, '\\$&') + '\\b', 'g'), es);
   return out;
 };
 const DEFS = t =>
   String(t || '')
+    .replace(/\(from stoneskin\)/g, '(por piel pétrea)')
+    .replace(/wielded by good creatures/g, 'empuñadas por criaturas buenas')
     .replace(
       /\b(acid|bludgeoning|cold|fire|force|lightning|necrotic|piercing|poison|psychic|radiant|slashing|thunder)\b/g,
       m => DMG[m],
@@ -894,11 +978,12 @@ const DEFS = t =>
     .replace(/that aren't adamantine/g, 'que no sean de adamantina')
     .replace(/\bdamage from spells\b/g, 'daño de conjuros')
     .replace(/from magic weapons/g, 'de armas mágicas')
-    .replace(/\band\b/g, 'y');
+    .replace(/,? \band\b/g, ' y');
 const CONDS = t =>
   String(t || '').replace(/\b[A-Za-z]+\b/g, w => (COND[w.toLowerCase()] ? cap(COND[w.toLowerCase()]) : w));
 const ALIGN = t =>
   String(t || '')
+    .replace(/ or /g, ' o ')
     .replace(/^unaligned$/, 'sin alineamiento')
     .replace(/^any alignment$/, 'cualquier alineamiento')
     .replace(/^any non-good alignment$/, 'cualquier alineamiento no bueno')
@@ -1065,9 +1150,47 @@ const TRAITS = [
 ];
 const trait = t => TRAITS.reduce((out, [re, to]) => out.replace(re, to), t);
 
+// Textos completos traducidos a mano (tools/monsters-es-text.json): la clave es el texto en inglés con cada
+// número reemplazado por {0}, {1}…, así una traducción sirve para todos los monstruos que la comparten.
+const DICT = require('./monsters-es-text.json');
+const norm = s =>
+  String(s || '')
+    .replace(/(\d+) ft\./g, '$1 feet')
+    .replace(/ +\./g, '.')
+    .trim();
+function fromDict(s) {
+  const nums = [];
+  const key = norm(s).replace(/\d+/g, n => '{' + (nums.push(n) - 1) + '}');
+  const es = DICT[key];
+  return es === undefined ? null : spells(es.replace(/\{(\d+)\}/g, (m, i) => nums[i]));
+}
+// Listas de conjuros («A voluntad: light, sacred flame»): nombres del catálogo en español.
+let SPELLS = null;
+function spellName(item) {
+  if (!SPELLS) {
+    const fs = require('fs'),
+      path = require('path'),
+      vm = require('vm'),
+      ctx = {};
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, '..', 'catalog.js'), 'utf8'), { window: ctx });
+    // names-es.js traduce el catálogo al cargarse en la app; acá se toma el nombre en español del archivo de datos.
+    SPELLS = new Map(ctx.Catalog.spells.map(s => [(s.english || s.name).toLowerCase(), s.name]));
+  }
+  const m = /^\s*(.+?)(\*?)(\s*\(.*\))?\s*$/.exec(item);
+  const ALIAS = { 'acid arrow': "melf's acid arrow" };
+  const es = m && (SPELLS.get(m[1].toLowerCase()) || SPELLS.get(ALIAS[m[1].toLowerCase()]));
+  return es ? ' ' + es.charAt(0).toLowerCase() + es.slice(1) + m[2] + (m[3] || '') : ' ' + item.trim();
+}
+const spells = text =>
+  text.replace(
+    /^(- )?((?:Trucos|Nivel|A voluntad|\d+\/día)[^:\n]*):([^\n]+)$/gm,
+    (m, dash, label, list) => (dash || '') + label + ':' + list.split(',').map(spellName).join(','),
+  );
+
 function translate(m) {
   if (m.english) return m; // ya traducido
-  const actions = list => (list || []).map(a => ({ ...a, english: a.n, n: action(a.n), d: text(a.d) }));
+  const actions = list =>
+    (list || []).map(a => ({ ...a, english: a.n, n: action(a.n), d: fromDict(a.d) ?? text(a.d) }));
   return {
     ...m,
     english: m.name,
@@ -1082,7 +1205,7 @@ function translate(m) {
     res: DEFS(m.res),
     imm: DEFS(m.imm),
     cimm: CONDS(m.cimm),
-    traits: (m.traits || []).map(([n, d]) => [action(n), trait(text(d))]),
+    traits: (m.traits || []).map(([n, d]) => [action(n), fromDict(d) ?? trait(text(d))]),
     actions: actions(m.actions),
     legendary: actions(m.legendary),
     reactions: actions(m.reactions),
