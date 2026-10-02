@@ -439,6 +439,7 @@ const Campaign = (() => {
     sourceFields,
     originInfo,
     sheetOrigins,
+    proficiencyText,
     spellHelp,
     validate,
     install,

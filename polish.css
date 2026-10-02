@@ -1356,3 +1356,181 @@ button.cc-stat {
 .wild-shape .cmp-stats {
   margin: 8px 0;
 }
+
+/* ---------- Ficha para imprimir / PDF ---------- */
+#print-sheet {
+  display: none;
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  body.printing {
+    background: #fff !important;
+  }
+  body.printing > *:not(#print-sheet) {
+    display: none !important;
+  }
+  body.printing #print-sheet {
+    display: block;
+    color: #111;
+    font:
+      10pt/1.35 Georgia,
+      'Times New Roman',
+      serif;
+  }
+}
+#print-sheet .ps-page {
+  break-after: page;
+}
+#print-sheet .ps-page:last-child {
+  break-after: auto;
+}
+#print-sheet h1 {
+  margin: 0;
+  font-size: 22pt;
+  color: #111;
+}
+#print-sheet h2 {
+  margin: 0 0 4pt;
+  padding-bottom: 2pt;
+  border-bottom: 1.5pt solid #7a5a1f;
+  font-size: 11pt;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #7a5a1f;
+}
+#print-sheet h3 {
+  margin: 4pt 0 2pt;
+  font-size: 10pt;
+  color: #111;
+}
+#print-sheet p {
+  margin: 2pt 0;
+}
+.ps-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 10pt;
+  padding-bottom: 6pt;
+  margin-bottom: 8pt;
+  border-bottom: 2pt solid #111;
+}
+.ps-meta {
+  display: grid;
+  gap: 1pt;
+  text-align: right;
+  font-size: 9pt;
+}
+.ps-grid {
+  display: grid;
+  grid-template-columns: 38% 1fr;
+  gap: 12pt;
+}
+.ps-sec {
+  margin-bottom: 8pt;
+  break-inside: avoid;
+}
+.ps-abilities {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4pt;
+}
+.ps-ability,
+.ps-box {
+  display: grid;
+  justify-items: center;
+  padding: 4pt 2pt;
+  border: 1pt solid #999;
+  border-radius: 6pt;
+  text-align: center;
+}
+.ps-ability span,
+.ps-box span {
+  font-size: 7pt;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.ps-ability b,
+.ps-box b {
+  font-size: 15pt;
+}
+.ps-ability small,
+.ps-box small,
+.ps-ability em {
+  font-size: 7.5pt;
+  font-style: normal;
+}
+.ps-boxes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4pt;
+}
+.ps-skills {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  columns: 1;
+  font-size: 9pt;
+}
+.ps-skills li {
+  display: flex;
+  gap: 4pt;
+  border-bottom: 0.5pt dotted #bbb;
+}
+.ps-skills b {
+  margin-left: auto;
+}
+.ps-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9pt;
+}
+.ps-table th,
+.ps-table td {
+  padding: 2pt 4pt;
+  border-bottom: 0.5pt solid #bbb;
+  text-align: left;
+}
+.ps-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2pt 10pt;
+  font-size: 9pt;
+}
+.ps-line {
+  font-size: 9pt;
+}
+.ps-casting,
+.ps-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2pt 12pt;
+}
+.ps-spells {
+  columns: 2;
+  column-gap: 14pt;
+  font-size: 9pt;
+}
+.ps-spells > div {
+  break-inside: avoid;
+}
+.ps-spells ul,
+.ps-items {
+  margin: 0 0 4pt;
+  padding-left: 0;
+  list-style: none;
+}
+.ps-items {
+  columns: 2;
+  font-size: 9pt;
+}
+.ps-note {
+  font-size: 7.5pt;
+  color: #555;
+}
+.ps-notes {
+  white-space: pre-wrap;
+}
