@@ -237,6 +237,7 @@ function gear() {
       button('Añadir del catálogo', 'equipment-catalog', '') + button('Añadir objeto libre', 'item-new', 'secondary'),
     ) +
     EquipmentUI.panel(state) +
+    MagicUI.panel() +
     `<div class="columns gear-columns"><section class="card"><div class="card-header"><h2>Inventario</h2><small>${state.inventory.length} entradas</small></div><div class="inventory-list">${state.inventory.map(x => `<div class="list-row"><div><button class="text-btn item-name" data-action="item-edit" data-id="${esc(x.id)}">${esc(x.name)}</button><p>${esc(x.category)} · ${esc(x.location)}</p></div><div class="qty"><button class="icon-btn" aria-label="Restar ${esc(x.name)}" data-action="qty" data-id="${esc(x.id)}" data-delta="-1" ${x.qty === 0 ? 'disabled' : ''}>−</button><span>${x.qty}</span><button class="icon-btn" aria-label="Sumar ${esc(x.name)}" data-action="qty" data-id="${esc(x.id)}" data-delta="1">+</button></div></div>`).join('')}</div><p class="small section-space">Peso registrado: ${weight.toFixed(1)} lb. Solo suma objetos con peso informado; no es la carga total. Capacidad normal del personaje: ${state.abilities.str * 15} lb.</p></section><div class="stack"><section class="card"><div class="card-header"><h2>La bolsa</h2><button class="text-btn" data-action="gold-edit">Editar saldo</button></div><div class="coin-grid">${[
       ['cp', 'pc'],
       ['sp', 'pp'],
@@ -497,7 +498,8 @@ function longRest() {
   modal(
     'Descanso largo completado',
     `<p>Recuperás todos tus PG, espacios y recursos de clase con recuperación por descanso. Recuperás hasta <b>${Math.max(1, Math.floor(R.totalLevel(state) / 2))} Dados de Golpe gastados</b>.</p>${state.hdSpent === null ? field('Dados de Golpe disponibles antes del descanso', 'dados', '', 'number', `min="0" max="${R.totalLevel(state)}" required`) : ''}<label class="check"><input name="completo" type="checkbox" required>Confirmo que completé un descanso válido y lo inicié con al menos 1 PG.</label><p class="small">Se limpian PG temporales y concentración. Las condiciones se conservan para que revises su duración.</p>`,
-    fd =>
+    fd => {
+      let charged = [];
       commit('Descanso largo completado', s => {
         if (s.hdSpent === null) s.hdSpent = R.totalLevel(s) - number(fd, 'dados', 0, R.totalLevel(s));
         s.hdSpent = Math.max(0, s.hdSpent - Math.max(1, Math.floor(R.totalLevel(s) / 2)));
@@ -515,7 +517,11 @@ function longRest() {
         s.extraResources.forEach(x => {
           if (x.reset !== 'manual') x.spent = 0;
         });
-      }),
+        // Objetos mágicos: las cargas se recuperan «al amanecer».
+        charged = MagicItems.dawn(s);
+      });
+      if (charged.length) toast('Descanso largo. ' + charged.join(' · ') + '.');
+    },
     'Aplicar descanso',
   );
 }
@@ -650,7 +656,7 @@ function settings() {
 function sources() {
   modal(
     'Reglas y créditos',
-    `<p>Ficha para <b>D&D 5e 2014</b>. Las reglas de mesa del DM prevalecen sobre la referencia. Los cálculos automáticos cubren las 13 clases, la multiclase, los ataques con armas, las dotes más comunes y la magia de linaje; los objetos mágicos y otras excepciones se registran y ajustan manualmente.</p><p><a href="https://media.wizards.com/2023/downloads/dnd/SRD_CC_v5.1.pdf" target="_blank" rel="noopener">SRD 5.1</a></p><p class="small">Referencias resumidas para uso de mesa de los libros de la línea 2014. Los libros se habilitan en cada ficha o los elige el DM para su mesa. Los conjuros incluyen resúmenes de uso en español; las excepciones y tablas se consultan en su fuente. Aplicación no oficial, sin afiliación con Wizards of the Coast.</p><p class="small">This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.</p><p class="small"><b>Tus datos.</b> Tus fichas se guardan en este dispositivo. Si te unís a una mesa, esa ficha, tus tiradas y tu nombre de jugador se comparten con la mesa a través de su servidor (Supabase); el ingreso usa Cloudflare Turnstile contra bots y, si lo elegís, tu email para abrir tus fichas en otros dispositivos. Nada se comparte si no te unís a una mesa.</p>`,
+    `<p>Ficha para <b>D&D 5e 2014</b>. Las reglas de mesa del DM prevalecen sobre la referencia. Los cálculos automáticos cubren las 13 clases, la multiclase, los ataques con armas, las dotes más comunes, la magia de linaje y los objetos mágicos del catálogo; otras excepciones se registran y ajustan manualmente.</p><p><a href="https://media.wizards.com/2023/downloads/dnd/SRD_CC_v5.1.pdf" target="_blank" rel="noopener">SRD 5.1</a></p><p class="small">Referencias resumidas para uso de mesa de los libros de la línea 2014. Los libros se habilitan en cada ficha o los elige el DM para su mesa. Los conjuros incluyen resúmenes de uso en español; las excepciones y tablas se consultan en su fuente. Aplicación no oficial, sin afiliación con Wizards of the Coast.</p><p class="small">This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.</p><p class="small"><b>Tus datos.</b> Tus fichas se guardan en este dispositivo. Si te unís a una mesa, esa ficha, tus tiradas y tu nombre de jugador se comparten con la mesa a través de su servidor (Supabase); el ingreso usa Cloudflare Turnstile contra bots y, si lo elegís, tu email para abrir tus fichas en otros dispositivos. Nada se comparte si no te unís a una mesa.</p>`,
   );
 }
 const actions = {
@@ -979,6 +985,7 @@ AttackUI.install();
 MulticlassUI.install();
 RollUI.install();
 SheetStatus.install();
+MagicUI.install();
 document.addEventListener('click', e => {
   if (e.target.closest('[data-close]')) {
     $('#modal').close();

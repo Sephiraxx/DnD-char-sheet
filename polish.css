@@ -1225,3 +1225,70 @@ button.cc-stat {
   margin: 0 0 8px;
   font-size: 0.95rem;
 }
+
+/* ---------- Objetos mágicos ---------- */
+.magic-list {
+  display: grid;
+  gap: 10px;
+}
+.magic-item {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #0e2026;
+}
+.magic-item.inactive {
+  border-style: dashed;
+}
+.magic-item.empty {
+  opacity: 0.6;
+}
+.magic-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.magic-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.magic-head .eyebrow {
+  margin: 4px 0 0;
+  font-size: 0.62rem;
+}
+.magic-head .button {
+  min-height: 38px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+.magic-item p {
+  margin: 6px 0 0;
+}
+.magic-card .tag.warn {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+.magic-pick-list {
+  display: grid;
+  gap: 6px;
+  max-height: 50vh;
+  overflow: auto;
+  margin-top: 10px;
+}
+.magic-pick {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.magic-pick[hidden] {
+  display: none;
+}

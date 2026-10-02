@@ -411,6 +411,11 @@
       infectiousSpent: 0,
     };
   }
+  // Puntuaciones efectivas: las de la ficha o las que fija un objeto mágico (Amuleto de salud…), la mayor.
+  function scores(s) {
+    const set = root.MagicItems?.setScores(s) || {};
+    return Object.fromEntries(Object.entries(s.abilities).map(([k, v]) => [k, Math.max(v, set[k] || 0)]));
+  }
   function stats(s) {
     if (root.Classes) return root.Classes.stats(s);
     let p = prof(s.level),
@@ -445,7 +450,8 @@
     if (!a) throw Error('Habilidad inválida');
     let p = prof(totalLevel(s));
     return (
-      mod(s.abilities[a[2]]) +
+      mod(scores(s)[a[2]]) +
+      (root.MagicItems?.check(s) || 0) +
       (s.expertise.includes(id)
         ? 2 * p
         : s.proficiencies.includes(id)
@@ -458,7 +464,8 @@
   }
   function saveBonus(s, a) {
     return (
-      mod(s.abilities[a]) +
+      mod(scores(s)[a]) +
+      (root.MagicItems?.save(s) || 0) +
       ((s.classId === 'monk' && s.level >= 14
         ? Object.keys(attrs)
         : root.Classes
@@ -607,6 +614,7 @@
     if (root.Campaign) root.Campaign.validate(o);
     if (root.Defenses) root.Defenses.validate(o);
     if (root.FeatFX) root.FeatFX.validate(o);
+    if (root.MagicItems) root.MagicItems.validate(o);
     if (root.Equipment) root.Equipment.validate(o);
     if (!['eloquence', 'manual'].includes(o.subclass)) fail();
     for (let k in attrs) if (!int(o.abilities?.[k], 1, 30)) fail();
@@ -775,6 +783,7 @@
     song,
     initial,
     stats,
+    scores,
     skillBonus,
     saveBonus,
     allSpells,

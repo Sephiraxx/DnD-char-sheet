@@ -113,11 +113,14 @@
       l = s.level,
       total = totalLevel(s),
       p = 2 + Math.floor((total - 1) / 4),
-      m = Object.fromEntries(Object.entries(s.abilities).map(([k, v]) => [k, mod(v)])),
+      m = Object.fromEntries(Object.entries(R().scores(s)).map(([k, v]) => [k, mod(v)])),
+      mi = root.MagicItems,
       cast = casting(s),
       ss = slots(s);
     let ac = s.acBase + (s.armorDexCap === undefined ? m.dex : Math.min(m.dex, s.armorDexCap)) + s.acBonus;
     if (s.armorMode === 'fixed') ac = s.acBase + s.acBonus;
+    // CA anotada a mano: los objetos con bono plano (Anillo de protección…) se suman igual.
+    ac += mi ? mi.acBonuses(s, { worn: true, shield: true }).reduce((a, b) => a + b.value, 0) : 0;
     if (s.armorMode === 'barbarian') ac = 10 + m.dex + m.con + s.acBonus;
     if (s.armorMode === 'monk') ac = 10 + m.dex + m.wis + s.acBonus;
     if (s.equipmentDefense && root.Equipment) ac = root.Equipment.defense(s).total;
@@ -126,8 +129,8 @@
       mods: m,
       maxHP: Math.max(1, s.hpBase + total * (m.con + (root.FeatFX?.hpPerLevel(s) || 0))),
       ac,
-      dc: 8 + p + m[cast.ability],
-      attack: p + m[cast.ability],
+      dc: 8 + p + m[cast.ability] + (mi?.spellDC(s) || 0),
+      attack: p + m[cast.ability] + (mi?.spellAttack(s) || 0),
       inspirationMax: Math.max(1, m.cha),
       inspirationDie: R().die(l),
       hitDice: total,
@@ -145,7 +148,8 @@
       initiative:
         m.dex +
         (views(s).some(v => id(v) === 'bard' && v.level >= 2) ? Math.floor(p / 2) : 0) +
-        (root.FeatFX?.initiative(s) || 0),
+        (root.FeatFX?.initiative(s) || 0) +
+        (mi?.check(s) || 0),
       speed: (s.speed ?? 30) + (root.FeatFX?.speed(s) || 0),
       songDie: id(s) === 'bard' && l >= 2 ? R().song(l) : 0,
     };

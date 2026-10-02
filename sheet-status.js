@@ -40,6 +40,10 @@ const SheetStatus = (() => {
       ]);
     for (const f of FeatFX.report(s)) if (f.auto.length) out.push([f.name, f.auto.join(' · ') + '.']);
     if (s.equipmentDefense) out.push(['Equipo', 'La CA se calcula con la armadura y el escudo equipados.']);
+    for (const x of MagicItems.active(s)) {
+      const fx = MagicItems.effects(x.magic).filter(t => !/cargas|cura /.test(t));
+      if (fx.length) out.push([x.name, fx.join(' · ') + '.']);
+    }
     return out;
   }
   function pending(s) {
