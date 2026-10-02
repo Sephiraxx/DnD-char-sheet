@@ -130,11 +130,13 @@ function favoriteIds() {
   return state.favorites || [];
 }
 function combatSpeed() {
+  if (state.wildShape) return Companions.vitals(state).speed;
   const pen = state.equipmentDefense ? Equipment.defense(state).speedPenalty : 0;
   return Math.max(0, R.stats(state).speed - pen);
 }
 function combatCompact() {
   const d = R.stats(state),
+    v = Companions.vitals(state, d),
     c = Combat.data(state),
     on = c.active && c.onTurn;
   const all = [...new Set(Classes.usable(state))].map(spellById).filter(Boolean),
@@ -200,8 +202,8 @@ function combatCompact() {
   return `<div class="cc">
   <div class="cc-bar"><p class="eyebrow">${esc(state.name)} · ${c.active ? (on ? 'ES TU TURNO' : 'TURNO AJENO') : 'COMBATE'}${c.active ? ' · turno ' + c.turn : ''}</p><div class="actions">${button('Tirar dados', 'dice')}${button('Vista completa', 'combat-compact')}</div></div>
   <div class="cc-stats">
-    <button type="button" class="cc-stat cc-hp ${state.hp !== null && state.hp <= d.maxHP / 4 ? 'low' : ''}" data-action="combat-hp"><b>${state.hp ?? '—'}<small>/${d.maxHP}</small></b><span>PG${state.temp ? ' · +' + state.temp + ' temp' : ''}</span></button>
-    <div class="cc-stat"><b>${d.ac}</b><span>CA</span></div>
+    <button type="button" class="cc-stat cc-hp ${v.hp !== null && v.hp <= v.maxHP / 4 ? 'low' : ''}" data-action="combat-hp"><b>${v.hp ?? '—'}<small>/${v.maxHP}</small></b><span>PG${state.wildShape ? ' bestia' : ''}${state.temp ? ' · +' + state.temp + ' temp' : ''}</span></button>
+    <div class="cc-stat"><b>${v.ac}</b><span>CA</span></div>
     <button type="button" class="cc-stat" data-action="roll" data-bonus="${d.initiative}" data-label="Iniciativa"><b>${sign(d.initiative)}</b><span>Iniciativa</span></button>
     ${all.length ? `<div class="cc-stat"><b>${d.dc}</b><span>CD</span></div>` : ''}
     <div class="cc-stat"><b>${combatSpeed()}</b><span>Pies</span></div>
@@ -261,6 +263,7 @@ const CONDITIONS = [
 function combatView() {
   if (combatCompactOn()) return combatCompact();
   const d = R.stats(state),
+    v = Companions.vitals(state, d),
     c = Combat.data(state),
     on = c.active && c.onTurn;
   const all = [...new Set(Classes.usable(state))].map(spellById).filter(Boolean),
@@ -290,7 +293,7 @@ function combatView() {
       .join(
         '',
       )}</div><div class="quick-resources" aria-label="Reservas disponibles">${d.slots.map((max, i) => (max ? `<button data-action="pool-edit" data-type="slot" data-index="${i}" title="Ajustar espacios"><span>Espacios Nv. ${i + 1}</span><b>${state.slotsSpent[i] === null ? '—' : max - state.slotsSpent[i]} / ${max}</b></button>` : '')).join('')}${Classes.id(state) === 'bard' ? `<button data-action="combat-help" data-topic="inspiration"><span>Inspiración · d${d.inspirationDie}</span><b>${state.inspirationSpent === null ? '—' : d.inspirationMax - state.inspirationSpent} / ${d.inspirationMax}</b></button>` : ''}</div>${state.concentration ? `<button class="concentration-link" data-action="combat-focus"><b>${c.checks.length ? '⚠ Salvación de concentración pendiente' : 'Concentración'}</b> · ${esc(spellName(state.concentration))}${c.checks.length ? ' · CON CD ' + c.checks[0] : ''} →</button>` : ''}</section>
- <div class="metrics battle-metrics"><div class="metric"><strong>${state.hp ?? '—'}<small> / ${d.maxHP}</small></strong><span>PG actuales ${state.temp ? ' · +' + state.temp + ' temporales' : ''}</span><button class="text-btn" data-action="combat-hp">Daño / curación</button></div><div class="metric"><strong>${d.ac}</strong><span>Clase de armadura</span>${state.heroicInspiration ? `<button class="text-btn heroic" data-action="heroic-toggle" title="Ventaja en una tirada; se gasta al usarla">★ Inspiración del DM</button>` : ''}</div><div class="metric"><strong>${d.dc}</strong><span>CD de tus conjuros</span></div><div class="metric"><strong>${sign(d.initiative)}</strong><span>Iniciativa</span><button class="text-btn" data-action="roll" data-bonus="${d.initiative}" data-label="Iniciativa">Tirar d20</button></div></div>
+ <div class="metrics battle-metrics"><div class="metric"><strong>${v.hp ?? '—'}<small> / ${v.maxHP}</small></strong><span>PG actuales${state.wildShape ? ' de la bestia' : ''} ${state.temp ? ' · +' + state.temp + ' temporales' : ''}</span><button class="text-btn" data-action="combat-hp">Daño / curación</button></div><div class="metric"><strong>${v.ac}</strong><span>Clase de armadura</span>${state.heroicInspiration ? `<button class="text-btn heroic" data-action="heroic-toggle" title="Ventaja en una tirada; se gasta al usarla">★ Inspiración del DM</button>` : ''}</div><div class="metric"><strong>${d.dc}</strong><span>CD de tus conjuros</span></div><div class="metric"><strong>${sign(d.initiative)}</strong><span>Iniciativa</span><button class="text-btn" data-action="roll" data-bonus="${d.initiative}" data-label="Iniciativa">Tirar d20</button></div></div>
  ${typeof CompanionsUI !== 'undefined' ? CompanionsUI.combat() : ''}
  ${state.hp === 0 ? `<section class="banner"><p><b>Estás a 0 PG.</b> Registrá las salvaciones de muerte. Tres éxitos estabilizan; tres fallos causan muerte.</p><div class="actions">${button('Tirar salvación de muerte', 'death-roll', '')}${button('Éxitos ' + state.death.success + '/3', 'death', 'secondary', 'data-kind="success"')}${button('Fallos ' + state.death.failure + '/3', 'death', 'danger', 'data-kind="failure"')}${button('Reiniciar', 'death-reset')}</div></section>` : ''}
  <div class="battle-layout"><section class="card battle-actions"><div class="card-header"><h2>Elegí qué hacer</h2><span class="tag">${combatLabels[combatTab]}</span></div><div class="battle-tabs" role="group" aria-label="Tipo de acción">${Object.entries(
@@ -424,9 +427,10 @@ function combatOption(id) {
   );
 }
 function combatHp() {
+  const v = Companions.vitals(state);
   modal(
     'Puntos de golpe',
-    `<p>Actuales: <b>${state.hp ?? 'sin confirmar'} / ${R.stats(state).maxHP}</b> · Temporales: ${state.temp}</p><div class="hp-controls"><label class="visually-hidden" for="hp-amount">Cantidad</label><input class="control" id="hp-amount" type="number" min="1" max="9999" value="1"><label class="visually-hidden" for="hp-type">Tipo de daño</label><select class="control" id="hp-type"><option value="">Sin tipo</option>${Defenses.TYPES.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select>${button('Daño', 'damage', 'danger')}${button('Curar', 'heal')}</div><p class="small section-space">Ingresá el daño recibido; si elegís el tipo, se aplican tus resistencias, inmunidades y vulnerabilidades. Los PG temporales se descuentan primero. Si concentrás, se recuerda la salvación.</p><div class="actions">${button('PG temporales', 'temp')}${button('Ajustar todos los recursos', 'resources')}</div>`,
+    `<p>Actuales: <b>${v.hp ?? 'sin confirmar'} / ${v.maxHP}${state.wildShape ? ' PG bestia' : ''}</b> · Temporales: ${state.temp}</p><div class="hp-controls"><label class="visually-hidden" for="hp-amount">Cantidad</label><input class="control" id="hp-amount" type="number" min="1" max="9999" value="1"><label class="visually-hidden" for="hp-type">Tipo de daño</label><select class="control" id="hp-type"><option value="">Sin tipo</option>${Defenses.TYPES.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select>${button('Daño', 'damage', 'danger')}${button('Curar', 'heal')}</div><p class="small section-space">Ingresá el daño recibido; si elegís el tipo, se aplican tus resistencias, inmunidades y vulnerabilidades. Los PG temporales se descuentan primero. Si concentrás, se recuerda la salvación.</p><div class="actions">${button('PG temporales', 'temp')}${button('Ajustar todos los recursos', 'resources')}</div>`,
   );
 }
 function installCombatActions() {

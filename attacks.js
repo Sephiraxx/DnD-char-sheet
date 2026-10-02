@@ -112,6 +112,10 @@
     if (!w) return null;
     const st = R().stats(s),
       cfg = item.unarmed ? { ability: 'auto', proficient: true, magic: 0, extra: '' } : settings(item);
+    if (item.magic?.attune && !item.magic.attuned) {
+      cfg.magic = 0;
+      cfg.extra = '';
+    }
     const mods = st.mods,
       ma = martialArtsDie(s);
     let ability = cfg.ability;

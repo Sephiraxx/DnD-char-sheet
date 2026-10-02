@@ -13,6 +13,19 @@
   });
   const data = s => s.combatState || (s.combatState = fresh());
   const kind = sp => ({ Acción: 'action', Adicional: 'bonus', Reacción: 'reaction' })[sp.time] || 'special';
+  // Las dos reservas pueden pagar conjuros de cualquiera de las clases.
+  function availableSlots(s, sp) {
+    const d = root.Rules.stats(s);
+    const out = d.slots.flatMap((max, i) =>
+      i + 1 >= sp.level && s.slotsSpent[i] !== null && s.slotsSpent[i] < max
+        ? [{ value: i + 1, level: i + 1, left: max - s.slotsSpent[i] }]
+        : [],
+    );
+    const used = s.pactSpent === undefined ? 0 : s.pactSpent;
+    if (d.pact && d.pact.level >= sp.level && used !== null && used < d.pact.max)
+      out.push({ value: 'pact', level: d.pact.level, left: d.pact.max - used });
+    return out;
+  }
   function blocked(s, k) {
     const c = data(s);
     if (
@@ -49,9 +62,7 @@
     if (c.active && (ritual || k === 'special'))
       return 'Este lanzamiento necesita más tiempo. Resolvelo fuera del seguimiento de turnos.';
     if (!ritual && sp.level && !specialCast(s, sp)) {
-      const slots = root.Rules.stats(s).slots;
-      if (!slots.some((n, i) => i + 1 >= sp.level && s.slotsSpent[i] !== null && s.slotsSpent[i] < n))
-        return 'No quedan espacios compatibles confirmados. Revisá tus recursos.';
+      if (!availableSlots(s, sp).length) return 'No quedan espacios compatibles confirmados. Revisá tus recursos.';
     }
     if (c.active && c.onTurn && !ritual) {
       if (k === 'bonus' && c.spells.some(x => !(x.kind === 'action' && x.level === 0)))
@@ -79,21 +90,16 @@
     const c = data(s),
       k = kind(sp);
     if (sp.level && !ritual && !specialCast(s, sp)) {
-      const max = root.Rules.stats(s).slots[slot - 1];
-      if (
-        !Number.isInteger(slot) ||
-        slot < sp.level ||
-        !max ||
-        s.slotsSpent[slot - 1] === null ||
-        s.slotsSpent[slot - 1] >= max
-      )
-        throw Error('No queda un espacio válido de ese nivel.');
+      if (!availableSlots(s, sp).some(x => x.value === slot)) throw Error('No queda un espacio válido de ese nivel.');
     }
     if (!ritual && k !== 'special') use(s, k, sp.name);
     if (!ritual && sp.level) {
       const special = specialCast(s, sp);
       if (special?.startsWith('arcanum')) root.Classes.spend(s, special, 1);
-      else if (!special) s.slotsSpent[slot - 1]++;
+      else if (!special) {
+        if (slot === 'pact') s.pactSpent = (s.pactSpent ?? 0) + 1;
+        else s.slotsSpent[slot - 1]++;
+      }
     }
     if (c.active && c.onTurn && !ritual) c.spells.push({ kind: k, level: sp.level });
     if (sp.concentration || ritual) {
@@ -150,7 +156,21 @@
       value: k === 'inspired' ? d.inspirationDie : value,
     });
   }
-  const api = { fresh, data, kind, blocked, specialCast, spellBlock, use, cast, start, end, finish, inspiration };
+  const api = {
+    fresh,
+    data,
+    kind,
+    availableSlots,
+    blocked,
+    specialCast,
+    spellBlock,
+    use,
+    cast,
+    start,
+    end,
+    finish,
+    inspiration,
+  };
   root.Combat = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

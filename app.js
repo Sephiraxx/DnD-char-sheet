@@ -353,11 +353,14 @@ function cast(id, ritual = false) {
   if (reason) throw Error(reason);
   const special = Combat.specialCast(state, sp);
   const d = R.stats(state),
+    caster = Classes.spellCaster(state, sp.id),
+    casterStats = R.stats(caster),
     c = Combat.data(state),
-    eligible = d.slots
-      .map((max, i) => [i + 1, `Nivel ${i + 1} · ${max - state.slotsSpent[i]} disponibles`])
-      .filter(([l]) => l >= sp.level && state.slotsSpent[l - 1] !== null && state.slotsSpent[l - 1] < d.slots[l - 1]);
-  let html = `<p>${esc(sp.text || sp.brief)}</p><p class="small">Dados: 1d4 = un dado de 4 caras; 2d6 = dos dados de 6 caras. «Modificador de lanzamiento» en esta ficha: ${sign(d.mods[Classes.casting(state).ability])}. ${esc(sp.materialEs || '')}</p><p class="small">${sp.level ? 'Conjuro de nivel ' + sp.level : 'Truco · no gasta espacio'} · ${esc(sp.time)} · ${esc(sp.range)}<br>${esc(sp.components)} · ${esc(sp.duration)}${ritual ? ' · Ritual: añade 10 minutos al lanzamiento.' : ''}</p>`;
+    eligible = Combat.availableSlots(state, sp).map(x => [
+      x.value,
+      `${x.value === 'pact' ? 'Pacto · ' : ''}Nivel ${x.level} · ${x.left} disponibles`,
+    ]);
+  let html = `<p>${esc(sp.text || sp.brief)}</p><p class="small">Dados: 1d4 = un dado de 4 caras; 2d6 = dos dados de 6 caras. «Modificador de lanzamiento» de este conjuro: ${sign(casterStats.mods[Classes.casting(caster).ability])}. ${esc(sp.materialEs || '')}</p><p class="small">${sp.level ? 'Conjuro de nivel ' + sp.level : 'Truco · no gasta espacio'} · ${esc(sp.time)} · ${esc(sp.range)}<br>${esc(sp.components)} · ${esc(sp.duration)}${ritual ? ' · Ritual: añade 10 minutos al lanzamiento.' : ''}</p>`;
   if (sp.level && !ritual && !special) html += select('Espacio a gastar', 'espacio', eligible, eligible[0]?.[0]);
   if (special)
     html +=
@@ -382,20 +385,31 @@ function cast(id, ritual = false) {
     ritual ? 'Lanzamiento ritual' : sp.name,
     html,
     fd => {
-      const slot = sp.level && !ritual && !special ? number(fd, 'espacio', sp.level, 9) : 0;
-      commit((ritual ? 'Ritual: ' : 'Lanzado: ') + sp.name + (slot ? ' · espacio ' + slot : ''), s => {
-        Combat.cast(s, sp, slot, ritual);
-        if (!ritual) Effects.fromSpell(s, sp);
-        const target = String(fd.get('ventaja') || '').trim();
-        if (sp.id === 'silvery' && target) {
-          const effects = Combat.data(s).effects;
-          const old = effects.find(x => x.kind === 'advantage' && x.target.toLowerCase() === target.toLowerCase());
-          if (old) old.target = target;
-          else effects.push({ id: uid(), kind: 'advantage', target, value: 0 });
-        }
-      });
+      const slot =
+        sp.level && !ritual && !special
+          ? fd.get('espacio') === 'pact'
+            ? 'pact'
+            : number(fd, 'espacio', sp.level, 9)
+          : 0;
+      const castLevel = slot === 'pact' ? d.pact.level : slot || sp.level;
+      commit(
+        (ritual ? 'Ritual: ' : 'Lanzado: ') +
+          sp.name +
+          (slot ? ' · ' + (slot === 'pact' ? 'pacto nivel ' + castLevel : 'espacio ' + slot) : ''),
+        s => {
+          Combat.cast(s, sp, slot, ritual);
+          if (!ritual) Effects.fromSpell(s, sp);
+          const target = String(fd.get('ventaja') || '').trim();
+          if (sp.id === 'silvery' && target) {
+            const effects = Combat.data(s).effects;
+            const old = effects.find(x => x.kind === 'advantage' && x.target.toLowerCase() === target.toLowerCase());
+            if (old) old.target = target;
+            else effects.push({ id: uid(), kind: 'advantage', target, value: 0 });
+          }
+        },
+      );
       // Si el conjuro tiene ataque, salvación o dados, se abre su tirada.
-      if (!ritual && RollUI.rollable(sp)) setTimeout(() => RollUI.spell(sp, slot || sp.level));
+      if (!ritual && RollUI.rollable(sp)) setTimeout(() => RollUI.spell(sp, castLevel));
       else
         toast(
           ritual
@@ -765,11 +779,7 @@ const actions = {
     let n = Number($('#hp-amount').value);
     if (!Number.isInteger(n) || n < 1 || n > 9999) throw Error('Usá una cantidad de curación válida.');
     commit('Curación: ' + n, s => {
-      s.hp = Math.min(R.stats(s).maxHP, s.hp + n);
-      if (s.hp > 0) {
-        s.death = { success: 0, failure: 0 };
-        s.conditions = s.conditions.filter(x => x !== 'Inconsciente');
-      }
+      Companions.heal(s, n);
     });
     $('#modal').close();
     toast('Curación registrada.');

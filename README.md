@@ -110,6 +110,7 @@ Opcional. Con la mesa configurada, cada jugador se une con un código y la party
 ### Combate compartido
 
 - El DM arma el encuentro en **Iniciativa**: agrega a la party, monstruos del SRD o criaturas propias (con PG, CA y salvaciones que solo ve el DM) y puede ocultar criaturas hasta revelarlas.
+- **Bestiario en español:** los 334 monstruos del SRD tienen nombre en español (se buscan también por el nombre en inglés), y sus ataques, daños, salvaciones, velocidades, sentidos, habilidades, idiomas, resistencias e inmunidades usan los términos del manual en español. Los textos especiales poco frecuentes pueden quedar en inglés. La traducción la hace `tools/monsters-es.js` (también al regenerar con `tools/build-monsters.js`).
 - Los jugadores ven el orden y el estado de cada criatura con palabras (Ileso, Herido, Malherido, A punto de caer, Derrotado), nunca sus PG ni su CA.
 - Al atacar o lanzar un conjuro se elige el objetivo. Contra una criatura, el servidor compara la tirada con la CA oculta y descuenta el daño. Las curaciones y los efectos (Bendición, Inspiración bárdica…) se aplican a uno mismo o a aliados.
 - **Juntar cuentas:** una sola cuenta (email y contraseña) sirve para todas tus mesas y DMs. Si en otro dispositivo jugaste sin guardar el acceso y después usás un email que ya tiene cuenta (al guardar o al entrar), la aplicación ofrece «Juntar con mi cuenta»: con la contraseña de esa cuenta, las fichas, mesas y mesas de DM de ese dispositivo pasan a tu cuenta. Nada se borra. Requiere `supabase/migrations/006_account_merge.sql`.
