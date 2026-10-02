@@ -100,3 +100,9 @@ test('cobrar monedas da cambio y rechaza si no alcanza', () => {
   assert.deepEqual({ ...pay({ cp: 0, sp: 3 }, { cp: 25 }) }, { cp: 5, sp: 0, ep: 0, gp: 0, pp: 0 });
   assert.equal(pay(wallet, { pp: 2 }), null);
 });
+
+test('los conjuros favoritos de la vista compacta se validan', () => {
+  assert.equal(JSON.stringify(g.Rules.validate({ ...wizard(), favorites: ['fire-bolt'] }).favorites), '["fire-bolt"]');
+  assert.throws(() => g.Rules.validate({ ...wizard(), favorites: 'fire-bolt' }));
+  assert.throws(() => g.Rules.validate({ ...wizard(), favorites: [42] }));
+});

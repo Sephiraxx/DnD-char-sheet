@@ -78,11 +78,12 @@ Caballero arcano y Embaucador arcano: las restricciones de escuelas y excepcione
 - Elegí acción, adicional o reacción y filtrá por nivel de conjuro. Al lanzar, elegís el espacio disponible. Los trucos no gastan espacios.
 - La restricción de conjuros de acción adicional de 2014 se aplica en ambos órdenes durante el seguimiento.
 - El combate ofrece recursos principales de cada clase y acciones frecuentes: Inspiración, Rabia, Segundo aliento, Acción súbita, ki, puntos de hechicería, Canalizar divinidad, Forma salvaje y otras según el nivel.
+- **Vista compacta** (botón en Combate, se recuerda en cada dispositivo): PG, CA, iniciativa, CD y velocidad siempre visibles arriba; acción, adicional y reacción; recursos como fichas tocables; y una lista corta de ataques, rasgos y conjuros. Marcá ☆ en un conjuro para que la vista compacta muestre solo tus favoritos.
 - **Acción súbita:** registrá primero tu acción y después usá el rasgo para habilitar la segunda. No concede otra acción adicional.
 - Los Dados de Golpe usan el dado de la clase. En descanso corto se suma CON a cada dado, con mínimo de 0 PG por dado. Los recursos se recuperan según su descanso; el descanso largo devuelve hasta la mitad del máximo de Dados de Golpe (mínimo uno).
 - El daño recuerda las salvaciones de concentración. Ataques, daño a enemigos, alcance, componentes, objetivos, condiciones y duraciones se resuelven en mesa.
 
-El combate automatiza recursos y acciones comunes, **no todos los efectos de las 118 subclases**. Por ejemplo, las formas del druida, mascotas, bonificaciones de objetos y reacciones especiales pueden necesitar notas, ajustes o la opción del DM. No calcula multiclase. La velocidad y los bonos de equipo se registran manualmente. Las condiciones son recordatorios y no alteran todas las tiradas.
+El combate automatiza recursos y acciones comunes, **no todos los efectos de las 118 subclases**. Por ejemplo, las formas del druida, mascotas, bonificaciones de objetos y reacciones especiales pueden necesitar notas, ajustes o la opción del DM. La multiclase calcula nivel de lanzador, espacios (con el pacto del brujo aparte), competencias y rasgos de cada clase. La velocidad y los bonos de equipo se registran manualmente. Las condiciones son recordatorios y no alteran todas las tiradas.
 
 ## Mesa compartida (party y DM)
 
@@ -125,7 +126,7 @@ No se envían correos, así que no hay límite de envíos. Requisito en Supabase
 
 ## Guardado, copias y uso sin conexión
 
-Todo se guarda **en ese navegador y dispositivo**. Sin la mesa compartida, GitHub Pages publica la aplicación pero no almacena ni sincroniza las fichas entre los integrantes de la party. Para trasladar una ficha usá **Personajes → Exportar personaje actual** e **Importar como personaje nuevo**. La importación tradicional de Mi ficha reemplaza solo la ficha activa, después de confirmar.
+Todo se guarda **en ese navegador y dispositivo**. Las fichas que están en una mesa compartida también se sincronizan con ella y, con el acceso guardado (email y contraseña), se abren en otros dispositivos. Sin mesa, GitHub Pages publica la aplicación pero no almacena ni sincroniza las fichas. Para trasladar una ficha usá **Personajes → Exportar personaje actual** e **Importar como personaje nuevo**. La importación tradicional de Mi ficha reemplaza solo la ficha activa, después de confirmar.
 
 Guardá copias JSON periódicas: borrar los datos del navegador elimina los guardados locales. Cambiar el dominio o navegador requiere exportar e importar. Después de una carga completa por HTTPS se puede volver a abrir sin conexión en navegadores compatibles. Los enlaces externos de referencia sí requieren conexión.
 
