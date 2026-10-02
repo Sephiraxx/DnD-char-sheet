@@ -304,8 +304,8 @@ const PartyUI = (() => {
       .join(' / ');
   }
   function levelup() {
-    if (!state.classId && C.id(state) === 'bard' && state.subclass === 'eloquence') return Learning.start();
     if (R.totalLevel(state) >= 20) throw Error('Ya estás en nivel 20 de personaje.');
+    if (typeof LevelUp !== 'undefined') return LevelUp.start();
     const next = state.level + 1,
       c = C.info(state),
       n = { ...state, level: next },
@@ -355,7 +355,7 @@ const PartyUI = (() => {
     return (
       header(
         esc(state.name),
-        `${esc(state.race || (!state.classId ? 'Semielfo' : 'Linaje por registrar'))} · ${MulticlassUI.label(state, true)}`,
+        `${esc(state.race || 'Linaje por registrar')} · ${MulticlassUI.label(state, true)}`,
         button('Características y armadura', 'stats') +
           button('Competencias', 'class-config') +
           button('Subir de nivel', 'levelup', '') +
@@ -378,13 +378,11 @@ const PartyUI = (() => {
         )
         .join(
           '',
-        )}<p class="small section-space">Competencia de clase: ${c.saves.map(k => R.attrs[k]).join(', ')}.</p></section></div></div>${EquipmentUI.panel(state)}${Campaign.sheetOrigins()}<section class="card section-space"><h2>Rasgos y notas</h2>${
-        !state.classId
-          ? R.features(state)
-              .map(([n, t]) => `<div class="feature"><h3>${esc(n)}</h3><p>${esc(t)}</p></div>`)
-              .join('')
-          : state.features.map(x => `<div class="feature"><h3>${esc(x.name)}</h3><p>${esc(x.text)}</p></div>`).join('')
-      }<div class="actions">${button('Ver clase y todos sus niveles', 'class-open')}${button('Añadir rasgo', 'feature-new')}${button('Editar rasgos propios', 'feature-manage')}</div></section>`
+        )}<p class="small section-space">Competencia de clase: ${c.saves.map(k => R.attrs[k]).join(', ')}.</p></section></div></div>${EquipmentUI.panel(state)}${Campaign.sheetOrigins()}<section class="card section-space"><h2>Rasgos y notas</h2>${state.features
+        .map(x => `<div class="feature"><h3>${esc(x.name)}</h3><p>${esc(x.text)}</p></div>`)
+        .join(
+          '',
+        )}<div class="actions">${button('Ver clase y todos sus niveles', 'class-open')}${button('Añadir rasgo', 'feature-new')}${button('Editar rasgos propios', 'feature-manage')}</div></section>`
     );
   }
   function automaticSpellNote(s, id, grants = C.granted(s)) {

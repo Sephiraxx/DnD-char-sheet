@@ -30,7 +30,6 @@ const AttackUI = (() => {
   }
 
   function choices(tab) {
-    if (!state.classId) return '';
     const n = A.attacksPerAction(state),
       why = reason(tab);
     return A.options(state)

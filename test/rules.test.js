@@ -18,10 +18,26 @@ test('la validación rechaza datos corruptos', () => {
   assert.throws(() => g.Rules.validate({ ...wizard(), abilities: null }));
 });
 
-test('la ficha heredada (Darien) sigue siendo válida', () => {
+test('una ficha de la primera versión (sin clase) pasa a ser de bardo y sigue funcionando', () => {
+  const old = fixture('legacy-darien.json');
+  assert.equal(old.classId, undefined);
+  const s = g.Rules.validate(old);
+  assert.equal(s.classId, 'bard');
+  assert.equal(s.classSubclass, 'bard-college-of-eloquence');
+  assert.equal(g.Classes.sub(s).english, 'College of Eloquence');
+  assert.equal(s.name, 'Darien Voss');
+  assert.equal(s.level, 2);
+  assert.equal(s.known.length, 6);
+  assert.ok(s.legacyPortrait);
+  assert.equal(g.Rules.stats(s).maxHP, 13 + 2 * 2);
+  const up = g.Classes.levelUp(s, { hpMethod: 'fixed' });
+  assert.equal(up.level, 3);
+});
+
+test('la ficha nueva en blanco ya no es la de Darien', () => {
   const s = g.Rules.validate(g.Rules.initial());
-  assert.equal(s.classId, undefined);
-  assert.ok(s.name);
+  assert.equal(s.classId, 'bard');
+  assert.ok(!/Darien/.test(JSON.stringify(s)));
 });
 
 test('estadísticas de un mago de nivel 3', () => {

@@ -14,7 +14,6 @@
     return sp?.name || 'Conjuro';
   }
   function classLine(s) {
-    if (!s.classId) return 'Bardo ' + s.level;
     return root.Classes.label(s, true);
   }
   // Datos que la mesa necesita ver de un vistazo, calculados con las mismas reglas de la ficha.
@@ -58,7 +57,7 @@
         typeof s.portrait?.data === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(s.portrait.data)
           ? s.portrait.data
           : '',
-      caster: !s.classId || root.Classes.casting(s).type !== 'none',
+      caster: root.Classes.casting(s).type !== 'none',
       effects: (s.timedEffects || []).map(x => x.name + (x.rounds !== null ? ' (' + x.rounds + ')' : '')),
       bonusDice: (s.bonusDice || []).map(b => 'd' + b.die + (b.reason ? ' · ' + b.reason : '')),
       inCombat: Boolean(c.active),

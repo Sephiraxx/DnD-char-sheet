@@ -76,5 +76,18 @@
     localStorage.removeItem(item.key + '-previous');
     localStorage.removeItem(item.key + '-level-draft');
   }
-  root.CharacterStorage = { list, activeKey, add, activate, remove };
+  // Borra el personaje abierto y abre otro (o la portada si no queda ninguno).
+  function removeActive() {
+    const entries = list(),
+      key = activeKey(),
+      item = entries.find(x => x.key === key);
+    if (!item) throw Error('Personaje no encontrado.');
+    const rest = entries.filter(x => x.id !== item.id);
+    localStorage.setItem(INDEX, JSON.stringify(rest));
+    for (const suffix of ['', '-previous', '-level-draft', '-cloud']) localStorage.removeItem(item.key + suffix);
+    if (rest.length) localStorage.setItem(ACTIVE, rest[0].id);
+    else localStorage.removeItem(ACTIVE);
+    location.reload();
+  }
+  root.CharacterStorage = { list, activeKey, add, activate, remove, removeActive };
 })(typeof window !== 'undefined' ? window : globalThis);

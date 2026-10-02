@@ -1,0 +1,546 @@
+/* Subir de nivel (clase principal), paso a paso y a pantalla completa como el creador:
+   qué ganás, PG, subclase, mejora o dote, conjuros nuevos, opciones de clase y revisión.
+   Solo aparecen los pasos que corresponden a ese nivel. Los datos los aplica Classes.levelUp. */
+const LevelUp = (() => {
+  'use strict';
+  const C = Classes,
+    R = Rules,
+    D = ClassData,
+    ABIL = ['str', 'dex', 'con', 'int', 'wis', 'cha'],
+    SHORT = { str: 'FUE', dex: 'DES', con: 'CON', int: 'INT', wis: 'SAB', cha: 'CAR' };
+  let host = null,
+    base = null,
+    d = null,
+    step = 0,
+    q = '';
+
+  const esc = v =>
+    String(v ?? '').replace(
+      /[&<>"']/g,
+      c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+    );
+  const canon = v => String(v).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const btn = (label, a, cls = '', attrs = '') =>
+    `<button type="button" class="button ${cls}" data-lv="${a}" ${attrs}>${label}</button>`;
+  const mod = n => Math.floor((Number(n) - 10) / 2);
+  // Efectos automáticos de dotes (feats.js), si está cargado.
+  const fx = () => (typeof FeatFX !== 'undefined' ? FeatFX : null);
+  const sign = n => (n >= 0 ? '+' : '') + n;
+
+  // ---------- Estado provisional ----------
+  // El personaje como quedaría con las elecciones de hasta ahora (sin los conjuros ni opciones nuevas).
+  function next() {
+    // Con la mejora todavía incompleta se calcula sin aplicarla (una dote cualquiera solo para la vista previa).
+    const nd = needs(),
+      okScores = d.a1 && d.a2 && [d.a1, d.a2].every(k => base.abilities[k] + (d.a1 === k) + (d.a2 === k) <= 20),
+      pending = nd.asi && (d.asi === 'scores' ? !okScores : !d.feat);
+    try {
+      return C.levelUp(base, {
+        hpMethod: d.hpMethod,
+        hpRoll: d.hpRoll,
+        subclass: d.subclass || undefined,
+        asi: pending ? 'feat' : d.asi,
+        a1: d.a1,
+        a2: d.a2,
+        feat: pending ? Catalog.feats[0].id : d.feat,
+        reviewed: true,
+        featNotes: d.featNotes,
+      });
+    } catch {
+      // Sin subclase todavía: nivel nuevo y PG, nada más.
+      const t = clone(base),
+        die = C.info(base).die,
+        roll = d.hpMethod === 'rolled' ? Number(d.hpRoll) || die / 2 + 1 : die / 2 + 1;
+      t.level++;
+      t.hpBase += Math.max(1, roll + mod(t.abilities.con)) - mod(t.abilities.con);
+      return t;
+    }
+  }
+  const at = () => base.level + 1;
+  function needs() {
+    const c = C.info(base),
+      l = at();
+    return {
+      subclass: l >= c.subclassLevel && !C.sub(base),
+      asi: C.asiLevels(base).includes(l),
+    };
+  }
+  function spellPlan(n = next()) {
+    const cast = C.casting(n),
+      st = R.stats(n),
+      counts = C.spellCounts(n),
+      bookMax = 6 + 2 * (n.level - 1);
+    return {
+      type: cast.type,
+      cantrips: Math.max(0, st.cantrips - counts.cantrips),
+      known: cast.type === 'known' ? Math.max(0, st.known - counts.known) : 0,
+      book: cast.type === 'book' ? Math.max(0, bookMax - counts.known) : 0,
+      prepared: ['prepared', 'book'].includes(cast.type) ? st.prepared : 0,
+      maxLevel: st.slots.length,
+    };
+  }
+  function choicePlan(n = next()) {
+    return C.choices(n)
+      .map(g => ({ ...g, have: (n.classChoices?.[g.name] || []).length }))
+      .filter(g => g.count > g.have);
+  }
+  function steps() {
+    const nd = needs(),
+      n = next(),
+      sp = spellPlan(n),
+      list = [
+        ['overview', 'Qué ganás'],
+        ['hp', 'Puntos de golpe'],
+      ];
+    if (nd.subclass) list.push(['subclass', 'Subclase']);
+    if (nd.asi) list.push(['asi', 'Mejora o dote']);
+    if (sp.cantrips || sp.known || sp.book || sp.type === 'prepared') list.push(['spells', 'Conjuros']);
+    if (choicePlan(n).length) list.push(['choices', 'Opciones de clase']);
+    list.push(['review', 'Revisar']);
+    return list;
+  }
+
+  // ---------- Abrir / cerrar ----------
+  function start() {
+    if (R.totalLevel(state) >= 20) throw Error('Ya estás en nivel 20 de personaje.');
+    base = clone(state);
+    const c = C.info(base);
+    d = {
+      hpMethod: 'fixed',
+      hpRoll: c.die / 2 + 1,
+      rolled: false,
+      subclass: '',
+      asi: 'scores',
+      a1: '',
+      a2: '',
+      feat: '',
+      featNotes: '',
+      cantrips: [],
+      known: [],
+      prepared: [...(base.prepared || [])],
+      choices: {},
+    };
+    step = 0;
+    q = '';
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'levelup';
+      host.className = 'creator-host';
+      host.setAttribute('role', 'dialog');
+      host.setAttribute('aria-modal', 'true');
+      host.setAttribute('aria-label', 'Subir de nivel');
+      document.body.append(host);
+      host.addEventListener('click', onClick);
+      host.addEventListener('change', onChange);
+      host.addEventListener('input', onInput);
+      host.addEventListener('submit', e => e.preventDefault());
+      host.addEventListener('keydown', e => e.key === 'Escape' && close());
+    }
+    document.getElementById('modal')?.open && document.getElementById('modal').close();
+    host.hidden = false;
+    document.body.classList.add('creator-open');
+    draw();
+  }
+  function close() {
+    host.hidden = true;
+    document.body.classList.remove('creator-open');
+  }
+
+  // ---------- Dibujo ----------
+  function draw() {
+    const list = steps();
+    step = Math.min(step, list.length - 1);
+    const id = list[step][0],
+      top = host.querySelector('.creator-body')?.scrollTop || 0,
+      c = C.info(base);
+    host.innerHTML = `<div class="creator-shell"><header class="creator-head"><div><p class="eyebrow">SUBIR DE NIVEL · ${esc(c.name).toUpperCase()} ${base.level} → ${at()} · PASO ${step + 1} DE ${list.length}</p><h1>${esc(list[step][1])}</h1></div><div class="actions">${btn('Salir', 'close', 'secondary')}</div></header><nav class="creator-rail" aria-label="Pasos">${list
+      .map(
+        ([, label], i) =>
+          `<button type="button" class="creator-step ${i === step ? 'cur' : i < step ? 'done' : ''}" data-lv="go" data-i="${i}" ${i > step ? 'disabled' : ''}>${i < step ? '✓ ' : i + 1 + ' · '}${esc(label)}</button>`,
+      )
+      .join(
+        '',
+      )}</nav><form class="creator-body" id="levelup-form" novalidate><div id="levelup-error" class="creator-error" role="alert"></div>${body(id)}</form><footer class="creator-foot"><p class="creator-summary">${summary()}</p><div class="actions">${step ? btn('Atrás', 'back', 'secondary') : ''}${btn(id === 'review' ? 'Confirmar subida' : 'Siguiente', 'next')}</div></footer></div>`;
+    const b = host.querySelector('.creator-body');
+    if (b) b.scrollTop = top;
+  }
+  function summary() {
+    const n = next(),
+      before = R.stats(base),
+      after = R.stats(n);
+    return `<b>${esc(base.name)}:</b> PG ${before.maxHP} → ${after.maxHP} · Competencia ${sign(before.prof)}${after.prof !== before.prof ? ' → ' + sign(after.prof) : ''}`;
+  }
+  function body(id) {
+    return { overview, hp, subclass, asi, spells, choices, review }[id]();
+  }
+
+  // 1. Qué ganás
+  function overview() {
+    const n = { ...base, level: at() },
+      feats = C.features(n).filter(f => f.level === at()),
+      before = R.stats(base),
+      after = R.stats(next()),
+      nd = needs(),
+      sp = spellPlan(),
+      slots = after.slots.map((v, i) => [i + 1, before.slots[i] || 0, v]).filter(([, a, b]) => a !== b);
+    const items = [
+      ...feats.map(
+        f =>
+          `<li><b>${esc(f.name)}</b>${f.children?.length ? ' <span class="small muted">· ' + esc(f.children.join(' · ')) + '</span>' : ''}</li>`,
+      ),
+      after.prof !== before.prof
+        ? `<li>Bonificador de competencia ${sign(before.prof)} → <b>${sign(after.prof)}</b></li>`
+        : '',
+      ...slots.map(([lv, a, b]) => `<li>Espacios de nivel ${lv}: ${a} → <b>${b}</b></li>`),
+      sp.cantrips ? `<li>${sp.cantrips} truco(s) nuevo(s)</li>` : '',
+      sp.known ? `<li>${sp.known} conjuro(s) conocido(s) nuevo(s)</li>` : '',
+      sp.book ? `<li>${sp.book} conjuro(s) nuevo(s) para tu libro</li>` : '',
+      nd.subclass ? '<li><b>Elegís tu subclase</b></li>' : '',
+      nd.asi ? '<li><b>Mejora de características o dote</b></li>' : '',
+    ].filter(Boolean);
+    return `<section class="card"><h2>${esc(C.info(base).name)} ${at()}</h2><ul class="creator-list levelup-gains">${items.join('') || '<li>Mejoras de recursos y de rasgos que ya tenés.</li>'}</ul><p class="small">Subir de nivel no es un descanso: los recursos gastados se conservan.</p></section>`;
+  }
+
+  // 2. PG
+  function hp() {
+    const c = C.info(base),
+      con = mod(next().abilities.con),
+      avg = c.die / 2 + 1;
+    return `<div class="chips creator-methods">${[
+      ['fixed', `Promedio: ${avg} ${sign(con)} CON`],
+      ['rolled', `Tirar d${c.die} ${sign(con)} CON`],
+    ]
+      .map(
+        ([v, l]) =>
+          `<button type="button" class="chip ${d.hpMethod === v ? 'selected' : ''}" data-lv="hpmethod" data-v="${v}" aria-pressed="${d.hpMethod === v}">${l}</button>`,
+      )
+      .join('')}</div>${
+      d.hpMethod === 'rolled'
+        ? `<div class="actions">${btn(d.rolled ? 'Volver a tirar' : 'Tirar d' + c.die, 'hproll', d.rolled ? 'secondary' : '')}</div><div class="form-grid">${field('Resultado del d' + c.die + ' (o tu dado físico)', 'hpRoll', d.hpRoll, 'number', `min="1" max="${c.die}" inputmode="numeric"`)}</div>`
+        : ''
+    }<p>Sumás <b>${Math.max(1, (d.hpMethod === 'rolled' ? Number(d.hpRoll) || 0 : avg) + con)}</b> PG máximos.</p>`;
+  }
+
+  // 3. Subclase
+  function subclass() {
+    const list = D.subclasses.filter(x => x.classId === C.id(base) && Campaign.enabled(base, x));
+    return `<div class="creator-grid small-cards">${list
+      .map(
+        x =>
+          `<button type="button" class="creator-card ${d.subclass === x.id ? 'selected' : ''}" data-lv="subclass" data-id="${x.id}" aria-pressed="${d.subclass === x.id}"><span class="creator-card-title">${esc(x.name)}</span><span class="creator-meta">${esc(x.source)}</span><span class="creator-brief">${esc(
+            (x.features || [])
+              .filter(f => f.level <= at())
+              .map(f => f.name)
+              .join(', '),
+          )}</span></button>`,
+      )
+      .join('')}</div>`;
+  }
+
+  // 4. Mejora o dote
+  function asi() {
+    const tabs = `<div class="chips creator-methods">${[
+      ['scores', 'Mejorar características'],
+      ['feat', 'Elegir una dote'],
+    ]
+      .map(
+        ([v, l]) =>
+          `<button type="button" class="chip ${d.asi === v ? 'selected' : ''}" data-lv="asimode" data-v="${v}" aria-pressed="${d.asi === v}">${l}</button>`,
+      )
+      .join('')}</div>`;
+    if (d.asi === 'scores') {
+      const opts = ABIL.map(k => [k, `${R.attrs[k]} (${base.abilities[k]})`]);
+      return `${tabs}<p class="small">+2 a una característica, o +1 a dos. Elegí la misma dos veces para el +2. Máximo 20.</p><div class="form-grid">${select('Primer +1', 'a1', [['', 'Elegí…'], ...opts], d.a1)}${select('Segundo +1', 'a2', [['', 'Elegí…'], ...opts], d.a2)}</div><div class="creator-scores">${ABIL.map(
+        k => {
+          const v = base.abilities[k] + (d.a1 === k) + (d.a2 === k);
+          return `<div class="creator-score ${v !== base.abilities[k] ? 'key-ability' : ''}"><span>${SHORT[k]}</span><b>${v}</b><small>${sign(mod(v))}</small></div>`;
+        },
+      ).join('')}</div>`;
+    }
+    const taken = new Set(base.progression?.learnedFeats || []);
+    const list = Catalog.feats
+      .filter(f => Campaign.enabled(base, f) && !(taken.has(f.id) && !f.repeatable))
+      .filter(f => !q || canon(f.name + ' ' + (f.english || '')).includes(canon(q)))
+      .sort((a, b) => a.name.localeCompare(b.name, 'es'));
+    const chosen = Catalog.feats.find(f => f.id === d.feat);
+    return `${tabs}<div class="creator-search"><input type="search" name="q" value="${esc(q)}" placeholder="Buscar dote" aria-label="Buscar dote"></div><div class="creator-grid small-cards">${list
+      .map(
+        f =>
+          `<button type="button" class="creator-card ${d.feat === f.id ? 'selected' : ''}" data-lv="feat" data-id="${f.id}" aria-pressed="${d.feat === f.id}"><span class="creator-card-title">${esc(f.name)}</span><span class="creator-meta">${esc(f.sourceKey)}${f.prerequisite ? ' · Requisito: ' + esc(f.prerequisite) : ''}</span>${fx()?.summary(f.id) ? `<span class="creator-brief">${esc(fx().summary(f.id))}</span>` : ''}</button>`,
+      )
+      .join(
+        '',
+      )}</div>${chosen ? `<section class="card creator-detail"><h3>${esc(chosen.name)}</h3>${fx()?.auto(chosen.id) ? `<p class="small"><b>Se aplica sola en la ficha:</b> ${esc(fx().auto(chosen.id))}</p>` : ''}<label class="field">Tus elecciones y notas de la dote<textarea name="featNotes" maxlength="1000" placeholder="Por ejemplo: +1 a Destreza; trucos elegidos…">${esc(d.featNotes)}</textarea></label></section>` : ''}`;
+  }
+
+  // 5. Conjuros
+  function spells() {
+    const n = next(),
+      sp = spellPlan(n),
+      g = C.granted(n),
+      auto = new Set([...g.prepared, ...g.known]),
+      known = new Set(n.known || []);
+    const pool = R.allSpells(n)
+      .filter(
+        s =>
+          Campaign.enabled(n, s) &&
+          (C.member(s, n) || g.expanded.includes(s.id)) &&
+          s.level <= sp.maxLevel &&
+          !auto.has(s.id),
+      )
+      .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name, 'es'));
+    const card = (kind, s, on) =>
+      `<button type="button" class="creator-card ${on ? 'selected' : ''}" data-lv="spell" data-kind="${kind}" data-id="${s.id}" aria-pressed="${on}"><span class="creator-card-title">${esc(s.name)}</span><span class="creator-meta">${s.level ? 'Nivel ' + s.level : 'Truco'} · ${esc(s.school || '')}</span><span class="creator-brief">${esc(s.brief || '')}</span></button>`;
+    const section = (kind, title, list, max, hint = '') => {
+      const mine = d[kind];
+      const shown = list.filter(
+        s => !q || canon(s.name + ' ' + (s.english || '')).includes(canon(q)) || mine.includes(s.id),
+      );
+      return `<section class="creator-spells"><div class="card-header"><h2>${title}</h2><span class="tag">${mine.length} de ${max}</span></div>${hint ? `<p class="small">${hint}</p>` : ''}<div class="creator-grid small-cards">${shown.map(s => card(kind, s, mine.includes(s.id))).join('')}</div></section>`;
+    };
+    let out = `<div class="creator-search"><input type="search" name="q" value="${esc(q)}" placeholder="Buscar conjuro" aria-label="Buscar conjuro"></div>`;
+    if (sp.cantrips)
+      out += section(
+        'cantrips',
+        'Trucos nuevos',
+        pool.filter(s => s.level === 0 && !known.has(s.id)),
+        sp.cantrips,
+      );
+    const fresh = pool.filter(s => s.level > 0 && !known.has(s.id));
+    if (sp.known) out += section('known', 'Conjuros conocidos nuevos', fresh, sp.known);
+    if (sp.book) out += section('known', 'Conjuros nuevos para tu libro', fresh, sp.book);
+    if (sp.type === 'prepared' || sp.type === 'book') {
+      const prepPool =
+        sp.type === 'book'
+          ? pool.filter(s => s.level > 0 && (known.has(s.id) || d.known.includes(s.id)))
+          : pool.filter(s => s.level > 0);
+      out += section(
+        'prepared',
+        'Preparados',
+        prepPool,
+        sp.prepared,
+        'Podés cambiarlos después de cada descanso largo. Ahora podés preparar ' + sp.prepared + '.',
+      );
+    }
+    return out;
+  }
+
+  // 6. Opciones de clase (estilos, invocaciones, metamagia, maniobras…)
+  const PACTS = {
+    Tome: 'Pacto del tomo',
+    Blade: 'Pacto del filo',
+    Chain: 'Pacto de la cadena',
+    Talisman: 'Pacto del talismán',
+  };
+  const spellEs = t => {
+    const key = canon(String(t).split('#')[0].split('|')[0]);
+    if (key === 'hex/curse') return 'Maleficio o una maldición';
+    return Catalog.spells.find(s => canon(s.english || '') === key)?.name || String(t).split('#')[0];
+  };
+  function requirement(o) {
+    return (o.prerequisite || [])
+      .map(p =>
+        Object.entries(p)
+          .map(([k, v]) =>
+            k === 'level'
+              ? 'nivel ' + (v.level ?? v)
+              : k === 'pact'
+                ? PACTS[v] || v
+                : k === 'spell'
+                  ? 'conocer ' + [].concat(v).map(spellEs).join(' o ')
+                  : k === 'item'
+                    ? 'objeto: ' + [].concat(v).join(', ')
+                    : '',
+          )
+          .filter(Boolean)
+          .join(', '),
+      )
+      .filter(Boolean)
+      .join(' o ');
+  }
+  // El pacto se controla: sin el don del pacto pedido, la invocación no se puede elegir.
+  function pactMissing(o, n) {
+    const need = (o.prerequisite || []).map(p => p.pact).filter(Boolean);
+    if (!need.length) return false;
+    const have = [...(n.classChoices?.['Pact Boon'] || []), ...(d.choices['Pact Boon'] || [])];
+    return !need.some(pk => have.some(id => id.startsWith('pact-of-the-' + pk.toLowerCase())));
+  }
+  function choices() {
+    const n = next();
+    return choicePlan(n)
+      .map(gr => {
+        const picks = [...(n.classChoices?.[gr.name] || []), ...(d.choices[gr.name] || [])];
+        return `<section class="creator-spells"><div class="card-header"><h2>${esc(NamesEs.choice(gr.name))}</h2><span class="tag">${picks.length} de ${gr.count}</span></div><div class="creator-grid small-cards">${gr.options
+          .map(o => {
+            const had = (n.classChoices?.[gr.name] || []).includes(o.id),
+              on = picks.includes(o.id),
+              req = requirement(o),
+              blocked = !on && pactMissing(o, n);
+            return `<button type="button" class="creator-card ${on ? 'selected' : ''}" data-lv="choice" data-group="${esc(gr.name)}" data-id="${esc(o.id)}" ${had || blocked ? 'disabled' : ''} aria-pressed="${on}"><span class="creator-card-title">${esc(o.name)}</span><span class="creator-meta">${esc(o.source)}${had ? ' · ya la tenés' : ''}</span>${req ? `<span class="creator-meta ${blocked ? 'req-missing' : ''}">Requiere: ${esc(req)}</span>` : ''}${o.text ? `<span class="creator-brief">${esc(o.text)}</span>` : ''}</button>`;
+          })
+          .join('')}</div></section>`;
+      })
+      .join('');
+  }
+
+  // 7. Revisión
+  function review() {
+    const n = next(),
+      before = R.stats(base),
+      after = R.stats(n),
+      sub = d.subclass && D.subclasses.find(x => x.id === d.subclass),
+      feat = d.asi === 'feat' && Catalog.feats.find(f => f.id === d.feat),
+      names = ids => ids.map(id => Catalog.spells.find(s => s.id === id)?.name || id).join(', ');
+    return `<section class="card"><h2>${esc(base.name)} · ${esc(C.info(base).name)} ${at()}</h2><ul class="creator-list">${[
+      `<li>PG máximos ${before.maxHP} → <b>${after.maxHP}</b> (${d.hpMethod === 'rolled' ? 'tirada ' + d.hpRoll : 'promedio'})</li>`,
+      sub ? `<li>Subclase: <b>${esc(sub.name)}</b></li>` : '',
+      needs().asi
+        ? feat
+          ? `<li>Dote: <b>${esc(feat.name)}</b></li>`
+          : `<li>Mejora: ${esc(R.attrs[d.a1] || '?')} +1, ${esc(R.attrs[d.a2] || '?')} +1</li>`
+        : '',
+      d.cantrips.length ? `<li>Trucos: ${esc(names(d.cantrips))}</li>` : '',
+      d.known.length ? `<li>Conjuros: ${esc(names(d.known))}</li>` : '',
+      ...Object.entries(d.choices)
+        .filter(([, v]) => v.length)
+        .map(
+          ([g, v]) =>
+            `<li>${esc(NamesEs.choice(g))}: ${esc(v.map(id => D.options.find(o => o.id === id)?.name || id).join(', '))}</li>`,
+        ),
+    ]
+      .filter(Boolean)
+      .join('')}</ul><p class="small">Lo que dejes sin elegir queda como pendiente en Clase.</p></section>`;
+  }
+
+  // ---------- Validación y aplicación ----------
+  function validate(id) {
+    const c = C.info(base);
+    if (
+      id === 'hp' &&
+      d.hpMethod === 'rolled' &&
+      !(Number.isInteger(Number(d.hpRoll)) && d.hpRoll >= 1 && d.hpRoll <= c.die)
+    )
+      throw Error(`El dado va de 1 a ${c.die}.`);
+    if (id === 'subclass' && !d.subclass) throw Error('Elegí tu subclase.');
+    if (id === 'asi') {
+      if (d.asi === 'scores') {
+        if (!d.a1 || !d.a2) throw Error('Elegí las dos mejoras.');
+        for (const k of new Set([d.a1, d.a2]))
+          if (base.abilities[k] + (d.a1 === k) + (d.a2 === k) > 20)
+            throw Error('Ninguna característica puede pasar de 20.');
+      } else if (!d.feat) throw Error('Elegí una dote.');
+    }
+  }
+  function apply() {
+    const picks = d;
+    commit('Subida a nivel ' + at(), s => {
+      const n = C.levelUp(s, {
+        hpMethod: picks.hpMethod,
+        hpRoll: picks.hpRoll,
+        subclass: picks.subclass || undefined,
+        asi: picks.asi,
+        a1: picks.a1,
+        a2: picks.a2,
+        feat: picks.feat,
+        reviewed: true,
+        featNotes: picks.featNotes,
+      });
+      const sp = spellPlan(n);
+      n.known = [...new Set([...(n.known || []), ...picks.cantrips, ...picks.known])];
+      if (sp.type === 'prepared' || sp.type === 'book')
+        n.prepared = picks.prepared.filter(id => sp.type === 'prepared' || n.known.includes(id));
+      for (const [g, ids] of Object.entries(picks.choices))
+        n.classChoices = { ...(n.classChoices || {}), [g]: [...new Set([...(n.classChoices?.[g] || []), ...ids])] };
+      if (picks.asi === 'feat' && picks.feat) fx()?.onGain(n, picks.feat);
+      Object.assign(s, R.validate(n));
+    });
+    close();
+    location.hash = 'class';
+    toast(`¡${state.name} subió a nivel ${state.level}!`);
+  }
+
+  // ---------- Eventos ----------
+  function fail(e) {
+    const el = host.querySelector('#levelup-error');
+    if (el) el.textContent = e.message;
+  }
+  function collect() {
+    const f = host.querySelector('#levelup-form');
+    if (!f) return;
+    const fd = new FormData(f);
+    if (fd.has('hpRoll')) d.hpRoll = Number(fd.get('hpRoll'));
+    if (fd.has('a1')) d.a1 = String(fd.get('a1'));
+    if (fd.has('a2')) d.a2 = String(fd.get('a2'));
+    if (fd.has('featNotes')) d.featNotes = String(fd.get('featNotes'));
+  }
+  function onClick(e) {
+    const t = e.target.closest('[data-lv]');
+    if (!t || t.disabled) return;
+    const a = t.dataset.lv;
+    try {
+      collect();
+      const list = steps(),
+        id = list[step][0];
+      if (a === 'close') return close();
+      if (a === 'next') {
+        validate(id);
+        if (id === 'review') return apply();
+        step++;
+        q = '';
+      }
+      if (a === 'back') step = Math.max(0, step - 1);
+      if (a === 'go') step = Number(t.dataset.i);
+      if (a === 'hpmethod') d.hpMethod = t.dataset.v;
+      if (a === 'hproll') {
+        const die = C.info(base).die;
+        d.hpRoll = window.roll(die, 1)[0];
+        d.rolled = true;
+        RollFX.show({ label: 'Puntos de golpe · d' + die, total: d.hpRoll, face: d.hpRoll });
+      }
+      if (a === 'subclass') d.subclass = t.dataset.id;
+      if (a === 'asimode') d.asi = t.dataset.v;
+      if (a === 'feat') d.feat = t.dataset.id;
+      if (a === 'spell') {
+        const kind = t.dataset.kind,
+          sid = t.dataset.id,
+          list2 = d[kind],
+          sp = spellPlan(),
+          max = { cantrips: sp.cantrips, known: sp.known || sp.book, prepared: sp.prepared }[kind];
+        if (list2.includes(sid)) d[kind] = list2.filter(x => x !== sid);
+        else {
+          if (list2.length >= max) throw Error(`Ya elegiste ${max}. Quitá uno para cambiarlo.`);
+          d[kind] = [...list2, sid];
+        }
+      }
+      if (a === 'choice') {
+        const g = t.dataset.group,
+          gr = choicePlan().find(x => x.name === g),
+          mine = d.choices[g] || [];
+        if (mine.includes(t.dataset.id)) d.choices[g] = mine.filter(x => x !== t.dataset.id);
+        else {
+          if (gr && gr.have + mine.length >= gr.count)
+            throw Error(`Ya elegiste ${gr.count}. Quitá una para cambiarla.`);
+          d.choices[g] = [...mine, t.dataset.id];
+        }
+      }
+      draw();
+    } catch (err) {
+      fail(err);
+    }
+  }
+  function onChange(e) {
+    if (e.target.name === 'q') return;
+    collect();
+    if (['a1', 'a2', 'hpRoll'].includes(e.target.name)) draw();
+  }
+  function onInput(e) {
+    if (e.target.name !== 'q') return;
+    q = e.target.value;
+    const pos = e.target.selectionStart;
+    draw();
+    const el = host.querySelector('[name=q]');
+    el?.focus();
+    el?.setSelectionRange(pos, pos);
+  }
+  return { start, close };
+})();
