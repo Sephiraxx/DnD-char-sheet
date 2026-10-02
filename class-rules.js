@@ -108,6 +108,46 @@
       .map(([die, count]) => ({ die: Number(die), count }))
       .sort((a, b) => b.die - a.die);
   }
+  // Dados de Golpe por tipo (multiclase). hdSpentByDie guarda lo gastado de cada dado; lo gastado sin tipo
+  // (fichas viejas o ajustes a mano en «Ajustar recursos») se descuenta de los dados más chicos.
+  function hitDiceLeft(s) {
+    const set = hitDiceSet(s),
+      by = s.hdSpentByDie || {},
+      out = set.map(x => ({ ...x, left: x.count - Math.min(x.count, by[x.die] || 0) }));
+    let unknown = Math.max(
+      0,
+      (s.hdSpent || 0) - set.reduce((a, x) => a + (x.count - (out.find(y => y.die === x.die)?.left ?? x.count)), 0),
+    );
+    for (const x of [...out].reverse()) {
+      const take = Math.min(unknown, x.left);
+      x.left -= take;
+      unknown -= take;
+    }
+    return out;
+  }
+  function spendHitDice(s, die, n) {
+    if (!n) return;
+    const row = hitDiceLeft(s).find(x => x.die === die);
+    if (!row || !Number.isInteger(n) || n < 0 || n > row.left) throw Error(`Te quedan ${row ? row.left : 0}d${die}.`);
+    s.hdSpentByDie = { ...(s.hdSpentByDie || {}), [die]: ((s.hdSpentByDie || {})[die] || 0) + n };
+    s.hdSpent = (s.hdSpent || 0) + n;
+  }
+  // Descanso largo: recupera n dados gastados, primero los más grandes.
+  function recoverHitDice(s, n) {
+    const by = { ...(s.hdSpentByDie || {}) };
+    let left = n;
+    for (const die of Object.keys(by)
+      .map(Number)
+      .sort((a, b) => b - a)) {
+      const back = Math.min(left, by[die]);
+      by[die] -= back;
+      left -= back;
+      if (!by[die]) delete by[die];
+    }
+    s.hdSpent = Math.max(0, (s.hdSpent || 0) - n);
+    if (Object.keys(by).length) s.hdSpentByDie = by;
+    else delete s.hdSpentByDie;
+  }
   function stats(s) {
     const c = info(s),
       l = s.level,
@@ -580,6 +620,15 @@
       throw Error('Espacios de pacto inválidos.');
     if (s.castingAbility && !['str', 'dex', 'con', 'int', 'wis', 'cha'].includes(s.castingAbility))
       throw Error('Característica de lanzamiento inválida.');
+    if (
+      s.hdSpentByDie !== undefined &&
+      (!s.hdSpentByDie ||
+        typeof s.hdSpentByDie !== 'object' ||
+        Object.entries(s.hdSpentByDie).some(
+          ([die, n]) => ![6, 8, 10, 12].includes(Number(die)) || !Number.isInteger(n) || n < 0 || n > 20,
+        ))
+    )
+      throw Error('Dados de Golpe gastados inválidos.');
     if (s.armorMode && !['normal', 'medium', 'fixed', 'barbarian', 'monk'].includes(s.armorMode))
       throw Error('Fórmula de armadura inválida.');
     if (s.armorDexCap !== undefined && (!Number.isInteger(s.armorDexCap) || s.armorDexCap < 0 || s.armorDexCap > 30))
@@ -622,6 +671,7 @@
       roll = choice.hpMethod === 'rolled' ? Number(choice.hpRoll) : die / 2 + 1;
     if (!Number.isInteger(roll) || roll < 1 || roll > die) throw Error('Tirada de PG inválida.');
     next.level = l;
+    if (next._total !== undefined) next._total++;
     if (choice.subclass) {
       next.classSubclass = choice.subclass;
       next.subclass = choice.subclass === 'bard-college-of-eloquence' ? 'eloquence' : 'manual';
@@ -640,7 +690,8 @@
         next.features.push({ name: feat.name, text: 'Dote: ' + choice.featNotes });
       }
     }
-    next.hpBase += Math.max(1, roll + mod(next.abilities.con)) - mod(next.abilities.con);
+    const con = mod(R().scores(next).con);
+    next.hpBase += Math.max(1, roll + con) - con;
     if (next.hp !== null) next.hp = Math.min(next.hp, stats(next).maxHP);
     const before = slots(s),
       after = slots(next);
@@ -679,7 +730,8 @@
     if (!Number.isInteger(roll) || roll < 1 || roll > c.die) throw Error('Tirada de PG inválida.');
     if (choice.subclass) mc.subclass = choice.subclass;
     if (mc.level >= c.subclassLevel && !mc.subclass) throw Error('Elegí una subclase para ' + c.name + '.');
-    next.hpBase += Math.max(1, roll + mod(next.abilities.con)) - mod(next.abilities.con);
+    const con = mod(R().scores(next).con);
+    next.hpBase += Math.max(1, roll + con) - con;
     if (next.hp !== null) next.hp = Math.min(next.hp, stats(next).maxHP);
     const before = slots(s),
       after = slots(next);
@@ -735,6 +787,9 @@
     label,
     pact,
     hitDiceSet,
+    hitDiceLeft,
+    spendHitDice,
+    recoverHitDice,
     levelUpSecondary,
     meetsPrereq,
     PREREQ,

@@ -771,6 +771,7 @@ label.check:has(input[name='heroic']:checked) {
   --enc: #f39995;
   position: fixed;
   inset: 0;
+  overflow: hidden;
   z-index: 2000;
   display: grid;
   place-items: center;
@@ -797,12 +798,18 @@ label.check:has(input[name='heroic']:checked) {
 .enc-text {
   position: relative;
   display: grid;
+  width: 100%;
+  min-width: 0;
+  max-width: 1100px;
   justify-items: center;
   gap: 6px;
   text-align: center;
   padding: 0 16px;
 }
 .enc-text strong {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   font-family: Georgia, serif;
   font-size: clamp(2.6rem, 12vw, 5.5rem);
   color: var(--enc);

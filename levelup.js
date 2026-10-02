@@ -41,7 +41,14 @@ const LevelUp = (() => {
     tmp.multiclass = [...(tmp.multiclass || [])];
     if (!tmp.multiclass.some(x => x.classId === classId))
       tmp.multiclass.push({ classId, level: 0, subclass: '', notes: '' });
-    return clone(C.views(tmp).find((v, i) => i && v.classId === classId));
+    const v = clone(C.views(tmp).find((v, i) => i && v.classId === classId));
+    // La vista conserva el PG total, pero no los contadores de otra clase.
+    // Son datos provisionales: writeBack deja los usos reales sin cambios.
+    v.subclass = v.classSubclass === 'bard-college-of-eloquence' ? 'eloquence' : 'manual';
+    v.slotsSpent = Array(9).fill(null);
+    v.inspirationSpent = null;
+    v.pactSpent = null;
+    return v;
   }
   function next() {
     if (spellsOnly) return clone(base);
@@ -68,7 +75,9 @@ const LevelUp = (() => {
         die = C.info(base).die,
         roll = d.hpMethod === 'rolled' ? Number(d.hpRoll) || die / 2 + 1 : die / 2 + 1;
       t.level++;
-      t.hpBase += Math.max(1, roll + mod(t.abilities.con)) - mod(t.abilities.con);
+      if (t._total !== undefined) t._total++;
+      const con = mod(R.scores(t).con);
+      t.hpBase += Math.max(1, roll + con) - con;
       return t;
     }
   }
@@ -248,7 +257,7 @@ const LevelUp = (() => {
   // 2. PG
   function hp() {
     const c = C.info(base),
-      con = mod(next().abilities.con),
+      con = mod(R.scores(next()).con),
       avg = c.die / 2 + 1;
     return `<div class="chips creator-methods">${[
       ['fixed', `Promedio: ${avg} ${sign(con)} CON`],

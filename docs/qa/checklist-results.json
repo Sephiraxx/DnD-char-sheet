@@ -1,0 +1,1165 @@
+{
+  "date": "2026-10-02",
+  "counts": {
+    "checked": 192,
+    "pass": 162,
+    "fail": 5,
+    "skip": 25
+  },
+  "automatedTests": 177,
+  "baseline": "4d26104",
+  "results": [
+    {
+      "id": "A-01",
+      "status": "skip",
+      "feature": "First open on a phone",
+      "note": "Phone-width browser layouts checked; no physical phone or fresh mobile-browser welcome session available."
+    },
+    {
+      "id": "A-02",
+      "status": "pass",
+      "feature": "Desktop welcome",
+      "note": "UI: welcome offers create, join a table and DM entry points."
+    },
+    {
+      "id": "A-03",
+      "status": "skip",
+      "feature": "Home-screen installation",
+      "note": "Requires iOS/Android installation and standalone launch on hardware. Manifest/icon presence is not an installation pass."
+    },
+    {
+      "id": "A-04",
+      "status": "skip",
+      "feature": "Airplane-mode reopen and save",
+      "note": "Cache-file coverage and local saving pass; actual phone airplane mode and cold offline launch not exercised."
+    },
+    {
+      "id": "A-05",
+      "status": "skip",
+      "feature": "Closed app receives deployment",
+      "note": "Logic: waiting update activates immediately and reloads once. No real new version was published during this QA."
+    },
+    {
+      "id": "A-06",
+      "status": "skip",
+      "feature": "Update banner during use",
+      "note": "Logic: delayed installation offers the banner; visibility return requests an update. Actual deployment/switch-away journey not performed."
+    },
+    {
+      "id": "A-07",
+      "status": "skip",
+      "feature": "Actualizar",
+      "note": "Logic: button activates the worker, removes the banner and reloads once. New deployed version not exercised."
+    },
+    {
+      "id": "A-08",
+      "status": "skip",
+      "feature": "Después",
+      "note": "Logic: dismisses without activation/reload. Actual deployed-version banner not exercised in-browser."
+    },
+    {
+      "id": "B-01",
+      "status": "pass",
+      "feature": "Open and exit",
+      "note": "UI: creator opens at class; Salir closes it."
+    },
+    {
+      "id": "B-02",
+      "status": "pass",
+      "feature": "Class cards and filters",
+      "note": "UI: filters and fighter/wizard cards; hit die, saves and class details displayed."
+    },
+    {
+      "id": "B-03",
+      "status": "pass",
+      "feature": "Starting level",
+      "note": "UI: fighter starting level changed to 2; review and created HP match that level."
+    },
+    {
+      "id": "B-04",
+      "status": "pass",
+      "feature": "Book filtering",
+      "note": "UI: eight books reduced to PHB only; backgrounds reduced to 20 and race families to 9, with PHB labels. Logic: common source filtering applies to spells too."
+    },
+    {
+      "id": "B-05",
+      "status": "pass",
+      "feature": "Background search/custom",
+      "note": "UI: custom background selected and persisted in draft; Sage/Soldier found in English/Spanish. Soldier and Sage grants appear automatically in skills."
+    },
+    {
+      "id": "B-06",
+      "status": "pass",
+      "feature": "Race/subrace/custom",
+      "note": "UI: High Elf traits/languages/speed and grants; PHB tiefling creation; custom Copperkin name accepted into the next step."
+    },
+    {
+      "id": "B-07",
+      "status": "pass",
+      "feature": "Ability methods",
+      "note": "UI: array, manual, 4d6 drop-lowest and point buy. Retest reaches exactly 27; every increment is disabled at the cap. Racial bonuses shown."
+    },
+    {
+      "id": "B-08",
+      "status": "pass",
+      "feature": "Class skill count",
+      "note": "UI: two class selections; origin grants disabled and excluded from those two choices."
+    },
+    {
+      "id": "B-09",
+      "status": "pass",
+      "feature": "Creator spells",
+      "note": "UI: wizard 3 cantrips, 6 book spells, 4 prepared at level 1; extra selections refused clearly. Fighter has no class-spell step. Logic covers caster limits."
+    },
+    {
+      "id": "B-10",
+      "status": "pass",
+      "feature": "Chain mail and shield",
+      "note": "UI: fighter review and created sheet AC 18 before choosing Defense style."
+    },
+    {
+      "id": "B-11",
+      "status": "pass",
+      "feature": "Details/review/create",
+      "note": "UI: fighter and tiefling names, languages, speed, HP, AC and skills match review."
+    },
+    {
+      "id": "B-12",
+      "status": "pass",
+      "feature": "Tiefling Thaumaturgy",
+      "note": "UI: full PHB tiefling creator; Taumaturgia appears as a racial extra on the resulting sheet."
+    },
+    {
+      "id": "B-13",
+      "status": "pass",
+      "feature": "Draft resume",
+      "note": "UI: exit, reload, reopen restores the step and choices; explicit resume message."
+    },
+    {
+      "id": "B-14",
+      "status": "pass",
+      "feature": "Restart confirmation/clear",
+      "note": "UI: user accepted the restart confirmation. Creator returned to empty class step 1; reload/reopen confirmed the old draft was cleared."
+    },
+    {
+      "id": "B-15",
+      "status": "pass",
+      "feature": "Create into a table",
+      "note": "UI/Live: valid Lantern Keep code in step 1 applies PHB, starting level 2, fixed 16/15/14/12/10/8 array and array-only method; completed fighter joins the table automatically."
+    },
+    {
+      "id": "B-16",
+      "status": "pass",
+      "feature": "Full phone creator",
+      "note": "UI: complete fighter and tiefling flows at actual 390px; point-buy overlap found, fixed and retested. Other widths checked for the corrected cards."
+    },
+    {
+      "id": "C-01",
+      "status": "pass",
+      "feature": "Switch characters",
+      "note": "UI: fighter, wizard, druid and pact characters; chosen sheet opens and list closes."
+    },
+    {
+      "id": "C-02",
+      "status": "pass",
+      "feature": "Create from open sheet",
+      "note": "UI: Personajes → Crear personaje closes list and opens creator, repeatedly."
+    },
+    {
+      "id": "C-03",
+      "status": "skip",
+      "feature": "Desktop JSON download",
+      "note": "Export was clicked; in-app browser did not deliver a download event. Earlier follow-up records a successful normal-browser round trip; not independently repeated here."
+    },
+    {
+      "id": "C-04",
+      "status": "skip",
+      "feature": "iPhone/Android export",
+      "note": "Physical Safari/Android and native share sheet unavailable."
+    },
+    {
+      "id": "C-05",
+      "status": "skip",
+      "feature": "Export/import identical copy",
+      "note": "Fixture imports pass. Earlier follow-up reports an exported-file round trip with magic items/multiclass; actual downloaded file was not captured here."
+    },
+    {
+      "id": "C-06",
+      "status": "pass",
+      "feature": "Broken JSON",
+      "note": "UI: malformed file refused, current sheet preserved; validation tests reject corrupt data."
+    },
+    {
+      "id": "C-07",
+      "status": "pass",
+      "feature": "Replace-current import confirmation",
+      "note": "UI: file chooser selected a character fixture; Importar ficha names the replacement and asks before applying. Cancel leaves QA Nara and its 34/52 HP unchanged."
+    },
+    {
+      "id": "C-08",
+      "status": "pass",
+      "feature": "Previous copy",
+      "note": "UI: origin languages edited, recovery confirmed; preceding language list restored and toast shown."
+    },
+    {
+      "id": "C-09",
+      "status": "pass",
+      "feature": "Header/journal undo",
+      "note": "UI: header undo restores a change; Diario Deshacer removes the added rope entry and its history record."
+    },
+    {
+      "id": "C-10",
+      "status": "pass",
+      "feature": "Two-tab update notice",
+      "note": "UI: edit in one tab announces “Ficha actualizada desde otra pestaña” in the other."
+    },
+    {
+      "id": "C-11",
+      "status": "skip",
+      "feature": "Delete character",
+      "note": "UI: Mi ficha → Eliminar personaje opens a confirmation. Actual removal and automatic fallback await the requested human confirmation. Logic remove/active-character protection passes."
+    },
+    {
+      "id": "D-01",
+      "status": "pass",
+      "feature": "Scores/modifiers/bonuses",
+      "note": "Logic and UI: proficiency, expertise, bard half-proficiency implementation, effective item/beast modifiers; displayed arcana +6 after INT change."
+    },
+    {
+      "id": "D-02",
+      "status": "pass",
+      "feature": "Skill/save roll dialog",
+      "note": "UI: d20 dialogs expose Normal, advantage/disadvantage and physical die; physical saves and attacks exercised."
+    },
+    {
+      "id": "D-03",
+      "status": "pass",
+      "feature": "Edit abilities/AC dependencies",
+      "note": "UI: STR/INT edit updates attack/skill bonuses; equipped defense recalculates. Logic covers base/formula AC."
+    },
+    {
+      "id": "D-04",
+      "status": "pass",
+      "feature": "Proficiency/expertise",
+      "note": "UI: Arcana proficiency + expertise saved; bonus updates with INT."
+    },
+    {
+      "id": "D-05",
+      "status": "pass",
+      "feature": "Origin/identity edit",
+      "note": "UI: three card steps, languages edit; class, HP, inventory and feat remain. Recovery restores preceding identity."
+    },
+    {
+      "id": "D-06",
+      "status": "pass",
+      "feature": "Fire resistance",
+      "note": "UI: manually added fire resistance; damage 2 becomes 1 with explanation."
+    },
+    {
+      "id": "D-07",
+      "status": "skip",
+      "feature": "Native PDF",
+      "note": "Generated light print HTML and contents checked; native print dialog/PDF export unavailable."
+    },
+    {
+      "id": "D-08",
+      "status": "skip",
+      "feature": "Level-20 PDF pagination",
+      "note": "Automated printed content covers all classes; physical page breaks/cuts in a large native PDF not verified."
+    },
+    {
+      "id": "E-01",
+      "status": "pass",
+      "feature": "Begin own turn",
+      "note": "UI and Logic: action, bonus and reaction available."
+    },
+    {
+      "id": "E-02",
+      "status": "pass",
+      "feature": "Second action refused",
+      "note": "UI disables spent actions; Logic refuses an additional action. Action Surge exception tested separately."
+    },
+    {
+      "id": "E-03",
+      "status": "pass",
+      "feature": "End/next turn and reaction",
+      "note": "Logic: end preserves spent reaction; start resets tokens. UI next-turn confirmation resets action."
+    },
+    {
+      "id": "E-04",
+      "status": "pass",
+      "feature": "Typed resisted damage",
+      "note": "UI: 2 fire damage halved to 1; reason shown."
+    },
+    {
+      "id": "E-05",
+      "status": "pass",
+      "feature": "Temporary HP first",
+      "note": "UI: temp 7, damage 5 leaves temp 2 without changing current HP."
+    },
+    {
+      "id": "E-06",
+      "status": "pass",
+      "feature": "Zero HP",
+      "note": "UI: unconscious/prone and death-save controls appear."
+    },
+    {
+      "id": "E-07",
+      "status": "pass",
+      "feature": "Death-save outcomes",
+      "note": "UI physical dice: three successes stable, three failures dead, natural 20 restores 1 HP."
+    },
+    {
+      "id": "E-08",
+      "status": "pass",
+      "feature": "Heal from zero",
+      "note": "UI and Logic: death counters clear and unconscious ends; prone correctly remains."
+    },
+    {
+      "id": "E-09",
+      "status": "pass",
+      "feature": "Conditions affect rolls",
+      "note": "Logic: poisoned/prone disadvantage, invisible advantage, cancellation, and STR/DEX automatic failures."
+    },
+    {
+      "id": "E-10",
+      "status": "pass",
+      "feature": "Dice/results",
+      "note": "UI: physical/digital attack and companion rolls show animated results and journal entries. This verifies the shared rolling/result system."
+    },
+    {
+      "id": "E-11",
+      "status": "pass",
+      "feature": "Spanish glossary",
+      "note": "UI: dice notation, modifiers, advantage, components and concentration explained in Spanish."
+    },
+    {
+      "id": "E-12",
+      "status": "pass",
+      "feature": "DM Inspiration star/use",
+      "note": "UI/Live: DM grants ★; player selects Inspiration in the requested check, physical d20 14 +3 =17; Inspiration is consumed and DM control returns to ★ Insp."
+    },
+    {
+      "id": "F-01",
+      "status": "pass",
+      "feature": "Correct to-hit",
+      "note": "Logic and UI: weapon ability/proficiency, wizard staff, fighter weapons; live hidden-AC hit resolution."
+    },
+    {
+      "id": "F-02",
+      "status": "pass",
+      "feature": "Critical doubles dice",
+      "note": "UI physical 20; Logic asserts doubled damage rolls, without doubling the flat modifier."
+    },
+    {
+      "id": "F-03",
+      "status": "pass",
+      "feature": "Advantage/disadvantage",
+      "note": "Logic asserts both d20 and highest/lowest selection; UI dialogs expose both modes."
+    },
+    {
+      "id": "F-04",
+      "status": "pass",
+      "feature": "Off-hand modifier",
+      "note": "Logic: positive modifier omitted unless Two-Weapon Fighting."
+    },
+    {
+      "id": "F-05",
+      "status": "pass",
+      "feature": "Weapon overrides",
+      "note": "Logic: explicit INT, proficiency, +1 and extra 1d6 update attack/damage totals. The full editing form is not a separate end-to-end run."
+    },
+    {
+      "id": "F-06",
+      "status": "pass",
+      "feature": "Extra Attack",
+      "note": "Logic: fighter 5 has two attacks per action; class matrix covers progression."
+    },
+    {
+      "id": "F-07",
+      "status": "pass",
+      "feature": "Monk unarmed",
+      "note": "UI/Logic: full wood-elf monk 1 creator, STR 8 and DEX 17. Combat unarmed strike uses +5 to hit and 1d4+3 bludgeoning; monk Martial Arts scaling also tested."
+    },
+    {
+      "id": "G-01",
+      "status": "pass",
+      "feature": "Choose slot",
+      "note": "UI: Detect Magic cast with a selected level-2 slot, pool 2→1; normal level-1 spending also exercised."
+    },
+    {
+      "id": "G-02",
+      "status": "pass",
+      "feature": "Fireball level 5",
+      "note": "Logic: 10d6."
+    },
+    {
+      "id": "G-03",
+      "status": "pass",
+      "feature": "Magic Missile level 3",
+      "note": "Logic: five darts, total 5d4+5, note states 1d4+1 each."
+    },
+    {
+      "id": "G-04",
+      "status": "pass",
+      "feature": "Level-five cantrips",
+      "note": "Logic: Fire Bolt 2d10; Eldritch Blast two separate beams of 1d10."
+    },
+    {
+      "id": "G-05",
+      "status": "pass",
+      "feature": "Cure Wounds modifier",
+      "note": "Logic: healing flag and spellcasting modifier included; slot scaling 2d8 at level 2."
+    },
+    {
+      "id": "G-06",
+      "status": "pass",
+      "feature": "Concentration after damage",
+      "note": "UI: pending CON save, DC 10, fail removes concentration; damage/DC calculation uses adjusted damage."
+    },
+    {
+      "id": "G-07",
+      "status": "pass",
+      "feature": "Replace concentration",
+      "note": "Logic: second spell replaces first; old linked local effect removed. Remote allies are covered by O-10's separate limitation."
+    },
+    {
+      "id": "G-08",
+      "status": "pass",
+      "feature": "Ritual without slots",
+      "note": "UI: +10-minute explanation; starting Detect Magic ritual preserves 2/2 slots and records concentration."
+    },
+    {
+      "id": "G-09",
+      "status": "pass",
+      "feature": "2014 bonus spell rule",
+      "note": "Logic: bonus spell blocks leveled action spell but permits action cantrip; reverse casting order also refused."
+    },
+    {
+      "id": "G-10",
+      "status": "pass",
+      "feature": "Solo tirar spends nothing",
+      "note": "UI: Solo tirar Magic Missile rolls 3d4+3; slots stay 2/2 and the action remains free. This comparison used untracked combat."
+    },
+    {
+      "id": "G-11",
+      "status": "pass",
+      "feature": "No compatible slots",
+      "note": "Logic: exhausted pools refused with “No quedan espacios…”; no mutation on rejected cast."
+    },
+    {
+      "id": "G-12",
+      "status": "pass",
+      "feature": "Pact short-rest recovery",
+      "note": "Logic and UI: pact casting/spending; short reset restores pact and preserves ordinary spent slots."
+    },
+    {
+      "id": "H-01",
+      "status": "pass",
+      "feature": "Preference persists",
+      "note": "UI: compact survives reload and applies to next character; full view restores detailed controls."
+    },
+    {
+      "id": "H-02",
+      "status": "pass",
+      "feature": "Metrics stay pinned while scrolling",
+      "note": "UI: scroll position 1365px; compact metrics remain at top 8px, with HP/AC/initiative/DC/speed visible. Screenshot inspected."
+    },
+    {
+      "id": "H-03",
+      "status": "pass",
+      "feature": "HP and initiative controls",
+      "note": "UI: compact HP opens the correct dialog; initiative uses shared d20 handler. Initiative result itself not a distinct live-table test."
+    },
+    {
+      "id": "H-04",
+      "status": "pass",
+      "feature": "Slot/resource pills",
+      "note": "UI: slot availability 3→2; Arcane Recovery 1→0 after confirming use."
+    },
+    {
+      "id": "H-05",
+      "status": "pass",
+      "feature": "Favorites",
+      "note": "UI: two stars show only those spells; “Ver los 7” restores all, “Solo favoritos” returns the filter."
+    },
+    {
+      "id": "H-06",
+      "status": "pass",
+      "feature": "Concentration row",
+      "note": "UI: pending line with Tirar, Superada, Fallada; passing clears prompt. Screenshot saved."
+    },
+    {
+      "id": "H-07",
+      "status": "pass",
+      "feature": "Phone compact",
+      "note": "UI: actual 390px, no horizontal overflow, readable controls."
+    },
+    {
+      "id": "I-01",
+      "status": "pass",
+      "feature": "Seven class resources",
+      "note": "Logic: actual handlers for rage, Second Wind, Action Surge, ki, sorcery, channel; Bardic Inspiration use/reset. Chosen costs/action types and second-action refusal tested."
+    },
+    {
+      "id": "I-02",
+      "status": "fail",
+      "feature": "Hit Dice/rest recovery",
+      "note": "UI single-class physical/digital healing and recovery pass. Multiclass handler accepts 3d10 when only 1d10 exists; see failure above."
+    },
+    {
+      "id": "I-03",
+      "status": "pass",
+      "feature": "Long rest",
+      "note": "UI restores HP/temp/resources; Logic covers slot/pact recovery and half Hit Dice."
+    },
+    {
+      "id": "I-04",
+      "status": "pass",
+      "feature": "Zero-HP long rest refused",
+      "note": "UI: clear refusal requiring at least 1 HP."
+    },
+    {
+      "id": "I-05",
+      "status": "pass",
+      "feature": "Custom resource",
+      "note": "UI: three Map Charges pips, spend 3→2, short rest without dice restores 3/3."
+    },
+    {
+      "id": "J-01",
+      "status": "pass",
+      "feature": "Full manager/counters",
+      "note": "UI: wizard full cards, cantrip/book/prepared counters; save reports excess clearly."
+    },
+    {
+      "id": "J-02",
+      "status": "pass",
+      "feature": "Wizard book/prepare limit",
+      "note": "UI: add Grease to book, unprepare Magic Missile, save at 6/6; seven prepared refused. Logic tests boundary."
+    },
+    {
+      "id": "J-03",
+      "status": "pass",
+      "feature": "Cleric/druid/domain limits",
+      "note": "Logic: both preparation boundaries enforced; Life domain spells usable and excluded from prepared count."
+    },
+    {
+      "id": "J-04",
+      "status": "pass",
+      "feature": "Bard/sorcerer known limit",
+      "note": "Logic: actual manager validation accepts exact limit and rejects one extra for each class."
+    },
+    {
+      "id": "J-05",
+      "status": "pass",
+      "feature": "Spanish/English search",
+      "note": "UI: Magic Missile and Proyectil mágico resolve to same card; scope/filter controls exercised."
+    },
+    {
+      "id": "J-06",
+      "status": "pass",
+      "feature": "Any-class/level DM extra",
+      "note": "UI: wizard level 1 adds True Resurrection (level 9, another class) through whole-catalog Extra del DM; saved extra appears on the sheet."
+    },
+    {
+      "id": "J-07",
+      "status": "pass",
+      "feature": "Custom spell create/edit/cast",
+      "note": "UI: create Cartographer Spark, select as extra, edit summary, cast from combat; action/effect recorded."
+    },
+    {
+      "id": "K-01",
+      "status": "pass",
+      "feature": "Levels 1–20",
+      "note": "UI progression/ASI markers; matrix evaluates every class at every level."
+    },
+    {
+      "id": "K-02",
+      "status": "pass",
+      "feature": "Up-to-date/pending list",
+      "note": "UI: automatic Amulet/feat/equipment summaries, high-elf missing-cantrip task/button and count."
+    },
+    {
+      "id": "K-03",
+      "status": "pass",
+      "feature": "Average/rolled HP",
+      "note": "UI: fighter average and physical 8, druid average; magic-CON preview/calculation corrected and regression tested."
+    },
+    {
+      "id": "K-04",
+      "status": "pass",
+      "feature": "Required subclass",
+      "note": "UI: cannot advance fighter 3 without subclass; Champion chosen and saved. Logic requires due subclasses."
+    },
+    {
+      "id": "K-05",
+      "status": "pass",
+      "feature": "ASI distributions/cap",
+      "note": "UI previews +2 and +1/+1; Logic applies each and refuses >20."
+    },
+    {
+      "id": "K-06",
+      "status": "pass",
+      "feature": "Feat search/automation",
+      "note": "UI English Resilient finds Resistente; card shows automatic effects and ability choice."
+    },
+    {
+      "id": "K-07",
+      "status": "pass",
+      "feature": "Resilient choice",
+      "note": "UI WIS 10→11, WIS save becomes proficient +2; feat persists in class summary."
+    },
+    {
+      "id": "K-08",
+      "status": "pass",
+      "feature": "Skill Expert choices",
+      "note": "Logic: new skill and expertise applied, missing choices rejected. Full Skilled/Skill Expert picker interaction not separately run."
+    },
+    {
+      "id": "K-09",
+      "status": "pass",
+      "feature": "Tough/Alert/Mobile/Observant",
+      "note": "Logic: +2 HP/level, +5 initiative, +10 speed, +5 passive bonus."
+    },
+    {
+      "id": "K-10",
+      "status": "pass",
+      "feature": "Lucky",
+      "note": "Logic: three points; short rest preserves spend, long rest restores."
+    },
+    {
+      "id": "K-11",
+      "status": "pass",
+      "feature": "War Caster concentration",
+      "note": "Logic: actual concentration dialog selects advantage when feat present."
+    },
+    {
+      "id": "K-12",
+      "status": "pass",
+      "feature": "Armor feats",
+      "note": "Logic: armor proficiency additions and score cap; equipped armor uses the same proficiency source."
+    },
+    {
+      "id": "K-13",
+      "status": "pass",
+      "feature": "Priest level-up/preparation save",
+      "note": "UI: druid 5→6 prepares Aura de vitalidad and confirms; new cleric secondary level 1 chooses Life domain, cantrips, Shield of Faith and Guiding Bolt and saves. Resulting combat catalog includes the secondary spells and automatic Bless."
+    },
+    {
+      "id": "K-14",
+      "status": "pass",
+      "feature": "Pact-required invocations",
+      "note": "UI: Improved Pact Weapon disabled before choosing a pact; warlock level 3 chooses Pact of the Blade, then the invocation becomes selectable."
+    },
+    {
+      "id": "K-15",
+      "status": "pass",
+      "feature": "Edit class choice without level",
+      "note": "UI: independent warlock invocation editor saves Devil’s Sight and Eyes of the Rune Keeper, then changes Devil’s Sight to Improved Pact Weapon without advancing level."
+    },
+    {
+      "id": "K-16",
+      "status": "pass",
+      "feature": "XP level-ready line",
+      "note": "UI/Live: DM grants 1000 XP to fighter 2; Clase displays that XP is enough to level up."
+    },
+    {
+      "id": "L-01",
+      "status": "pass",
+      "feature": "Level-up chooser entries",
+      "note": "UI: mixed wizard/warlock chooser lists main class, secondary class and new class; single-class druid and tiefling chooser also exercised."
+    },
+    {
+      "id": "L-02",
+      "status": "pass",
+      "feature": "Requirement warning/override",
+      "note": "UI: wizard with STR 8 sees barbarian STR 13 warning and can continue when prerequisites are overridden by the table."
+    },
+    {
+      "id": "L-03",
+      "status": "pass",
+      "feature": "Secondary class HP/proficiencies",
+      "note": "UI/Logic: new barbarian secondary shows proficiencies and d12 HP. Found confirmation/HP-review bugs, fixed and retested: wizard 1, CON +2, average 7 gives 8→17 HP. Cleric secondary domain/spells also saved."
+    },
+    {
+      "id": "L-04",
+      "status": "pass",
+      "feature": "Secondary spell tables",
+      "note": "Logic: per-class views, usable/prepared lists and caster selection; broad class-pair matrix. Full secondary manager UI is separate in L-08."
+    },
+    {
+      "id": "L-05",
+      "status": "pass",
+      "feature": "Wizard 8/cleric 1 slots",
+      "note": "Logic: exact 4/3/3/3/1 assertion."
+    },
+    {
+      "id": "L-06",
+      "status": "pass",
+      "feature": "Secondary casting ability",
+      "note": "Logic: cleric WIS DC/attack; caster dialog fixed in earlier pass to match class-specific stats."
+    },
+    {
+      "id": "L-07",
+      "status": "pass",
+      "feature": "Pact pays wizard spell",
+      "note": "UI: ordinary slots exhausted, wizard Magic Missile consumes pact 2→1, normal pool unchanged."
+    },
+    {
+      "id": "L-08",
+      "status": "pass",
+      "feature": "Multiclass cards/edit controls",
+      "note": "UI: secondary warlock card shows spells, attack/DC, choices and pending entries. Options changed and saved; Conjuros editor opened and saved unchanged."
+    },
+    {
+      "id": "L-09",
+      "status": "pass",
+      "feature": "Secondary level-four ASI step",
+      "note": "Logic: actual LevelUp.startFor and wizard handlers advance secondary fighter 3→4, offer ASI and apply +2 STR, preserving primary level and spent slots."
+    },
+    {
+      "id": "M-01",
+      "status": "pass",
+      "feature": "Catalog/custom/quantity/weight",
+      "note": "UI: custom Map Case 2→3 at 1.5 lb each, weight 27.5 lb; rope from catalog added and undone."
+    },
+    {
+      "id": "M-02",
+      "status": "pass",
+      "feature": "Coins",
+      "note": "UI: gasto 3 po changes 10→7 and equivalent total; Logic covers change-making and insufficient funds. Income uses same signed transaction path."
+    },
+    {
+      "id": "M-03",
+      "status": "pass",
+      "feature": "Equipped defense/warnings",
+      "note": "UI chain mail/shield AC and stealth warning; Logic equipment formulas/proficiencies and penalties."
+    },
+    {
+      "id": "M-04",
+      "status": "pass",
+      "feature": "Magic search/catalog",
+      "note": "UI English Amulet of Health and Ring of Protection searches; Spanish names displayed. Matrix covers all 96 entries."
+    },
+    {
+      "id": "M-05",
+      "status": "pass",
+      "feature": "Longsword +1 naming",
+      "note": "UI: Arma +1 with base Espada larga creates Espada larga +1, attack +2 (STR -1 + proficiency 2 + magic 1), damage 1d8+0."
+    },
+    {
+      "id": "M-06",
+      "status": "pass",
+      "feature": "Ring of Protection",
+      "note": "UI attunement raises AC 12→13; Logic save +1 and no bonus while unattuned."
+    },
+    {
+      "id": "M-07",
+      "status": "pass",
+      "feature": "Attunement limit",
+      "note": "Logic rejects fourth attunement; UI handler checks the same maximum before mutation."
+    },
+    {
+      "id": "M-08",
+      "status": "pass",
+      "feature": "Unattuned magic weapons",
+      "note": "Regression: Sun Blade bonuses and extra damage inactive until attuned; activation/quantity matrix."
+    },
+    {
+      "id": "M-09",
+      "status": "pass",
+      "feature": "Amulet of Health",
+      "note": "UI max HP rises, written CON preserved; corrected card shows 19 (objeto), +4. Regression covers written/effective separation."
+    },
+    {
+      "id": "M-10",
+      "status": "pass",
+      "feature": "+2 focus",
+      "note": "Logic: Grimoire adds +2 to DC/attack; War Mage wand adds attack only."
+    },
+    {
+      "id": "M-11",
+      "status": "pass",
+      "feature": "Equipped magic armor",
+      "note": "Logic: chain mail +1 only contributes when selected as equipped."
+    },
+    {
+      "id": "M-12",
+      "status": "pass",
+      "feature": "Ring of Resistance",
+      "note": "Logic: attuned fire ring halves 10 fire damage to 5."
+    },
+    {
+      "id": "M-13",
+      "status": "pass",
+      "feature": "Wand UI charges/rest toast",
+      "note": "UI: wand charges 7→5 with pips; long rest restores 7 and toast reports +2 recovered."
+    },
+    {
+      "id": "M-14",
+      "status": "pass",
+      "feature": "Drink healing potion",
+      "note": "UI/Logic: Tomar rolls 2d4+2, healing toast shows 4; quantity 2→1. Generic healing helper applies HP; later long rest restores full HP. Immediate potion-only HP difference was not separately captured."
+    },
+    {
+      "id": "M-15",
+      "status": "pass",
+      "feature": "Custom magic bonuses/charges",
+      "note": "UI: custom charm gives AC +2, saves +1 and spell DC +2; AC 12→14, DC 13→15; charges 3→2, long rest restores 3 and reports +1."
+    },
+    {
+      "id": "N-01",
+      "status": "pass",
+      "feature": "Bestiary companion",
+      "note": "UI owl search/add; displayed HP/AC/speed/attacks. Matrix imports all 334 creatures."
+    },
+    {
+      "id": "N-02",
+      "status": "pass",
+      "feature": "Custom companion",
+      "note": "UI Clockwork Mouse saved with 5 HP, AC 12, speed 30, Mordisco +4/1d6+2."
+    },
+    {
+      "id": "N-03",
+      "status": "pass",
+      "feature": "Companion HP/attack/damage",
+      "note": "UI HP 5→3; d20 dialog result 10+4; damage [2]+2=4."
+    },
+    {
+      "id": "N-04",
+      "status": "pass",
+      "feature": "Level-two shape limits",
+      "note": "Logic: standard CR 1/4, Moon CR 1, beast-only and no flight/swim."
+    },
+    {
+      "id": "N-05",
+      "status": "pass",
+      "feature": "Level-four/eight movement",
+      "note": "Logic: swim unlocks at 4, flight and CR 1 at 8; below-level refusals asserted."
+    },
+    {
+      "id": "N-06",
+      "status": "pass",
+      "feature": "Transformation action/use",
+      "note": "UI and Logic: Moon bonus/action choices, use spent; repeated/out-of-turn use refused."
+    },
+    {
+      "id": "N-07",
+      "status": "fail",
+      "feature": "Beast stats and proficiencies",
+      "note": "HP/AC/physical scores/rolls now correct; wolf Stealth +4 still becomes +2 because beast proficiency is omitted."
+    },
+    {
+      "id": "N-08",
+      "status": "pass",
+      "feature": "Excess damage",
+      "note": "UI: 20 against wolf 11 causes reversion and 9 to druid; Logic confirms temp first/excess."
+    },
+    {
+      "id": "N-09",
+      "status": "pass",
+      "feature": "Heal beast",
+      "note": "UI 5→8 beast HP, original unchanged; regression for caps and shared helper."
+    },
+    {
+      "id": "N-10",
+      "status": "pass",
+      "feature": "Low-level casting blocked",
+      "note": "UI/Logic: wild-shaped low-level druid refused. Level-18 component/class exceptions were not comprehensively assessed."
+    },
+    {
+      "id": "N-11",
+      "status": "pass",
+      "feature": "Voluntary return",
+      "note": "UI returns to original druid; action tracking correction tested separately."
+    },
+    {
+      "id": "O-01",
+      "status": "pass",
+      "feature": "Join/table name",
+      "note": "Earlier UI Goblin Road join and live campaign joins pass; current old code has expired/deleted."
+    },
+    {
+      "id": "O-02",
+      "status": "pass",
+      "feature": "Live party vitals",
+      "note": "Live/UI HP, AC, conditions and resources; summaries include concentration/passive values and active beast vitals."
+    },
+    {
+      "id": "O-03",
+      "status": "pass",
+      "feature": "Shared roll log",
+      "note": "UI/Live: player physical normal d20 13 appears in both player shared log and DM log."
+    },
+    {
+      "id": "O-04",
+      "status": "pass",
+      "feature": "DM request/answer",
+      "note": "UI/Live: DM Perception DC 15 request reaches player; physical 14 +3 =17 automatically appears in DM response."
+    },
+    {
+      "id": "O-05",
+      "status": "pass",
+      "feature": "All nine DM commands",
+      "note": "UI/Live: all listed grants delivered: typed damage 8 (temp absorbs 5, HP 22→19), heal 2→21, temp HP, Poisoned, gold +25 (10→35), Silver Lantern ×2, XP 1000, bonus d4, short-rest and long-rest prompts. Long rest restores HP 22/22."
+    },
+    {
+      "id": "O-06",
+      "status": "skip",
+      "feature": "Offline/reconnect",
+      "note": "Earlier follow-up records pending→upload; current pass lacks a genuine disconnected device/network journey."
+    },
+    {
+      "id": "O-07",
+      "status": "skip",
+      "feature": "Offline two-device conflict",
+      "note": "Logic detects concurrent changes; actual conflict dialog and both choice outcomes not exercised."
+    },
+    {
+      "id": "O-08",
+      "status": "pass",
+      "feature": "Shared initiative auto-switch",
+      "note": "UI/Logic: remote own-turn event initially failed to switch routes. Fixed: DM ends/starts combat while player on Personaje; player URL becomes #combat with ES TU TURNO and reset actions."
+    },
+    {
+      "id": "O-09",
+      "status": "pass",
+      "feature": "Hidden-AC attack/status",
+      "note": "Live: player attack resolution against secret AC, monster damage/status; secrets withheld from player responses."
+    },
+    {
+      "id": "O-10",
+      "status": "pass",
+      "feature": "Bless to allies/end propagation",
+      "note": "UI/Live: secondary cleric casts Bless on self and fighter ally. Fighter receives Bendecir (de QA Nara); caster ends concentration; fighter effect disappears and DM logs its removal. Two sheets switched in one browser identity; distinct-role permissions tested separately."
+    },
+    {
+      "id": "O-11",
+      "status": "pass",
+      "feature": "Leave table/local character",
+      "note": "UI/Live: QA Nara clicks Salir de la mesa, confirms, returns to join screen; its name, multiclass and 34/52 HP remain locally and the table status link disappears."
+    },
+    {
+      "id": "P-01",
+      "status": "skip",
+      "feature": "Save email/password access",
+      "note": "Earlier follow-up records pass; new-credential entry requires a human handoff and was not repeated."
+    },
+    {
+      "id": "P-02",
+      "status": "skip",
+      "feature": "Interrupted access retry",
+      "note": "Earlier follow-up records fix/pass; not independently repeated with credentials."
+    },
+    {
+      "id": "P-03",
+      "status": "skip",
+      "feature": "Change password",
+      "note": "Earlier follow-up records new works/old refused. Human credential-change handoff required for a repeat."
+    },
+    {
+      "id": "P-04",
+      "status": "skip",
+      "feature": "Another-device sign-in UI",
+      "note": "Earlier follow-up records table/backup list; current live restore used isolated synthetic sessions, not the password sign-in UI."
+    },
+    {
+      "id": "P-05",
+      "status": "pass",
+      "feature": "Restore/edit same backup",
+      "note": "New Live: second device restores same local ID, edit updates one row; third device reads edit; unrelated users refused."
+    },
+    {
+      "id": "P-06",
+      "status": "pass",
+      "feature": "Backup count/list/Copy now UI",
+      "note": "UI/Live: account shows 8 de 8 ficha(s) copiada(s), last-copy time and Copiar ahora; clicking temporarily disables it. Separate live sessions list and restore their owned copies, including copies absent from a local device."
+    },
+    {
+      "id": "P-07",
+      "status": "pass",
+      "feature": "Automatic new-character backup",
+      "note": "UI/Live: full creator makes QA Cloud Monk without table code, with an existing anonymous session. Without clicking Copy now, the backup count increases from 8/8 to 9/9; observed 29 seconds after creation. Exact sub-second upload latency was not measured."
+    },
+    {
+      "id": "P-08",
+      "status": "skip",
+      "feature": "Delete cloud copy confirmation",
+      "note": "New Live synthetic rows removed; earlier follow-up records UI deletion. UI confirmation/list disappearance not repeated here."
+    },
+    {
+      "id": "P-09",
+      "status": "skip",
+      "feature": "Existing-email account merge",
+      "note": "Earlier follow-up records successful merge with character/copy counts; credential handoff needed to repeat."
+    },
+    {
+      "id": "P-10",
+      "status": "skip",
+      "feature": "Production CAPTCHA appears once",
+      "note": "Local app deliberately omits widget; no fresh real-site challenge was completed. Backend concern is recorded at S-03."
+    },
+    {
+      "id": "Q-01",
+      "status": "pass",
+      "feature": "Create six-character code",
+      "note": "Earlier DM UI and new Live campaigns create valid six-character table codes."
+    },
+    {
+      "id": "Q-02",
+      "status": "pass",
+      "feature": "Every setting drives creator/preserves log",
+      "note": "UI/Live: saved PHB, starting level 2, house rules, array-only method and fixed 16/15/14/12/10/8 array all apply to full fighter creation. Second draft uses roll-only with minimum 18: all six 4d6 results clamp to 18. Restored original settings. Session 1 / 1000 XP history and private note survive settings saves and reload."
+    },
+    {
+      "id": "Q-03",
+      "status": "pass",
+      "feature": "Live party",
+      "note": "Earlier DM/player UI updates together; Live independent identities synchronize character data."
+    },
+    {
+      "id": "Q-04",
+      "status": "pass",
+      "feature": "DM damage/healing/defenses",
+      "note": "UI DM damage updates both views, reload does not duplicate it; typed defense/healing helpers tested in Logic."
+    },
+    {
+      "id": "Q-05",
+      "status": "pass",
+      "feature": "DC request/automatic answers",
+      "note": "UI/Live: Perception request with visible DC 15, physical player result 17 arrives automatically. Area-save result replies also verified."
+    },
+    {
+      "id": "Q-06",
+      "status": "pass",
+      "feature": "All DM grants/messages/rests",
+      "note": "UI/Live: gold, items, message, short and long rests, bonus die and Inspiration all delivered and applied in the Lantern Keep campaign; player and DM logs compared."
+    },
+    {
+      "id": "Q-07",
+      "status": "pass",
+      "feature": "Session/XP/summary",
+      "note": "Earlier UI session start/end delivers 150 XP and summary; follow-up records save-access prompt."
+    },
+    {
+      "id": "Q-08",
+      "status": "pass",
+      "feature": "Exclusive loot claim",
+      "note": "New Live: ten simultaneous two-player races; exactly one win, one refusal each; stored winner correct and retry refused."
+    },
+    {
+      "id": "Q-09",
+      "status": "pass",
+      "feature": "Homebrew visible",
+      "note": "Live campaigns publish/read house rules; player cannot forge DM settings."
+    },
+    {
+      "id": "Q-10",
+      "status": "pass",
+      "feature": "Private notes retained/hidden",
+      "note": "UI: private lantern-curse note retained after DM reload and absent from player DOM. Notes stored locally; separate-role live access controls also pass."
+    },
+    {
+      "id": "Q-11",
+      "status": "skip",
+      "feature": "Exact-name table deletion",
+      "note": "UI: wrong typed name rejected with El nombre no coincide. Correct-name permanent deletion awaits the required at-action human confirmation; local retention after deletion not yet verified."
+    },
+    {
+      "id": "Q-12",
+      "status": "pass",
+      "feature": "Phone DM",
+      "note": "Earlier actual 390px screenshot and width check: initiative controls wrap under names with no sideways overflow."
+    },
+    {
+      "id": "R-01",
+      "status": "pass",
+      "feature": "Spanish/English monster search",
+      "note": "Catalog preserves English aliases/Spanish names; wolf searches and bestiary imports tested."
+    },
+    {
+      "id": "R-02",
+      "status": "fail",
+      "feature": "Completely Spanish stat block",
+      "note": "Spanish numeric labels/actions, but wolf trait descriptions remain English; see reproducible finding."
+    },
+    {
+      "id": "R-03",
+      "status": "pass",
+      "feature": "Secret monster numbers",
+      "note": "Live distinct-role tests: player responses omit monster HP/AC/save numbers."
+    },
+    {
+      "id": "R-04",
+      "status": "pass",
+      "feature": "Hidden/reveal",
+      "note": "Live: hidden monster excluded, then visible after reveal."
+    },
+    {
+      "id": "R-05",
+      "status": "pass",
+      "feature": "Initiative order/turn passing",
+      "note": "Live PC/monster order and current marker; own turn permitted, monster turn passing refused. All remove/condition UI variants not separate runs."
+    },
+    {
+      "id": "R-06",
+      "status": "pass",
+      "feature": "Monster attack/player damage",
+      "note": "Live attack/monster damage resolution and player HP update; typed defense engine passes."
+    },
+    {
+      "id": "R-07",
+      "status": "fail",
+      "feature": "Area save/half/friendly fire",
+      "note": "UI/Live: successful breath save halves 20→10 damage. Two-player 8-damage breath gives fighter failed 3/full 8 and druid successful 17/half 4. However monster breath target selector lists only player sheets: dragon cannot include its skeleton allies in the area. See remaining failure."
+    },
+    {
+      "id": "R-08",
+      "status": "pass",
+      "feature": "Multiclass difficulty/reload",
+      "note": "Earlier correction uses total level; Logic asserts total-level summary; follow-up records lazy-load/reload fix. Reload result is attributed to that follow-up."
+    },
+    {
+      "id": "R-09",
+      "status": "pass",
+      "feature": "Every encounter animation type",
+      "note": "UI: all 25 animation choices previewed, measured and screenshots visually inspected at 390px. Distinct themes/particles render; client and scroll widths both 380px for every choice after containment fix."
+    },
+    {
+      "id": "R-10",
+      "status": "pass",
+      "feature": "Launch animation/initiative request",
+      "note": "UI/Live: prepared skeleton encounter launches player animation, adds creatures to initiative and delivers initiative request. Player physical 20 +2 gives 22 and appears in DM order."
+    },
+    {
+      "id": "S-01",
+      "status": "pass",
+      "feature": "Seven player pages on phone widths",
+      "note": "New UI: all seven routes at actual 390px, screenshots inspected; layout measurements at 320px and 768px too. No horizontal page/control overflow in those route checks. Hardware tap/OS differences are outside this mark."
+    },
+    {
+      "id": "S-02",
+      "status": "pass",
+      "feature": "Keyboard focus/Escape",
+      "note": "UI: Tab gives visible 3px outline; Escape closes ordinary modal. Native creator restart confirmation accepted by user, with cleared draft verified at B-14."
+    },
+    {
+      "id": "S-03",
+      "status": "fail",
+      "feature": "CAPTCHA enforcement restored",
+      "note": "Live fresh anonymous sign-ins succeed without token. Client key is present; backend enforcement is not demonstrated and appears off for this flow."
+    },
+    {
+      "id": "S-04",
+      "status": "skip",
+      "feature": "All QA users/tables deleted",
+      "note": "The separate loot/backup campaign and its child records were removed and verified absent. Lantern Keep permanent cleanup awaits confirmation; nine local characters (eight QA plus pre-existing Lyra Test) remain for review. Auth-identity cleanup and complete earlier table inventory require administrator access."
+    },
+    {
+      "id": "S-05",
+      "status": "skip",
+      "feature": "Migrations 001–007/all features live",
+      "note": "Initial schema is `supabase/schema.sql` (no separately named 001 file); migrations 002–007 are present. Deployed backup/loot permissions pass Live. Complete merge/encounter/area-save sign-off is deferred."
+    }
+  ]
+}

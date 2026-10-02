@@ -107,3 +107,23 @@ test('los conjuros de una clase secundaria se lanzan con su propia característi
   s.multiclass[0].spells = 'Bless';
   assert.throws(() => g.Rules.validate(s));
 });
+
+test('los Dados de Golpe se gastan y recuperan por tipo de dado (mago 3 / guerrero 1)', () => {
+  const s = up(wizard(), 'fighter');
+  s.hdSpent = 0;
+  const left = () => JSON.stringify(C.hitDiceLeft(s).map(x => x.left + 'd' + x.die));
+  assert.equal(left(), JSON.stringify(['1d10', '3d6']));
+  assert.throws(() => C.spendHitDice(s, 10, 3), /Te quedan 1d10/);
+  C.spendHitDice(s, 10, 1);
+  C.spendHitDice(s, 6, 2);
+  assert.equal(left(), JSON.stringify(['0d10', '1d6']));
+  assert.equal(s.hdSpent, 3);
+  g.Rules.validate(s);
+  C.recoverHitDice(s, 2);
+  assert.equal(left(), JSON.stringify(['1d10', '2d6']), 'recupera primero el dado más grande');
+  assert.equal(s.hdSpent, 1);
+  // Gastados sin tipo (ajuste a mano): se descuentan de los dados más chicos.
+  delete s.hdSpentByDie;
+  s.hdSpent = 2;
+  assert.equal(left(), JSON.stringify(['1d10', '1d6']));
+});

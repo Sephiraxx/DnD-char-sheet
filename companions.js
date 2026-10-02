@@ -70,6 +70,42 @@
     if (/swim|nado/.test(sp) && !lim.swim) return 'Sin velocidad de nado hasta nivel 4.';
     return '';
   }
+  // Bonos de habilidad y salvación del bloque de la bestia («Percepción +3, Sigilo +4», «DES +5»), en español o inglés.
+  const SKILL_ALIASES = { arcanos: 'arcana', 'sleight of hand': 'sleight', 'animal handling': 'animal' };
+  const SAVE_KEYS = {
+    FUE: 'str',
+    STR: 'str',
+    DES: 'dex',
+    DEX: 'dex',
+    CON: 'con',
+    INT: 'int',
+    SAB: 'wis',
+    WIS: 'wis',
+    CAR: 'cha',
+    CHA: 'cha',
+  };
+  function bonusList(text, kind) {
+    const out = {};
+    for (const part of String(text || '').split(',')) {
+      const m = /^\s*(.+?)\s*([+-]\d+)\s*$/.exec(part);
+      if (!m) continue;
+      const name = m[1].trim(),
+        n = Number(m[2]);
+      if (kind === 'save') {
+        const k = SAVE_KEYS[name.toUpperCase()];
+        if (k) out[k] = n;
+        continue;
+      }
+      const low = name.toLowerCase(),
+        row = (root.Rules?.skills || []).find(
+          r => r[1].toLowerCase() === low || r[0] === low || r[0] === SKILL_ALIASES[low],
+        );
+      const id =
+        row?.[0] || SKILL_ALIASES[low] || (root.Rules?.skills || []).find(r => r[0] === low.split(' ')[0])?.[0];
+      if (id) out[id] = n;
+    }
+    return out;
+  }
   function startWildShape(s, m) {
     const why = canBecome(s, m);
     if (why) throw Error(why);
@@ -82,6 +118,9 @@
       speed: speedEs(m.speed).slice(0, 100),
       attacks: attacksOf(m),
       ab: Array.isArray(m.ab) ? m.ab.slice(0, 6) : undefined,
+      // Competencias de la bestia: se usa su bono si es mayor que el tuyo (reglas de 2014).
+      skills: bonusList(m.skills, 'skill'),
+      saves: bonusList(m.saves, 'save'),
     };
     return s;
   }
@@ -172,6 +211,14 @@
         bad();
       if (full && (!txt(c.id, 100) || !Object.hasOwn(KINDS, c.kind) || !txt(c.notes || '', 2000))) bad();
       if (c.ab !== undefined && (!Array.isArray(c.ab) || c.ab.length !== 6 || c.ab.some(v => !int(v, 1, 30)))) bad();
+      for (const k of ['skills', 'saves'])
+        if (
+          c[k] !== undefined &&
+          (!c[k] ||
+            typeof c[k] !== 'object' ||
+            Object.entries(c[k]).some(([id, n]) => !txt(id, 20) || !int(n, -10, 30)))
+        )
+          bad();
     };
     if (s.companions !== undefined) {
       if (!Array.isArray(s.companions) || s.companions.length > 12) bad();
@@ -193,6 +240,7 @@
     startWildShape,
     transform,
     endWildShape,
+    bonusList,
     heal,
     vitals,
     absorb,

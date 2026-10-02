@@ -429,6 +429,7 @@ const TableUI = (() => {
         Combat.start(s);
         ended = Effects.tick(s);
       });
+      location.hash = 'combat';
       navigator.vibrate?.(200);
       toast('¡Es tu turno!' + (ended.length ? ' Terminó: ' + ended.join(', ') + '.' : ''));
     } else if (state.combatState?.onTurn || !state.combatState?.active) {

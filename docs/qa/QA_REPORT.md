@@ -1,5 +1,7 @@
 # QA report — 2026-10-02
 
+**Latest assessment:** see [FULL_QA_CHECKLIST.md](FULL_QA_CHECKLIST.md) for all 192 supplied checks, the current 177-test result, additional fixes, and remaining failures. The sections below preserve earlier runs; their original test counts, missing-backup finding, and retained-table inventory are historical, not the current release state.
+
 **Result: broad QA completed, with eight fixes; not a full release certification.** The final automated suite has **146 passing tests**, zero failures, and clean formatting. Three synthetic campaigns passed live server scenarios with separate anonymous DM/player identities. A fourth campaign exercised the actual player and DM interfaces together. The remaining gaps below prevent claiming that every feature is proven correct.
 
 ## Fixed in this checkout

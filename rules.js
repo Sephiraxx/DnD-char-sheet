@@ -454,6 +454,11 @@
   ];
   const xpNext = s => XP[totalLevel(s)] ?? null;
   function skillBonus(s, id) {
+    const own = ownSkillBonus(s, id),
+      beast = s.wildShape?.skills?.[id];
+    return Number.isInteger(beast) ? Math.max(own, beast) : own;
+  }
+  function ownSkillBonus(s, id) {
     let a = skills.find(x => x[0] === id);
     if (!a) throw Error('Habilidad inválida');
     let p = prof(totalLevel(s));
@@ -471,6 +476,11 @@
     );
   }
   function saveBonus(s, a) {
+    const own = ownSaveBonus(s, a),
+      beast = s.wildShape?.saves?.[a];
+    return Number.isInteger(beast) ? Math.max(own, beast) : own;
+  }
+  function ownSaveBonus(s, a) {
     return (
       mod(formScores(s)[a]) +
       (root.MagicItems?.save(s) || 0) +

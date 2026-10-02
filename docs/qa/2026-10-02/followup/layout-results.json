@@ -1,0 +1,51 @@
+[
+  {
+    "page": "Combate",
+    "client": 380,
+    "overflow": [],
+    "scroll": 380,
+    "width": 390
+  },
+  {
+    "page": "Conjuros",
+    "client": 380,
+    "overflow": [],
+    "scroll": 380,
+    "width": 390
+  },
+  {
+    "page": "Equipo",
+    "client": 380,
+    "overflow": [],
+    "scroll": 380,
+    "width": 390
+  },
+  {
+    "page": "Personaje",
+    "client": 380,
+    "overflow": [],
+    "scroll": 380,
+    "width": 390
+  },
+  {
+    "page": "Clase",
+    "client": 380,
+    "overflow": [],
+    "scroll": 380,
+    "width": 390
+  },
+  {
+    "page": "Diario",
+    "client": 380,
+    "overflow": [],
+    "scroll": 380,
+    "width": 390
+  },
+  {
+    "page": "Mesa",
+    "client": 380,
+    "overflow": [],
+    "scroll": 380,
+    "width": 390
+  }
+]

@@ -357,7 +357,7 @@ const PartyUI = (() => {
     );
   }
   function character() {
-    const d = R.stats(state),
+    const sc = R.formScores(state),
       c = C.info(state);
     return (
       header(
@@ -373,7 +373,7 @@ const PartyUI = (() => {
       `<div class="ability-grid">${Object.entries(R.attrs)
         .map(
           ([k, label]) =>
-            `<section class="card ability-box"><span>${label}</span><strong>${sign(d.mods[k])}</strong><span>Puntuación ${state.abilities[k]}</span></section>`,
+            `<section class="card ability-box"><span>${label}</span><strong>${sign(R.mod(sc[k]))}</strong><span>Puntuación ${sc[k]}${state.wildShape?.ab && ['str', 'dex', 'con'].includes(k) ? ' (bestia)' : sc[k] !== state.abilities[k] ? ' (objeto)' : ''}</span></section>`,
         )
         .join(
           '',
@@ -801,19 +801,20 @@ const PartyUI = (() => {
   }
   function shortRest() {
     const d = R.stats(state),
-      dice = d.hitDiceSet,
-      die = dice[0].die;
+      dice = C.hitDiceLeft(state),
+      die = (dice.find(x => x.left) || dice[0]).die;
     if (state.hdSpent === null || state.hp === null)
       throw Error('Confirmá tus PG y Dados de Golpe antes de descansar.');
     const max = R.totalLevel(state) - state.hdSpent;
     modal(
       'Descanso corto completado',
-      `<p>Podés gastar hasta ${max} Dados de Golpe (${dice.map(x => x.count + 'd' + x.die).join(' + ')} en total). Tirás cada dado, sumás CON ${sign(d.mods.con)} y recuperás ese resultado (mínimo 0 por dado). Podés decidir gastar otro después de cada tirada.</p>${
+      `<p>Podés gastar hasta ${max} Dados de Golpe (${dice.map(x => x.count + 'd' + x.die).join(' + ')} en total; te quedan ${dice.map(x => x.left + 'd' + x.die).join(' + ')}). Tirás cada dado, sumás CON ${sign(d.mods.con)} y recuperás ese resultado (mínimo 0 por dado). Podés decidir gastar otro después de cada tirada.</p>${
         dice.length > 1
           ? select(
               'Tipo de dado',
               'die',
-              dice.map(x => [x.die, 'd' + x.die]),
+              dice.map(x => [x.die, `d${x.die} (te quedan ${x.left})`]),
+              die,
             ) + '<p class="small">Para gastar dados de distinto tipo, hacé un descanso por cada tipo.</p>'
           : ''
       }${field('Cantidad de Dados de Golpe a gastar', 'count', 0, 'number', `min="0" max="${max}" required`)}${field('Resultados de los dados (separados por comas)', 'rolls', '', 'text', 'placeholder="Ejemplo: 3, 7"')}${button('Tirar la cantidad elegida', 'party-short-roll')}${field('Canción de descanso recibida (0 si no aplica)', 'song', 0, 'number', 'min="0" max="12" required')}<p class="small">Sumá Canción una sola vez si gastaste dados y escuchaste al bardo. El descanso también recupera tus recursos marcados «corto», y espacios de pacto si sos brujo. Mago: Recuperación arcana se usa aparte.</p><label class="check"><input type="checkbox" required>Completé al menos una hora de descanso y los requisitos de recuperación de mis rasgos.</label>`,
@@ -825,12 +826,14 @@ const PartyUI = (() => {
             .filter(Boolean)
             .map(Number),
           song = number(fd, 'song', 0, n ? 12 : 0);
-        const used = Number(fd.get('die')) || die;
+        const used = Number(fd.get('die')) || die,
+          left = dice.find(x => x.die === used)?.left ?? 0;
+        if (n > left) throw Error(`Te quedan ${left}d${used}. Para otro tipo de dado, elegilo arriba.`);
         if (rolls.length !== n || rolls.some(x => !Number.isInteger(x) || x < 1 || x > used))
           throw Error('Ingresá un resultado válido por cada d' + used + ' gastado.');
         const heal = rolls.reduce((a, n) => a + Math.max(0, n + d.mods.con), 0) + song;
-        commit('Descanso corto · ' + n + ' Dados de Golpe · +' + heal + ' PG', s => {
-          s.hdSpent += n;
+        commit('Descanso corto · ' + n + 'd' + used + ' · +' + heal + ' PG', s => {
+          C.spendHitDice(s, used, n);
           s.hp = Math.min(d.maxHP, s.hp + heal);
           C.reset(s, 'short');
           s.extraResources.forEach(r => {
@@ -925,6 +928,7 @@ const PartyUI = (() => {
           s.hpConfirmed = true;
           s.temp = number(fd, 'temp', 0, 9999);
           s.hdSpent = R.totalLevel(s) - number(fd, 'hd', 0, R.totalLevel(s));
+          delete s.hdSpentByDie;
           if (bard) s.inspirationSpent = d.inspirationMax - number(fd, 'inspiration', 0, d.inspirationMax);
           s.slotsSpent = d.slots.map((max, i) => (max ? max - number(fd, 'slot' + i, 0, max) : 0));
           while (s.slotsSpent.length < 9) s.slotsSpent.push(0);
@@ -1117,9 +1121,12 @@ const PartyUI = (() => {
       'party-short-roll': () => {
         const form = document.getElementById('dialog-form'),
           n = Number(form.elements.namedItem('count').value);
-        if (!Number.isInteger(n) || n < 0 || n > R.totalLevel(state) - state.hdSpent)
-          throw Error('Cantidad de dados inválida.');
-        const die = Number(form.elements.namedItem('die')?.value) || C.info(state).die;
+        const die =
+            Number(form.elements.namedItem('die')?.value) ||
+            C.hitDiceLeft(state).find(x => x.left)?.die ||
+            C.info(state).die,
+          left = C.hitDiceLeft(state).find(x => x.die === die)?.left ?? 0;
+        if (!Number.isInteger(n) || n < 0 || n > left) throw Error(`Te quedan ${left}d${die}.`);
         form.elements.namedItem('rolls').value = roll(die, n).join(', ');
       },
     });
