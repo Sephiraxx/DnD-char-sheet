@@ -29,7 +29,10 @@ const LevelUp = (() => {
 
   // ---------- Estado provisional ----------
   // El personaje como quedaría con las elecciones de hasta ahora (sin los conjuros ni opciones nuevas).
+  // Modo «opciones de clase»: sin subir de nivel, se eligen o cambian estilos, invocaciones, maniobras…
+  let editMode = false;
   function next() {
+    if (editMode) return { ...clone(base), classChoices: {} };
     // Con la mejora todavía incompleta se calcula sin aplicarla (una dote cualquiera solo para la vista previa).
     const nd = needs(),
       okScores = d.a1 && d.a2 && [d.a1, d.a2].every(k => base.abilities[k] + (d.a1 === k) + (d.a2 === k) <= 20),
@@ -85,6 +88,11 @@ const LevelUp = (() => {
       .filter(g => g.count > g.have);
   }
   function steps() {
+    if (editMode)
+      return [
+        ['choices', 'Opciones de clase'],
+        ['review', 'Revisar'],
+      ];
     const nd = needs(),
       n = next(),
       sp = spellPlan(n),
@@ -101,8 +109,13 @@ const LevelUp = (() => {
   }
 
   // ---------- Abrir / cerrar ----------
-  function start() {
-    if (R.totalLevel(state) >= 20) throw Error('Ya estás en nivel 20 de personaje.');
+  function chooseOptions() {
+    if (!C.choices(state).length) throw Error('Tu clase no tiene opciones para elegir a este nivel.');
+    start(true);
+  }
+  function start(options = false) {
+    editMode = options === true;
+    if (!editMode && R.totalLevel(state) >= 20) throw Error('Ya estás en nivel 20 de personaje.');
     base = clone(state);
     const c = C.info(base);
     d = {
@@ -118,7 +131,7 @@ const LevelUp = (() => {
       cantrips: [],
       known: [],
       prepared: [...(base.prepared || [])],
-      choices: {},
+      choices: editMode ? clone(base.classChoices || {}) : {},
     };
     step = 0;
     q = '';
@@ -153,14 +166,14 @@ const LevelUp = (() => {
     const id = list[step][0],
       top = host.querySelector('.creator-body')?.scrollTop || 0,
       c = C.info(base);
-    host.innerHTML = `<div class="creator-shell"><header class="creator-head"><div><p class="eyebrow">SUBIR DE NIVEL · ${esc(c.name).toUpperCase()} ${base.level} → ${at()} · PASO ${step + 1} DE ${list.length}</p><h1>${esc(list[step][1])}</h1></div><div class="actions">${btn('Salir', 'close', 'secondary')}</div></header><nav class="creator-rail" aria-label="Pasos">${list
+    host.innerHTML = `<div class="creator-shell"><header class="creator-head"><div><p class="eyebrow">${editMode ? `OPCIONES DE CLASE · ${esc(c.name).toUpperCase()} ${base.level}` : `SUBIR DE NIVEL · ${esc(c.name).toUpperCase()} ${base.level} → ${at()}`} · PASO ${step + 1} DE ${list.length}</p><h1>${esc(list[step][1])}</h1></div><div class="actions">${btn('Salir', 'close', 'secondary')}</div></header><nav class="creator-rail" aria-label="Pasos">${list
       .map(
         ([, label], i) =>
           `<button type="button" class="creator-step ${i === step ? 'cur' : i < step ? 'done' : ''}" data-lv="go" data-i="${i}" ${i > step ? 'disabled' : ''}>${i < step ? '✓ ' : i + 1 + ' · '}${esc(label)}</button>`,
       )
       .join(
         '',
-      )}</nav><form class="creator-body" id="levelup-form" novalidate><div id="levelup-error" class="creator-error" role="alert"></div>${body(id)}</form><footer class="creator-foot"><p class="creator-summary">${summary()}</p><div class="actions">${step ? btn('Atrás', 'back', 'secondary') : ''}${btn(id === 'review' ? 'Confirmar subida' : 'Siguiente', 'next')}</div></footer></div>`;
+      )}</nav><form class="creator-body" id="levelup-form" novalidate><div id="levelup-error" class="creator-error" role="alert"></div>${body(id)}</form><footer class="creator-foot"><p class="creator-summary">${summary()}</p><div class="actions">${step ? btn('Atrás', 'back', 'secondary') : ''}${btn(id === 'review' ? (editMode ? 'Guardar' : 'Confirmar subida') : 'Siguiente', 'next')}</div></footer></div>`;
     const b = host.querySelector('.creator-body');
     if (b) b.scrollTop = top;
   }
@@ -385,6 +398,16 @@ const LevelUp = (() => {
 
   // 7. Revisión
   function review() {
+    if (editMode)
+      return `<section class="card"><h2>${esc(base.name)} · opciones de clase</h2><ul class="creator-list">${
+        Object.entries(d.choices)
+          .filter(([, v]) => v.length)
+          .map(
+            ([g, v]) =>
+              `<li>${esc(NamesEs.choice(g))}: ${esc(v.map(id => D.options.find(o => o.id === id)?.name || id).join(', '))}</li>`,
+          )
+          .join('') || '<li>Sin opciones elegidas.</li>'
+      }</ul></section>`;
     const n = next(),
       before = R.stats(base),
       after = R.stats(n),
@@ -433,6 +456,16 @@ const LevelUp = (() => {
   }
   function apply() {
     const picks = d;
+    if (editMode) {
+      for (const gr of C.choices(base))
+        if ((picks.choices[gr.name] || []).length > gr.count)
+          throw Error(`En ${NamesEs.choice(gr.name)} podés tener ${gr.count}.`);
+      commit('Opciones de clase actualizadas', s => {
+        s.classChoices = { ...(s.classChoices || {}), ...clone(picks.choices) };
+      });
+      close();
+      return toast('Opciones de clase guardadas.');
+    }
     commit('Subida a nivel ' + at(), s => {
       const n = C.levelUp(s, {
         hpMethod: picks.hpMethod,
@@ -542,5 +575,5 @@ const LevelUp = (() => {
     el?.focus();
     el?.setSelectionRange(pos, pos);
   }
-  return { start, close };
+  return { start, close, chooseOptions };
 })();

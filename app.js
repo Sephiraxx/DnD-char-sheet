@@ -1064,8 +1064,6 @@ window.addEventListener('storage', e => {
 });
 go();
 TableUI.boot();
-if ('serviceWorker' in navigator && location.protocol !== 'file:')
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
 try {
   if (document.modelContext?.registerTool)
     document.modelContext.registerTool({

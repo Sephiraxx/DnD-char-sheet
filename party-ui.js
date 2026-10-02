@@ -50,6 +50,14 @@ const PartyUI = (() => {
         )}</div><div class="actions section-space">${button('Crear personaje', 'party-create', '')}${button('Importar como personaje nuevo', 'party-import')}${state ? button('Exportar personaje actual', 'backup') : ''}</div>`,
     );
   }
+  // El índice guarda el nombre de cuando se creó la ficha; el actual está en la ficha misma.
+  function savedName(x) {
+    try {
+      return JSON.parse(localStorage.getItem(x.key) || 'null')?.name || x.name;
+    } catch {
+      return x.name;
+    }
+  }
   function welcome() {
     document.title = 'Cuaderno de aventura · D&D 5e 2014';
     document.getElementById('active-character-name').textContent = 'CUADERNO DE AVENTURA';
@@ -72,7 +80,7 @@ const PartyUI = (() => {
         <div id="path-join" class="path-slot"></div>
         <section class="card path-card"><span class="path-icon" aria-hidden="true">⚑</span><h2>Dirigí la partida</h2><p>Creá una mesa, compartí el código y seguí a la party: PG, iniciativa, monstruos, botín y pedidos de tirada.</p><div class="actions"><a class="button secondary" href="./dm.html">Soy el DM</a></div></section>
       </div>
-      ${items.length ? `<section class="card section-space"><h2>Tus fichas</h2><div class="party-list saved-list">${items.map(x => `<div class="list-row"><div class="party-person">${Portrait.savedThumb(x.key, x.name)}<b>${esc(x.name)}</b></div>${button('Abrir', 'party-open', 'secondary', `data-id="${esc(x.id)}"`)}</div>`).join('')}</div></section>` : ''}
+      ${items.length ? `<section class="card section-space"><h2>Tus fichas</h2><div class="party-list saved-list">${items.map(x => `<div class="list-row"><div class="party-person">${Portrait.savedThumb(x.key, savedName(x))}<b>${esc(savedName(x))}</b></div>${button('Abrir', 'party-open', 'secondary', `data-id="${esc(x.id)}"`)}</div>`).join('')}</div></section>` : ''}
       ${storageIssue ? `<div class="banner"><p>${esc(storageIssue)}</p>${rawBroken ? button('Descargar datos guardados', 'raw-backup') : ''}</div>` : ''}`;
   }
   function creationSummary(d, nextStep = false) {
@@ -240,7 +248,7 @@ const PartyUI = (() => {
     if (!t) return resolveChoices();
     if (t.action === 'spell-manage') return manageSpells(t.spellLevel || 'all');
     if (t.action === 'class-config') return classConfig();
-    chooseClass(t.group);
+    typeof LevelUp !== 'undefined' ? LevelUp.chooseOptions() : chooseClass(t.group);
   }
   function resolveChoices() {
     const tasks = C.taskDetails(state);
@@ -1091,7 +1099,7 @@ const PartyUI = (() => {
       },
       'class-open': () => (location.hash = 'class'),
       'class-config': classConfig,
-      'class-choices': () => chooseClass(),
+      'class-choices': () => (typeof LevelUp !== 'undefined' ? LevelUp.chooseOptions() : chooseClass()),
       'resolve-choices': resolveChoices,
       'resolve-task': e => resolveTask(e.dataset.id),
       'class-resource': e => useResource(e.dataset.id),
@@ -1113,15 +1121,6 @@ const PartyUI = (() => {
         const die = Number(form.elements.namedItem('die')?.value) || C.info(state).die;
         form.elements.namedItem('rolls').value = roll(die, n).join(', ');
       },
-      'party-identity': () =>
-        modal(
-          'Identidad del personaje',
-          `${field('Nombre', 'name', state.name, 'text', 'required maxlength="100"')}${field('Raza o linaje', 'race', state.race || '', 'text', 'maxlength="150"')}${field('Trasfondo', 'background', state.background || '', 'text', 'maxlength="200"')}${field('Idiomas', 'languages', state.languages || '', 'text', 'maxlength="500"')}`,
-          fd =>
-            commit('Identidad actualizada', s => {
-              for (const k of ['name', 'race', 'background', 'languages']) s[k] = String(fd.get(k)).trim();
-            }),
-        ),
     });
   }
   return {
