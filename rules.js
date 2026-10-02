@@ -605,6 +605,7 @@
     }
     if (root.Classes) root.Classes.validate(o);
     if (root.Campaign) root.Campaign.validate(o);
+    if (root.Defenses) root.Defenses.validate(o);
     if (root.Equipment) root.Equipment.validate(o);
     if (!['eloquence', 'manual'].includes(o.subclass)) fail();
     for (let k in attrs) if (!int(o.abilities?.[k], 1, 30)) fail();

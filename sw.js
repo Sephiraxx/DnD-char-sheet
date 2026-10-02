@@ -1,5 +1,5 @@
 const PREFIX = 'darien:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v35-cleanup';
+const CACHE = PREFIX + 'v37-spellbook';
 const FILES = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const FILES = [
   './names-es.js',
   './campaign-data.js',
   './campaign.js',
+  './defenses.js',
   './class-rules.js',
   './party-store.js',
   './equipment-data.js',

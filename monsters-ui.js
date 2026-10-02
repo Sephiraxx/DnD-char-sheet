@@ -331,7 +331,9 @@ const MonsterUI = (() => {
     const { a } = findAction(panel.entryId, panel.kind, panel.name),
       fd = formData(),
       crit = panel.last?.crit;
-    let total, text;
+    let total,
+      text,
+      parts = null;
     const own = fd.get('myDamage');
     if (own) {
       total = Number(own);
@@ -339,7 +341,7 @@ const MonsterUI = (() => {
       text = 'dados físicos ' + total;
       document.querySelector('#dialog-form [name=myDamage]').value = '';
     } else {
-      const parts = (a.dmg || []).map(([d, type]) => {
+      parts = (a.dmg || []).map(([d, type]) => {
         const r = rollDice(d);
         const extra = crit && r.n ? rollDice(r.n + 'd' + r.sides) : { rolls: [], total: 0 };
         return { type, mod: r.mod, rolls: [...r.rolls, ...extra.rolls], total: r.total + extra.total };
@@ -348,6 +350,7 @@ const MonsterUI = (() => {
       text = parts.map(p => `${p.rolls.join('+') || '—'}${p.mod ? ' ' + sign(p.mod) : ''} ${p.type}`).join(' · ');
     }
     panel.damage = total;
+    panel.parts = parts && parts.map(p => ({ amount: p.total, type: p.type }));
     RollFX.show({ label: 'Daño · ' + panel.name, total, face: '⚔', detail: text, crit: Boolean(crit) }).then(() => {
       const amountField = document.getElementById('monster-amount');
       if (amountField) amountField.value = total;
@@ -365,11 +368,20 @@ const MonsterUI = (() => {
     if (!t) throw Error('Elegí un objetivo.');
     if (!Number.isInteger(base) || base < 0 || base > 9999) throw Error('Revisá el daño a aplicar.');
     if (!base && !panel.damage) throw Error('Tirá el daño o escribí cuánto aplicar.');
-    const amount = fd.has('half') ? Math.floor(base / 2) : base;
+    const amount = fd.has('half') ? Math.floor(base / 2) : base,
+      { a } = findAction(panel.entryId, panel.kind, panel.name),
+      untouched = panel.parts && base === panel.damage,
+      parts = untouched
+        ? panel.parts.map(p => ({ amount: fd.has('half') ? Math.floor(p.amount / 2) : p.amount, type: p.type }))
+        : null;
     if (amount > 0)
       await send(
         'damage',
-        { amount, source: tracker().entries.find(x => x.id === panel.entryId)?.name + ': ' + panel.name },
+        {
+          amount,
+          ...(parts ? { parts } : { type: a.dmg?.[0]?.[1] || '' }),
+          source: tracker().entries.find(x => x.id === panel.entryId)?.name + ': ' + panel.name,
+        },
         target,
       );
     logLine(`Aplicado: ${amount} de daño a ${esc(t.name)}.`);

@@ -279,7 +279,7 @@ function combatOption(id) {
 function combatHp() {
   modal(
     'Puntos de golpe',
-    `<p>Actuales: <b>${state.hp ?? 'sin confirmar'} / ${R.stats(state).maxHP}</b> · Temporales: ${state.temp}</p><div class="hp-controls"><label class="visually-hidden" for="hp-amount">Cantidad</label><input class="control" id="hp-amount" type="number" min="1" max="9999" value="1">${button('Daño', 'damage', 'danger')}${button('Curar', 'heal')}</div><p class="small section-space">Ingresá el daño recibido después de resistencias. Los PG temporales se descuentan primero. Si concentrás, se recuerda la salvación.</p><div class="actions">${button('PG temporales', 'temp')}${button('Ajustar todos los recursos', 'resources')}</div>`,
+    `<p>Actuales: <b>${state.hp ?? 'sin confirmar'} / ${R.stats(state).maxHP}</b> · Temporales: ${state.temp}</p><div class="hp-controls"><label class="visually-hidden" for="hp-amount">Cantidad</label><input class="control" id="hp-amount" type="number" min="1" max="9999" value="1"><label class="visually-hidden" for="hp-type">Tipo de daño</label><select class="control" id="hp-type"><option value="">Sin tipo</option>${Defenses.TYPES.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select>${button('Daño', 'damage', 'danger')}${button('Curar', 'heal')}</div><p class="small section-space">Ingresá el daño recibido; si elegís el tipo, se aplican tus resistencias, inmunidades y vulnerabilidades. Los PG temporales se descuentan primero. Si concentrás, se recuerda la salvación.</p><div class="actions">${button('PG temporales', 'temp')}${button('Ajustar todos los recursos', 'resources')}</div>`,
   );
 }
 function installCombatActions() {

@@ -515,8 +515,17 @@ const actions = {
           ['heal', 'Curación'],
           ['temp', 'PG temporales'],
         ],
-      )}</div>${field('Origen (opcional)', 'source', '', 'text', 'maxlength="80" placeholder="Aliento del dragón"')}<p class="small">La ficha del jugador aplica el daño a sus PG temporales primero y le recuerda la salvación de concentración.</p>`,
-      fd => send(fd.get('kind'), { amount: int(fd, 'amount', 1, 9999), source: String(fd.get('source')).trim() }, id),
+      )}</div>${select('Tipo de daño (aplica resistencias)', 'type', [['', 'Sin tipo'], ...Defenses.TYPES], '')}${field('Origen (opcional)', 'source', '', 'text', 'maxlength="80" placeholder="Aliento del dragón"')}<p class="small">La ficha del jugador aplica el daño a sus PG temporales primero y le recuerda la salvación de concentración.</p>`,
+      fd =>
+        send(
+          fd.get('kind'),
+          {
+            amount: int(fd, 'amount', 1, 9999),
+            source: String(fd.get('source')).trim(),
+            type: String(fd.get('type') || ''),
+          },
+          id,
+        ),
     );
   },
   conditions: e => {
