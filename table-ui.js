@@ -268,16 +268,18 @@ const TableUI = (() => {
         if (!raw) return '';
         if (!amount) return `No recibís daño${why}.`;
         const conc = state.concentration;
+        let wild = null;
         commit((p.from || 'DM') + ': daño recibido ' + amount + (p.source ? ' (' + p.source + ')' : ''), s => {
-          const absorbed = Math.min(s.temp, amount);
-          s.temp -= absorbed;
-          s.hp = Math.max(0, s.hp - (amount - absorbed));
+          wild = Companions.absorb(s, amount);
+          s.hp = Math.max(0, s.hp - wild.toCharacter);
           if (s.hp === 0) {
             s.concentration = null;
             Combat.data(s).checks = [];
             for (const c of ['Inconsciente', 'Derribado']) if (!s.conditions.includes(c)) s.conditions.push(c);
           } else if (conc) Combat.data(s).checks.push(Math.max(10, Math.floor(amount / 2)));
         });
+        if (wild?.beast)
+          return `${p.from ? p.from + ' le hizo' : 'El DM le aplicó'} ${amount} de daño${why} a tu forma salvaje${wild.reverted ? `: volvés a tu forma${wild.toCharacter ? ' y recibís ' + wild.toCharacter : ''}` : ''}.`;
         return (
           `${p.from ? p.from + ' te hizo' : 'El DM te aplicó'} ${amount} de daño${why}.` +
           (conc && state.hp > 0 ? ' Tirá la salvación de concentración.' : '')
