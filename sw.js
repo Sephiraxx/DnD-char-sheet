@@ -1,5 +1,5 @@
 const PREFIX = 'darien:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v36-defenses';
+const CACHE = PREFIX + 'v37-spellbook';
 const FILES = [
   './',
   './index.html',

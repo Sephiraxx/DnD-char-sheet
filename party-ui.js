@@ -5,8 +5,7 @@ const PartyUI = (() => {
   let spellDraft = null,
     spellQuery = '',
     spellScope = 'class',
-    spellLevel = 'all',
-    spellLimit = 35;
+    spellLevel = 'all';
   const className = s => C.info(s).name,
     canon = s =>
       String(s)
@@ -472,13 +471,192 @@ const PartyUI = (() => {
         )}</select></div><div class="spell-grid">${list.map(sp => `<div>${automaticSpellNote(state, sp.id, grants)}${!usable.includes(sp.id) ? '<p class="tag warn">No preparado</p>' : ''}${Object.values(state.arcanum || {}).includes(sp.id) ? '<p class="tag">Arcanum · 1 uso por descanso largo</p>' : ''}${spellCard(sp)}</div>`).join('') || '<p class="empty">Todavía no agregaste conjuros. Abrí el catálogo para elegirlos.</p>'}</div>`
     );
   }
+  // ---------- Conjuros: pantalla completa con tarjetas, contadores y filtros ----------
+  let spellOpen = '',
+    spellHost = null;
   function manageSpells(level = 'all') {
     spellDraft = clone(state);
     spellQuery = '';
     spellScope = 'class';
     spellLevel = String(level);
-    spellLimit = 35;
+    spellOpen = '';
+    if (!spellHost) {
+      spellHost = document.createElement('div');
+      spellHost.id = 'spellbook';
+      spellHost.className = 'creator-host';
+      spellHost.setAttribute('role', 'dialog');
+      spellHost.setAttribute('aria-modal', 'true');
+      spellHost.setAttribute('aria-label', 'Conjuros');
+      document.body.append(spellHost);
+      spellHost.addEventListener('click', spellClick);
+      spellHost.addEventListener('input', e => {
+        if (e.target.name !== 'q') return;
+        spellQuery = e.target.value;
+        const pos = e.target.selectionStart;
+        drawSpells();
+        const q = spellHost.querySelector('[name=q]');
+        q?.focus();
+        q?.setSelectionRange(pos, pos);
+      });
+      spellHost.addEventListener('change', e => {
+        if (!e.target.dataset.spellMode) return;
+        spellDraft.spellModes = spellDraft.spellModes || {};
+        spellDraft.spellModes[e.target.dataset.spellMode] = e.target.value;
+      });
+      spellHost.addEventListener('keydown', e => e.key === 'Escape' && closeSpells());
+    }
+    document.getElementById('modal')?.open && document.getElementById('modal').close();
+    spellHost.hidden = false;
+    document.body.classList.add('creator-open');
     drawSpells();
+  }
+  function closeSpells() {
+    spellHost.hidden = true;
+    document.body.classList.remove('creator-open');
+  }
+  // Estados posibles de un conjuro para esta ficha (los mismos que antes ofrecía el desplegable).
+  function spellOptions(sp, s, d, mode, g) {
+    let options = [['no', 'No seleccionado']];
+    const valid = Campaign.enabled(s, sp) && (C.member(sp, s) || g.expanded.includes(sp.id));
+    if (valid && sp.level <= d.slots.length) {
+      if (sp.level === 0) options.push(['known', 'Truco conocido']);
+      else if (mode === 'book') options.push(['book', 'En el libro'], ['prepared', 'Libro + preparado']);
+      else if (mode === 'prepared') options.push(['prepared', 'Preparado']);
+      else options.push(['known', 'Conocido']);
+    }
+    if (
+      C.id(s) === 'bard' &&
+      (s.level >= 10 || (C.sub(s)?.id === 'bard-college-of-lore' && s.level >= 6)) &&
+      sp.level <= d.slots.length
+    )
+      options.push(['secret', 'Secreto mágico']);
+    if (
+      C.id(s) === 'warlock' &&
+      sp.level >= 6 &&
+      sp.level <= 9 &&
+      s.level >= 11 + (sp.level - 6) * 2 &&
+      C.member(sp, s)
+    )
+      options.push(['arcanum', 'Arcanum nivel ' + sp.level]);
+    options.push(['extra', 'Extra del DM']);
+    const current = statusOf(sp.id, g),
+      automatic = g.details[sp.id];
+    if (automatic)
+      options = [[current, automatic.mode === 'prepared' ? 'Siempre preparado · subclase' : 'Concedido por subclase']];
+    if (!options.some(x => x[0] === current)) options.push([current, 'Selección previa']);
+    return { options, current, automatic };
+  }
+  const STATUS_LABEL = {
+    known: 'Conocido',
+    book: 'En el libro',
+    prepared: 'Preparado',
+    secret: 'Secreto mágico',
+    arcanum: 'Arcanum',
+    extra: 'Extra del DM',
+    'automatic-prepared': 'Siempre preparado',
+    'automatic-known': 'Concedido',
+  };
+  function drawSpells() {
+    const s = spellDraft,
+      d = R.stats(s),
+      mode = C.casting(s).type,
+      g = C.granted(s),
+      counts = C.spellCounts(s),
+      top = spellHost.querySelector('.creator-body')?.scrollTop || 0;
+    const list = R.allSpells(s)
+      .filter(
+        sp =>
+          canon(sp.name + ' ' + (sp.english || '')).includes(canon(spellQuery)) &&
+          (spellScope === 'all' ||
+            (spellScope === 'mine' && statusOf(sp.id, g) !== 'no') ||
+            (spellScope === 'campaign' && Campaign.enabled(s, sp)) ||
+            (spellScope === 'class' &&
+              (statusOf(sp.id, g) !== 'no' ||
+                (Campaign.enabled(s, sp) &&
+                  sp.level <= Math.max(1, d.slots.length) &&
+                  (C.member(sp, s) || g.expanded.includes(sp.id)))))) &&
+          (spellLevel === 'all' || sp.level === Number(spellLevel)),
+      )
+      .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name, 'es'));
+    const meter = (label, have, max) =>
+      `<span class="tag ${max !== null && have > max ? 'warn' : ''}">${label} <b>${have}${max !== null ? ' / ' + max : ''}</b></span>`;
+    const meters = [
+      d.cantrips ? meter('Trucos', counts.cantrips, d.cantrips) : '',
+      mode === 'known' ? meter('Conocidos', counts.known, d.known) : '',
+      mode === 'book' ? meter('En el libro', counts.known, null) : '',
+      ['prepared', 'book'].includes(mode) ? meter('Preparados', counts.prepared, d.prepared) : '',
+      counts.automaticPrepared + counts.automaticKnown
+        ? meter('De la subclase', counts.automaticPrepared + counts.automaticKnown, null)
+        : '',
+      s.extras.length ? meter('Extras del DM', s.extras.length, null) : '',
+    ].join('');
+    const chip = (kind, v, label, on) =>
+      `<button type="button" class="chip ${on ? 'selected' : ''}" data-sb="${kind}" data-v="${v}" aria-pressed="${on}">${label}</button>`;
+    const maxLevel = spellScope === 'all' || spellScope === 'campaign' ? 9 : Math.max(1, d.slots.length);
+    const card = sp => {
+      const { options, current, automatic } = spellOptions(sp, s, d, mode, g),
+        open = spellOpen === sp.id,
+        badge =
+          current !== 'no'
+            ? `<span class="tag spell-status">${esc(current === 'known' && !sp.level ? 'Truco conocido' : current === 'prepared' && mode === 'book' ? 'Libro + preparado' : STATUS_LABEL[current] || '')}</span>`
+            : '';
+      const head = `<span class="creator-card-title">${esc(sp.name)}</span><span class="creator-meta">${sp.level ? 'Nivel ' + sp.level : 'Truco'} · ${esc(sp.school || '')} · ${esc(sp.time)}${sp.concentration ? ' · Conc.' : ''}${sp.ritual ? ' · Ritual' : ''}</span>${badge}`;
+      if (!open)
+        return `<button type="button" class="creator-card ${current !== 'no' ? 'selected' : ''}" data-sb="open" data-id="${esc(sp.id)}" aria-expanded="false">${head}<span class="creator-brief">${esc(sp.brief || '')}</span></button>`;
+      return `<div class="creator-card selected spell-open"><button type="button" class="spell-open-head" data-sb="open" data-id="${esc(sp.id)}" aria-expanded="true">${head}</button>${automaticSpellNote(s, sp.id, g)}<div class="chips">${options
+        .map(
+          ([v, l]) =>
+            `<button type="button" class="chip ${current === v ? 'selected' : ''}" data-sb="set" data-id="${esc(sp.id)}" data-v="${v}" ${automatic ? 'disabled' : ''} aria-pressed="${current === v}">${esc(l)}</button>`,
+        )
+        .join('')}</div>${
+        s.extras.includes(sp.id)
+          ? `<label class="field small">Cómo se lanza<select data-spell-mode="${esc(sp.id)}"><option value="slot">Usa espacios normales</option><option value="free" ${s.spellModes?.[sp.id] === 'free' ? 'selected' : ''}>Sin espacio · autorizado por el DM</option></select></label>`
+          : ''
+      }<p class="small">${esc(sp.text || sp.brief || '')}</p><p class="small muted">${esc(sp.range || '')} · ${esc(sp.components || '')}${sp.materialEs ? ' (' + esc(sp.materialEs) + ')' : ''} · ${esc(sp.duration || '')} · ${esc(sp.sourceKey || sp.source || '')}${sp.english ? ' · ' + esc(sp.english) : ''}</p></div>`;
+    };
+    spellHost.innerHTML = `<div class="creator-shell"><header class="creator-head"><div><p class="eyebrow">CONJUROS · ${esc(className(s)).toUpperCase()} ${s.level} · ${esc(prepNames[mode] || '').toUpperCase()}</p><h1>Tus conjuros</h1></div><div class="actions">${'<button type="button" class="button secondary" data-sb="cancel">Cancelar</button>'}</div></header><div class="creator-rail spell-meters">${meters || '<span class="small muted">Tu clase no lanza conjuros a este nivel: podés anotar extras del DM.</span>'}</div><div class="creator-body"><div id="spellbook-error" class="creator-error" role="alert"></div><div class="creator-search"><input type="search" name="q" value="${esc(spellQuery)}" placeholder="Buscar en español o inglés" aria-label="Buscar conjuro"></div><div class="chips spell-filter">${[
+      ['class', 'Mi clase'],
+      ['mine', 'Solo los míos'],
+      ['campaign', 'Libros habilitados'],
+      ['all', 'Todo el catálogo'],
+    ]
+      .map(([v, l]) => chip('scope', v, l, spellScope === v))
+      .join('')}</div><div class="chips spell-filter">${[
+      ['all', 'Todos'],
+      ...Array.from({ length: maxLevel + 1 }, (_, i) => [String(i), i ? 'Nivel ' + i : 'Trucos']),
+    ]
+      .map(([v, l]) => chip('level', v, l, spellLevel === v))
+      .join(
+        '',
+      )}</div>${spellScope === 'all' ? '<p class="small">En «Todo el catálogo» podés sumar cualquier conjuro como <b>Extra del DM</b>, fuera de tu clase, libro o nivel.</p>' : ''}<p class="small">${list.length} conjuros. Tocá uno para elegir qué hacer con él.</p><div class="creator-grid small-cards">${list.map(card).join('') || '<p class="muted">Ningún conjuro coincide.</p>'}</div></div><footer class="creator-foot"><p class="creator-summary">${esc(state.name)}: CD ${d.dc} · ataque ${sign(d.attack)}</p><div class="actions"><button type="button" class="button" data-sb="save">Guardar</button></div></footer></div>`;
+    const b = spellHost.querySelector('.creator-body');
+    if (b) b.scrollTop = top;
+  }
+  function spellClick(e) {
+    const t = e.target.closest('[data-sb]');
+    if (!t || t.disabled) return;
+    const a = t.dataset.sb;
+    try {
+      if (a === 'cancel') return closeSpells();
+      if (a === 'save') {
+        validateRepertoire(spellDraft);
+        commit('Repertorio actualizado', next => {
+          for (const k of ['known', 'extras', 'prepared', 'secretKnown', 'spellModes', 'arcanum'])
+            next[k] = clone(spellDraft[k] || (['spellModes', 'arcanum'].includes(k) ? {} : []));
+          if (next.concentration && !C.usable(next).includes(next.concentration)) next.concentration = null;
+        });
+        closeSpells();
+        return toast('Conjuros guardados.');
+      }
+      if (a === 'open') spellOpen = spellOpen === t.dataset.id ? '' : t.dataset.id;
+      if (a === 'set') spellChoice(t.dataset.id, t.dataset.v);
+      if (a === 'scope') spellScope = t.dataset.v;
+      if (a === 'level') spellLevel = t.dataset.v;
+      drawSpells();
+    } catch (err) {
+      const el = spellHost.querySelector('#spellbook-error');
+      if (el) el.textContent = err.message;
+    }
   }
   function statusOf(id, g = C.granted(spellDraft)) {
     if (g.details[id]) return g.details[id].mode === 'prepared' ? 'automatic-prepared' : 'automatic-known';
@@ -509,67 +687,6 @@ const PartyUI = (() => {
       if (value === 'prepared') s.prepared.push(id);
       if (value === 'secret') s.secretKnown.push(id);
     }
-  }
-  function drawSpells() {
-    const s = spellDraft,
-      d = R.stats(s),
-      mode = C.casting(s).type,
-      g = C.granted(s),
-      counts = C.spellCounts(s);
-    let list = R.allSpells(s).filter(
-      sp =>
-        canon(sp.name + ' ' + (sp.english || '')).includes(canon(spellQuery)) &&
-        (spellScope === 'all' ||
-          (spellScope === 'campaign' && Campaign.enabled(s, sp)) ||
-          statusOf(sp.id, g) !== 'no' ||
-          (spellScope === 'class' && Campaign.enabled(s, sp) && (C.member(sp, s) || g.expanded.includes(sp.id)))) &&
-        (spellLevel === 'all' || sp.level === Number(spellLevel)),
-    );
-    let body = `<p class="small">Elegí «Todo el catálogo» para agregar cualquier conjuro como <b>Extra del DM</b>, sin límite de clase, fuente o nivel. Podés indicar si usa espacios o si tiene un lanzamiento especial sin espacio. Los usos limitados por día se llevan con un recurso personalizado.</p>${['fighter', 'rogue'].includes(C.id(s)) ? '<p class="small">Caballero arcano y Embaucador arcano: revisá las escuelas permitidas y las excepciones de cada nivel antes de aprender o reemplazar un conjuro.</p>' : ''}<div class="toolbar"><input class="control" id="party-spell-search" aria-label="Buscar catálogo" placeholder="Nombre en español o inglés" value="${esc(spellQuery)}"><select class="control" id="party-spell-scope" aria-label="Lista"><option value="class" ${spellScope === 'class' ? 'selected' : ''}>Mi clase y seleccionados</option><option value="campaign" ${spellScope === 'campaign' ? 'selected' : ''}>Libros habilitados</option><option value="all" ${spellScope === 'all' ? 'selected' : ''}>Todo el catálogo · extras del DM</option></select><select class="control" id="party-spell-level" aria-label="Nivel">${[['all', 'Todos los niveles'], ...Array.from({ length: 10 }, (_, i) => [i, i ? 'Nivel ' + i : '0 · Trucos'])].map(([v, n]) => `<option value="${v}" ${String(v) === spellLevel ? 'selected' : ''}>${n}</option>`).join('')}</select></div><p class="small">${list.length} resultados · ${counts.known} elegidos en repertorio/libro · ${counts.prepared}/${d.prepared} preparados por vos · ${counts.automaticPrepared} siempre preparados · ${counts.automaticKnown} concedido(s) automáticamente · ${s.extras.length} registros extra del DM.</p><div class="party-spell-list">${list
-      .slice(0, spellLimit)
-      .map(sp => {
-        let options = [['no', 'No seleccionado']];
-        const valid = Campaign.enabled(s, sp) && (C.member(sp, s) || g.expanded.includes(sp.id));
-        if (valid && sp.level <= d.slots.length) {
-          if (sp.level === 0) options.push(['known', 'Truco conocido']);
-          else if (mode === 'book') options.push(['book', 'En el libro'], ['prepared', 'Libro + preparado']);
-          else if (mode === 'prepared') options.push(['prepared', 'Preparado']);
-          else options.push(['known', 'Conocido']);
-        }
-        if (
-          C.id(s) === 'bard' &&
-          (s.level >= 10 || (C.sub(s)?.id === 'bard-college-of-lore' && s.level >= 6)) &&
-          sp.level <= d.slots.length
-        )
-          options.push(['secret', 'Secreto mágico']);
-        if (
-          C.id(s) === 'warlock' &&
-          sp.level >= 6 &&
-          sp.level <= 9 &&
-          s.level >= 11 + (sp.level - 6) * 2 &&
-          C.member(sp, s)
-        )
-          options.push(['arcanum', 'Arcanum nivel ' + sp.level]);
-        options.push(['extra', 'Extra del DM']);
-        const current = statusOf(sp.id, g),
-          automatic = g.details[sp.id];
-        if (automatic)
-          options = [
-            [current, automatic.mode === 'prepared' ? 'Siempre preparado · subclase' : 'Concedido por subclase'],
-          ];
-        if (!options.some(x => x[0] === current)) options.push([current, 'Selección previa']);
-        return `<div class="party-spell-row"><div><b>${esc(sp.name)}</b><p class="small">${sp.level ? 'Nivel ' + sp.level : 'Truco'} · ${esc(sp.sourceKey || sp.source)} · ${esc(sp.time)}</p>${automaticSpellNote(s, sp.id, g)}<details><summary>Cómo funciona</summary><p class="spell-reference small">${esc(sp.text)}</p><p class="small">${esc(sp.materialEs || '')} · ${esc(sp.duration)}</p><p class="small">${sp.english ? esc(sp.english) + ' · ' : ''}Resumen de mesa; revisá excepciones en su fuente.</p></details></div><div><select class="control" data-spell-choice="${esc(sp.id)}" aria-label="Estado de ${esc(sp.name)}" ${automatic ? 'disabled' : ''}>${options.map(([v, n]) => `<option value="${v}" ${current === v ? 'selected' : ''}>${n}</option>`).join('')}</select>${automatic ? '<p class="small">Lo concede la subclase elegida; no se selecciona ni se quita al preparar.</p>' : ''}${automatic && s.extras.includes(sp.id) ? '<p class="small">También tenés un registro Extra del DM para este conjuro. Se conserva su modo de lanzamiento.</p>' : ''}${s.extras.includes(sp.id) ? `<label class="field small">Lanzamiento<select data-spell-mode="${esc(sp.id)}"><option value="slot">Usa espacios normales</option><option value="free" ${s.spellModes?.[sp.id] === 'free' ? 'selected' : ''}>Sin espacio · autorizado por DM</option></select></label>` : ''}</div></div>`;
-      })
-      .join('')}</div>${list.length > spellLimit ? button('Mostrar más', 'party-spells-more') : ''}`;
-    modal('Agregar y preparar conjuros', body, () => {
-      validateRepertoire(spellDraft);
-      commit('Repertorio actualizado', next => {
-        for (const k of ['known', 'extras', 'prepared', 'secretKnown', 'spellModes', 'arcanum'])
-          next[k] = clone(spellDraft[k] || (['spellModes', 'arcanum'].includes(k) ? {} : []));
-        if (next.concentration && !C.usable(next).includes(next.concentration)) next.concentration = null;
-      });
-    });
-    document.getElementById('modal').classList.add('learning-modal');
   }
   function validateRepertoire(s) {
     const d = R.stats(s),
@@ -985,10 +1102,6 @@ const PartyUI = (() => {
         const txt = document.getElementById('class-notes').value;
         commit('Notas de clase guardadas', s => (s.classNotes = txt));
       },
-      'party-spells-more': () => {
-        spellLimit += 35;
-        drawSpells();
-      },
       stats: statsEdit,
       'short-rest': shortRest,
       'party-attack': genericAttack,
@@ -1009,40 +1122,6 @@ const PartyUI = (() => {
               for (const k of ['name', 'race', 'background', 'languages']) s[k] = String(fd.get(k)).trim();
             }),
         ),
-      reset: () => {
-        throw Error('Para empezar otra ficha usá Personajes → Crear personaje. Tu ficha actual se conserva.');
-      },
-    });
-    document.addEventListener('input', e => {
-      if (e.target.id === 'party-spell-search') {
-        spellQuery = e.target.value;
-        const pos = e.target.selectionStart;
-        drawSpells();
-        const input = document.getElementById('party-spell-search');
-        input.focus();
-        input.setSelectionRange(pos, pos);
-      }
-    });
-    document.addEventListener('change', e => {
-      if (e.target.id === 'party-spell-scope') {
-        spellScope = e.target.value;
-        drawSpells();
-      }
-      if (e.target.id === 'party-spell-level') {
-        spellLevel = e.target.value;
-        drawSpells();
-      }
-      if (e.target.dataset.spellChoice) {
-        spellChoice(e.target.dataset.spellChoice, e.target.value);
-        const body = document.querySelector('#modal .modal-body'),
-          top = body.scrollTop;
-        drawSpells();
-        document.querySelector('#modal .modal-body').scrollTop = top;
-      }
-      if (e.target.dataset.spellMode) {
-        spellDraft.spellModes = spellDraft.spellModes || {};
-        spellDraft.spellModes[e.target.dataset.spellMode] = e.target.value;
-      }
     });
   }
   return {

@@ -3,7 +3,8 @@ body.creator-open {
   overflow: hidden;
 }
 #creator,
-#levelup {
+#levelup,
+#spellbook {
   position: fixed;
   inset: 0;
   z-index: 60;
@@ -11,7 +12,8 @@ body.creator-open {
   overflow: hidden;
 }
 #creator[hidden],
-#levelup[hidden] {
+#levelup[hidden],
+#spellbook[hidden] {
   display: none;
 }
 .creator-shell {
@@ -325,4 +327,34 @@ label.field.key-ability {
   .creator-foot .actions .button {
     flex: 1;
   }
+}
+
+/* Gestor de conjuros */
+.spell-meters {
+  gap: 8px;
+  align-items: center;
+}
+.spell-meters .tag.warn {
+  color: var(--red);
+  border-color: #8a4b48;
+}
+.spell-filter {
+  margin-bottom: 8px;
+}
+.spell-status {
+  margin-top: 4px;
+  color: var(--gold);
+}
+.creator-card.spell-open {
+  grid-column: 1 / -1;
+  cursor: default;
+  gap: 8px;
+}
+.spell-open-head {
+  all: unset;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  width: 100%;
 }
