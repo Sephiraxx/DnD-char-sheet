@@ -621,6 +621,64 @@ const ACT = {
   'Flying Sword': 'Espada voladora',
   'Slaying Longbow': 'Arco largo asesino',
   'Ethereal Stride': 'Paso etéreo',
+  'Invisible Passage': 'Paso invisible',
+  'Spiked Bone Club': 'Garrote de hueso con púas',
+  'Blind Senses': 'Sentidos ciegos',
+  'Luring Song': 'Canción seductora',
+  Fork: 'Tridente',
+  'Faultless Tracker': 'Rastreador infalible',
+  'Tentacle Attack or Fling': 'Ataque de tentáculo o Arrojar',
+  'Freedom of Movement': 'Libertad de movimiento',
+  'Intoxicating Touch': 'Toque embriagador',
+  'Hellish Rejuvenation': 'Rejuvenecimiento infernal',
+  Cantrip: 'Truco',
+  'Turn Resistance': 'Resistencia a expulsar',
+  'Tail Spike Regrowth': 'Púas que vuelven a crecer',
+  Adhesive: 'Adhesivo',
+  'Beast of Burden': 'Bestia de carga',
+  'Blasphemous Word': 'Palabra blasfema',
+  'Channel Negative Energy': 'Canalizar energía negativa',
+  'Whirlwind of Sand': 'Torbellino de arena',
+  'Horror Nimbus': 'Nimbo de horror',
+  'Nightmare Haunting': 'Acoso de pesadillas',
+  'Night Hag Items': 'Objetos de la saga nocturna',
+  'Confer Fire Resistance': 'Conferir resistencia al fuego',
+  'Ethereal Jaunt': 'Salto etéreo',
+  'Fear Aura': 'Aura de miedo',
+  'Divine Eminence': 'Eminencia divina',
+  'Keen Senses': 'Sentidos agudos',
+  'Limited Magic Immunity': 'Inmunidad mágica limitada',
+  'Grasping Tendrils': 'Zarcillos aferradores',
+  'Limited Amphibiousness': 'Anfibio limitado',
+  'Shark Telepathy': 'Telepatía con tiburones',
+  'Horrific Appearance': 'Apariencia horrible',
+  'Spell Storing': 'Almacenar conjuro',
+  'Searing Burst': 'Estallido abrasador',
+  'Blinding Gaze': 'Mirada cegadora',
+  'Heart Sight': 'Ver el corazón',
+  'Cunning Action': 'Acción astuta',
+  'Blood Drain': 'Drenar sangre',
+  'Rock Catching': 'Atrapar rocas',
+  Slow: 'Ralentizar',
+  'Lightning Strike': 'Golpe de relámpago',
+  'Draining Kiss': 'Beso drenante',
+  Beaks: 'Picos',
+  Chomp: 'Dentellada',
+  'Reflective Carapace': 'Caparazón reflectante',
+  'Animate Trees': 'Animar árboles',
+  'Shimmering Shield': 'Escudo resplandeciente',
+  'Heal Self': 'Curarse',
+  'Rotting Touch': 'Toque putrefacto',
+  Spores: 'Esporas',
+  'Stunning Screech': 'Chillido aturdidor',
+  Whelm: 'Arrollar',
+  Shock: 'Descarga',
+  'Consume Life': 'Consumir vida',
+  'Variable Illumination': 'Iluminación variable',
+  'Snow Camouflage': 'Camuflaje en la nieve',
+  'Create Specter': 'Crear espectro',
+  Stinger: 'Aguijón',
+  'Treasure Sense': 'Sentir tesoros',
 };
 // «(Boar or Hybrid Form Only)» → «(solo en forma de jabalí o híbrida)».
 const FORMWORD = {
@@ -634,6 +692,7 @@ const FORMWORD = {
   Vampire: 'de vampiro',
   Bat: 'de murciélago',
   Mist: 'de niebla',
+  Object: 'de objeto',
 };
 // Acciones con recarga o usos: «Fire Breath (Recharge 5–6)» → «Aliento de fuego (Recarga 5–6)».
 function action(n) {
@@ -806,7 +865,8 @@ const SPEED = t =>
     .replace(/\bswim\b/g, 'nado')
     .replace(/\bclimb\b/g, 'trepar')
     .replace(/\bburrow\b/g, 'excavar')
-    .replace(/\(hover\)/g, '(flotar)');
+    .replace(/\(hover\)/g, '(flotar)')
+    .replace(/, hover true/g, ' (flotar)');
 const SENSES = t =>
   SPEED(t)
     .replace(/\bdarkvision\b/g, 'visión en la oscuridad')
@@ -814,7 +874,8 @@ const SENSES = t =>
     .replace(/\btremorsense\b/g, 'sentido de la vibración')
     .replace(/\btruesight\b/g, 'visión verdadera')
     .replace(/\(blind beyond this radius\)/g, '(ciego más allá de este radio)')
-    .replace(/passive [Pp]erception/g, 'Percepción pasiva');
+    .replace(/passive [Pp]erception/g, 'Percepción pasiva')
+    .replace(/ or (\d+) pies while deafened/g, ' o $1 pies mientras está ensordecido');
 const SKILL = {
   Acrobatics: 'Acrobacias',
   'Animal Handling': 'Trato con animales',
@@ -875,14 +936,37 @@ const LANG = {
   'but speaks only through the use of its Mimicry trait': 'pero solo habla con su rasgo Imitación',
   "but can't speak, telepathy": 'pero no puede hablar, telepatía',
 };
+const LANG_PHRASES = [
+  [/Giant (Eagle|Elk|Owl)/g, (m, a) => ({ Eagle: 'águila gigante', Elk: 'alce gigante', Owl: 'búho gigante' })[a]],
+  [/plus up to (five|six) other languages/g, (m, n) => `y hasta ${n === 'five' ? 'cinco' : 'seis'} idiomas más`],
+  [/,? and /g, ' y '],
+  [/any one language \(usually Common\)/gi, 'un idioma cualquiera (normalmente Común)'],
+  [/one language known by its creator/gi, 'un idioma que conozca su creador'],
+  [/\(works only with creatures that understand (\w+)\)/gi, '(solo con criaturas que entiendan $1)'],
+  [/any languages it knew in life/gi, 'los idiomas que conocía en vida'],
+  [/all languages it knew in life/gi, 'todos los idiomas que conocía en vida'],
+  [/understands commands given in any language/gi, 'entiende órdenes dadas en cualquier idioma'],
+  [/but doesn't speak it/gi, 'pero no lo habla'],
+  [
+    /\(can't speak in (\w+) form\)/gi,
+    (m, f) =>
+      `(no puede hablar en forma de ${{ boar: 'jabalí', bear: 'oso', rat: 'rata', tiger: 'tigre', wolf: 'lobo' }[f] || f})`,
+  ],
+  [/any one language/gi, 'un idioma cualquiera'],
+  [/Thieves' cant/g, 'jerga de ladrones'],
+  [/\bDruidic\b/g, 'druídico'],
+  [/ plus /g, ' y '],
+];
 const LANGS = t => {
-  let out = SPEED(t);
+  let out = LANG_PHRASES.reduce((s, [re, to]) => s.replace(re, to), SPEED(t));
   for (const [en, es] of Object.entries(LANG).sort((a, b) => b[0].length - a[0].length))
     out = out.replace(new RegExp('\\b' + en.replace(/[()]/g, '\\$&') + '\\b', 'g'), es);
   return out;
 };
 const DEFS = t =>
   String(t || '')
+    .replace(/\(from stoneskin\)/g, '(por piel pétrea)')
+    .replace(/wielded by good creatures/g, 'empuñadas por criaturas buenas')
     .replace(
       /\b(acid|bludgeoning|cold|fire|force|lightning|necrotic|piercing|poison|psychic|radiant|slashing|thunder)\b/g,
       m => DMG[m],
@@ -894,11 +978,12 @@ const DEFS = t =>
     .replace(/that aren't adamantine/g, 'que no sean de adamantina')
     .replace(/\bdamage from spells\b/g, 'daño de conjuros')
     .replace(/from magic weapons/g, 'de armas mágicas')
-    .replace(/\band\b/g, 'y');
+    .replace(/,? \band\b/g, ' y');
 const CONDS = t =>
   String(t || '').replace(/\b[A-Za-z]+\b/g, w => (COND[w.toLowerCase()] ? cap(COND[w.toLowerCase()]) : w));
 const ALIGN = t =>
   String(t || '')
+    .replace(/ or /g, ' o ')
     .replace(/^unaligned$/, 'sin alineamiento')
     .replace(/^any alignment$/, 'cualquier alineamiento')
     .replace(/^any non-good alignment$/, 'cualquier alineamiento no bueno')
@@ -912,9 +997,200 @@ const ALIGN = t =>
     .replace(/\bgood\b/, 'bueno')
     .replace(/\bevil\b/, 'malvado');
 
+// Rasgos frecuentes, oración por oración («The wolf has advantage…» → «Tiene ventaja…»).
+// Se aplican después de text(), así que las distancias ya dicen «pies».
+const S = "[A-Za-z][\\w'’-]*(?: [A-Za-z][\\w'’-]*){0,3}";
+const SENSE = {
+  sight: 'de la vista',
+  hearing: 'del oído',
+  smell: 'del olfato',
+  'hearing or smell': 'del oído o del olfato',
+  'sight or smell': 'de la vista o del olfato',
+  'hearing and smell': 'del oído y del olfato',
+  'sight or hearing': 'de la vista o del oído',
+};
+const SIZE = { Tiny: 'diminuta', Small: 'pequeña', Medium: 'mediana', Large: 'grande' };
+const TRAITS = [
+  [
+    new RegExp(`If the ${S} fails a saving throw, it can choose to succeed instead\\.`, 'g'),
+    'Si falla una tirada de salvación, puede elegir superarla.',
+  ],
+  [new RegExp(`The ${S} can breathe air and water\\.`, 'g'), 'Puede respirar aire y agua.'],
+  [new RegExp(`The ${S} can breathe only underwater\\.`, 'g'), 'Solo puede respirar bajo el agua.'],
+  [
+    new RegExp(`The ${S} has advantage on saving throws against spells and other magical effects\\.`, 'g'),
+    'Tiene ventaja en las tiradas de salvación contra conjuros y otros efectos mágicos.',
+  ],
+  [
+    new RegExp(`Magical darkness doesn't impede the ${S}'s darkvision\\.`, 'g'),
+    'La oscuridad mágica no le impide ver con su visión en la oscuridad.',
+  ],
+  [new RegExp(`The ${S}'s weapon attacks are magical\\.`, 'g'), 'Sus ataques con arma son mágicos.'],
+  [
+    new RegExp(`The ${S} is immune to any spell or effect that would alter its form\\.`, 'g'),
+    'Es inmune a cualquier conjuro o efecto que altere su forma.',
+  ],
+  [
+    new RegExp(
+      `The ${S} can climb difficult surfaces, including upside down on ceilings, without needing to make an ability check\\.`,
+      'g',
+    ),
+    'Puede trepar superficies difíciles, incluso cabeza abajo por el techo, sin hacer una prueba de característica.',
+  ],
+  [
+    new RegExp(`The ${S} ignores movement restrictions caused by webbing\\.`, 'g'),
+    'Ignora las restricciones de movimiento causadas por telarañas.',
+  ],
+  [
+    new RegExp(
+      `While in contact with a web, the ${S} knows the exact location of any other creature in contact with the same web\\.`,
+      'g',
+    ),
+    'Mientras toca una telaraña, sabe dónde está exactamente cualquier otra criatura que toque la misma telaraña.',
+  ],
+  [
+    new RegExp(
+      `The ${S} has advantage on Wisdom \\(Perception\\) checks that rely on (sight or hearing|hearing or smell|sight or smell|hearing and smell|sight|hearing|smell)\\.`,
+      'g',
+    ),
+    (m, sense) => `Tiene ventaja en las pruebas de Sabiduría (Percepción) que dependen ${SENSE[sense]}.`,
+  ],
+  [
+    new RegExp(
+      `The ${S} has advantage on an attack roll against a creature if at least one of the ${S}'s allies is within (\\d+) pies of the creature and the ally isn't incapacitated\\.`,
+      'g',
+    ),
+    (m, d) =>
+      `Tiene ventaja en una tirada de ataque contra una criatura si al menos un aliado suyo está a ${d} pies o menos de ella y ese aliado no está incapacitado.`,
+  ],
+  [
+    /The swarm can occupy another creature's space and vice versa, and the swarm can move through any opening large enough for an? (Tiny|Small|Medium|Large) [\w ]+?\. The swarm can't regain hit points or gain temporary hit points\./g,
+    (m, size) =>
+      `El enjambre puede ocupar el espacio de otra criatura y viceversa, y puede pasar por cualquier abertura lo bastante grande para una criatura ${SIZE[size]}. No puede recuperar puntos de golpe ni obtener puntos de golpe temporales.`,
+  ],
+  [
+    new RegExp(
+      `If the ${S} takes (\\d+) damage or less that would reduce it to 0 hit points, it is reduced to 1 hit point instead\\.`,
+      'g',
+    ),
+    (m, n) => `Si recibe ${n} de daño o menos que lo dejaría a 0 puntos de golpe, queda con 1 punto de golpe.`,
+  ],
+  [
+    new RegExp(
+      `If damage reduces the ${S} to 0 hit points, it must make a salvación de Constitución with a DC of 5 ?\\+ ?the damage taken, unless the damage is radiant or from a critical hit\\. On a success, the ${S} drops to 1 hit point instead\\.`,
+      'g',
+    ),
+    'Si el daño lo deja a 0 puntos de golpe, hace una salvación de Constitución con CD 5 + el daño recibido, salvo que el daño sea radiante o de un crítico. Si la supera, queda con 1 punto de golpe.',
+  ],
+  [
+    new RegExp(
+      `While in sunlight, the ${S} has disadvantage on attack rolls, as well as on Wisdom \\(Perception\\) checks that rely on sight\\.`,
+      'g',
+    ),
+    'Bajo la luz del sol tiene desventaja en las tiradas de ataque y en las pruebas de Sabiduría (Percepción) que dependen de la vista.',
+  ],
+  [
+    new RegExp(`The ${S} can hold its breath for (\\d+) (minutes|hour|hours)\\.`, 'g'),
+    (m, n, u) =>
+      `Puede contener la respiración durante ${n} ${u === 'minutes' ? 'minutos' : u === 'hour' ? 'hora' : 'horas'}.`,
+  ],
+  [
+    new RegExp(`The ${S} can't use its blindsight while deafened\\.`, 'g'),
+    'No puede usar su vista ciega mientras está ensordecido.',
+  ],
+  [
+    new RegExp(`The ${S} doesn't provoke opportunity attacks when it flies out of an enemy's reach\\.`, 'g'),
+    'No provoca ataques de oportunidad cuando sale volando del alcance de un enemigo.',
+  ],
+  [
+    new RegExp(`The ${S} has advantage on attack rolls against any creature it has surprised\\.`, 'g'),
+    'Tiene ventaja en las tiradas de ataque contra cualquier criatura a la que haya sorprendido.',
+  ],
+  [
+    new RegExp(`The ${S} can take the Disengage or Hide action as a bonus action on each of its turns\\.`, 'g'),
+    'Puede Destrabarse o Esconderse como acción adicional en cada uno de sus turnos.',
+  ],
+  [
+    new RegExp(
+      `The ${S} has advantage on saving throws against being charmed, and magic can't put the ${S} to sleep\\.`,
+      'g',
+    ),
+    'Tiene ventaja en las salvaciones contra ser hechizado, y la magia no puede dormirlo.',
+  ],
+  [
+    new RegExp(`The ${S} has advantage on saving throws against being frightened\\.`, 'g'),
+    'Tiene ventaja en las salvaciones contra ser asustado.',
+  ],
+  [
+    new RegExp(`Its statistics, other than its AC, are the same in each form\\.`, 'g'),
+    'Sus estadísticas, salvo la CA, son las mismas en cada forma.',
+  ],
+  [
+    new RegExp(`Its statistics, other than its size and AC, are the same in each form\\.`, 'g'),
+    'Sus estadísticas, salvo el tamaño y la CA, son las mismas en cada forma.',
+  ],
+  [
+    /Any equipment it is wearing or carrying isn't transformed\./g,
+    'El equipo que lleva puesto o carga no se transforma.',
+  ],
+  [/It reverts to its true form if it dies\./g, 'Si muere, vuelve a su forma verdadera.'],
+  [new RegExp(`The ${S} can use its action to polymorph into `, 'g'), 'Puede usar su acción para transformarse en '],
+  [
+    new RegExp(`The ${S} deals double damage to objects and structures\\.`, 'g'),
+    'Hace el doble de daño a objetos y estructuras.',
+  ],
+  [
+    new RegExp(`The ${S} regains (\\d+) hit points at the start of its turn\\.`, 'g'),
+    (m, n) => `Recupera ${n} puntos de golpe al comienzo de su turno.`,
+  ],
+  [
+    new RegExp(`While the ${S} remains motionless, it is indistinguishable from `, 'g'),
+    'Mientras permanece inmóvil, no se distingue de ',
+  ],
+];
+const trait = t => TRAITS.reduce((out, [re, to]) => out.replace(re, to), t);
+
+// Textos completos traducidos a mano (tools/monsters-es-text.json): la clave es el texto en inglés con cada
+// número reemplazado por {0}, {1}…, así una traducción sirve para todos los monstruos que la comparten.
+const DICT = require('./monsters-es-text.json');
+const norm = s =>
+  String(s || '')
+    .replace(/(\d+) ft\./g, '$1 feet')
+    .replace(/ +\./g, '.')
+    .trim();
+function fromDict(s) {
+  const nums = [];
+  const key = norm(s).replace(/\d+/g, n => '{' + (nums.push(n) - 1) + '}');
+  const es = DICT[key];
+  return es === undefined ? null : spells(es.replace(/\{(\d+)\}/g, (m, i) => nums[i]));
+}
+// Listas de conjuros («A voluntad: light, sacred flame»): nombres del catálogo en español.
+let SPELLS = null;
+function spellName(item) {
+  if (!SPELLS) {
+    const fs = require('fs'),
+      path = require('path'),
+      vm = require('vm'),
+      ctx = {};
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, '..', 'catalog.js'), 'utf8'), { window: ctx });
+    // names-es.js traduce el catálogo al cargarse en la app; acá se toma el nombre en español del archivo de datos.
+    SPELLS = new Map(ctx.Catalog.spells.map(s => [(s.english || s.name).toLowerCase(), s.name]));
+  }
+  const m = /^\s*(.+?)(\*?)(\s*\(.*\))?\s*$/.exec(item);
+  const ALIAS = { 'acid arrow': "melf's acid arrow" };
+  const es = m && (SPELLS.get(m[1].toLowerCase()) || SPELLS.get(ALIAS[m[1].toLowerCase()]));
+  return es ? ' ' + es.charAt(0).toLowerCase() + es.slice(1) + m[2] + (m[3] || '') : ' ' + item.trim();
+}
+const spells = text =>
+  text.replace(
+    /^(- )?((?:Trucos|Nivel|A voluntad|\d+\/día)[^:\n]*):([^\n]+)$/gm,
+    (m, dash, label, list) => (dash || '') + label + ':' + list.split(',').map(spellName).join(','),
+  );
+
 function translate(m) {
   if (m.english) return m; // ya traducido
-  const actions = list => (list || []).map(a => ({ ...a, english: a.n, n: action(a.n), d: text(a.d) }));
+  const actions = list =>
+    (list || []).map(a => ({ ...a, english: a.n, n: action(a.n), d: fromDict(a.d) ?? text(a.d) }));
   return {
     ...m,
     english: m.name,
@@ -929,7 +1205,7 @@ function translate(m) {
     res: DEFS(m.res),
     imm: DEFS(m.imm),
     cimm: CONDS(m.cimm),
-    traits: (m.traits || []).map(([n, d]) => [action(n), text(d)]),
+    traits: (m.traits || []).map(([n, d]) => [action(n), fromDict(d) ?? trait(text(d))]),
     actions: actions(m.actions),
     legendary: actions(m.legendary),
     reactions: actions(m.reactions),

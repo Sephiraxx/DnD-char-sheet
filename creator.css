@@ -241,8 +241,9 @@ body.creator-open {
 }
 .creator-buy {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 8px 10px;
@@ -250,12 +251,13 @@ body.creator-open {
 }
 .creator-buy .actions {
   flex-wrap: nowrap;
+  justify-content: space-between;
   align-items: center;
   gap: 8px;
 }
 .creator-buy .button {
-  min-height: 34px;
-  min-width: 34px;
+  min-height: 44px;
+  min-width: 44px;
   padding: 4px 10px;
 }
 .key-ability {

@@ -1,0 +1,100 @@
+[
+  {
+    "page": "Combate",
+    "client": 310,
+    "overflow": [],
+    "scroll": 310,
+    "width": 320
+  },
+  {
+    "page": "Conjuros",
+    "client": 310,
+    "overflow": [],
+    "scroll": 310,
+    "width": 320
+  },
+  {
+    "page": "Equipo",
+    "client": 310,
+    "overflow": [],
+    "scroll": 310,
+    "width": 320
+  },
+  {
+    "page": "Personaje",
+    "client": 310,
+    "overflow": [],
+    "scroll": 310,
+    "width": 320
+  },
+  {
+    "page": "Clase",
+    "client": 310,
+    "overflow": [],
+    "scroll": 310,
+    "width": 320
+  },
+  {
+    "page": "Diario",
+    "client": 310,
+    "overflow": [],
+    "scroll": 310,
+    "width": 320
+  },
+  {
+    "page": "Mesa",
+    "client": 310,
+    "overflow": [],
+    "scroll": 310,
+    "width": 320
+  },
+  {
+    "page": "Combate",
+    "client": 758,
+    "overflow": [],
+    "scroll": 758,
+    "width": 768
+  },
+  {
+    "page": "Conjuros",
+    "client": 758,
+    "overflow": [],
+    "scroll": 758,
+    "width": 768
+  },
+  {
+    "page": "Equipo",
+    "client": 758,
+    "overflow": [],
+    "scroll": 758,
+    "width": 768
+  },
+  {
+    "page": "Personaje",
+    "client": 758,
+    "overflow": [],
+    "scroll": 758,
+    "width": 768
+  },
+  {
+    "page": "Clase",
+    "client": 758,
+    "overflow": [],
+    "scroll": 758,
+    "width": 768
+  },
+  {
+    "page": "Diario",
+    "client": 758,
+    "overflow": [],
+    "scroll": 758,
+    "width": 768
+  },
+  {
+    "page": "Mesa",
+    "client": 758,
+    "overflow": [],
+    "scroll": 758,
+    "width": 768
+  }
+]

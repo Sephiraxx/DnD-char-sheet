@@ -1,0 +1,42 @@
+{
+  "diceFinding": {
+    "character": "wizard 3 / fighter 1",
+    "suppliedDice": [
+      {
+        "die": 10,
+        "count": 1
+      },
+      {
+        "die": 6,
+        "count": 3
+      }
+    ],
+    "chosen": "3d10",
+    "accepted": true,
+    "healed": 33,
+    "spent": 3
+  },
+  "beastFinding": {
+    "wolfSkills": "Percepción +3, Sigilo +4",
+    "sheetStealth": 2,
+    "expectedStealth": 4,
+    "storedFormKeys": ["name", "monsterId", "ac", "maxHp", "hp", "speed", "attacks", "ab"]
+  },
+  "languageFinding": {
+    "wolfTraits": [
+      ["Oído y olfato agudos", "The wolf has advantage on Wisdom (Perception) checks that rely on hearing or smell."],
+      [
+        "Tácticas de manada",
+        "The wolf has advantage on an attack roll against a creature if at least one of the wolf's allies is within 5 pies of the creature and the ally isn't incapacitated."
+      ]
+    ],
+    "spiderActions": [
+      {
+        "name": "Mordisco"
+      },
+      {
+        "name": "Telaraña"
+      }
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-02",
+  "verified": [
+    {
+      "viewport": 320,
+      "client": 310,
+      "scroll": 310,
+      "constitutionButtonReachable": true
+    },
+    {
+      "viewport": 390,
+      "client": 380,
+      "scroll": 380,
+      "budget": 27,
+      "extraPointEnabled": false
+    },
+    {
+      "viewport": 768,
+      "client": 758,
+      "scroll": 758
+    },
+    {
+      "viewport": 1270,
+      "client": 1100,
+      "scroll": 1100
+    }
+  ]
+}

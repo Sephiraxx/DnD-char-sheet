@@ -1,0 +1,76 @@
+{
+  "date": "2026-10-02",
+  "races": [
+    {
+      "round": 1,
+      "accepted": 1,
+      "refused": 1,
+      "storedWinnerCorrect": true
+    },
+    {
+      "round": 2,
+      "accepted": 1,
+      "refused": 1,
+      "storedWinnerCorrect": true
+    },
+    {
+      "round": 3,
+      "accepted": 1,
+      "refused": 1,
+      "storedWinnerCorrect": true
+    },
+    {
+      "round": 4,
+      "accepted": 1,
+      "refused": 1,
+      "storedWinnerCorrect": true
+    },
+    {
+      "round": 5,
+      "accepted": 1,
+      "refused": 1,
+      "storedWinnerCorrect": true
+    },
+    {
+      "round": 6,
+      "accepted": 1,
+      "refused": 1,
+      "storedWinnerCorrect": true
+    },
+    {
+      "round": 7,
+      "accepted": 1,
+      "refused": 1,
+      "storedWinnerCorrect": true
+    },
+    {
+      "round": 8,
+      "accepted": 1,
+      "refused": 1,
+      "storedWinnerCorrect": true
+    },
+    {
+      "round": 9,
+      "accepted": 1,
+      "refused": 1,
+      "storedWinnerCorrect": true
+    },
+    {
+      "round": 10,
+      "accepted": 1,
+      "refused": 1,
+      "storedWinnerCorrect": true
+    }
+  ],
+  "backup": [
+    "Live backup table deployed; saved character is listed",
+    "Second device restores the original local ID and data",
+    "Editing a restored character updates one row; a third device reads the edit",
+    "Unrelated outsider and other campaign player cannot read or restore the backup"
+  ],
+  "cleanup": [
+    "Synthetic backup removed",
+    "Synthetic backup removed",
+    "Synthetic campaign and child gameplay rows removed"
+  ]
+}

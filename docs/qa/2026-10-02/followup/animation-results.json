@@ -1,0 +1,177 @@
+[
+  {
+    "label": "Automática (según la criatura más peligrosa)",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 13,
+    "theme": "enc-theme theme-undead "
+  },
+  {
+    "label": "Muertos vivientes",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 13,
+    "theme": "enc-theme theme-undead "
+  },
+  {
+    "label": "Nigromante",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 10,
+    "theme": "enc-theme theme-necro "
+  },
+  {
+    "label": "Mago o hechicero",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 15,
+    "theme": "enc-theme theme-arcane "
+  },
+  {
+    "label": "Culto oscuro",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 2,
+    "theme": "enc-theme theme-cult "
+  },
+  {
+    "label": "Dragón de fuego",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 19,
+    "theme": "enc-theme theme-dragon v-fire"
+  },
+  {
+    "label": "Dragón de hielo",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 19,
+    "theme": "enc-theme theme-dragon v-ice"
+  },
+  {
+    "label": "Dragón del rayo",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 20,
+    "theme": "enc-theme theme-dragon v-lightning"
+  },
+  {
+    "label": "Dragón venenoso",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 19,
+    "theme": "enc-theme theme-dragon v-poison"
+  },
+  {
+    "label": "Dragón de ácido",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 19,
+    "theme": "enc-theme theme-dragon v-acid"
+  },
+  {
+    "label": "Gigante, trol u ogro",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 1,
+    "theme": "enc-theme theme-giant "
+  },
+  {
+    "label": "Demonio o diablo",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 20,
+    "theme": "enc-theme theme-fiend "
+  },
+  {
+    "label": "Aberración",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 2,
+    "theme": "enc-theme theme-aberration "
+  },
+  {
+    "label": "Bestia",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 1,
+    "theme": "enc-theme theme-beast "
+  },
+  {
+    "label": "Monstruosidad",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 4,
+    "theme": "enc-theme theme-monstrosity "
+  },
+  {
+    "label": "Enjambre",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 40,
+    "theme": "enc-theme theme-swarm "
+  },
+  {
+    "label": "Banda de guerra (goblins, orcos, kobolds)",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 11,
+    "theme": "enc-theme theme-warband "
+  },
+  {
+    "label": "Humanoides (bandidos, soldados)",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 1,
+    "theme": "enc-theme theme-humanoid "
+  },
+  {
+    "label": "Arañas",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 2,
+    "theme": "enc-theme theme-web "
+  },
+  {
+    "label": "Elemental",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 1,
+    "theme": "enc-theme theme-elemental "
+  },
+  {
+    "label": "Constructo",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 2,
+    "theme": "enc-theme theme-construct "
+  },
+  {
+    "label": "Plantas",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 1,
+    "theme": "enc-theme theme-plant "
+  },
+  {
+    "label": "Cieno",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 10,
+    "theme": "enc-theme theme-ooze "
+  },
+  {
+    "label": "Feérico",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 26,
+    "theme": "enc-theme theme-fey "
+  },
+  {
+    "label": "Celestial",
+    "client": 380,
+    "scroll": 380,
+    "shapes": 1,
+    "theme": "enc-theme theme-celestial "
+  }
+]

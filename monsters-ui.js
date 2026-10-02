@@ -146,7 +146,7 @@ const MonsterUI = (() => {
       ? list
           .map(
             m =>
-              `<div class="list-row"><div><b>${esc(m.name)}</b><p class="small muted">VD ${crText(m.cr)} · ${esc(m.size)} ${esc(m.type)} · CA ${m.ac} · ${m.hp} PG</p></div><div class="actions">${button('Ver', 'monster-view', 'text-btn', `data-id="${m.id}"`)}${button('Agregar', 'monster-add', '', `data-id="${m.id}"`)}</div></div>`,
+              `<div class="list-row"><div><b>${esc(m.name)}</b><p class="small muted">VD ${crText(m.cr)} · ${esc(cap(m.type))} ${esc(m.size.toLowerCase())} · CA ${m.ac} · ${m.hp} PG</p></div><div class="actions">${button('Ver', 'monster-view', 'text-btn', `data-id="${m.id}"`)}${button('Agregar', 'monster-add', '', `data-id="${m.id}"`)}</div></div>`,
           )
           .join('')
       : '<p class="muted">Sin resultados.</p>';
@@ -238,6 +238,11 @@ const MonsterUI = (() => {
   }
 
   // ---------- Bloque de estadísticas ----------
+  const SHORT_ES = { str: 'FUE', dex: 'DES', con: 'CON', int: 'INT', wis: 'SAB', cha: 'CAR' };
+  const cap = t =>
+    String(t || '')
+      .charAt(0)
+      .toUpperCase() + String(t || '').slice(1);
   function statBlock(m, entry = null) {
     const line = (k, v) => (v ? `<p class="small"><b>${k}</b> ${esc(v)}</p>` : '');
     const act = (a, kind) =>
@@ -246,15 +251,15 @@ const MonsterUI = (() => {
           ? `<div class="actions">${a.atk !== undefined ? button('Atacar', 'monster-attack', '', `data-entry="${entry.id}" data-kind="${kind}" data-name="${esc(a.n)}"`) : ''}${a.dc ? button('Pedir salvación', 'monster-save', 'secondary', `data-entry="${entry.id}" data-kind="${kind}" data-name="${esc(a.n)}"`) : ''}${a.atk === undefined && a.dmg ? button('Tirar daño', 'monster-attack', 'secondary', `data-entry="${entry.id}" data-kind="${kind}" data-name="${esc(a.n)}" data-noattack="1"`) : ''}</div>`
           : ''
       }</div>`;
-    return `<p class="small muted">${esc(m.size)} ${esc(m.type)}, ${esc(m.align)} · VD ${crText(m.cr)} (${m.xp} XP)</p>
+    return `<p class="small muted">${esc(cap(m.type))} ${esc(m.size.toLowerCase())}, ${esc(m.align)} · VD ${crText(m.cr)} (${m.xp} XP)</p>
       <p><b>CA</b> ${m.ac} · <b>PG</b> ${entry ? (entry.hp ?? '—') + ' / ' + entry.max : m.hp + ' (' + esc(m.hd) + ')'} · <b>Velocidad</b> ${esc(m.speed)}</p>
-      <dl class="party-stats monster-abilities">${ABIL.map((a, i) => `<div><dt>${a.toUpperCase()}</dt><dd>${m.ab[i]} (${sign(mod(m.ab[i]))})</dd></div>`).join('')}</dl>
+      <dl class="party-stats monster-abilities">${ABIL.map((a, i) => `<div><dt>${SHORT_ES[a]}</dt><dd>${m.ab[i]} (${sign(mod(m.ab[i]))})</dd></div>`).join('')}</dl>
       ${line('Salvaciones', m.saves)}${line('Habilidades', m.skills)}${line('Vulnerable a', m.vuln)}${line('Resistencias', m.res)}${line('Inmunidades', m.imm)}${line('Inmune a estados', m.cimm)}${line('Sentidos', m.senses)}${line('Idiomas', m.lang)}
-      ${m.traits.map(([n, d]) => `<div class="feature"><p><b>${esc(n)}.</b> ${esc(d)}</p></div>`).join('')}
+      ${m.traits.map(([n, d]) => `<div class="feature"><p class="monster-feature-text"><b>${esc(n)}.</b> ${esc(d)}</p></div>`).join('')}
       ${m.actions.length ? '<h3 class="section-space">Acciones</h3>' + m.actions.map(a => act(a, 'actions')).join('') : ''}
       ${m.reactions.length ? '<h3 class="section-space">Reacciones</h3>' + m.reactions.map(a => act(a, 'reactions')).join('') : ''}
       ${m.legendary.length ? '<h3 class="section-space">Acciones legendarias</h3>' + m.legendary.map(a => act(a, 'legendary')).join('') : ''}
-      <p class="small muted section-space">Texto del SRD 5.1 en inglés (CC-BY-4.0).</p>`;
+      <p class="small muted section-space">Basado en el SRD 5.1 (CC-BY-4.0), traducido al español.</p>`;
   }
   async function view(id) {
     await load();
@@ -413,16 +418,20 @@ const MonsterUI = (() => {
     const parts = (a.dmg || []).map(([d, type]) => ({ type, ...rollDice(d) })),
       rolled = parts.reduce((t, p) => t + p.total, 0),
       text = parts.map(p => `${p.rolls.join('+') || '—'}${p.mod ? ' ' + sign(p.mod) : ''} ${p.type}`).join(' · ');
-    const ts = targets();
+    const ts = targets(),
+      // Otras criaturas de la iniciativa (aliadas del monstruo o no): sus salvaciones las tira la pantalla del DM.
+      creatures = tracker().entries.filter(x => x.kind === 'monster' && x.id !== entryId && x.hp !== 0);
     modal(
       `${e.name}: ${a.n}`,
       `<p class="small">${esc(a.d)}</p><p>Salvación de <b>${ABIL_ES[ability] || ability}</b> · CD <b>${dc}</b>${success === 'half' ? ' · mitad si la superan' : ''}</p>
       ${ts.length ? `<fieldset class="target-list"><legend>Quiénes quedan en el área</legend>${ts.map(t => `<label class="check"><input type="checkbox" name="who" value="${esc(t.id)}" checked>${esc(t.name)}</label>`).join('')}</fieldset>` : '<p class="muted">No hay fichas en la mesa.</p>'}
+      ${creatures.length && (a.dmg || []).length ? `<fieldset class="target-list"><legend>Otras criaturas en el área (fuego amigo)</legend>${creatures.map(c => `<label class="check"><input type="checkbox" name="foe" value="${esc(c.id)}">${esc(c.name)}</label>`).join('')}<p class="small">Sus salvaciones quedan en «Salvaciones pendientes» para tirarlas con su bono.</p></fieldset>` : ''}
       ${parts.length ? `<p class="small">Daño tirado: ${esc(text)} = <b>${rolled}</b></p>${field('Daño (cambialo si tiraste dados físicos o querés bajarlo)', 'damage', rolled, 'number', 'min="0" max="9999" inputmode="numeric"')}` : ''}
       <p class="small">${parts.length ? 'Cada jugador tira su salvación y su ficha se aplica el daño completo o la mitad. Los resultados llegan a «En la mesa».' : 'Las respuestas llegan a «En la mesa» con éxito o fallo.'}</p>`,
       async fd => {
-        const who = fd.getAll('who');
-        if (!who.length) throw Error('Elegí al menos una ficha.');
+        const who = fd.getAll('who'),
+          foes = fd.getAll('foe');
+        if (!who.length && !foes.length) throw Error('Elegí al menos una ficha o criatura.');
         if (!parts.length) {
           for (const id of who)
             await send(
@@ -441,22 +450,28 @@ const MonsterUI = (() => {
         }
         const damage = Number(fd.get('damage'));
         if (!Number.isInteger(damage) || damage < 0 || damage > 9999) throw Error('Revisá el daño.');
-        for (const id of who)
-          await send(
-            'area-save',
-            {
-              caster: e.name,
-              spell: a.n,
-              ability,
-              abilityName: ABIL_ES[ability] || ability,
-              dc,
-              half: success === 'half',
-              damage,
-              types: parts.map(p => p.type).join(', '),
-            },
-            id,
-          );
-        toast(`${a.n}: ${who.length} ${who.length === 1 ? 'ficha tira' : 'fichas tiran'} su salvación.`);
+        const request = {
+          caster: e.name,
+          spell: a.n,
+          ability,
+          abilityName: ABIL_ES[ability] || ability,
+          dc,
+          half: success === 'half',
+          damage,
+          types: parts.map(p => p.type).join(', '),
+        };
+        for (const id of who) await send('area-save', request, id);
+        if (foes.length)
+          await send('creature-save', {
+            ...request,
+            targets: foes
+              .map(id => tracker().entries.find(x => x.id === id))
+              .filter(Boolean)
+              .map(c => ({ id: c.id, name: c.name })),
+          });
+        toast(
+          `${a.n}: ${[who.length ? who.length + (who.length === 1 ? ' ficha tira' : ' fichas tiran') + ' su salvación' : '', foes.length ? foes.length + ' criatura(s) en «Salvaciones pendientes»' : ''].filter(Boolean).join(' · ')}.`,
+        );
       },
       'Pedir salvaciones',
     );

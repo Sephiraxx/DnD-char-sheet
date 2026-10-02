@@ -212,8 +212,10 @@ function poolMax(s, type, index) {
 function setPool(s, type, index, value) {
   if (type === 'slot') s.slotsSpent[index] = value;
   else if (type === 'inspiration') s.inspirationSpent = value;
-  else if (type === 'hd') s.hdSpent = value;
-  else if (type === 'pact') s.pactSpent = value;
+  else if (type === 'hd') {
+    s.hdSpent = value;
+    delete s.hdSpentByDie;
+  } else if (type === 'pact') s.pactSpent = value;
   else if (type === 'universal') s.universalSpent = value;
   else if (type === 'infectious') s.infectiousSpent = value;
   else s.extraResources.find(x => x.id === index).spent = value;
@@ -339,6 +341,7 @@ function editResources() {
         s.temp = number(fd, 'temporales', 0, 9999);
         s.inspirationSpent = d.inspirationMax - number(fd, 'inspiración', 0, d.inspirationMax);
         s.hdSpent = R.totalLevel(s) - number(fd, 'dados', 0, R.totalLevel(s));
+        delete s.hdSpentByDie;
         d.slots.forEach((n, i) => (s.slotsSpent[i] = n ? n - number(fd, 'slot' + i, 0, n) : 0));
       });
     },
@@ -525,7 +528,7 @@ function longRest() {
       let charged = [];
       commit('Descanso largo completado', s => {
         if (s.hdSpent === null) s.hdSpent = R.totalLevel(s) - number(fd, 'dados', 0, R.totalLevel(s));
-        s.hdSpent = Math.max(0, s.hdSpent - Math.max(1, Math.floor(R.totalLevel(s) / 2)));
+        Classes.recoverHitDice(s, Math.max(1, Math.floor(R.totalLevel(s) / 2)));
         s.hp = d.maxHP;
         s.temp = 0;
         s.inspirationSpent = 0;
