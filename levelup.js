@@ -128,6 +128,9 @@ const LevelUp = (() => {
       a2: '',
       feat: '',
       featNotes: '',
+      featAbility: '',
+      featSkills: [],
+      featExpertise: '',
       cantrips: [],
       known: [],
       prepared: [...(base.prepared || [])],
@@ -283,7 +286,50 @@ const LevelUp = (() => {
       )
       .join(
         '',
-      )}</div>${chosen ? `<section class="card creator-detail"><h3>${esc(chosen.name)}</h3>${fx()?.auto(chosen.id) ? `<p class="small"><b>Se aplica sola en la ficha:</b> ${esc(fx().auto(chosen.id))}</p>` : ''}<label class="field">Tus elecciones y notas de la dote<textarea name="featNotes" maxlength="1000" placeholder="Por ejemplo: +1 a Destreza; trucos elegidos…">${esc(d.featNotes)}</textarea></label></section>` : ''}`;
+      )}</div>${chosen ? `<section class="card creator-detail"><h3>${esc(chosen.name)}</h3>${featDetail(chosen.id)}<label class="field">Tus elecciones y notas de la dote<textarea name="featNotes" maxlength="1000" placeholder="Por ejemplo: +1 a Destreza; trucos elegidos…">${esc(d.featNotes)}</textarea></label></section>` : ''}`;
+  }
+
+  // Lo que hace la dote, lo que se elige ahora y lo que queda a cargo del jugador.
+  const featPicks = () => ({
+    ability: d.featAbility || undefined,
+    skills: d.featSkills,
+    expertise: d.featExpertise ? [d.featExpertise] : [],
+  });
+  function featDetail(id) {
+    const f = fx();
+    if (!f) return '';
+    const nd = f.needs(id, base),
+      auto = f.autoList(id, base),
+      manual = f.manualList(id),
+      skillName = k => R.skills.find(x => x[0] === k)?.[1] || k;
+    const ability = nd.ability
+      ? select(
+          'Característica que sube +1',
+          'featAbility',
+          [['', 'Elegí…'], ...nd.ability.map(k => [k, `${R.attrs[k]} (${base.abilities[k]})`])],
+          d.featAbility,
+        )
+      : '';
+    const skills = nd.skills
+      ? `<p class="small"><b>Habilidades (${d.featSkills.length}/${nd.skills.n}):</b></p><div class="chips">${nd.skills.from
+          .map(
+            k =>
+              `<button type="button" class="chip ${d.featSkills.includes(k) ? 'selected' : ''}" data-lv="featskill" data-id="${k}" aria-pressed="${d.featSkills.includes(k)}">${esc(skillName(k))}</button>`,
+          )
+          .join('')}</div>`
+      : '';
+    const canExpert = [...new Set([...(base.proficiencies || []), ...d.featSkills])].filter(
+      k => !(base.expertise || []).includes(k),
+    );
+    const expertise = nd.expertise
+      ? select(
+          'Pericia en',
+          'featExpertise',
+          [['', 'Elegí…'], ...canExpert.map(k => [k, skillName(k)])],
+          d.featExpertise,
+        )
+      : '';
+    return `${auto.length ? `<p class="small"><b>Se aplica sola en la ficha:</b> ${esc(auto.join(' · '))}</p>` : ''}${ability || expertise ? `<div class="form-grid">${ability}${expertise}</div>` : ''}${skills}${manual.length ? `<p class="small"><b>A cargo tuyo en la mesa:</b> ${esc(manual.join(' '))}</p>` : ''}`;
   }
 
   // 5. Conjuros
@@ -452,6 +498,7 @@ const LevelUp = (() => {
           if (base.abilities[k] + (d.a1 === k) + (d.a2 === k) > 20)
             throw Error('Ninguna característica puede pasar de 20.');
       } else if (!d.feat) throw Error('Elegí una dote.');
+      else fx()?.checkPicks(d.feat, base, featPicks());
     }
   }
   function apply() {
@@ -484,7 +531,8 @@ const LevelUp = (() => {
         n.prepared = picks.prepared.filter(id => sp.type === 'prepared' || n.known.includes(id));
       for (const [g, ids] of Object.entries(picks.choices))
         n.classChoices = { ...(n.classChoices || {}), [g]: [...new Set([...(n.classChoices?.[g] || []), ...ids])] };
-      if (picks.asi === 'feat' && picks.feat) fx()?.onGain(n, picks.feat);
+      if (picks.asi === 'feat' && picks.feat) fx()?.onGain(n, picks.feat, featPicks());
+      if (typeof SheetStatus !== 'undefined') SheetStatus.addRaceSpells(n);
       Object.assign(s, R.validate(n));
     });
     close();
@@ -505,6 +553,8 @@ const LevelUp = (() => {
     if (fd.has('a1')) d.a1 = String(fd.get('a1'));
     if (fd.has('a2')) d.a2 = String(fd.get('a2'));
     if (fd.has('featNotes')) d.featNotes = String(fd.get('featNotes'));
+    if (fd.has('featAbility')) d.featAbility = String(fd.get('featAbility'));
+    if (fd.has('featExpertise')) d.featExpertise = String(fd.get('featExpertise'));
   }
   function onClick(e) {
     const t = e.target.closest('[data-lv]');
@@ -532,7 +582,23 @@ const LevelUp = (() => {
       }
       if (a === 'subclass') d.subclass = t.dataset.id;
       if (a === 'asimode') d.asi = t.dataset.v;
-      if (a === 'feat') d.feat = t.dataset.id;
+      if (a === 'feat' && d.feat !== t.dataset.id) {
+        d.feat = t.dataset.id;
+        d.featAbility = '';
+        d.featSkills = [];
+        d.featExpertise = '';
+      }
+      if (a === 'featskill') {
+        const k = t.dataset.id,
+          n = fx()?.needs(d.feat, base).skills?.n || 0;
+        if (d.featSkills.includes(k)) d.featSkills = d.featSkills.filter(x => x !== k);
+        else {
+          if (d.featSkills.length >= n) throw Error(`La dote da ${n} habilidad(es). Quitá una para cambiarla.`);
+          d.featSkills = [...d.featSkills, k];
+        }
+        if (!d.featSkills.includes(d.featExpertise) && !(base.proficiencies || []).includes(d.featExpertise))
+          d.featExpertise = '';
+      }
       if (a === 'spell') {
         const kind = t.dataset.kind,
           sid = t.dataset.id,

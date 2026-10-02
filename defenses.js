@@ -73,7 +73,10 @@
     add('immune', own.immune, 'anotada');
     add('vulnerable', own.vulnerable, 'anotada');
     if (s.raging) add('resist', ['bludgeoning', 'piercing', 'slashing'], 'Furia');
-    for (const r of root.FeatFX?.resistances?.(s) || []) add('resist', [r.type], r.why);
+    const feats = root.FeatFX?.defenses(s);
+    for (const [t, why] of feats?.resist || []) add('resist', t, why);
+    for (const [t, why] of feats?.immune || []) add('immune', t, why);
+    for (const c of feats?.conditions || []) if (!out.conditions.includes(c)) out.conditions.push(c);
     return out;
   }
 

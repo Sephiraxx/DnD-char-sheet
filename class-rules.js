@@ -119,7 +119,7 @@
     return {
       prof: p,
       mods: m,
-      maxHP: Math.max(1, s.hpBase + total * m.con),
+      maxHP: Math.max(1, s.hpBase + total * (m.con + (root.FeatFX?.hpPerLevel(s) || 0))),
       ac,
       dc: 8 + p + m[cast.ability],
       attack: p + m[cast.ability],
@@ -137,7 +137,11 @@
         cast.type === 'prepared' || cast.type === 'book'
           ? Math.max(1, m[cast.ability] + (['artificer', 'paladin'].includes(id(s)) ? Math.floor(l / 2) : l))
           : 0,
-      initiative: m.dex + (views(s).some(v => id(v) === 'bard' && v.level >= 2) ? Math.floor(p / 2) : 0),
+      initiative:
+        m.dex +
+        (views(s).some(v => id(v) === 'bard' && v.level >= 2) ? Math.floor(p / 2) : 0) +
+        (root.FeatFX?.initiative(s) || 0),
+      speed: (s.speed ?? 30) + (root.FeatFX?.speed(s) || 0),
       songDie: id(s) === 'bard' && l >= 2 ? R().song(l) : 0,
     };
   }
@@ -243,8 +247,12 @@
     if (c === 'wizard') return s.known.includes(sp.id);
     return ['bard', 'cleric', 'druid', 'artificer'].includes(c) && usable(s).includes(sp.id);
   }
+  // Recursos de clase (de cada clase con multiclase) y de dotes.
   function resources(s) {
-    if (!mcList(s).length || s._total) return ownResources(s);
+    return s._total ? ownResources(s) : [...classResources(s), ...(root.FeatFX?.resources(s) || [])];
+  }
+  function classResources(s) {
+    if (!mcList(s).length) return ownResources(s);
     const seen = new Set(),
       out = [];
     for (const v of views(s))

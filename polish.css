@@ -1194,3 +1194,34 @@ button.cc-stat {
     margin-left: auto;
   }
 }
+
+/* ---------- Tu ficha al día ---------- */
+.status-list {
+  margin: 0 0 12px;
+  padding-left: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  font-size: 0.88rem;
+}
+.status-list li {
+  position: relative;
+  padding-left: 22px;
+}
+.status-list li::before {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.status-list.ok li::before {
+  content: '✓';
+  color: var(--teal);
+}
+.status-list.manual li::before {
+  content: '✎';
+  color: var(--gold);
+}
+.sheet-status h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}

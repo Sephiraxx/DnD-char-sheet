@@ -383,10 +383,55 @@ const Campaign = (() => {
       if (preview) preview.innerHTML = originInfo(row, isRace ? 'race' : 'background');
     });
   }
+  // Magia de linaje: conjuros fijos de la raza ya disponibles a tu nivel y lo que hay que elegir.
+  // spells: [{ id, name, level, uses }] · choices: [{ level, text }]
+  function raceSpells(s) {
+    const r = race(s),
+      lvl = Rules.totalLevel(s),
+      out = { spells: [], choices: [] };
+    const find = name => {
+      const n = name.split('|')[0].split('#')[0].trim().toLowerCase();
+      return Rules.allSpells(s).find(x => (x.english || x.name).toLowerCase() === n);
+    };
+    const walk = (val, lv, uses) => {
+      if (typeof val === 'string') {
+        const sp = find(val);
+        if (sp && !out.spells.some(x => x.id === sp.id)) out.spells.push({ id: sp.id, name: sp.name, level: lv, uses });
+      } else if (Array.isArray(val)) val.forEach(v => walk(v, lv, uses));
+      else if (val && typeof val === 'object') {
+        if (val.choose) out.choices.push({ level: lv, text: String(val.choose) });
+        else
+          for (const [k, v] of Object.entries(val))
+            walk(
+              v,
+              lv,
+              k === 'daily' || k === 'rest' || k === 'resource'
+                ? uses
+                : /^\d+e?$/.test(k)
+                  ? `${parseInt(k)} por descanso largo`
+                  : uses,
+            );
+      }
+    };
+    for (const g of r?.additionalSpells || [])
+      for (const mode of ['known', 'innate'])
+        for (const [lv, val] of Object.entries(g[mode] || {}))
+          if (Number(lv) <= lvl) walk(val, Number(lv), mode === 'innate' ? 'según el rasgo' : '');
+    return out;
+  }
+  // Una elección de «choose» de 5etools en palabras («level=0|class=Wizard» → truco de mago).
+  function choiceText(text) {
+    const lv = /level=(\d)/.exec(text)?.[1],
+      cls = /class=(\w+)/.exec(text)?.[1];
+    const clsEs = cls ? ClassData.classes[cls.toLowerCase()]?.name || cls : '';
+    return `${lv === '0' ? 'un truco' : lv ? 'un conjuro de nivel ' + lv : 'un conjuro'}${clsEs ? ' de ' + clsEs.toLowerCase() : ''}`;
+  }
   return {
     selected,
     enabled,
     race,
+    raceSpells,
+    choiceText,
     background,
     expanded,
     options,
