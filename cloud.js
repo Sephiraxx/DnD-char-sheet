@@ -444,6 +444,106 @@
   }
   if (typeof addEventListener === 'function') addEventListener('online', () => pending && flush());
 
+  // ---------- Copia en la nube de cada ficha (también las que no están en una mesa) ----------
+  // Solo con una sesión ya abierta en este navegador (mesa o acceso guardado): nunca crea una cuenta sola.
+  const BACKUP_AT = 'dnd-backup-at-v1';
+  let backupQueue = new Map(),
+    backupTimer = null;
+  const hasSession = () => {
+    try {
+      return enabled && !!localStorage.getItem('dnd-cloud-auth');
+    } catch {
+      return false;
+    }
+  };
+  const localId = key => (key.startsWith('dnd-character-') ? key.slice('dnd-character-'.length) : 'darien');
+  function backupTimes() {
+    try {
+      return JSON.parse(localStorage.getItem(BACKUP_AT) || '{}') || {};
+    } catch {
+      return {};
+    }
+  }
+  function markBackup(id, at) {
+    try {
+      localStorage.setItem(BACKUP_AT, JSON.stringify({ ...backupTimes(), [id]: at }));
+    } catch {}
+  }
+  function backup(key, state) {
+    if (!hasSession() || !key || !state) return;
+    backupQueue.set(localId(key), state);
+    clearTimeout(backupTimer);
+    backupTimer = setTimeout(() => flushBackups().catch(() => {}), 4000);
+  }
+  async function flushBackups() {
+    clearTimeout(backupTimer);
+    if (!backupQueue.size || !hasSession()) return 0;
+    const batch = [...backupQueue].map(([local_id, data]) => ({
+      local_id,
+      name: String(data.name || '').slice(0, 100),
+      data,
+    }));
+    backupQueue = new Map();
+    try {
+      const rows = check(
+        await (
+          await api()
+        )
+          .from('backups')
+          .upsert(batch, { onConflict: 'owner_id,local_id' })
+          .select('local_id, updated_at'),
+      );
+      for (const r of rows || []) markBackup(r.local_id, r.updated_at);
+      dispatchEvent(new CustomEvent('cloud-backup'));
+      return batch.length;
+    } catch (e) {
+      // Sin conexión o sin la tabla todavía: se reintenta en el próximo cambio o al volver la conexión.
+      for (const b of batch) if (!backupQueue.has(b.local_id)) backupQueue.set(b.local_id, b.data);
+      throw e;
+    }
+  }
+  // Copia ya todas las fichas del dispositivo.
+  async function backupAll() {
+    if (!(await currentUser()))
+      throw Error('Conectate a una mesa o guardá tu acceso para activar la copia en la nube.');
+    for (const x of root.CharacterStorage.list()) {
+      try {
+        backupQueue.set(localId(x.key), JSON.parse(localStorage.getItem(x.key)));
+      } catch {}
+    }
+    return flushBackups();
+  }
+  async function backups() {
+    if (!(await currentUser())) return [];
+    return check(await (await api()).from('backups').select('local_id, name, updated_at').order('name'));
+  }
+  // Trae una copia al dispositivo: con el mismo id local, así las copias siguientes actualizan la misma fila.
+  async function restoreBackup(local_id) {
+    const row = check(
+      await (await api()).from('backups').select('local_id, data, updated_at').eq('local_id', local_id).maybeSingle(),
+    );
+    if (!row) throw Error('Esa copia ya no está en la nube.');
+    const id = root.CharacterStorage.add(row.data, row.local_id === 'darien' ? undefined : row.local_id);
+    markBackup(row.local_id, row.updated_at);
+    return id;
+  }
+  async function deleteBackup(local_id) {
+    check(await (await api()).from('backups').delete().eq('local_id', local_id));
+  }
+  if (typeof addEventListener === 'function')
+    addEventListener('online', () => backupQueue.size && flushBackups().catch(() => {}));
+  // Al abrir la app: las fichas que nunca se copiaron (por ejemplo, creadas antes de tener sesión) se suben.
+  function backupMissing() {
+    if (!hasSession()) return;
+    const done = backupTimes();
+    for (const x of root.CharacterStorage.list())
+      if (!done[localId(x.key)])
+        try {
+          backupQueue.set(localId(x.key), JSON.parse(localStorage.getItem(x.key)));
+        } catch {}
+    if (backupQueue.size) backupTimer = setTimeout(() => flushBackups().catch(() => {}), 4000);
+  }
+
   // Al abrir la ficha: decide si bajar la versión de la mesa, subir la local o preguntar.
   async function reconcile(key) {
     const l = link(key);
@@ -716,6 +816,15 @@
     myCharacters,
     myDmTables,
     restore,
+    backup,
+    backupAll,
+    backupMissing,
+    flushBackups,
+    backups,
+    backupTimes,
+    restoreBackup,
+    deleteBackup,
+    hasSession,
     COMMANDS,
     user,
     link,

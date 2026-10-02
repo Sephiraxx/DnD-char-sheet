@@ -46,10 +46,13 @@
       }
     }
   }
-  function add(s) {
-    const id = crypto.randomUUID(),
-      key = 'dnd-character-' + id,
-      entries = list();
+  function add(s, wanted) {
+    const entries = list(),
+      id =
+        wanted && /^[a-zA-Z0-9-]{1,80}$/.test(wanted) && !entries.some(x => x.id === wanted)
+          ? wanted
+          : crypto.randomUUID(),
+      key = 'dnd-character-' + id;
     if (entries.length >= 100) throw Error('Exportá o eliminá una ficha antes de agregar más.');
     localStorage.setItem(key, JSON.stringify(root.Rules.validate(s)));
     try {

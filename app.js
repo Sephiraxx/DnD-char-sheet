@@ -72,6 +72,7 @@ function persist(before) {
     $('#save-status').textContent = 'Guardado en este dispositivo';
     storageIssue = '';
     Cloud.changed(KEY, state);
+    Cloud.backup(KEY, state);
   } catch (e) {
     storageIssue = rawBroken ? e.message : 'No se pudo guardar. Tu ficha sigue abierta: exportá una copia.';
     $('#save-status').textContent = 'Sin guardar';
@@ -105,6 +106,7 @@ function commit(label, fn, requireSaved = false) {
     storageIssue = '';
     $('#save-status').textContent = 'Guardado en este dispositivo';
     Cloud.changed(KEY, next);
+    Cloud.backup(KEY, next);
   }
   history.push(before);
   history = history.slice(-20);
@@ -649,7 +651,7 @@ function spellPage() {
 function settings() {
   modal(
     'Mi ficha',
-    `${field('Nombre', 'nombre', state.name, 'text', 'required maxlength="100"')}<div class="actions">${button('Ajustar recursos', 'resources')}${button('Características', 'stats')}${button('Foto del personaje', 'portrait-edit')}${button('Recurso personalizado', 'resource-new')}</div><div class="divider"></div><h3>Copias y dispositivos</h3><p class="small">La ficha se guarda en este dispositivo. Si estás en una mesa, también se sincroniza con ella: guardá tu acceso con email y contraseña en <b>Mesa → Tu acceso</b> para abrirla en otro dispositivo o recuperarla si se borran los datos del navegador. Sin mesa, exportá un archivo JSON e importalo en el otro dispositivo.</p><div class="actions">${button('Exportar JSON', 'backup', '')}${button('Importar JSON', 'import')}${button('Recuperar copia anterior', 'recover')}${rawBroken ? button('Descargar datos no legibles', 'raw-backup') : ''}</div><div class="divider"></div><p class="small">El nivel actual es ${state.level}. Los PG máximos ${state.hpConfirmed ? 'fueron confirmados' : 'están sugeridos con aumento fijo'}. Para impresiones, usá la versión PDF de tu ficha o la función del navegador.</p>${button('Eliminar personaje', 'reset', 'danger')}`,
+    `${field('Nombre', 'nombre', state.name, 'text', 'required maxlength="100"')}<div class="actions">${button('Ajustar recursos', 'resources')}${button('Características', 'stats')}${button('Foto del personaje', 'portrait-edit')}${button('Recurso personalizado', 'resource-new')}</div><div class="divider"></div><h3>Copias y dispositivos</h3><p class="small">La ficha se guarda en este dispositivo. Si estás en una mesa, también se sincroniza con ella. Con una sesión abierta (mesa o acceso guardado), cada ficha se copia sola en la nube: guardá tu acceso con email y contraseña en <b>Mesa → Tu acceso</b> para recuperarlas en otro dispositivo o si se borran los datos del navegador. Sin mesa, exportá un archivo JSON e importalo en el otro dispositivo.</p><div class="actions">${button('Exportar JSON', 'backup', '')}${button('Importar JSON', 'import')}${button('Recuperar copia anterior', 'recover')}${rawBroken ? button('Descargar datos no legibles', 'raw-backup') : ''}</div><div class="divider"></div><p class="small">El nivel actual es ${state.level}. Los PG máximos ${state.hpConfirmed ? 'fueron confirmados' : 'están sugeridos con aumento fijo'}. Para impresiones, usá la versión PDF de tu ficha o la función del navegador.</p>${button('Eliminar personaje', 'reset', 'danger')}`,
     fd => commit('Nombre actualizado', s => (s.name = String(fd.get('nombre')).trim())),
   );
 }
@@ -1072,6 +1074,7 @@ window.addEventListener('storage', e => {
 });
 go();
 TableUI.boot();
+Cloud.backupMissing();
 try {
   if (document.modelContext?.registerTool)
     document.modelContext.registerTool({
