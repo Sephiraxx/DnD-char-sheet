@@ -156,11 +156,55 @@ const Creator = (() => {
     };
   }
   function save() {
+    if (editing) return;
     try {
       localStorage.setItem(DRAFT, JSON.stringify({ d, step, seen }));
     } catch {}
   }
+  // Cambiar raza, trasfondo, nombre e idiomas de la ficha abierta con las mismas tarjetas del creador.
+  let editing = false;
+  function editOrigins() {
+    editing = true;
+    d = {
+      ...fresh(),
+      classId: state.classId,
+      level: state.level,
+      campaignSources: Campaign.selected(state).slice(),
+      raceId: state.raceId || '',
+      backgroundId: state.backgroundId || '',
+      race: state.race || '',
+      background: state.background || '',
+      customRace: !state.raceId && !!state.race,
+      customBackground: !state.backgroundId && !!state.background,
+      name: state.name,
+      languages: state.languages || '',
+      speed: state.speed,
+    };
+    step = 0;
+    seen = 2;
+    ui = { q: '', filter: 'all', family: (Campaign.race(d)?.name || '').split(' · ')[0], open: '' };
+    open();
+  }
+  function finishEdit() {
+    const raceChanged = d.raceId !== (state.raceId || '');
+    commit('Origen actualizado', s => {
+      s.raceId = d.raceId || '';
+      s.backgroundId = d.backgroundId || '';
+      s.race = Campaign.race(d)?.name || d.race;
+      s.background = Campaign.background(d)?.name || d.background;
+      s.name = d.name;
+      s.languages = d.languages;
+      if (raceChanged && Number(d.speed) >= 0) s.speed = Number(d.speed);
+    });
+    host.hidden = true;
+    document.body.classList.remove('creator-open');
+    toast('Origen actualizado. Si cambiaron competencias o puntuaciones, ajustalas en Personaje.');
+  }
+  function originsStep() {
+    return `<div class="form-grid">${field('Nombre del personaje', 'name', d.name, 'text', 'maxlength="100" autocomplete="off"')}${field('Idiomas', 'languages', d.languages, 'text', 'maxlength="500" placeholder="Común, Élfico"')}</div>${languageHint()}<p class="small">Las puntuaciones, habilidades y competencias no se recalculan solas: si la raza o el trasfondo nuevos dan otras, ajustalas en Personaje.</p>`;
+  }
   function start() {
+    editing = false;
     let saved = null;
     try {
       saved = JSON.parse(localStorage.getItem(DRAFT) || 'null');
@@ -237,7 +281,14 @@ const Creator = (() => {
       return true;
     }
   }
-  const steps = () => STEPS.filter(([id]) => id !== 'spells' || casts());
+  const steps = () =>
+    editing
+      ? [
+          ['background', 'Trasfondo'],
+          ['race', 'Raza'],
+          ['origins', 'Nombre e idiomas'],
+        ]
+      : STEPS.filter(([id]) => id !== 'spells' || casts());
   const current = () => steps()[step]?.[0] || 'class';
 
   // ---------- Características ----------
@@ -317,7 +368,7 @@ const Creator = (() => {
         return `<button type="button" class="creator-step ${state}" data-cr="go" data-i="${i}" ${i > seen ? 'disabled' : ''}>${i < step || (i <= seen && i !== step) ? '✓ ' : i + 1 + ' · '}${esc(stepLabel(sid, label))}</button>`;
       })
       .join('');
-    host.innerHTML = `<div class="creator-shell"><header class="creator-head"><div><p class="eyebrow">CREAR PERSONAJE · PASO ${step + 1} DE ${list.length}</p><h1>${esc(title(id))}</h1></div><div class="actions">${btn('Empezar de nuevo', 'restart', 'secondary')}${btn('Salir', 'close', 'secondary')}</div></header><nav class="creator-rail" aria-label="Pasos">${rail}</nav><form class="creator-body" id="creator-form" novalidate>${ui.resumed ? '<div class="banner"><p>Retomaste tu borrador guardado en este dispositivo.</p></div>' : ''}${step === 0 ? tablePanel() : ''}<div id="creator-error" class="creator-error" role="alert"></div>${body(id)}</form><footer class="creator-foot"><p class="creator-summary">${summary()}</p><div class="actions">${step ? btn('Atrás', 'back', 'secondary') : ''}${btn(id === 'review' ? 'Crear personaje' : 'Siguiente', 'next')}</div></footer></div>`;
+    host.innerHTML = `<div class="creator-shell"><header class="creator-head"><div><p class="eyebrow">${editing ? 'CAMBIAR ORIGEN' : 'CREAR PERSONAJE'} · PASO ${step + 1} DE ${list.length}</p><h1>${esc(title(id))}</h1></div><div class="actions">${editing ? '' : btn('Empezar de nuevo', 'restart', 'secondary')}${btn('Salir', 'close', 'secondary')}</div></header><nav class="creator-rail" aria-label="Pasos">${rail}</nav><form class="creator-body" id="creator-form" novalidate>${ui.resumed ? '<div class="banner"><p>Retomaste tu borrador guardado en este dispositivo.</p></div>' : ''}${step === 0 && !editing ? tablePanel() : ''}<div id="creator-error" class="creator-error" role="alert"></div>${body(id)}</form><footer class="creator-foot"><p class="creator-summary">${summary()}</p><div class="actions">${step ? btn('Atrás', 'back', 'secondary') : ''}${btn(id === 'review' ? 'Crear personaje' : id === 'origins' ? 'Guardar cambios' : 'Siguiente', 'next')}</div></footer></div>`;
     const b = host.querySelector('.creator-body');
     if (b) b.scrollTop = top;
   }
@@ -338,6 +389,7 @@ const Creator = (() => {
       equipment: 'Equipo inicial',
       details: 'Nombre y detalles',
       review: 'Revisá y creá',
+      origins: 'Nombre e idiomas',
     }[id];
   }
   function summary() {
@@ -374,6 +426,7 @@ const Creator = (() => {
       equipment: equipmentStep,
       details: detailStep,
       review: reviewStep,
+      origins: originsStep,
     }[id]();
   }
 
@@ -785,6 +838,7 @@ const Creator = (() => {
 
   // ---------- Validación por paso ----------
   function validate(id) {
+    if (id === 'origins' && !d.name.trim()) throw Error('Ponele un nombre a tu personaje.');
     if (id === 'class') {
       if (!d.classId) throw Error('Elegí una clase.');
       if (!Number.isInteger(d.level) || d.level < 1 || d.level > 20) throw Error('El nivel va de 1 a 20.');
@@ -903,6 +957,10 @@ const Creator = (() => {
     }
     if (id === 'skills') collectSkills(fd);
     if (id === 'equipment') EquipmentUI.collectCreation(fd, d);
+    if (id === 'origins') {
+      d.name = String(fd.get('name') || '').trim();
+      d.languages = String(fd.get('languages') || '').trim();
+    }
     if (id === 'details') {
       d.name = String(fd.get('name') || '').trim();
       d.languages = String(fd.get('languages') || '').trim();
@@ -937,6 +995,7 @@ const Creator = (() => {
       if (a === 'next') {
         validate(current());
         if (current() === 'review') return finish();
+        if (current() === 'origins') return finishEdit();
         return go(step + 1);
       }
       if (a === 'back') return go(step - 1);
@@ -1070,5 +1129,5 @@ const Creator = (() => {
     q?.setSelectionRange(pos, pos);
   }
 
-  return { start, close };
+  return { start, close, editOrigins };
 })();

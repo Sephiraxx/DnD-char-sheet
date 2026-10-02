@@ -363,7 +363,7 @@ const Campaign = (() => {
   function install() {
     Object.assign(actions, {
       'campaign-sources': sourceDialog,
-      'party-identity': identity,
+      'party-identity': () => (typeof Creator !== 'undefined' ? Creator.editOrigins() : identity()),
       'rules-help': glossary,
       'spell-help': e => {
         const sp = spellById(e.dataset.id);
