@@ -8,6 +8,33 @@ const Encounters = (() => {
     boss: ['¡Peligro!', 'Enemigo poderoso'],
     reinforce: ['¡Refuerzos!', 'Refuerzos'],
   };
+  // Animaciones de entrada por tipo de criatura (valor «tema/variante»).
+  const THEMES = [
+    ['undead', 'Muertos vivientes'],
+    ['necro', 'Nigromante'],
+    ['arcane', 'Mago o hechicero'],
+    ['cult', 'Culto oscuro'],
+    ['dragon/fire', 'Dragón de fuego'],
+    ['dragon/ice', 'Dragón de hielo'],
+    ['dragon/lightning', 'Dragón del rayo'],
+    ['dragon/poison', 'Dragón venenoso'],
+    ['dragon/acid', 'Dragón de ácido'],
+    ['giant', 'Gigante, trol u ogro'],
+    ['fiend', 'Demonio o diablo'],
+    ['aberration', 'Aberración'],
+    ['beast', 'Bestia'],
+    ['monstrosity', 'Monstruosidad'],
+    ['swarm', 'Enjambre'],
+    ['warband', 'Banda de guerra (goblins, orcos, kobolds)'],
+    ['humanoid', 'Humanoides (bandidos, soldados)'],
+    ['web', 'Arañas'],
+    ['elemental', 'Elemental'],
+    ['construct', 'Constructo'],
+    ['plant', 'Plantas'],
+    ['ooze', 'Cieno'],
+    ['fey', 'Feérico'],
+    ['celestial', 'Celestial'],
+  ];
   const key = () => 'dnd-dm-prepared-' + current;
   function list() {
     try {
@@ -51,7 +78,7 @@ const Encounters = (() => {
                 typeof MonsterUI !== 'undefined'
                   ? MonsterUI.difficultyLine({ entries: enc.monsters.map(m => ({ monsterId: m.monsterId })) })
                   : '';
-              return `<article class="prepared"><div class="prepared-head"><div><b>${esc(enc.name)}</b> <span class="tag">${esc(STYLES[enc.style]?.[1] || '')}</span>${enc.launched ? ' <span class="tag">Ya lanzado</span>' : ''}</div>${button('Editar', 'prep-edit', 'text-btn', `data-id="${enc.id}"`)}</div>${rows || '<p class="small muted">Sin criaturas todavía.</p>'}${diff}<div class="actions">${button('Monstruo del SRD', 'prep-srd', 'secondary', `data-id="${enc.id}"`)}${button('Criatura propia', 'prep-custom', 'secondary', `data-id="${enc.id}"`)}${button('Eliminar', 'prep-delete', 'secondary', `data-id="${enc.id}"`)}${button(enc.launched ? 'Lanzar otra vez' : '¡Lanzar!', 'prep-launch', '', `data-id="${enc.id}" ${enc.monsters.length ? '' : 'disabled'}`)}</div></article>`;
+              return `<article class="prepared"><div class="prepared-head"><div><b>${esc(enc.name)}</b> <span class="tag">${esc(STYLES[enc.style]?.[1] || '')}</span>${enc.launched ? ' <span class="tag">Ya lanzado</span>' : ''}</div>${button('Editar', 'prep-edit', 'text-btn', `data-id="${enc.id}"`)}</div>${rows || '<p class="small muted">Sin criaturas todavía.</p>'}${diff}<div class="actions">${button('Monstruo del SRD', 'prep-srd', 'secondary', `data-id="${enc.id}"`)}${button('Criatura propia', 'prep-custom', 'secondary', `data-id="${enc.id}"`)}${button('Ver animación', 'prep-preview', 'secondary', `data-id="${enc.id}"`)}${button('Eliminar', 'prep-delete', 'secondary', `data-id="${enc.id}"`)}${button(enc.launched ? 'Lanzar otra vez' : '¡Lanzar!', 'prep-launch', '', `data-id="${enc.id}" ${enc.monsters.length ? '' : 'disabled'}`)}</div></article>`;
             })
             .join('')
         : '<p class="muted">Todavía no preparaste encuentros.</p>'
@@ -66,13 +93,23 @@ const Encounters = (() => {
         .filter(([k]) => k !== 'reinforce')
         .map(([k, v]) => [k, v[1] + ' · «' + v[0] + '»']),
       enc.style || 'battle',
-    )}${field('Texto que ven los jugadores (opcional)', 'cry', enc.cry || '', 'text', 'maxlength="40" placeholder="Usa el del tipo: ¡Emboscada!"')}`;
+    )}${field('Texto que ven los jugadores (opcional)', 'cry', enc.cry || '', 'text', 'maxlength="40" placeholder="Usa el del tipo: ¡Emboscada!"')}${select('Animación', 'theme', [['', 'Automática (según la criatura más peligrosa)'], ...THEMES], enc.theme || '')}`;
   }
   const read = fd => ({
     name: String(fd.get('name')).trim(),
     style: STYLES[fd.get('style')] ? String(fd.get('style')) : 'battle',
     cry: String(fd.get('cry') || '').trim(),
+    theme: THEMES.some(([k]) => k === fd.get('theme')) ? String(fd.get('theme')) : '',
   });
+  // Tema de la animación: el elegido por el DM o el de la criatura más peligrosa.
+  async function themeFor(enc) {
+    if (enc.theme) {
+      const [theme, variant = ''] = enc.theme.split('/');
+      return { theme, variant };
+    }
+    await MonsterUI.load();
+    return MonsterUI.encounterTheme(enc.monsters);
+  }
 
   async function launch(id) {
     const enc = get(id);
@@ -93,14 +130,20 @@ const Encounters = (() => {
         }
       }
     });
-    await announce(enc.style, enc.cry, enc.monsters.length);
+    await announce(enc.style, enc.cry, enc.monsters.length, await themeFor(enc));
     await send('roll-request', { type: 'initiative', id: '', label: 'Iniciativa' });
     update(id, e => (e.launched = true));
     toast(`«${enc.name}» en juego: ${enc.monsters.length} criatura(s). Se pidió iniciativa.`);
   }
   // Aviso con animación en todas las pantallas (jugadores y DM).
-  async function announce(style, cry, count) {
-    const payload = { style, cry: cry || STYLES[style]?.[0] || '¡Combate!', count };
+  async function announce(style, cry, count, look = {}) {
+    const payload = {
+      style,
+      cry: cry || STYLES[style]?.[0] || '¡Combate!',
+      count,
+      theme: look.theme || '',
+      variant: look.variant || '',
+    };
     await send('encounter-start', payload);
     EncounterFX.show(payload);
   }
@@ -110,7 +153,13 @@ const Encounters = (() => {
     await encounterChange(async () => {
       for (const e of hidden) await Cloud.updateCombatant(e.id, { hidden: false });
     });
-    await announce('reinforce', '', hidden.length);
+    await MonsterUI.load();
+    await announce(
+      'reinforce',
+      '',
+      hidden.length,
+      MonsterUI.encounterTheme(hidden.map(e => ({ monsterId: e.monsterId }))),
+    );
   }
 
   function install() {
@@ -138,7 +187,7 @@ const Encounters = (() => {
       'prep-custom': e =>
         modal(
           'Criatura propia',
-          `${field('Nombre', 'name', '', 'text', 'required maxlength="80" placeholder="Bandido"')}<div class="form-grid">${field('Cantidad', 'count', 1, 'number', 'min="1" max="20" required')}${field('Mod. de iniciativa', 'mod', 0, 'number', 'min="-10" max="20" required')}${field('PG', 'hp', 10, 'number', 'min="1" max="99999" required')}${field('CA', 'ac', 12, 'number', 'min="1" max="40" required')}</div>`,
+          `${field('Nombre', 'name', '', 'text', 'required maxlength="80" placeholder="Bandido"')}<div class="form-grid">${field('Cantidad', 'count', 1, 'number', 'min="1" max="20" required')}${field('Mod. de iniciativa', 'mod', 0, 'number', 'min="-10" max="20" required')}${field('PG', 'hp', 10, 'number', 'min="1" max="99999" required')}${field('CA', 'ac', 12, 'number', 'min="1" max="40" required')}</div>${select('Animación de esta criatura', 'theme', THEMES, 'humanoid')}`,
           fd => {
             const n = int(fd, 'count', 1, 20),
               name = String(fd.get('name')).trim();
@@ -152,6 +201,7 @@ const Encounters = (() => {
                 ac: int(fd, 'ac', 1, 40),
                 saves: {},
                 initMod: int(fd, 'mod', -10, 20),
+                theme: THEMES.some(([k]) => k === fd.get('theme')) ? String(fd.get('theme')) : 'humanoid',
               })),
             );
           },
@@ -159,6 +209,16 @@ const Encounters = (() => {
         ),
       'prep-remove': e => update(e.dataset.id, x => (x.monsters = x.monsters.filter(m => m.name !== e.dataset.name))),
       'prep-launch': e => launch(e.dataset.id),
+      // Solo en esta pantalla: no avisa a los jugadores.
+      'prep-preview': async e => {
+        const enc = get(e.dataset.id);
+        EncounterFX.show({
+          style: enc.style,
+          cry: enc.cry || STYLES[enc.style]?.[0],
+          count: enc.monsters.length,
+          ...(await themeFor(enc)),
+        });
+      },
       'init-reveal': () => revealHidden(),
     });
   }

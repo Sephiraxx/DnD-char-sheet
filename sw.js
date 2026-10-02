@@ -1,5 +1,5 @@
 const PREFIX = 'darien:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v32-merge';
+const CACHE = PREFIX + 'v33-creature-fx';
 const FILES = [
   './',
   './index.html',
@@ -28,6 +28,7 @@ const FILES = [
   './assets/icon.svg',
   './party.css',
   './polish.css',
+  './creature-fx.css',
   './creator.css',
   './creator.js',
   './fx.js',

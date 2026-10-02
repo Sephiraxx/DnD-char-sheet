@@ -467,5 +467,69 @@ const MonsterUI = (() => {
     )
   )
     load().then(() => typeof draw === 'function' && draw());
-  return { load, difficulty, difficultyLine, crText, picker, claimNames, xp: id => byId(id)?.xp || 0 };
+  // Animación de entrada según el tipo de criatura (y versiones propias para las más comunes).
+  const TYPE_THEME = {
+    'muerto viviente': 'undead',
+    dragón: 'dragon',
+    gigante: 'giant',
+    infernal: 'fiend',
+    aberración: 'aberration',
+    bestia: 'beast',
+    monstruosidad: 'monstrosity',
+    enjambre: 'swarm',
+    humanoide: 'humanoid',
+    elemental: 'elemental',
+    constructo: 'construct',
+    planta: 'plant',
+    cieno: 'ooze',
+    feérico: 'fey',
+    celestial: 'celestial',
+  };
+  function themeOf(id) {
+    const m = byId(id);
+    if (!m) return null;
+    const [type, sub = ''] = m.type.split(' (');
+    let theme = TYPE_THEME[type] || 'humanoid',
+      variant = '';
+    if (/spider/.test(m.id)) theme = 'web';
+    else if (m.id === 'lich') theme = 'necro';
+    else if (/^(arch)?mage$/.test(m.id)) theme = 'arcane';
+    else if (/^cult/.test(m.id)) theme = 'cult';
+    else if (theme === 'humanoid' && /goblinoid|orc|kobold|gnoll/.test(sub)) theme = 'warband';
+    if (theme === 'dragon')
+      variant = /white|silver/.test(m.id)
+        ? 'ice'
+        : /blue|bronze/.test(m.id)
+          ? 'lightning'
+          : /green/.test(m.id)
+            ? 'poison'
+            : /black|copper/.test(m.id)
+              ? 'acid'
+              : 'fire';
+    return { theme, variant, cr: m.cr };
+  }
+  // La criatura más peligrosa marca el tono; si todas son propias, el tema que más se repite.
+  function encounterTheme(list) {
+    const known = list.map(x => (x.monsterId ? themeOf(x.monsterId) : null)).filter(Boolean);
+    if (known.length) {
+      const top = known.reduce((a, b) => (b.cr > a.cr ? b : a));
+      return { theme: top.theme, variant: top.variant };
+    }
+    const counts = {};
+    for (const x of list) if (x.theme) counts[x.theme] = (counts[x.theme] || 0) + 1;
+    const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+    const [theme, variant = ''] = best.split('/');
+    return { theme, variant };
+  }
+  return {
+    load,
+    difficulty,
+    difficultyLine,
+    crText,
+    picker,
+    claimNames,
+    themeOf,
+    encounterTheme,
+    xp: id => byId(id)?.xp || 0,
+  };
 })();

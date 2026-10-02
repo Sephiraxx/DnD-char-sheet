@@ -86,24 +86,137 @@ const EncounterFX = (() => {
       c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
     );
   let timer;
-  function show({ style = 'battle', cry = '¡Combate!', count = 0 } = {}) {
+  // Capa de fondo según el tipo de criatura (muertos vivientes, dragones, gigantes…). Solo formas CSS/SVG.
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const many = (n, fn) => Array.from({ length: n }, (_, i) => fn(i)).join('');
+  // Llamas: lenguas con punta, núcleo claro y brasas que suben. Colores por variable (--f1 claro, --f2 oscuro).
+  function tongue(x, w, h, lean) {
+    const B = 200;
+    return `M${x - w / 2} ${B} C${x - w / 2} ${B - h * 0.45} ${x - w * 0.15} ${B - h * 0.6} ${x + lean} ${B - h} C${x + w * 0.2} ${B - h * 0.62} ${x + w / 2} ${B - h * 0.45} ${x + w / 2} ${B} Z`;
+  }
+  const flames = n => {
+    const outer = [],
+      inner = [];
+    for (let i = 0; i < n; i++) {
+      const x = (i + 0.5) * (400 / n) + rand(-6, 6),
+        w = rand(34, 52),
+        h = rand(90, 170),
+        lean = rand(-10, 10),
+        d = rand(0, 0.45).toFixed(2),
+        f = rand(0.22, 0.4).toFixed(2);
+      outer.push(`<path class="flame" style="--d:${d}s;--f:${f}s" d="${tongue(x, w, h, lean)}"/>`);
+      inner.push(
+        `<path class="flame core" style="--d:${d}s;--f:${f}s" d="${tongue(x, w * 0.5, h * 0.55, lean * 0.6)}"/>`,
+      );
+    }
+    const embers = many(
+      18,
+      () =>
+        `<span class="fx-ember" style="left:${rand(2, 98).toFixed(0)}%;--d:${rand(0.3, 1.6).toFixed(2)}s;--x:${rand(-40, 40).toFixed(0)}px"></span>`,
+    );
+    return `<svg class="fx-fire" viewBox="0 0 400 200" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="fx-fire-g" x1="0" y1="1" x2="0" y2="0"><stop offset="0" style="stop-color:var(--f2)"/><stop offset="0.7" style="stop-color:var(--f1)"/><stop offset="1" style="stop-color:var(--f1);stop-opacity:0"/></linearGradient></defs>${outer.join('')}${inner.join('')}</svg>${embers}`;
+  };
+  const bolts = () =>
+    `<svg class="fx-bolts" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden="true"><path d="M90 0 L70 70 L100 74 L60 170 L120 90 L88 86 L120 0 Z"/><path d="M310 0 L290 60 L318 64 L280 150 L338 80 L306 76 L334 0 Z"/></svg>`;
+  const rising = (n, glyph) =>
+    many(
+      n,
+      () =>
+        `<span class="fx-rise" style="left:${rand(4, 94).toFixed(0)}%;--d:${rand(0, 1.2).toFixed(2)}s;--s:${rand(0.8, 1.8).toFixed(2)}">${glyph}</span>`,
+    );
+  const circle = () =>
+    `<svg class="fx-circle" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="92"/><circle cx="100" cy="100" r="74" class="dash"/><path d="M100 26 L164 137 L36 137 Z M100 174 L36 63 L164 63 Z"/><text x="100" y="15">ᚠ ᚢ ᚦ ᚨ ᚱ ᚲ ᚷ ᚹ ᚺ ᚾ ᛁ ᛃ</text></svg>`;
+  const THEMES = {
+    undead: () => `<div class="fx-fog"></div>${rising(12, '☠')}`,
+    necro: () => `<div class="fx-fog"></div>${circle()}${rising(8, '☠')}`,
+    arcane: () =>
+      `${circle()}${many(14, () => `<span class="fx-spark" style="left:${rand(10, 90).toFixed(0)}%;top:${rand(10, 90).toFixed(0)}%;--d:${rand(0, 1.4).toFixed(2)}s"></span>`)}`,
+    cult: () => `${circle()}<div class="fx-fog"></div>`,
+    dragon: v => `${flames(14)}${v === 'lightning' ? bolts() : ''}`,
+    giant: () =>
+      `<svg class="fx-cracks" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden="true"><path d="M200 300 L190 250 L215 210 L195 160 L220 120 L205 70"/><path d="M200 300 L240 260 L230 225 L280 200 L300 150"/><path d="M200 300 L150 270 L160 230 L110 205 L95 160"/><path d="M215 210 L260 185"/><path d="M195 160 L150 140"/></svg>`,
+    fiend: () =>
+      `${flames(18)}<svg class="fx-sigil" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="80"/><path d="M100 20 L147 165 L23 75 L177 75 L53 165 Z"/></svg>`,
+    aberration: () =>
+      `<svg class="fx-tentacles" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden="true">${['M-10 300 C60 220 20 140 90 110', 'M410 300 C340 220 380 140 310 110', 'M-10 40 C70 60 60 130 120 150', 'M410 40 C330 60 340 130 280 150', 'M120 310 C140 250 100 220 150 190', 'M280 310 C260 250 300 220 250 190'].map(d => `<path d="${d}"/>`).join('')}</svg><div class="fx-eye"><i></i></div>`,
+    beast: () => `<div class="fx-claws">${many(3, i => `<i style="--i:${i}"></i>`)}</div>`,
+    monstrosity: () =>
+      `<div class="fx-claws">${many(3, i => `<i style="--i:${i}"></i>`)}</div>${many(3, i => `<span class="fx-ring" style="--d:${(i * 0.25).toFixed(2)}s"></span>`)}`,
+    swarm: () =>
+      many(
+        40,
+        () =>
+          `<span class="fx-bug" style="left:${rand(0, 100).toFixed(0)}%;top:${rand(0, 100).toFixed(0)}%;--x:${rand(-120, 120).toFixed(0)}px;--y:${rand(-120, 120).toFixed(0)}px;--d:${rand(0, 0.8).toFixed(2)}s"></span>`,
+      ),
+    warband: () =>
+      `${many(9, i => `<span class="fx-arrow" style="top:${(8 + i * 10 + rand(-3, 3)).toFixed(0)}%;--d:${rand(0, 0.9).toFixed(2)}s;--r:${rand(-8, 8).toFixed(0)}deg"></span>`)}${many(2, i => `<span class="fx-ring drum" style="--d:${(0.2 + i * 0.5).toFixed(2)}s"></span>`)}`,
+    humanoid: () => `<div class="fx-blades"><i></i><i></i></div>`,
+    web: () =>
+      `<svg class="fx-web" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden="true">${[0, 1]
+        .map(side => {
+          const x = side ? 400 : 0,
+            dir = side ? -1 : 1;
+          const spokes = [0, 20, 40, 60, 80].map(a => {
+            const r = (a * Math.PI) / 180;
+            return `M${x} 0 L${x + dir * Math.cos(r) * 260} ${Math.sin(r) * 260}`;
+          });
+          const rings = [60, 120, 180].map(
+            rr =>
+              `M${x + dir * rr} 0 ${[20, 40, 60, 80].map(a => `L${x + dir * Math.cos((a * Math.PI) / 180) * rr} ${Math.sin((a * Math.PI) / 180) * rr}`).join(' ')}`,
+          );
+          return [...spokes, ...rings].map(d => `<path d="${d}"/>`).join('');
+        })
+        .join('')}</svg><div class="fx-spider"><i></i></div>`,
+    elemental: () => `<div class="fx-vortex"></div>`,
+    construct: () =>
+      `${[0, 1].map(i => `<svg class="fx-gear g${i}" viewBox="0 0 100 100" aria-hidden="true"><path d="${gear()}"/><circle cx="50" cy="50" r="14"/></svg>`).join('')}`,
+    plant: () =>
+      `<svg class="fx-vines" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden="true">${['M0 300 C40 240 10 200 60 170 C90 150 70 110 110 90', 'M400 300 C360 240 390 200 340 170 C310 150 330 110 290 90', 'M0 0 C50 40 30 80 80 100', 'M400 0 C350 40 370 80 320 100'].map(d => `<path d="${d}"/>`).join('')}</svg>`,
+    ooze: () =>
+      many(
+        10,
+        i =>
+          `<span class="fx-drip" style="left:${(5 + i * 10 + rand(-3, 3)).toFixed(0)}%;--d:${rand(0, 0.8).toFixed(2)}s;--l:${rand(20, 60).toFixed(0)}%"></span>`,
+      ),
+    fey: () =>
+      many(
+        26,
+        () =>
+          `<span class="fx-spark fey" style="left:${rand(2, 98).toFixed(0)}%;top:${rand(2, 98).toFixed(0)}%;--d:${rand(0, 1.6).toFixed(2)}s"></span>`,
+      ),
+    celestial: () => `<div class="fx-rays"></div>`,
+  };
+  function gear() {
+    let d = '';
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2,
+        b = a + Math.PI / 12;
+      const p = (r, t) => `${(50 + r * Math.cos(t)).toFixed(1)} ${(50 + r * Math.sin(t)).toFixed(1)}`;
+      d += `${i ? 'L' : 'M'}${p(46, a - 0.12)} L${p(46, a + 0.12)} L${p(36, b - 0.1)} L${p(36, b + 0.1)} `;
+    }
+    return d + 'Z';
+  }
+  function show({ style = 'battle', cry = '¡Combate!', count = 0, theme = '', variant = '' } = {}) {
     document.getElementById('encounter-fx')?.remove();
     clearTimeout(timer);
     const box = document.createElement('div');
     box.id = 'encounter-fx';
     box.className = 'enc-fx enc-' + (['battle', 'ambush', 'boss', 'reinforce'].includes(style) ? style : 'battle');
     box.setAttribute('role', 'alert');
-    box.innerHTML = `<div class="enc-flash"></div><div class="enc-text"><span class="enc-swords" aria-hidden="true">⚔</span><strong>${esc(cry)}</strong>${count ? `<small>${count} ${count === 1 ? 'enemigo' : 'enemigos'}</small>` : ''}</div>`;
+    const layer = THEMES[theme]
+      ? `<div class="enc-theme theme-${theme} ${variant ? 'v-' + esc(variant) : ''}" aria-hidden="true">${THEMES[theme](variant)}</div>`
+      : '';
+    box.innerHTML = `<div class="enc-flash"></div>${layer}<div class="enc-text"><span class="enc-swords" aria-hidden="true">⚔</span><strong>${esc(cry)}</strong>${count ? `<small>${count} ${count === 1 ? 'enemigo' : 'enemigos'}</small>` : ''}</div>`;
     box.addEventListener('click', () => box.remove());
     (document.querySelector('dialog[open]') || document.body).append(box);
-    document.body.classList.remove('enc-shake');
+    document.body.classList.remove('enc-shake', 'enc-stomp');
     void document.body.offsetWidth;
-    document.body.classList.add('enc-shake');
+    document.body.classList.add(theme === 'giant' ? 'enc-stomp' : 'enc-shake');
     navigator.vibrate?.([120, 60, 220]);
     timer = setTimeout(() => {
       box.remove();
-      document.body.classList.remove('enc-shake');
-    }, 2800);
+      document.body.classList.remove('enc-shake', 'enc-stomp');
+    }, 3200);
   }
-  return { show };
+  return { show, themes: Object.keys(THEMES) };
 })();
