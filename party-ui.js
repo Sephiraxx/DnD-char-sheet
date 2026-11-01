@@ -212,13 +212,13 @@ const PartyUI = (() => {
       (state.xp
         ? `<p class="xp-line"><b>Experiencia:</b> ${state.xp} PX${R.xpNext(state) ? (state.xp >= R.xpNext(state) ? ' · <b>te alcanza para subir de nivel</b>' : ' · siguiente nivel con ' + R.xpNext(state) + ' PX') : ''}</p>`
         : '') +
-      `<div class="banner"><div><b>${tasks.length ? 'Elecciones pendientes' : 'Revisá tus rasgos y opciones'}</b>${tasks.length ? pendingList() : '<p class="small">Las elecciones de rasgos, equipo y efectos especiales se registran con las reglas de la mesa.</p>'}</div><div class="actions">${button('Conjuros', 'spell-manage')}${button('Elecciones de clase', 'class-choices')}${button('Subclase y Pericias', 'class-config')}</div></div>${typeof SheetStatus !== 'undefined' ? SheetStatus.card() : ''}<div class="grid two section-space"><section class="card"><h2>Progresión 1–20</h2><div class="class-timeline">${Array.from(
+      `<div class="banner"><div><b>${tasks.length ? 'Elecciones pendientes' : 'Revisá tus rasgos y opciones'}</b>${tasks.length ? pendingList() : '<p class="small">Las elecciones de rasgos, equipo y efectos especiales se registran con las reglas de la mesa.</p>'}</div><div class="actions">${button('Conjuros', 'spell-manage')}${button('Elecciones de clase', 'class-choices')}${button('Subclase y Pericias', 'class-config')}</div></div>${typeof SheetStatus !== 'undefined' ? SheetStatus.card() : ''}${oathCard()}<div class="grid two section-space"><section class="card"><h2>Progresión 1–20</h2><div class="class-timeline">${Array.from(
         { length: 20 },
         (_, i) => i + 1,
       )
         .map(l => {
           const fs = C.features({ ...state, level: l }, l).filter(f => f.level === l);
-          return `<details ${l === state.level ? 'open' : ''}><summary>Nivel ${l}${l === state.level ? ' · Actual' : ''}${C.asiLevels(state).includes(l) ? ' · Mejora o dote' : ''}</summary>${fs.map(f => `<div class="feature"><h3>${esc(f.name)}</h3><p class="small">${esc(f.source)}${f.children?.length ? ' · ' + f.children.map(esc).join(' · ') : ''}</p>${f.text ? `<details><summary>Texto SRD (inglés)</summary><p class="spell-reference">${esc(f.text)}</p></details>` : `<a href="${classLink(state)}" target="_blank" rel="noopener">Consultar el rasgo y sus elecciones</a>`}</div>`).join('') || '<p class="small">Consultá el aumento de recursos y las mejoras de los rasgos previos.</p>'}</details>`;
+          return `<details ${l === state.level ? 'open' : ''}><summary>Nivel ${l}${l === state.level ? ' · Actual' : ''}${C.asiLevels(state).includes(l) ? ' · Mejora o dote' : ''}</summary>${fs.map(f => `<div class="feature"><h3>${esc(f.name)}</h3><p class="small">${esc(f.source)}${f.children?.length ? ' · ' + f.children.map(esc).join(' · ') : ''}</p>${f.es ? `<p class="small">${esc(f.es)}</p>` : ''}${f.text ? `<details><summary>Texto SRD (inglés)</summary><p class="spell-reference">${esc(f.text)}</p></details>` : `<a href="${classLink(state)}" target="_blank" rel="noopener">Consultar el rasgo y sus elecciones</a>`}</div>`).join('') || '<p class="small">Consultá el aumento de recursos y las mejoras de los rasgos previos.</p>'}</details>`;
         })
         .join('')}</div></section><div class="stack"><section class="card"><h2>Elecciones registradas</h2>${
         Object.entries(state.classChoices || {})
@@ -229,6 +229,43 @@ const PartyUI = (() => {
           .join('') ||
         '<p class="small">Estilos, infusiones, Metamagia, invocaciones y otras elecciones aparecerán acá.</p>'
       }${button('Editar elecciones', 'class-choices')}</section><section class="card"><h2>Detalles de tus rasgos</h2><p class="small">Anotá decisiones internas del rasgo (enemigo predilecto, terreno, ancestro, formas, objetos infundidos…), requisitos y efectos que debas aplicar. Podés crear recursos o acciones de mesa para llevar sus usos.</p><label class="field">Notas de clase<textarea id="class-notes">${esc(state.classNotes || '')}</textarea></label>${button('Guardar notas', 'class-notes-save', '')}<div class="actions section-space">${button('Añadir rasgo', 'feature-new')}${button('Añadir recurso', 'resource-new')}</div><p class="small section-space"><a href="${classLink(state)}" target="_blank" rel="noopener">Referencia de ${c.name}</a>. Las opciones no incluidas se pueden registrar manualmente. Las reglas opcionales deben acordarse con el DM.</p></section></div></div>`
+    );
+  }
+  // Paladín: romper el juramento (pasa a Rompejuramentos) y volver con Expiación.
+  function oathCard() {
+    const o = C.oath(state);
+    if (!o) return '';
+    const date = o.broken ? new Date(o.broken.date).toLocaleDateString('es-AR') : '';
+    if (o.canAtone)
+      return `<section class="card oath-card broken"><h2>Juramento roto</h2><p>Sos <b>${esc(o.current.name)}</b>. Antes: ${esc(o.before.name)}${date ? ' · roto el ' + esc(date) : ''}.</p>${o.broken.reason ? `<p class="small">Motivo: ${esc(o.broken.reason)}</p>` : ''}<p class="small">Si el DM acepta tu expiación, recuperás tu juramento anterior con sus conjuros y rasgos.</p><div class="actions">${button('Expiación', 'oath-atone')}</div></section>`;
+    return `<section class="card oath-card"><h2>Tu juramento</h2><p><b>${esc(o.current.name)}</b></p><p class="small">Si rompés tu juramento a propósito y sin arrepentirte, el DM puede convertirte en Rompejuramentos. La ficha guarda tu juramento actual para poder volver con Expiación.</p><div class="actions">${button('Romper juramento', 'oath-break', 'danger')}</div></section>`;
+  }
+  function oathBreak() {
+    const o = C.oath(state);
+    if (!o?.canBreak) throw Error('Tu juramento ya está roto.');
+    modal(
+      'Romper juramento',
+      `<p>Dejás de ser <b>${esc(o.current.name)}</b> y pasás a <b>Rompejuramentos</b>.</p><ul class="small"><li>Perdés los conjuros y rasgos de tu juramento; ganás los de Rompejuramentos según tu nivel (Reprensión infernal, Infligir heridas…).</li><li>Canalizar divinidad pasa a Controlar muertos vivientes o Aspecto aterrador; conservás los usos gastados.</li><li>Si te concentrás en un conjuro que ya no tenés, la concentración termina.</li><li>Tu juramento anterior queda guardado: con Expiación podés recuperarlo.</li></ul>${field('Qué pasó (opcional)', 'reason', '', 'text', 'maxlength="300" placeholder="Ejecutó al prisionero rendido"')}<label class="check"><input type="checkbox" name="dm" required>El DM confirmó que rompí mi juramento.</label>`,
+      fd =>
+        commit('Juramento roto: ' + o.current.name + ' → Rompejuramentos', s => {
+          C.breakOath(s, String(fd.get('reason') || '').trim());
+          if (s.concentration && !C.usable(s).includes(s.concentration)) s.concentration = null;
+        }),
+      'Romper juramento',
+    );
+  }
+  function oathAtone() {
+    const o = C.oath(state);
+    if (!o?.canAtone) throw Error('No hay un juramento anterior para recuperar.');
+    modal(
+      'Expiación',
+      `<p>Volvés a <b>${esc(o.before.name)}</b> con sus conjuros y rasgos. Rompejuramentos deja de aplicarse.</p><label class="check"><input type="checkbox" name="dm" required>El DM aceptó mi expiación.</label>`,
+      () =>
+        commit('Expiación: vuelve a ' + o.before.name, s => {
+          C.atone(s);
+          if (s.concentration && !C.usable(s).includes(s.concentration)) s.concentration = null;
+        }),
+      'Recuperar juramento',
     );
   }
   function pendingList() {
@@ -1112,6 +1149,8 @@ const PartyUI = (() => {
       },
       'class-open': () => (location.hash = 'class'),
       'class-config': classConfig,
+      'oath-break': oathBreak,
+      'oath-atone': oathAtone,
       'class-choices': () => (typeof LevelUp !== 'undefined' ? LevelUp.chooseOptions() : chooseClass()),
       'resolve-choices': resolveChoices,
       'resolve-task': e => resolveTask(e.dataset.id),

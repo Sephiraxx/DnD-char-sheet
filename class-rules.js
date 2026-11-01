@@ -418,7 +418,15 @@
         'action',
       );
       if (l >= 3)
-        add('channel', 'Canalizar divinidad', 1, 'short', 'Usá una opción de tu juramento. Comparten un uso.');
+        add(
+          'channel',
+          'Canalizar divinidad',
+          1,
+          'short',
+          sub(s)?.id === OATHBREAKER
+            ? 'Controlar muertos vivientes o Aspecto aterrador (salvación de SAB contra tu CD). Comparten un uso.'
+            : 'Usá una opción de tu juramento. Comparten un uso.',
+        );
       if (l >= 14)
         add(
           'cleansing',
@@ -519,11 +527,75 @@
       })
       .filter(x => x.count);
   }
+  // Resúmenes en castellano de rasgos sin texto de referencia (clave: subclase o clase · nombre en inglés).
+  const FEATURE_ES = {
+    'paladin · Breaking Your Oath':
+      'Si rompés tu juramento a propósito y no te arrepentís, el DM puede convertirte en Rompejuramentos: cambiás de subclase y de conjuros de juramento. Si te arrepentís, podés buscar expiación (una vigilia, una penitencia o la ayuda de un clérigo); el DM decide si recuperás tu juramento. Usá «Romper juramento» y «Expiación» en esta página.',
+    'paladin-oathbreaker · Oathbreaker':
+      'Conjuros de juramento, siempre preparados: nivel 3, Reprensión infernal e Infligir heridas; 5, Corona de locura y Oscuridad; 9, Animar a los muertos e Imponer maldición; 13, Marchitar y Confusión; 17, Contagio y Dominar persona. Canalizar divinidad, dos opciones: Controlar muertos vivientes (acción: un no muerto que veas a 30 pies hace una salvación de SAB contra tu CD; si falla, obedece tus órdenes 24 horas o hasta que vuelvas a usarlo; los de VD igual o mayor que tu nivel de paladín son inmunes) y Aspecto aterrador (acción: cada criatura que elijas a 30 pies hace una salvación de SAB; si falla, queda asustada de vos 1 minuto; si termina su turno a más de 30 pies de vos, repite la salvación).',
+    'paladin-oathbreaker · Aura of Hate':
+      'Vos y los infernales y no muertos a 10 pies de vos suman tu modificador de CAR (mínimo +1) al daño de sus ataques con arma cuerpo a cuerpo. Desde el nivel 18, el aura llega a 30 pies. Varias Auras de odio no se acumulan, y no funciona si estás incapacitado.',
+    'paladin-oathbreaker · Supernatural Resistance':
+      'Tenés resistencia al daño contundente, perforante y cortante de armas no mágicas. Anotala en «Defensas» si tu mesa la aplica a todo daño de ese tipo.',
+    'paladin-oathbreaker · Dread Lord':
+      'Acción, una vez por descanso largo: un aura de penumbra de 30 pies te rodea durante 1 minuto y vuelve tenue la luz brillante. Los enemigos asustados de vos que empiezan su turno en el aura reciben 4d10 de daño psíquico. Vos y las criaturas que elijas en el aura están en sombras: los ataques que dependen de la vista tienen desventaja contra ustedes. Mientras dure, con una acción adicional hacés un ataque de conjuro cuerpo a cuerpo contra una criatura a 10 pies: 3d10 + tu modificador de CAR de daño necrótico.',
+  };
+  FEATURE_ES['paladin · Romper tu juramento'] = FEATURE_ES['paladin · Breaking Your Oath'];
+  const featureEs = (s, f) =>
+    FEATURE_ES[(sub(s)?.id || '') + ' · ' + (f.english || f.name)] || FEATURE_ES[id(s) + ' · ' + (f.english || f.name)];
   function features(s, level = s.level) {
-    return [
-      ...info(s).features.filter(x => !x.optional || s.optionalClassFeatures),
-      ...(sub(s)?.features || []),
-    ].filter(x => x.level <= level);
+    return [...info(s).features.filter(x => !x.optional || s.optionalClassFeatures), ...(sub(s)?.features || [])]
+      .filter(x => x.level <= level)
+      .map(f => {
+        const children = (f.children || []).map(c => [c, FEATURE_ES[id(s) + ' · ' + c]]).filter(x => x[1]);
+        const es = featureEs(s, f) || children.map(([c, t]) => c + ': ' + t).join(' ');
+        return es ? { ...f, es } : f;
+      });
+  }
+
+  // ---------- Juramento roto (Rompejuramentos) ----------
+  const OATHBREAKER = 'paladin-oathbreaker';
+  // Dónde vive la subclase de paladín de la ficha: clase principal o una clase secundaria.
+  function paladin(s) {
+    if (id(s) === 'paladin') return { level: s.level, subclass: s.classSubclass || '', index: -1 };
+    const i = mcList(s).findIndex(x => x.classId === 'paladin');
+    return i < 0 ? null : { level: mcList(s)[i].level, subclass: mcList(s)[i].subclass || '', index: i };
+  }
+  function setOath(s, p, subclass) {
+    if (p.index < 0) s.classSubclass = subclass;
+    else s.multiclass[p.index].subclass = subclass;
+  }
+  // Estado del juramento: qué se puede hacer ahora y con qué juramento anterior.
+  function oath(s) {
+    const p = paladin(s);
+    if (!p || p.level < 3 || !p.subclass) return null;
+    const current = D.subclasses.find(x => x.id === p.subclass),
+      broken = s.oathBroken || null,
+      before = broken ? D.subclasses.find(x => x.id === broken.from) : null;
+    return {
+      current,
+      broken,
+      before,
+      canBreak: p.subclass !== OATHBREAKER,
+      canAtone: p.subclass === OATHBREAKER && !!before,
+    };
+  }
+  function breakOath(s, reason = '', date = new Date().toISOString()) {
+    const p = paladin(s);
+    if (!p || p.level < 3 || !p.subclass) throw Error('Solo un paladín con juramento (nivel 3 o más) puede romperlo.');
+    if (p.subclass === OATHBREAKER) throw Error('Tu juramento ya está roto.');
+    s.oathBroken = { from: p.subclass, date, reason: String(reason || '').slice(0, 300) };
+    setOath(s, p, OATHBREAKER);
+    // Canalizar divinidad sigue siendo un uso compartido; se conserva lo gastado.
+    return s;
+  }
+  function atone(s) {
+    const p = paladin(s),
+      o = oath(s);
+    if (!o?.canAtone) throw Error('No hay un juramento anterior para recuperar.');
+    setOath(s, p, s.oathBroken.from);
+    delete s.oathBroken;
+    return s;
   }
   function asiLevels(s) {
     return id(s) === 'fighter'
@@ -812,6 +884,9 @@
     reset,
     choices,
     features,
+    oath,
+    breakOath,
+    atone,
     asiLevels,
     tasks,
     taskDetails,
