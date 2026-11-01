@@ -377,7 +377,15 @@ const PartyUI = (() => {
         )
         .join(
           '',
-        )}</div><div class="grid two section-space"><section class="card"><h2>Habilidades</h2>${R.skills.map(([k, n]) => `<div class="list-row"><span>${n}${state.expertise.includes(k) ? ' ◆' : state.proficiencies.includes(k) ? ' •' : ''}</span><button class="roll-button" data-action="skill-roll" data-id="${k}">${sign(R.skillBonus(state, k))}</button></div>`).join('')}</section><div class="stack"><section class="card"><h2>Salvaciones</h2>${Object.entries(
+        )}</div><div class="grid two section-space"><section class="card"><h2>Habilidades</h2><div class="passive-row">${[
+        ['perception', 'Percepción pasiva'],
+        ['investigation', 'Investigación pasiva'],
+        ['insight', 'Perspicacia pasiva'],
+      ]
+        .map(([k, l]) => `<div class="passive-box"><strong>${R.passive(state, k)}</strong><span>${l}</span></div>`)
+        .join(
+          '',
+        )}</div>${R.skills.map(([k, n, ab]) => `<div class="list-row"><span>${n} <small class="muted">(${R.attrs[ab].slice(0, 3)})</small>${state.expertise.includes(k) ? ' ◆' : state.proficiencies.includes(k) ? ' •' : ''}</span><button class="roll-button" data-action="skill-roll" data-id="${k}">${sign(R.skillBonus(state, k))}</button></div>`).join('')}</section><div class="stack"><section class="card"><h2>Salvaciones</h2>${Object.entries(
         R.attrs,
       )
         .map(
@@ -621,7 +629,7 @@ const PartyUI = (() => {
         s.extras.includes(sp.id)
           ? `<label class="field small">Cómo se lanza<select data-spell-mode="${esc(sp.id)}"><option value="slot">Usa espacios normales</option><option value="free" ${s.spellModes?.[sp.id] === 'free' ? 'selected' : ''}>Sin espacio · autorizado por el DM</option></select></label>`
           : ''
-      }<p class="small">${esc(sp.text || sp.brief || '')}</p><p class="small muted">${esc(sp.range || '')} · ${esc(sp.components || '')}${sp.materialEs ? ' (' + esc(sp.materialEs) + ')' : ''} · ${esc(sp.duration || '')} · ${esc(sp.sourceKey || sp.source || '')}${sp.english ? ' · ' + esc(sp.english) : ''}</p></div>`;
+      }<p class="small">${esc(sp.text || sp.brief || '')}</p>${(n => (n.length ? `<p class="spell-numbers">${n.map(esc).join('<br>')}</p>` : ''))(R.spellNumbersFor(s, sp))}<p class="small muted">${esc(sp.range || '')} · ${esc(sp.components || '')}${sp.materialEs ? ' (' + esc(sp.materialEs) + ')' : ''} · ${esc(sp.duration || '')} · ${esc(sp.sourceKey || sp.source || '')}${sp.english ? ' · ' + esc(sp.english) : ''}</p></div>`;
     };
     spellHost.innerHTML = `<div class="creator-shell"><header class="creator-head"><div><p class="eyebrow">CONJUROS · ${esc(className(s)).toUpperCase()} ${s.level} · ${esc(prepNames[mode] || '').toUpperCase()}</p><h1>Tus conjuros</h1></div><div class="actions">${'<button type="button" class="button secondary" data-sb="cancel">Cancelar</button>'}</div></header><div class="creator-rail spell-meters">${meters || '<span class="small muted">Tu clase no lanza conjuros a este nivel: podés anotar extras del DM.</span>'}</div><div class="creator-body"><div id="spellbook-error" class="creator-error" role="alert"></div><div class="creator-search"><input type="search" name="q" value="${esc(spellQuery)}" placeholder="Buscar en español o inglés" aria-label="Buscar conjuro"></div><div class="chips spell-filter">${[
       ['class', 'Mi clase'],

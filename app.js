@@ -234,9 +234,14 @@ function spellName(id) {
 function combat() {
   return combatView();
 }
+// Dados resueltos para esta ficha (nivel, modificador y mejoras por espacio), desde el catálogo.
+function spellNumbersHtml(sp, slot) {
+  const lines = R.spellNumbersFor(state, sp, slot);
+  return lines.length ? `<p class="spell-numbers">${lines.map(esc).join('<br>')}</p>` : '';
+}
 function spellCard(s) {
   const extra = state.extras.includes(s.id);
-  return `<details class="spell" id="spell-${esc(s.id)}"><summary><div class="spell-title"><div><h2>${esc(s.name)}</h2><div class="spell-meta">${s.level ? 'Nivel ' + s.level : 'Truco'} · ${esc(s.time)} · ${esc(s.range)}</div></div>${extra ? '<span class="tag">Extra DM</span>' : s.concentration ? '<span class="tag">Conc.</span>' : ''}</div><p class="spell-brief">${esc(s.brief)}</p></summary><div class="spell-body"><p>${esc(s.text)}</p>${button('Explicación y requisitos', 'spell-help', 'secondary', `data-id="${esc(s.id)}"`)}<p class="small">Componentes: ${esc(s.components)}<br>Duración: ${esc(s.duration)}${s.concentration ? ' · Concentración' : ''}<br>Fuente: ${esc(s.source)}</p><div class="spell-footer">${button(s.level ? 'Lanzar' : 'Usar truco', 'cast', '', `data-id="${esc(s.id)}"`)}${Classes.ritualAllowed(state, s) ? button('Ritual · sin espacio', 'ritual', 'secondary', `data-id="${esc(s.id)}"`) : ''}${button('Editar', 'spell-edit', 'secondary', `data-id="${esc(s.id)}"`)}</div></div></details>`;
+  return `<details class="spell" id="spell-${esc(s.id)}"><summary><div class="spell-title"><div><h2>${esc(s.name)}</h2><div class="spell-meta">${s.level ? 'Nivel ' + s.level : 'Truco'} · ${esc(s.time)} · ${esc(s.range)}</div></div>${extra ? '<span class="tag">Extra DM</span>' : s.concentration ? '<span class="tag">Conc.</span>' : ''}</div><p class="spell-brief">${esc(s.brief)}</p>${s.level === 0 && R.spellNumbersFor(state, s).length ? `<p class="spell-numbers-inline">${esc(R.spellNumbersFor(state, s)[0])}</p>` : ''}</summary><div class="spell-body"><p>${esc(s.text)}</p>${spellNumbersHtml(s)}${button('Explicación y requisitos', 'spell-help', 'secondary', `data-id="${esc(s.id)}"`)}<p class="small">Componentes: ${esc(s.components)}<br>Duración: ${esc(s.duration)}${s.concentration ? ' · Concentración' : ''}<br>Fuente: ${esc(s.source)}</p><div class="spell-footer">${button(s.level ? 'Lanzar' : 'Usar truco', 'cast', '', `data-id="${esc(s.id)}"`)}${Classes.ritualAllowed(state, s) ? button('Ritual · sin espacio', 'ritual', 'secondary', `data-id="${esc(s.id)}"`) : ''}${button('Editar', 'spell-edit', 'secondary', `data-id="${esc(s.id)}"`)}</div></div></details>`;
 }
 function gear() {
   const total = state.gold.cp + state.gold.sp * 10 + state.gold.ep * 50 + state.gold.gp * 100 + state.gold.pp * 1000;
@@ -370,7 +375,14 @@ function cast(id, ritual = false) {
       x.value,
       `${x.value === 'pact' ? 'Pacto · ' : ''}Nivel ${x.level} · ${x.left} disponibles`,
     ]);
-  let html = `<p>${esc(sp.text || sp.brief)}</p><p class="small">Dados: 1d4 = un dado de 4 caras; 2d6 = dos dados de 6 caras. «Modificador de lanzamiento» de este conjuro: ${sign(casterStats.mods[Classes.casting(caster).ability])}. ${esc(sp.materialEs || '')}</p><p class="small">${sp.level ? 'Conjuro de nivel ' + sp.level : 'Truco · no gasta espacio'} · ${esc(sp.time)} · ${esc(sp.range)}<br>${esc(sp.components)} · ${esc(sp.duration)}${ritual ? ' · Ritual: añade 10 minutos al lanzamiento.' : ''}</p>`;
+  const table = sp.level
+    ? R.slotTable(
+        state,
+        sp,
+        [...new Set(eligible.map(x => (x[0] === 'pact' ? d.pact.level : Number(x[0]))))].sort((a, b) => a - b),
+      )
+    : '';
+  let html = `<p>${esc(sp.text || sp.brief)}</p>${spellNumbersHtml(sp)}${table ? `<p class="small">${esc(table)}</p>` : ''}<p class="small">Dados: 1d4 = un dado de 4 caras; 2d6 = dos dados de 6 caras. «Modificador de lanzamiento» de este conjuro: ${sign(casterStats.mods[Classes.casting(caster).ability])}. ${esc(sp.materialEs || '')}</p><p class="small">${sp.level ? 'Conjuro de nivel ' + sp.level : 'Truco · no gasta espacio'} · ${esc(sp.time)} · ${esc(sp.range)}<br>${esc(sp.components)} · ${esc(sp.duration)}${ritual ? ' · Ritual: añade 10 minutos al lanzamiento.' : ''}</p>`;
   if (sp.level && !ritual && !special) html += select('Espacio a gastar', 'espacio', eligible, eligible[0]?.[0]);
   if (special)
     html +=

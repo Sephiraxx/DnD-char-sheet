@@ -34,7 +34,7 @@ const PrintSheet = (() => {
   }
   function combat(s, d) {
     const def = Defenses.of(s),
-      passive = 10 + R.skillBonus(s, 'perception') + (FeatFX?.passive(s, 'perception') || 0),
+      passive = R.passive(s, 'perception'),
       list = (m, w) => [...m.keys()].map(t => Defenses.label(t)).join(', ') || w;
     return `<div class="ps-boxes">${box('CA', d.ac)}${box('Iniciativa', sg(d.initiative))}${box('Velocidad', d.speed, 'pies')}${box('PG máximos', d.maxHP, `actuales ${s.hp ?? '—'}${s.temp ? ' · temp ' + s.temp : ''}`)}${box('Dados de Golpe', d.hitDiceSet.map(x => x.count + 'd' + x.die).join(' + '))}${box('Percepción pasiva', passive)}</div><p class="ps-line"><b>Salvaciones de muerte:</b> éxitos ○○○ · fallos ○○○${def.resist.size ? ` · <b>Resistencias:</b> ${e(list(def.resist))}` : ''}${def.immune.size ? ` · <b>Inmunidades:</b> ${e(list(def.immune))}` : ''}${def.conditions.length ? ` · <b>Inmune a:</b> ${e(def.conditions.join(', '))}` : ''}</p>`;
   }
@@ -97,6 +97,18 @@ const PrintSheet = (() => {
       })
       .join('');
     const slots = d.slots.map((max, i) => (max ? `<span>Nv ${i + 1}: ${'○'.repeat(max)}</span>` : '')).join('');
+    // Dados principales a este nivel («3d6 fuego», «2 × 1d10 fuerza», «cura 1d8+3»).
+    const dice = sp => {
+      const r = R.spellDice(sp, R.spellOpts(s, sp));
+      if (!r) return '';
+      const row = r.rows[0],
+        o = R.spellOpts(s, sp),
+        m = x => (x && o.mod ? (o.mod > 0 ? '+' : '') + o.mod : '');
+      if (r.count && row) return `${r.count} × ${row.dice} ${row.type}`;
+      if (row) return `${row.dice}${m(row.mod)} ${row.type}`.trim();
+      if (r.heal) return `cura ${r.heal.dice}${m(r.heal.mod)}`;
+      return '';
+    };
     const byLevel = {};
     for (const sp of all) (byLevel[sp.level] ||= []).push(sp);
     return `<p class="ps-line ps-casting">${head}</p>${slots || d.pact ? `<p class="ps-line ps-slots">${slots}${d.pact ? `<span>Pacto (nv ${d.pact.level}): ${'○'.repeat(d.pact.max)}</span>` : ''}</p>` : ''}<div class="ps-spells">${Object.entries(
@@ -107,7 +119,7 @@ const PrintSheet = (() => {
           `<div><h3>${lv === '0' ? 'Trucos' : 'Nivel ' + lv}</h3><ul>${list
             .map(
               sp =>
-                `<li>${usable.has(sp.id) ? '●' : '○'} <b>${e(sp.name)}</b> <small>${e(sp.time)} · ${e(sp.range)}${sp.concentration ? ' · C' : ''}${sp.ritual ? ' · R' : ''}</small></li>`,
+                `<li>${usable.has(sp.id) ? '●' : '○'} <b>${e(sp.name)}</b> <small>${e(sp.time)} · ${e(sp.range)}${sp.concentration ? ' · C' : ''}${sp.ritual ? ' · R' : ''}${dice(sp) ? ' · ' + e(dice(sp)) : ''}</small></li>`,
             )
             .join('')}</ul></div>`,
       )
