@@ -250,7 +250,62 @@ const RollUI = (() => {
   // ---------- Conjuros: ataque, salvación y daño o curación ----------
   // sp.srd: pistas sacadas del texto SRD en inglés al generar el catálogo (dados, mejora por espacio, dardos…).
   const halfOnSave = sp => /mitad|half/i.test(sp.text || '') || !!sp.srd?.half;
+  // Con números del catálogo (campo «dice»): dados exactos para tu nivel y el espacio elegido.
+  function catalogInfo(sp, slot) {
+    const r = R.spellDice(sp, { level: R.totalLevel(state), slot });
+    if (!r || (!r.rows.length && !r.heal)) return null;
+    const D = sp.dice,
+      notes = [];
+    let dice = '',
+      addMod = false,
+      types = '';
+    if (r.heal) {
+      // Curar da 70 PG fijos: sin dados que tirar.
+      dice = r.heal.n ? r.heal.dice.replace(/ /g, '') : '';
+      addMod = r.heal.mod;
+      if (!r.heal.n) notes.push(`Recupera ${r.heal.dice} PG, sin tirada.`);
+    } else if (D.blade) {
+      // Las hojas: el daño extra se suma al ataque con arma (Ataques); aquí, el daño secundario.
+      dice = r.rows[0].dice.replace(/ /g, '');
+      addMod = sp.id === 'green-flame-blade';
+      types = r.rows[0].type;
+      notes.push(R.spellNumbers(sp, { level: R.totalLevel(state), slot })[0]);
+    } else {
+      const rows = D.sum ? r.rows : r.rows.slice(0, 1);
+      dice = rows.map(x => x.dice.replace(/ /g, '')).join('+');
+      addMod = rows.some(x => x.mod);
+      types = [...new Set(rows.map(x => x.type).filter(Boolean))].join(' y ');
+      if (r.rows.length > 1 && !D.sum) notes.push(R.spellNumbers(sp, { level: R.totalLevel(state), slot })[0]);
+    }
+    if (r.count) {
+      const each = dice,
+        shown = r.rows[0].dice;
+      if (D.multi.unit === 'dardo') {
+        // Todos al mismo objetivo: se suman; si los repartís, ajustá.
+        const p = /^(\d+)d(\d+)(?:\+(\d+))?$/.exec(each);
+        if (p) dice = `${p[1] * r.count}d${p[2]}${p[3] ? '+' + p[3] * r.count : ''}`;
+        notes.push(`${r.count} dardos de ${shown} (todos al mismo objetivo; si los repartís, ajustá el daño).`);
+      } else notes.push(`${r.count} ${D.multi.unit}s: cada uno es un ataque aparte de ${shown}.`);
+    }
+    if (sp.level === 0 && D.tiers && !D.blade)
+      notes.push(`Truco escalado por nivel de personaje ${R.totalLevel(state)}.`);
+    if (r.steps) notes.push(`Espacio de nivel ${slot}: dados ya sumados.`);
+    return {
+      attack: (sp.attackKind || []).length > 0,
+      save: ABILITY_ES[(sp.saveAbility || [])[0]] || '',
+      saveName: (sp.saveAbility || [])[0] || '',
+      dice,
+      heal: !!r.heal,
+      addMod,
+      types: types || (sp.damageTypes || []).join(', '),
+      notes,
+    };
+  }
   function spellInfo(sp, slot) {
+    if (sp.dice) {
+      const info = catalogInfo(sp, slot);
+      if (info) return info;
+    }
     const all = [sp.brief, sp.text].filter(Boolean).join('\n'),
       hint = sp.srd || {};
     // «1d4 + 1»: el bono fijo acompaña a los dados (no confundir con «+ 4d8» ni «+ tu modificador»).
@@ -429,9 +484,12 @@ const RollUI = (() => {
       st = spellStats(sp),
       mod = fd.has('spellMod') ? st.mods[Classes.casting(caster(sp)).ability] : 0;
     const own = fd.get('myDamage'),
-      m = /^\s*(\d+)d(\d+)\s*(?:\+\s*(\d+))?\s*$/.exec(String(fd.get('spellDice') || ''));
+      expr = String(fd.get('spellDice') || '').replace(/\s+/g, ''),
+      // «3d6», «3d4+3» o varios grupos: «2d8+4d6» (Tormenta de hielo, Golpe flamígero…).
+      m = /^\d+d\d+(?:\+\d+d\d+)*(?:\+\d+)?$/.test(expr) ? expr : null,
+      groups = m ? [...m.matchAll(/(\d+)d(\d+)/g)].map(g => [Number(g[1]), Number(g[2])]) : [];
     // El bono fijo de los dados («3d4+3») también se suma a los dados físicos.
-    const flat = Number(m?.[3] || 0);
+    const flat = Number(/\+(\d+)$/.exec(m || '')?.[1] || 0);
     let rolls = [],
       sum;
     if (own !== null && own !== '') {
@@ -439,10 +497,10 @@ const RollUI = (() => {
       if (!Number.isInteger(sum) || sum < 0 || sum > 999) throw Error('Revisá la suma de tus dados.');
       document.querySelector('#dialog-form [name=myDamage]').value = '';
     } else {
-      if (!m) throw Error('Escribí los dados como «2d8» o «3d4+3».');
-      const n = Number(m[1]) * (spellSession.crit ? 2 : 1);
-      if (n > 60) throw Error('Demasiados dados.');
-      rolls = roll(Number(m[2]), n);
+      if (!m) throw Error('Escribí los dados como «2d8», «3d4+3» o «2d8+4d6».');
+      const k = spellSession.crit ? 2 : 1;
+      if (groups.reduce((a, [n]) => a + n * k, 0) > 60) throw Error('Demasiados dados.');
+      rolls = groups.flatMap(([n, sides]) => roll(sides, n * k));
       sum = rolls.reduce((a, b) => a + b, 0);
     }
     const dice = (rolls.length ? rolls.join('+') : 'dados físicos ' + sum) + (flat ? ' + ' + flat : '');

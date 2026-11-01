@@ -14,6 +14,7 @@ En la primera visita, elegí **Crear personaje** o **Importar una ficha JSON**. 
 - La primera visita muestra únicamente Crear personaje e Importar ficha. No crea un personaje de ejemplo. Si ya tenés una ficha guardada, abre la última seleccionada. Las fichas de la primera versión (sin clase) se convierten solas en fichas de bardo.
 - Elegí si empezás con recursos completos o si necesitás confirmar los actuales. Los objetos escritos en el inventario no modifican la CA automáticamente.
 - **Personaje → Características y armadura** permite ajustar velocidad, fórmula de CA y característica de lanzamiento.
+- **Personaje → Habilidades** sigue el orden alfabético de la hoja, con la característica de cada una, y arriba las casillas de **Percepción, Investigación y Perspicacia pasivas** (10 + bono, +5 de Observador). La percepción pasiva también aparece en Combate, en la vista compacta y en la hoja impresa.
 
 ## Libros, razas y trasfondos
 
@@ -42,6 +43,10 @@ Deshabilitar un libro conserva las elecciones previas. **Todo el catálogo → E
 - Un ataque de conjuro usa **1d20 + tu bono de ataque** contra la CA. Una salvación la tira el objetivo contra tu CD. El modificador no se suma al daño salvo que el efecto lo indique.
 - **Explicación y requisitos / Ver detalles** presenta materiales especiales, alcance, duración y las ayudas aplicables. Los componentes costosos o consumidos de los libros habilitados tienen referencias españolas específicas.
 - Los materiales ordinarios se resumen como sustituibles por una bolsa o foco válido cuando corresponde. Para usar el ingrediente literal, consultá la fuente. La aplicación no gasta automáticamente materiales ni monedas.
+
+**Números del conjuro.** Cada conjuro con dados muestra un recuadro con los números ya resueltos para tu ficha: los trucos a tu nivel («A tu nivel 5: 2d10 de daño de fuego»), la curación con tu modificador, cuántos dardos o rayos tenés y cuánto suma cada espacio superior (con «cada dos niveles» y topes como el de Lluvia de espinas). Al lanzar, la ventana lista el dado principal en cada espacio que podés gastar, y «Solo tirar» usa esos mismos dados. El daño de fuerza se escribe «de daño de fuerza» para no confundirlo con la característica. La hoja impresa también muestra el dado principal de cada conjuro.
+
+Los números salen de `node tools/build-spell-dice.js <carpeta data/spells de 5etools-src>`, que solo toma dados, tipos de daño y mejoras (nunca el texto de los libros) y los guarda en el campo `dice` de `catalog.js`; `--check` informa sin escribir.
 
 ## Clase y subida de nivel
 

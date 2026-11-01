@@ -41,9 +41,9 @@
       initiative: st.initiative,
       speed: st.speed ?? (s.speed || 30),
       passive: {
-        perception: 10 + root.Rules.skillBonus(s, 'perception') + (root.FeatFX?.passive(s, 'perception') || 0),
-        insight: 10 + root.Rules.skillBonus(s, 'insight'),
-        investigation: 10 + root.Rules.skillBonus(s, 'investigation') + (root.FeatFX?.passive(s, 'investigation') || 0),
+        perception: root.Rules.passive(s, 'perception'),
+        insight: root.Rules.passive(s, 'insight'),
+        investigation: root.Rules.passive(s, 'investigation'),
       },
       saves: Object.keys(root.Rules.attrs).map(a => [a, root.Rules.saveBonus(s, a)]),
       dc: st.dc,

@@ -51,7 +51,7 @@
     ['intimidation', 'Intimidación', 'cha'],
     ['performance', 'Interpretación', 'cha'],
     ['persuasion', 'Persuasión', 'cha'],
-  ];
+  ].sort((a, b) => a[1].localeCompare(b[1], 'es')); // Orden alfabético, como en la hoja de personaje.
   const mod = x => Math.floor((x - 10) / 2),
     prof = l => 2 + Math.floor((l - 1) / 4),
     die = l => (l >= 15 ? 12 : l >= 10 ? 10 : l >= 5 ? 8 : 6),
@@ -453,6 +453,8 @@
     265000, 305000, 355000,
   ];
   const xpNext = s => XP[totalLevel(s)] ?? null;
+  // Valor pasivo: 10 + bono de la habilidad (+5 de Observador en Percepción e Investigación).
+  const passive = (s, id) => 10 + skillBonus(s, id) + (root.FeatFX?.passive(s, id) || 0);
   function skillBonus(s, id) {
     const own = ownSkillBonus(s, id),
       beast = s.wildShape?.skills?.[id];
@@ -789,7 +791,154 @@
       fail();
     return JSON.parse(JSON.stringify(o));
   }
+  // ---------- Números de cada conjuro (campo «dice» del catálogo) ----------
+  // Una sola fuente para los dados: el texto, la tirada y el lanzamiento con espacio superior la usan.
+  const parseDice = t => {
+    const m = /^(\d+)d(\d+)(?:\+(\d+))?$/.exec(String(t || ''));
+    return m ? { n: Number(m[1]), sides: Number(m[2]), flat: Number(m[3] || 0) } : null;
+  };
+  const diceText = (n, sides, flat = 0) => (n ? n + 'd' + sides : '') + (flat ? (n ? ' + ' : '') + flat : '');
+  const tierOf = lvl => (lvl >= 17 ? 3 : lvl >= 11 ? 2 : lvl >= 5 ? 1 : 0);
+  // opts: { level: nivel de personaje, slot: nivel del espacio, mod: modificador de lanzamiento }.
+  function spellDice(sp, opts = {}) {
+    const D = sp?.dice;
+    if (!D) return null;
+    const slot = Math.max(sp.level, Number(opts.slot) || sp.level),
+      tier = sp.level === 0 ? tierOf(Number(opts.level) || 1) : 0,
+      notes = [];
+    // Niveles de espacio por encima del base que suman dados (con tope y «cada dos niveles»).
+    let steps = 0;
+    if (D.up && slot > sp.level) {
+      const every = D.up[1] || 1,
+        top = D.up[2] || 9;
+      steps = Math.floor((Math.min(slot, top) - sp.level) / every);
+    }
+    const up = D.up ? parseDice(D.up[0]) : null;
+    let upDone = false;
+    const rows = (D.dmg || []).map(([d, type, mod], i) => {
+      // «2d8+1d6» (Descarga de caos) se conserva tal cual.
+      if (/d\d+\+\d+d/.test(d)) return { dice: d.replace('+', ' + '), type, mod: !!mod, n: 0, sides: 0, flat: 0 };
+      const p = parseDice(d) || { n: 0, sides: 0, flat: 0 };
+      let n = p.n;
+      if (D.tiers && !D.blade) {
+        if (i === 0) n = parseDice(D.tiers[tier])?.n ?? n;
+        else n = p.n * (tier + 1);
+      }
+      if (D.blade) n = parseDice(D.tiers[tier])?.n ?? 0;
+      if (up && steps && !upDone && up.sides === p.sides) {
+        n += up.n * steps;
+        upDone = !D.or; // Alternativas (radiante o necrótico): la mejora vale para ambas.
+      }
+      return { dice: diceText(n, p.sides, p.flat), type, mod: !!mod, n, sides: p.sides, flat: p.flat };
+    });
+    let heal = null;
+    if (D.heal) {
+      const p = parseDice(D.heal[0]);
+      if (p) {
+        let n = p.n;
+        if (up && steps && !upDone && up.sides === p.sides) n += up.n * steps;
+        heal = { dice: diceText(n, p.sides, p.flat), mod: !!D.heal[1], n, sides: p.sides, flat: p.flat };
+      } else heal = { dice: String(D.heal[0]), mod: false, n: 0, sides: 0, flat: Number(D.heal[0]) || 0 };
+    }
+    // Varios proyectiles con los mismos dados.
+    let count = 0;
+    if (D.multi) {
+      count = D.multi.cantrip ? D.multi.n + tier : D.multi.n + (D.multi.up ? slot - sp.level : 0);
+    }
+    const extra = D.blade ? parseDice(D.blade[tier]) : null;
+    return { rows, heal, temp: D.temp || '', count, unit: D.multi?.unit || '', extra, tier, steps, notes };
+  }
+  // Frases en castellano con los números ya resueltos para este personaje y espacio.
+  function spellNumbers(sp, opts = {}) {
+    const D = sp?.dice,
+      r = spellDice(sp, opts);
+    if (!r) return [];
+    const mod = Number.isFinite(opts.mod) ? opts.mod : null,
+      modText = m =>
+        m ? (mod === null ? ' + tu modificador' : mod ? (mod > 0 ? ' + ' : ' − ') + Math.abs(mod) : '') : '',
+      NOUN = /^(ácido|frío|fuego|fuerza|relámpago|trueno|veneno)/,
+      typeText = t =>
+        !t
+          ? ''
+          : /^(a elección|según)/.test(t)
+            ? ' de daño (tipo ' + t + ')'
+            : ' de daño ' + (NOUN.test(t) ? 'de ' : '') + t,
+      out = [],
+      lvl = Number(opts.level) || 1,
+      slot = Math.max(sp.level, Number(opts.slot) || sp.level),
+      lead = sp.level === 0 ? `A tu nivel ${lvl}: ` : slot > sp.level ? `Con espacio de nivel ${slot}: ` : '';
+    if (D.blade) {
+      const type = r.rows[0].type,
+        hit = r.extra?.n ? `${r.extra.n}d${r.extra.sides}${typeText(type)} extra` : 'solo el daño del arma';
+      out.push(`${lead}al impactar, ${hit}.`);
+      out.push(
+        sp.id === 'green-flame-blade'
+          ? `Fuego que salta a la segunda criatura: ${r.rows[0].dice ? r.rows[0].dice + modText(true) : mod === null ? 'tu modificador' : String(mod)}${typeText(type)}.`
+          : `Si se mueve: ${r.rows[0].dice}${typeText(type)}.`,
+      );
+      out.push('Ambos suben en los niveles 5, 11 y 17.');
+      return out;
+    }
+    if (r.count) {
+      const row = r.rows[0];
+      out.push(
+        `${lead}${r.count} ${r.unit}${r.count > 1 ? 's' : ''} de ${row.dice}${typeText(row.type)} cada uno${D.multi.unit === 'dardo' ? ', sin tirada de ataque' : ', con un ataque por ' + D.multi.unit}.`,
+      );
+      if (D.multi.cantrip) out.push(`1 ${D.multi.unit} en nivel 1, 2 en nivel 5, 3 en 11 y 4 en 17.`);
+      else if (D.multi.up) out.push(`Espacio superior: +1 ${D.multi.unit} por cada nivel por encima de ${sp.level}.`);
+      return out;
+    }
+    if (r.rows.length) {
+      // Doblar por los muertos: dos dados alternativos del mismo tipo.
+      const alt = r.rows.length === 2 && r.rows[0].type === r.rows[1].type && r.rows[0].sides !== r.rows[1].sides;
+      const parts = alt
+        ? [`${r.rows[0].dice}${typeText(r.rows[0].type)} (${r.rows[1].dice} si ya le falta algún PG)`]
+        : r.rows.map(x => x.dice + modText(x.mod) + typeText(x.type));
+      out.push(`${lead}${parts.join(alt || D.or ? ' o ' : D.then ? '; después, ' : ' y ')}.`);
+    }
+    if (r.heal) out.push(`${lead}${lead ? 'r' : 'R'}ecupera ${r.heal.dice}${modText(r.heal.mod)} PG.`);
+    if (r.temp) out.push(`PG temporales: ${r.temp.replace('+', ' + ')}.`);
+    if (D.tiers && sp.level === 0) {
+      const t = D.tiers.map(x => parseDice(x)),
+        second = r.rows.length === 2 && r.rows[1].sides !== r.rows[0].sides ? r.rows[1].sides : 0;
+      out.push(
+        `Sube con tu nivel: ${[5, 11, 17].map((l, i) => t[i + 1].n + 'd' + t[i + 1].sides + (second ? ' o ' + (i + 2) + 'd' + second : '') + ' en ' + l).join(', ')}.`,
+      );
+    }
+    if (D.up && sp.level > 0) {
+      const every = D.up[1] || 1,
+        top = D.up[2];
+      out.push(
+        `Espacio superior: +${D.up[0]} por ${every === 2 ? 'cada dos niveles' : 'cada nivel'} por encima de ${sp.level}${top ? ' (hasta el nivel ' + top + ')' : ''}.`,
+      );
+    }
+    return out;
+  }
+  // Opciones para un personaje: nivel total y modificador de la clase que lanza ese conjuro.
+  function spellOpts(s, sp, slot) {
+    const C = root.Classes,
+      caster = C?.spellCaster ? C.spellCaster(s, sp.id) : s,
+      ability = C?.casting ? C.casting(caster).ability : 'cha',
+      mod = ability ? stats(caster).mods[ability] : undefined;
+    return { level: totalLevel(s), slot, mod };
+  }
+  const spellNumbersFor = (s, sp, slot) => spellNumbers(sp, spellOpts(s, sp, slot));
+  // «Nivel 1: 3d6 · 2: 4d6 · 3: 5d6»: el dado principal en cada espacio que podés gastar.
+  function slotTable(s, sp, slots) {
+    if (!sp?.dice?.up && !sp?.dice?.multi?.up) return '';
+    const parts = slots.map(l => {
+      const r = spellDice(sp, spellOpts(s, sp, l)),
+        main = r.count ? r.count + ' × ' + r.rows[0].dice : r.rows[0]?.dice || r.heal?.dice;
+      return main ? `${l}: ${main}` : '';
+    });
+    return parts.filter(Boolean).length > 1 ? 'Por espacio · ' + parts.filter(Boolean).join(' · ') : '';
+  }
   const api = {
+    spellDice,
+    spellOpts,
+    spellNumbersFor,
+    slotTable,
+    spellNumbers,
     totalLevel,
     slots,
     known,
@@ -805,6 +954,7 @@
     scores,
     formScores,
     skillBonus,
+    passive,
     saveBonus,
     allSpells,
     features,
