@@ -43,6 +43,7 @@ const S = {
   pending: {},
   saveTimer: 0,
   panelMin: false,
+  group: null, // encuentro preparado que se mueve como grupo
   dirty: true,
 };
 const canvas = $('#board'),
@@ -239,7 +240,9 @@ const fogPatch = () => ({ fog: { on: S.fogOn, revealed: BC.fogEncode(S.fog) } })
 const terrainPatch = () => ({ terrain: { cells: S.terrain, walls: S.walls } });
 
 // ---------- Fichas automáticas (DM): la party y las criaturas del combate ----------
-let ensuring = false;
+let ensuring = false,
+  ensureTimer = 0;
+const firstSeen = new Map();
 const lastHidden = new Map();
 async function ensureTokens() {
   const map = activeId();
@@ -256,9 +259,18 @@ async function ensureTokens() {
         const p = BC.freeSpot(g, [...on, ...rows], { x: 1, y: Math.floor(g.rows / 2) }, t);
         rows.push(tokenRow({ kind: 'pc', character_id: c.id, name: c.name, ...p }, map));
       }
+    const now = performance.now();
     for (const c of S.party.combatants || []) {
       if (c.kind !== 'monster') continue;
-      const tok = on.find(x => x.combatant_id === c.id);
+      // La ficha puede estar en otro mapa (encuentro preparado): no se duplica.
+      const tok = S.tokens.find(x => x.combatant_id === c.id);
+      if (!firstSeen.has(c.id)) firstSeen.set(c.id, now);
+      if (!tok && now - firstSeen.get(c.id) < 3000) {
+        // Recién lanzada: la pantalla del DM puede estar vinculándola con su ficha preparada.
+        clearTimeout(ensureTimer);
+        ensureTimer = setTimeout(ensureTokens, 3200);
+        continue;
+      }
       if (!tok) {
         const p = BC.freeSpot(g, [...on, ...rows], { x: g.cols - 2, y: Math.floor(g.rows / 2) }, t);
         rows.push(tokenRow({ kind: 'monster', combatant_id: c.id, name: c.name, hidden: c.hidden, ...p }, map));
@@ -269,6 +281,14 @@ async function ensureTokens() {
         S.channel?.send({ t: 'refresh' });
       }
       lastHidden.set(c.id, c.hidden);
+    }
+    // Fichas de criaturas que ya no están en combate: las preparadas vuelven a esperar ocultas; el resto se quita.
+    for (const k of S.tokens.filter(x => x.kind === 'monster' && !x.combatant_id)) {
+      if (k.stage && !k.hidden) await patchToken(k, { hidden: true });
+      else if (!k.stage) {
+        await Cloud.removeToken(k.id);
+        S.tokens = S.tokens.filter(x => x.id !== k.id);
+      }
     }
     if (rows.length) {
       const made = await Cloud.addTokens(rows);
@@ -282,6 +302,11 @@ async function ensureTokens() {
     ensuring = false;
     S.dirty = true;
   }
+}
+// Fichas recién creadas: el aviso en vivo puede llegar antes que la respuesta; sin duplicados.
+function addLocal(rows) {
+  S.tokens = [...S.tokens.filter(k => !rows.some(r => r.id === k.id)), ...rows];
+  S.dirty = true;
 }
 function tokenRow(x, map) {
   return {
@@ -297,6 +322,7 @@ function tokenRow(x, map) {
     y: x.y,
     size: x.size || 1,
     hidden: !!x.hidden,
+    ...(x.stage ? { stage: x.stage } : {}),
   };
 }
 
@@ -689,7 +715,8 @@ function drawCell(code, px, py, c, x, y) {
   }
 }
 function tokenPos(t) {
-  const r = S.drag?.token?.id === t.id ? S.drag.token : S.remote.get(t.id) || t;
+  const r =
+    S.drag?.token?.id === t.id ? S.drag.token : S.drag?.group?.find(k => k.id === t.id) || S.remote.get(t.id) || t;
   return { x: r.x, y: r.y };
 }
 function drawToken(t) {
@@ -736,6 +763,17 @@ function drawToken(t) {
   ctx.beginPath();
   ctx.arc(cx, cy, rad, 0, Math.PI * 2);
   ctx.stroke();
+  // Criatura preparada (todavía no está en combate): anillo punteado.
+  if (t.stage && !t.combatant_id) {
+    ctx.save();
+    ctx.setLineDash([c * 0.12, c * 0.08]);
+    ctx.lineWidth = 3 * (c / 70);
+    ctx.strokeStyle = S.group && t.stage.startsWith('enc:' + S.group + ':') ? '#e0be80' : 'rgba(255,255,255,0.9)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, rad + c * 0.08, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
   // Anillo de PG.
   if (d.ring !== null && d.ring !== undefined && t.kind !== 'object') {
     ctx.lineWidth = 5 * (c / 70);
@@ -872,10 +910,17 @@ canvas.addEventListener('pointerdown', e => {
     cell = toCell(w);
   press = { p, at: performance.now(), moved: false, timer: 0 };
   const tool = S.tool;
-  if (tool === 'move' || tool === 'tokens') {
+  if (tool === 'move' || tool === 'tokens' || tool === 'enc') {
     const t = hitToken(w);
+    const group = t && S.group && t.stage?.startsWith('enc:' + S.group + ':') ? groupTokens(S.group) : null;
     if (t && canMove(t))
-      S.drag = { token: { ...t }, from: { x: t.x, y: t.y }, grab: { x: w.x, y: w.y }, start: { x: t.x, y: t.y } };
+      S.drag = {
+        token: { ...t },
+        from: { x: t.x, y: t.y },
+        grab: { x: w.x, y: w.y },
+        start: { x: t.x, y: t.y },
+        group: group?.filter(k => k.id !== t.id).map(k => ({ ...k, sx: k.x, sy: k.y })),
+      };
     else S.drag = { pan: { x: S.view.x, y: S.view.y, p }, tap: t?.id || null };
     // Mantener apretado en un lugar vacío: señal para todos.
     press.timer = setTimeout(() => {
@@ -931,6 +976,10 @@ canvas.addEventListener('pointermove', e => {
     const c = cellPx();
     d.token.x = d.start.x + (w.x - d.grab.x) / c;
     d.token.y = d.start.y + (w.y - d.grab.y) / c;
+    for (const k of d.group || []) {
+      k.x = k.sx + d.token.x - d.start.x;
+      k.y = k.sy + d.token.y - d.start.y;
+    }
     sendDrag(d.token);
   } else if (d.ruler) d.ruler.b = cell;
   else if (d.rect) d.rect.b = cell;
@@ -996,6 +1045,7 @@ async function dropToken(d) {
     y = Math.max(0, Math.min(S.grid.rows - Math.max(1, size), Math.round(t.y)));
   const moved = x !== d.start.x || y !== d.start.y;
   S.channel?.send({ t: 'drop', id: t.id });
+  if (moved && d.group?.length) return dropGroup(d, x - d.start.x, y - d.start.y);
   if (!moved) {
     S.sel = t.id;
     return card();
@@ -1065,7 +1115,7 @@ function tools() {
     t('ruler', '📏', 'Medir') +
     t('ping', '📍', 'Señalar') +
     (S.isDM && S.mapId && !S.asPlayer
-      ? t('fog', '🌫', 'Niebla') + t('paint', '🧱', 'Terreno') + t('tokens', '♟', 'Fichas')
+      ? t('fog', '🌫', 'Niebla') + t('paint', '🧱', 'Terreno') + t('tokens', '♟', 'Fichas') + t('enc', '⚔', 'Encuentros')
       : '');
   hint(
     {
@@ -1077,6 +1127,9 @@ function tools() {
       fog: 'Pintá para revelar u ocultar. «Sala» revela un cuarto entero hasta sus muros.',
       paint: 'Elegí un terreno y pintá. «Sala» traza muros alrededor y rellena el piso.',
       tokens: 'Tocá una ficha para editarla.',
+      enc: S.group
+        ? 'Arrastrá cualquier criatura del grupo: se mueven juntas.'
+        : 'Colocá tus encuentros preparados. Arrastrá cada criatura o mové el grupo entero.',
     }[S.tool] || '',
   );
 }
@@ -1122,9 +1175,10 @@ function panel() {
         .join('') || '<p class="small muted">Sin fichas en este mapa.</p>'
     }</div>`;
   }
+  if (S.tool === 'enc' && S.isDM) html = encounterPanel();
   el.hidden = !html;
   // Plegable: el panel no tapa el mapa mientras pintás.
-  const title = { fog: 'Niebla', paint: 'Terreno', tokens: 'Fichas' }[S.tool] || '';
+  const title = { fog: 'Niebla', paint: 'Terreno', tokens: 'Fichas', enc: 'Encuentros preparados' }[S.tool] || '';
   el.classList.toggle('min', S.panelMin);
   el.innerHTML = html
     ? `<div class="board-panel-head"><b>${title}</b><button type="button" class="icon-btn" data-action="panel-min" aria-expanded="${!S.panelMin}" aria-label="${S.panelMin ? 'Mostrar opciones' : 'Plegar opciones'}">${S.panelMin ? '▴' : '▾'}</button></div>${S.panelMin ? '' : html}`
@@ -1140,7 +1194,7 @@ function card() {
   const d = info(t),
     dm = S.isDM && !S.asPlayer;
   el.hidden = false;
-  el.innerHTML = `<div class="board-card-head"><i style="background:${esc(t.color || '#888')}">${esc(t.label)}</i><div><b>${esc(t.name)}</b><p class="small muted">${{ pc: 'Personaje', monster: 'Criatura', npc: 'PNJ', object: 'Objeto' }[t.kind]}${d.status ? ' · ' + esc(d.status) : ''}${d.conditions.length ? ' · ' + esc(d.conditions.join(', ')) : ''}</p></div><button type="button" class="icon-btn" data-action="deselect" aria-label="Cerrar">×</button></div>${
+  el.innerHTML = `<div class="board-card-head"><i style="background:${esc(t.color || '#888')}">${esc(t.label)}</i><div><b>${esc(t.name)}</b><p class="small muted">${t.stage && !t.combatant_id ? 'Preparada · ' + esc(prepared().find(e => t.stage.startsWith('enc:' + e.id + ':'))?.name || 'encuentro') + ' · ' : ''}${{ pc: 'Personaje', monster: 'Criatura', npc: 'PNJ', object: 'Objeto' }[t.kind]}${d.status ? ' · ' + esc(d.status) : ''}${d.conditions.length ? ' · ' + esc(d.conditions.join(', ')) : ''}</p></div><button type="button" class="icon-btn" data-action="deselect" aria-label="Cerrar">×</button></div>${
     dm
       ? `<div class="actions">${button(t.hidden ? 'Mostrar' : 'Ocultar', 'token-hide', 'secondary', `data-id="${t.id}"`)}${button('Tamaño −', 'token-size', 'secondary', `data-id="${t.id}" data-d="-1"`)}${button('Tamaño +', 'token-size', 'secondary', `data-id="${t.id}" data-d="1"`)}${button('Editar', 'token-edit', 'secondary', `data-id="${t.id}"`)}${button('Quitar', 'token-remove', 'danger', `data-id="${t.id}"`)}</div>`
       : ''
@@ -1164,6 +1218,11 @@ document.addEventListener('click', async e => {
       S.tool = el.dataset.tool;
       if (S.tool !== 'tokens') S.sel = S.sel && S.tool === 'move' ? S.sel : null;
     } else if (a === 'fit') fit();
+    else if (a === 'panel-min') S.panelMin = !S.panelMin;
+    else if (a === 'enc-place') await placeEncounter(el.dataset.id);
+    else if (a === 'enc-remove') await removeEncounter(el.dataset.id);
+    else if (a === 'enc-group') S.group = S.group === el.dataset.id ? null : el.dataset.id;
+    else if (a === 'enc-show') showGroup(el.dataset.id);
     else if (a === 'fullscreen') document.documentElement.requestFullscreen?.();
     else if (a === 'follow') S.follow = !S.follow;
     else if (a === 'as-player') S.asPlayer = !S.asPlayer;
@@ -1224,7 +1283,9 @@ document.addEventListener('click', async e => {
       toast('Enlace copiado.');
     } else return;
   } catch (err) {
-    toast(err.message);
+    toast(
+      /stage/.test(err.message) ? 'Falta ejecutar supabase/migrations/010_board_staging.sql en Supabase.' : err.message,
+    );
   }
   ui();
 });
@@ -1270,6 +1331,121 @@ function tvDialog() {
     'Tablero en la tele',
     `<ol class="small"><li>En el navegador de la tele (o una compu conectada), abrí este enlace.</li><li>Si no entró nunca a la mesa, pide el código <b class="table-code">${esc(S.party.campaign.code)}</b>: se suma como una pantalla más, sin ficha.</li><li>La tele muestra la vista de los jugadores: con niebla y sin fichas ocultas. Tocá ⛶ para pantalla completa.</li></ol><p><code class="board-url">${esc(url)}</code></p><div class="actions">${button('Copiar enlace', 'copy-tv', '', `data-url="${esc(url)}"`)}<a class="button secondary" href="${esc(url)}" target="_blank" rel="noopener">Abrir acá</a>${button('Enviar mi vista a la tele', 'send-view')}</div><p class="small muted">«Enviar mi vista» encuadra la tele (y a quien siga al DM) en la zona que estás viendo.</p>`,
   );
+}
+
+// ---------- Encuentros preparados sobre el mapa ----------
+// Se arman en la pantalla del DM (en este dispositivo). Acá se colocan como fichas ocultas marcadas
+// «enc:<encuentro>:<criatura>»; al lanzarlos, cada criatura del combate ocupa su ficha y aparece donde quedó.
+function prepared() {
+  try {
+    const v = JSON.parse(localStorage.getItem('dnd-dm-prepared-' + S.id) || '[]');
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+}
+const groupTokens = (encId, map = S.mapId) =>
+  S.tokens.filter(k => k.map_id === map && String(k.stage || '').startsWith('enc:' + encId + ':'));
+function encounterPanel() {
+  const list = prepared();
+  if (!list.length)
+    return '<p class="small">Todavía no hay encuentros preparados en este dispositivo. Armalos en la pantalla del DM («Encuentros preparados») y volvé acá para colocarlos.</p>';
+  return `<p class="small muted">Las criaturas quedan ocultas hasta que lanzás el encuentro desde la pantalla del DM: ahí aparecen donde las dejaste.</p><div class="board-enc-list">${list
+    .map(e => {
+      const here = groupTokens(e.id),
+        elsewhere = [
+          ...new Set(
+            S.tokens
+              .filter(k => String(k.stage || '').startsWith('enc:' + e.id + ':') && k.map_id !== S.mapId)
+              .map(k => k.map_id),
+          ),
+        ],
+        other = S.maps.find(m => m.id === elsewhere[0])?.name,
+        live = here.filter(k => k.combatant_id).length,
+        missing = (e.monsters || []).filter(
+          m => m.uid && !here.some(k => k.stage === 'enc:' + e.id + ':' + m.uid),
+        ).length;
+      const where = here.length
+        ? `Colocado en este mapa${here.length < (e.monsters || []).length ? ' (' + here.length + ')' : ''}${live ? ' · ' + live + ' en combate' : ''}`
+        : other
+          ? 'Colocado en «' + esc(other) + '»'
+          : 'Sin colocar';
+      return `<div class="board-enc ${S.group === e.id ? 'on' : ''}"><div><b>${esc(e.name)}</b><p class="small muted">${(e.monsters || []).length} criatura${(e.monsters || []).length === 1 ? '' : 's'} · ${where}</p></div><div class="actions">${
+        !here.length || missing
+          ? button(
+              here.length ? 'Colocar las que faltan' : other ? 'Traer a este mapa' : 'Colocar acá',
+              'enc-place',
+              '',
+              `data-id="${esc(e.id)}"`,
+            )
+          : ''
+      }${here.length ? button(S.group === e.id ? 'Mover de a una' : 'Mover juntas', 'enc-group', 'secondary', `data-id="${esc(e.id)}"`) + button('Ver', 'enc-show', 'secondary', `data-id="${esc(e.id)}"`) + button('Quitar', 'enc-remove', 'text-btn danger-text', `data-id="${esc(e.id)}"`) : ''}</div></div>`;
+    })
+    .join('')}</div>`;
+}
+async function placeEncounter(encId) {
+  const enc = prepared().find(e => e.id === encId);
+  if (!enc?.monsters?.length) throw Error('Ese encuentro no tiene criaturas.');
+  if (enc.monsters.some(m => !m.uid))
+    throw Error('Abrí la pantalla del DM una vez para actualizar este encuentro y volvé a intentar.');
+  // Si estaba en otro mapa, se trae (las fichas preparadas viven en un solo mapa).
+  const away = S.tokens.filter(k => String(k.stage || '').startsWith('enc:' + encId + ':') && k.map_id !== S.mapId);
+  for (const k of away) await Cloud.removeToken(k.id);
+  S.tokens = S.tokens.filter(k => !away.includes(k));
+  const here = groupTokens(encId);
+  const r = canvas.getBoundingClientRect(),
+    center = toCell(toWorld(r.width / 2, r.height / 2));
+  // Numeración por nombre, como al lanzar: «Goblin 1», «Goblin 2»…
+  const count = {},
+    total = {};
+  for (const m of enc.monsters) total[m.name] = (total[m.name] || 0) + 1;
+  const rows = [];
+  for (const m of enc.monsters) {
+    count[m.name] = (count[m.name] || 0) + 1;
+    const stage = 'enc:' + encId + ':' + m.uid;
+    if (here.some(k => k.stage === stage)) continue;
+    const name = total[m.name] > 1 ? m.name + ' ' + count[m.name] : m.name;
+    const p = BC.freeSpot(S.grid, [...mapTokens(), ...rows], center, S.terrain);
+    rows.push(tokenRow({ kind: 'monster', name, hidden: true, stage, ...p }, S.mapId));
+  }
+  addLocal(await Cloud.addTokens(rows));
+  S.group = encId;
+  toast(`«${enc.name}» colocado. Arrastralo junto o criatura por criatura.`);
+}
+async function removeEncounter(encId) {
+  const list = groupTokens(encId);
+  if (!confirm(`¿Quitar las ${list.length} criaturas preparadas de este mapa?`)) return;
+  for (const k of list) await Cloud.removeToken(k.id);
+  S.tokens = S.tokens.filter(k => !list.includes(k));
+  if (S.group === encId) S.group = null;
+}
+function showGroup(encId) {
+  const list = groupTokens(encId);
+  if (!list.length) return;
+  const c = cellPx(),
+    o = origin(),
+    x0 = Math.min(...list.map(k => k.x)) - 2,
+    y0 = Math.min(...list.map(k => k.y)) - 2,
+    x1 = Math.max(...list.map(k => k.x + (k.size || 1))) + 2,
+    y1 = Math.max(...list.map(k => k.y + (k.size || 1))) + 2;
+  fitRect(o.x + x0 * c, o.y + y0 * c, (x1 - x0) * c, (y1 - y0) * c);
+  S.group = encId;
+}
+// Mover el grupo entero: todas las fichas se desplazan lo mismo y se guardan juntas.
+async function dropGroup(d, dx, dy) {
+  const all = [d.token, ...d.group].map(k => S.tokens.find(x => x.id === k.id)).filter(Boolean);
+  const before = all.map(k => ({ ...k }));
+  const clampX = (v, k) => Math.max(0, Math.min(S.grid.cols - Math.max(1, k.size || 1), v)),
+    clampY = (v, k) => Math.max(0, Math.min(S.grid.rows - Math.max(1, k.size || 1), v));
+  const moved = all.map(k => ({ ...k, x: clampX(k.x + dx, k), y: clampY(k.y + dy, k) }));
+  S.tokens = S.tokens.map(k => moved.find(m => m.id === k.id) || k);
+  S.dirty = true;
+  try {
+    await Promise.all(moved.map(k => Cloud.updateToken(k.id, { x: k.x, y: k.y })));
+  } catch (e) {
+    S.tokens = S.tokens.map(k => before.find(b => b.id === k.id) || k);
+    toast(e.message);
+  }
 }
 
 // ---------- Nuevos mapas ----------
@@ -1458,7 +1634,7 @@ function tokenDialog(t, kind = t?.kind) {
           center = toCell(toWorld(r.width / 2, r.height / 2));
         const p = BC.freeSpot(S.grid, mapTokens(), center, S.terrain);
         const [row] = await Cloud.addTokens([tokenRow({ ...patch, kind, ...p }, S.mapId)]);
-        S.tokens.push(row);
+        addLocal([row]);
         S.sel = row.id;
       } else {
         await patchToken(t, patch);
