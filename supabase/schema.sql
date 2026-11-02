@@ -605,3 +605,12 @@ end $$;
 
 revoke all on function public.redeem_transfer_token(text) from public;
 grant execute on function public.redeem_transfer_token(text) to authenticated;
+
+-- ---------- Keep-alive (migración 009) ----------
+create or replace function public.keep_alive() returns timestamptz
+language sql stable as $$
+  select now();
+$$;
+grant execute on function public.keep_alive() to anon, authenticated;
+-- Que la API vea la función nueva sin esperar.
+notify pgrst, 'reload schema';
