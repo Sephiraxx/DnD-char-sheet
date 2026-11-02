@@ -243,6 +243,113 @@
     return { x: cx, y: cy };
   }
 
+  // ---------- Combate en el tablero: alcance, flanqueo y ataques de oportunidad ----------
+  // Una ficha ocupa casillas enteras: (x, y) es su esquina superior izquierda y size su lado (mínimo 1).
+  const side = k => Math.max(1, Math.round(k.size || 1));
+  // Casillas de separación entre dos fichas, de borde a borde (1 = adyacentes, también en diagonal).
+  function gap(a, b) {
+    const ax = Math.round(a.x),
+      ay = Math.round(a.y),
+      bx = Math.round(b.x),
+      by = Math.round(b.y);
+    const dx = Math.max(0, bx - (ax + side(a) - 1), ax - (bx + side(b) - 1)),
+      dy = Math.max(0, by - (ay + side(a) - 1), ay - (by + side(b) - 1));
+    return Math.max(dx, dy);
+  }
+  const distanceFt = (a, b, feetPerSquare = 5) => gap(a, b) * feetPerSquare;
+  // ¿b está dentro del alcance de a? (alcance en pies, 5 por defecto)
+  const inReach = (a, b, reach = 5, feetPerSquare = 5) => {
+    const g = gap(a, b);
+    return g > 0 && g * feetPerSquare <= reach;
+  };
+  // Flanqueo (regla opcional de la Guía del DM): atacante y aliado adyacentes al objetivo y la línea
+  // entre los centros de sus espacios entra y sale por lados (o esquinas) opuestos del espacio del objetivo.
+  function flanks(attacker, ally, target) {
+    if (gap(attacker, target) !== 1 || gap(ally, target) !== 1) return false;
+    const c = k => ({ x: Math.round(k.x) + side(k) / 2, y: Math.round(k.y) + side(k) / 2 });
+    const x0 = Math.round(target.x),
+      y0 = Math.round(target.y),
+      x1 = x0 + side(target),
+      y1 = y0 + side(target);
+    const p = c(attacker),
+      q = c(ally),
+      dx = q.x - p.x,
+      dy = q.y - p.y,
+      eps = 1e-9;
+    let t0 = 0,
+      t1 = 1;
+    for (const [pp, qq] of [
+      [-dx, p.x - x0],
+      [dx, x1 - p.x],
+      [-dy, p.y - y0],
+      [dy, y1 - p.y],
+    ]) {
+      if (Math.abs(pp) < eps) {
+        if (qq < -eps) return false;
+      } else {
+        const r = qq / pp;
+        if (pp < 0) t0 = Math.max(t0, r);
+        else t1 = Math.min(t1, r);
+      }
+    }
+    if (t0 >= t1 - eps) return false; // no cruza (o solo roza una esquina)
+    const sides = t => {
+      const x = p.x + dx * t,
+        y = p.y + dy * t,
+        s = new Set();
+      if (Math.abs(x - x0) < 1e-6) s.add('L');
+      if (Math.abs(x - x1) < 1e-6) s.add('R');
+      if (Math.abs(y - y0) < 1e-6) s.add('T');
+      if (Math.abs(y - y1) < 1e-6) s.add('B');
+      return s;
+    };
+    const a = sides(t0),
+      b = sides(t1);
+    return (
+      (a.has('L') && b.has('R')) ||
+      (a.has('R') && b.has('L')) ||
+      (a.has('T') && b.has('B')) ||
+      (a.has('B') && b.has('T'))
+    );
+  }
+  // Primer aliado que flanquea con el atacante (o null).
+  const flankingAlly = (attacker, target, allies) =>
+    allies.find(a => a.id !== attacker.id && a.id !== target.id && flanks(attacker, a, target)) || null;
+  // Ataques de oportunidad: quiénes ven salir de su alcance a la ficha a lo largo de su recorrido.
+  // path: posiciones sucesivas del que se mueve; others: [{ token, reach }] de los enemigos que pueden reaccionar.
+  function provokers(mover, path, others, feetPerSquare = 5) {
+    const out = [];
+    for (const { token, reach } of others) {
+      if (token.id === mover.id) continue;
+      for (let i = 1; i < path.length; i++) {
+        const before = { ...mover, ...path[i - 1] },
+          after = { ...mover, ...path[i] };
+        if (inReach(token, before, reach, feetPerSquare) && !inReach(token, after, reach, feetPerSquare)) {
+          out.push({ token, at: path[i - 1] });
+          break;
+        }
+      }
+    }
+    return out;
+  }
+  // Recorrido casilla por casilla entre dos puntos (para completar arrastres rápidos).
+  function steps(a, b) {
+    const out = [{ x: Math.round(a.x), y: Math.round(a.y) }],
+      n = Math.max(Math.abs(Math.round(b.x) - Math.round(a.x)), Math.abs(Math.round(b.y) - Math.round(a.y)));
+    for (let i = 1; i <= n; i++)
+      out.push({ x: Math.round(a.x + ((b.x - a.x) * i) / n), y: Math.round(a.y + ((b.y - a.y) * i) / n) });
+    return out;
+  }
+  // Alcance de un monstruo según sus acciones («Alcance 10 pies» / «reach 10 ft.»). 5 si no dice.
+  function reachFromText(texts) {
+    let best = 5;
+    for (const t of texts) {
+      for (const m of String(t || '').matchAll(/(?:alcance|reach)\s*(\d+)\s*(?:pies|ft)/gi))
+        best = Math.max(best, Number(m[1]));
+    }
+    return best;
+  }
+
   // ---------- Fichas ----------
   const PALETTE = ['#e0be80', '#83c8bd', '#b39ddb', '#90caf9', '#a5d6a7', '#ffcc80', '#f48fb1', '#80deea'];
   function initials(name) {
@@ -342,6 +449,14 @@
     sizeFor,
     parseUVTT,
     gridForImage,
+    gap,
+    distanceFt,
+    inReach,
+    flanks,
+    flankingAlly,
+    provokers,
+    steps,
+    reachFromText,
   };
   if (typeof module !== 'undefined') module.exports = api;
   root.BoardCore = api;

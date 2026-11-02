@@ -407,3 +407,128 @@
   padding: 4px 10px;
   font-size: 0.8rem;
 }
+
+/* ---------- Tablero dentro de la ficha o de la pantalla del DM ---------- */
+.board-main {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+.board-main .board-stage {
+  flex: 1;
+  min-width: 0;
+}
+.board-embed {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: #071014;
+  overscroll-behavior: none;
+}
+.board-embed[hidden],
+.board-dock[hidden] {
+  display: none;
+}
+html.board-open,
+html.board-open body {
+  overflow: hidden;
+}
+.board-dock {
+  width: min(400px, 40vw);
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg, #0b1a1e);
+  border-left: 1px solid var(--line);
+}
+.board-dock-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  font-size: 0.82rem;
+}
+.board-dock-head > div:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.board-dock-head b {
+  font-weight: 600;
+}
+.board-dock-head .actions {
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+.board-dock-head .button {
+  min-height: 32px;
+  padding: 2px 10px;
+  font-size: 0.78rem;
+}
+.board-dock-head .icon-btn {
+  min-width: 32px;
+  min-height: 32px;
+}
+.board-dock-body {
+  overflow: auto;
+  padding: 10px;
+  flex: 1;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+/* La vista compacta de combate dentro del tablero: sin botones que salen del tablero. */
+.board-dock [data-action='combat-compact'],
+.board-dock [data-action='board-open'] {
+  display: none;
+}
+.board-dock .cc-bar .eyebrow {
+  font-size: 0.65rem;
+}
+.board-target-line {
+  margin: 4px 0 0;
+  color: #ff9b9b;
+}
+.board-target-line b {
+  color: var(--gold);
+}
+.board-dock .dm-dock-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0 0 10px;
+}
+.board-dock .dm-dock-action {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+.board-dock .dm-dock-action p {
+  margin: 0 0 6px;
+}
+.board-dock .dm-dock-action .button {
+  min-height: 34px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+@media (max-width: 900px) {
+  .board-main {
+    flex-direction: column;
+  }
+  .board-dock {
+    width: auto;
+    max-height: 46%;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+  .board-dock.min {
+    max-height: none;
+  }
+}
+.board-dock-body .button {
+  min-height: 36px;
+  padding: 4px 12px;
+  font-size: 0.82rem;
+}

@@ -321,6 +321,7 @@ function render() {
       }[view] || combat
     )();
   scrollTo(0, y);
+  globalThis.Board?.refresh();
 }
 function go() {
   hideToast();

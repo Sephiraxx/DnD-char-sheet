@@ -26,14 +26,33 @@ const RollUI = (() => {
       const out = ['Paralizado', 'Aturdido', 'Inconsciente', 'Petrificado'].find(has);
       if (out && ['str', 'dex'].includes(ability)) autoFail = out;
     }
+    return combine(adv, dis, autoFail);
+  }
+  function combine(adv, dis, autoFail = '', extra = []) {
     const mode = adv.length && !dis.length ? 'adv' : dis.length && !adv.length ? 'dis' : '';
     const notes = [
       ...adv.map(c => c + ': ventaja'),
       ...dis.map(c => c + ': desventaja'),
       adv.length && dis.length ? 'Ventaja y desventaja se anulan' : '',
       autoFail ? autoFail + ': falla automáticamente las salvaciones de FUE y DES' : '',
+      ...extra,
     ].filter(Boolean);
-    return { mode, notes, autoFail };
+    return { mode, notes, autoFail, adv, dis };
+  }
+  // Lo que se ve en el tablero: flanqueo (ventaja cuerpo a cuerpo, regla de la Guía del DM) y un enemigo
+  // al lado al atacar a distancia (desventaja). reach: alcance cuerpo a cuerpo; ranged: ataque a distancia.
+  function boardMods(mods, { ranged = false, reach = 5 } = {}) {
+    const b = typeof TableUI !== 'undefined' && TableUI.boardContext?.();
+    if (!b?.target) return mods;
+    const adv = [...(mods.adv || [])],
+      dis = [...(mods.dis || [])],
+      extra = [];
+    if (!ranged && b.flank) adv.push('Flanqueo con ' + b.flankWith);
+    if (ranged && b.foeAdjacent) dis.push('Enemigo a 5 pies (ataque a distancia)');
+    if (!ranged && b.distance > reach)
+      extra.push(`${b.name} está a ${b.distance} pies: fuera de tu alcance de ${reach}`);
+    if (adv.length === (mods.adv || []).length && dis.length === (mods.dis || []).length && !extra.length) return mods;
+    return combine(adv, dis, mods.autoFail, extra);
   }
 
   // ---------- Dados de bonificación que da el DM (d4, d6…) ----------
@@ -366,6 +385,7 @@ const RollUI = (() => {
   // Objetivos del conjuro: criaturas del encuentro, aliados y vos.
   function targetFields(info, sp) {
     const t = TableUI.targets(),
+      first = TableUI.preferredTarget(t.monsters),
       who = (value, label, checked = false) =>
         `<label class="check"><input type="checkbox" name="who" value="${esc(value)}" ${checked ? 'checked' : ''}>${esc(label)}</label>`;
     if (info.attack && t.monsters.length)
@@ -376,11 +396,11 @@ const RollUI = (() => {
           ...t.monsters.map(m => [m.id, m.name + ' · ' + TableUI.statusLabel(m.status)]),
           ['', 'Otro objetivo (lo resuelve la mesa)'],
         ],
-        t.monsters[0].id,
+        first,
       );
     // Conjuros de salvación (también de área): criaturas, y aliados o vos si quedan dentro.
     if (info.save && (t.monsters.length || t.allies.length))
-      return `${t.monsters.length ? `<fieldset class="target-list"><legend>Criaturas (el DM tira sus salvaciones)</legend>${t.monsters.map(m => who('mon:' + m.id, m.name + ' · ' + TableUI.statusLabel(m.status))).join('')}</fieldset>` : ''}<fieldset class="target-list"><legend>También en el área (cada uno tira su salvación)</legend>${who('self', 'Vos (' + state.name + ')')}${t.allies.map(a => who('pc:' + a.characterId, a.name)).join('')}</fieldset>`;
+      return `${t.monsters.length ? `<fieldset class="target-list"><legend>Criaturas (el DM tira sus salvaciones)</legend>${t.monsters.map(m => who('mon:' + m.id, m.name + ' · ' + TableUI.statusLabel(m.status), m.id === TableUI.boardContext()?.combatantId)).join('')}</fieldset>` : ''}<fieldset class="target-list"><legend>También en el área (cada uno tira su salvación)</legend>${who('self', 'Vos (' + state.name + ')')}${t.allies.map(a => who('pc:' + a.characterId, a.name)).join('')}</fieldset>`;
     // Daño automático (Proyectil mágico…): se elige la criatura que lo recibe.
     if (info.dice && !info.heal && !info.attack && !info.save && t.monsters.length)
       return select(
@@ -390,7 +410,7 @@ const RollUI = (() => {
           ...t.monsters.map(m => [m.id, m.name + ' · ' + TableUI.statusLabel(m.status)]),
           ['', 'Otro objetivo (lo resuelve la mesa)'],
         ],
-        t.monsters[0].id,
+        first,
       );
     if (info.heal || (!info.attack && !info.save && TableUI.link() && isBuff(sp)))
       return `<fieldset class="target-list"><legend>${info.heal ? 'A quién curás' : 'A quién afecta'}</legend>${who('self', 'Vos (' + state.name + ')', true)}${t.allies.map(a => who('pc:' + a.characterId, a.name)).join('')}</fieldset>`;
@@ -408,7 +428,8 @@ const RollUI = (() => {
       ability = Classes.casting(caster(sp)).ability,
       mod = st.mods[ability];
     spellSession = { sp, info, crit: false, hitTarget: null, slot };
-    const mods = conditionMods(state, 'attack');
+    // Conjuros de toque: ataque cuerpo a cuerpo (cuenta el flanqueo); el resto, a distancia.
+    const mods = boardMods(conditionMods(state, 'attack'), { ranged: !/toque|touch/i.test(sp.range || '') });
     modal(
       sp.name + (slot > sp.level ? ' · nivel ' + slot : ''),
       `${targetFields(info, sp)}${!info.dice && !info.attack && !info.save ? `<p class="small">${esc(sp.brief || '')}</p><div class="actions">${button('Aplicar efecto', 'spell-apply-effect', '')}</div>` : ''}${info.attack ? `<h3>Ataque de conjuro ${sign(st.attack)}</h3>${d20Fields(mods, '', { kind: 'attack' })}<div class="actions">${button('Tirar ataque', 'spell-roll-attack', '')}</div>` : ''}
@@ -709,6 +730,7 @@ const RollUI = (() => {
   }
   return {
     conditionMods,
+    boardMods,
     d20,
     d20Fields,
     readD20,
