@@ -26,6 +26,13 @@ const TableUI = (() => {
     online = [],
     booted = false;
   const link = () => Cloud.link(KEY);
+  // Lo que se eligió en el tablero (objetivo, distancia, flanqueo): las ventanas de ataque lo usan.
+  let boardCtx = null;
+  const boardContext = () => boardCtx;
+  const preferredTarget = list => {
+    const id = boardCtx?.combatantId;
+    return list.some(f => f.id === id) ? id : list[0]?.id;
+  };
 
   // Ids de órdenes ya aplicadas en este dispositivo, para no aplicarlas dos veces.
   const appliedKey = () => KEY + '-cloud-applied';
@@ -208,7 +215,7 @@ const TableUI = (() => {
       header(
         PV.esc(l.campaignName),
         `Código <b class="table-code">${PV.esc(l.code)}</b>${dm ? ' · DM: ' + PV.esc(dm.display_name || 'sin nombre') + (online.some(p => p.role === 'dm') ? ' <span class="online-dot" title="Conectado"></span>' : '') : ''}${party ? '<br><span class="small">Libros de la mesa: ' + PV.esc(Cloud.cleanSettings(party.campaign.settings).sources.join(', ')) + (party.campaign.settings?.rules ? ' · Reglas de la casa: ' + PV.esc(party.campaign.settings.rules) : '') + '</span>' : ''}`,
-        `<a class="button secondary" href="./board.html#${encodeURIComponent(l.campaignId)}">Tablero</a>` +
+        button('Tablero', 'board-open', '') +
           button('Actualizar', 'table-refresh') +
           button('Salir de la mesa', 'table-leave'),
       ) +
@@ -446,6 +453,7 @@ const TableUI = (() => {
   function onChange(table, payload) {
     const l = link();
     if (!l) return;
+    globalThis.Board?.onParty(table);
     if (table === 'presence') {
       online = payload;
       redraw();
@@ -846,6 +854,9 @@ const TableUI = (() => {
     initiativeBanner,
     encounter,
     targets,
+    boardContext,
+    setBoardContext: c => (boardCtx = c),
+    preferredTarget,
     sendTo,
     isMyTurn,
     link,

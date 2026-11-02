@@ -209,6 +209,7 @@ async function refresh() {
   draw();
 }
 function onChange(table, payload) {
+  globalThis.Board?.onParty(table);
   if (table === 'presence') {
     online = payload;
     draw();
@@ -258,7 +259,7 @@ function draw() {
   const list = summaries();
   const t = tracker();
   $('#main').innerHTML =
-    `<div class="dm-head"><div><p class="eyebrow">MESA EN VIVO · ${list.length} ficha${list.length === 1 ? '' : 's'}</p><h1>${esc(party.campaign.name)}</h1><p class="small muted">${settingsSummary(Cloud.cleanSettings(party.campaign.settings))}</p></div><div class="dm-code"><span>CÓDIGO</span><b>${esc(party.campaign.code)}</b>${button('Copiar', 'copy-code', 'secondary', `data-code="${esc(party.campaign.code)}"`)}</div><div class="dm-toolbar">${button('Pedir tirada a todos', 'request', '')}<a class="button secondary" href="./board.html#${encodeURIComponent(party.campaign.id)}">Tablero</a>${button('Mensaje a todos', 'message')}${button('Descanso corto', 'rest-short')}${button('Descanso largo', 'rest-long')}<details class="dm-menu"><summary class="button secondary">Mesa ▾</summary><div class="dm-menu-list">${button('Ajustes de la mesa', 'settings')}${button('Mis mesas', 'home')}${button('Eliminar mesa', 'delete-table', 'danger', `data-id="${esc(party.campaign.id)}" data-name="${esc(party.campaign.name)}"`)}</div></details></div></div>
+    `<div class="dm-head"><div><p class="eyebrow">MESA EN VIVO · ${list.length} ficha${list.length === 1 ? '' : 's'}</p><h1>${esc(party.campaign.name)}</h1><p class="small muted">${settingsSummary(Cloud.cleanSettings(party.campaign.settings))}</p></div><div class="dm-code"><span>CÓDIGO</span><b>${esc(party.campaign.code)}</b>${button('Copiar', 'copy-code', 'secondary', `data-code="${esc(party.campaign.code)}"`)}</div><div class="dm-toolbar">${button('Pedir tirada a todos', 'request', '')}${button('Tablero', 'board-open', '')}${button('Mensaje a todos', 'message')}${button('Descanso corto', 'rest-short')}${button('Descanso largo', 'rest-long')}<details class="dm-menu"><summary class="button secondary">Mesa ▾</summary><div class="dm-menu-list">${button('Ajustes de la mesa', 'settings')}${button('Mis mesas', 'home')}${button('Eliminar mesa', 'delete-table', 'danger', `data-id="${esc(party.campaign.id)}" data-name="${esc(party.campaign.name)}"`)}</div></details></div></div>
   ${error ? `<div class="banner"><p>${esc(error)}</p>${button('Reintentar', 'refresh')}</div>` : ''}
   <div class="dm-layout"><div class="stack">
     <div class="party-grid">${
@@ -284,6 +285,7 @@ function draw() {
     ${TableExtras.dmHtml(party)}
     <section class="card"><div class="card-header"><h2>Notas del DM</h2></div><label class="field"><span class="visually-hidden">Notas privadas</span><textarea id="dm-notes" style="min-height:160px" placeholder="Solo se guardan en este dispositivo.">${esc(localStorage.getItem(notesKey()) || '')}</textarea></label></section>
   </div></div>`;
+  globalThis.Board?.refresh();
 }
 
 function drawHome() {

@@ -200,7 +200,7 @@ function combatCompact() {
   const options = combatOptions.filter(o => o.kind === combatTab && combatOptionAllowed(o));
   const effects = Effects.list(state);
   return `<div class="cc">
-  <div class="cc-bar"><p class="eyebrow">${esc(state.name)} · ${c.active ? (on ? 'ES TU TURNO' : 'TURNO AJENO') : 'COMBATE'}${c.active ? ' · turno ' + c.turn : ''}</p><div class="actions">${button('Tirar dados', 'dice')}${button('Vista completa', 'combat-compact')}</div></div>
+  <div class="cc-bar"><p class="eyebrow">${esc(state.name)} · ${c.active ? (on ? 'ES TU TURNO' : 'TURNO AJENO') : 'COMBATE'}${c.active ? ' · turno ' + c.turn : ''}</p><div class="actions">${TableUI.link() ? button('Tablero', 'board-open', '') : ''}${button('Tirar dados', 'dice')}${button('Vista completa', 'combat-compact')}</div></div>
   <div class="cc-stats">
     <button type="button" class="cc-stat cc-hp ${v.hp !== null && v.hp <= v.maxHP / 4 ? 'low' : ''}" data-action="combat-hp"><b>${v.hp ?? '—'}<small>/${v.maxHP}</small></b><span>PG${state.wildShape ? ' bestia' : ''}${state.temp ? ' · +' + state.temp + ' temp' : ''}</span></button>
     <div class="cc-stat"><b>${v.ac}</b><span>CA</span></div>
@@ -276,7 +276,8 @@ function combatView() {
     header(
       'Tu próxima jugada.',
       `${esc(state.name)} · ${MulticlassUI.label(state)}${Classes.id(state) === 'bard' && state.subclass === 'eloquence' && state.level >= 3 ? ' de Elocuencia' : ''} · Reglas 2014`,
-      button('Vista compacta', 'combat-compact', '') +
+      (TableUI.link() ? button('Tablero', 'board-open', '') : '') +
+        button('Vista compacta', 'combat-compact', '') +
         button('Descansar', 'rest') +
         button('Tirar dados', 'dice') +
         button('Dados y siglas', 'rules-help'),

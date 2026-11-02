@@ -288,6 +288,21 @@ const MonsterUI = (() => {
       ts = targets();
     panel = { entryId, kind, name, last: null, noAttack };
     const dmgText = (a.dmg || []).map(([d, t]) => `${d} ${t}`).join(' + ') || '—';
+    // Desde el tablero: objetivo tocado, flanqueo (ventaja cuerpo a cuerpo) y enemigo al lado (desventaja a distancia).
+    const bp = window.boardPick?.entryId === entryId ? window.boardPick : null,
+      reach = window.BoardCore ? BoardCore.reachFromText([a.d]) : 5,
+      melee = /cuerpo a cuerpo/i.test(a.d),
+      ranged = /a distancia/i.test(a.d) && (!melee || (bp?.distance || 0) > reach),
+      adv = bp && !ranged && melee && bp.flank,
+      dis = bp && ranged && bp.foeAdjacent,
+      mode = adv && !dis ? 'adv' : dis && !adv ? 'dis' : '',
+      notes = [
+        adv ? 'Flanqueo con ' + bp.flankWith + ': ventaja' : '',
+        dis ? 'Enemigo a 5 pies (ataque a distancia): desventaja' : '',
+        bp && melee && !ranged && bp.distance > reach
+          ? `${bp.name} está a ${bp.distance} pies: fuera del alcance de ${reach}`
+          : '',
+      ].filter(Boolean);
     modal(
       `${e.name}: ${a.n}`,
       `<p class="small">${esc(a.d)}</p>${
@@ -296,10 +311,25 @@ const MonsterUI = (() => {
               'Objetivo',
               'target',
               ts.map(t => [t.id, `${t.name} · CA ${t.x.ac} · ${t.x.hp ?? '—'}/${t.x.maxHP} PG`]),
+              bp?.characterId || '',
             )
           : '<p class="muted">No hay fichas en la mesa.</p>'
       }
-      ${noAttack ? '' : `<fieldset class="attack-adv"><legend>Ataque ${sign(a.atk)}</legend><label class="check"><input type="radio" name="adv" value="" checked>Normal</label><label class="check"><input type="radio" name="adv" value="adv">Ventaja</label><label class="check"><input type="radio" name="adv" value="dis">Desventaja</label></fieldset>`}
+      ${notes.length && !noAttack ? `<p class="small condition-note">${esc(notes.join(' · '))}</p>` : ''}
+      ${
+        noAttack
+          ? ''
+          : `<fieldset class="attack-adv"><legend>Ataque ${sign(a.atk)}</legend>${[
+              ['', 'Normal'],
+              ['adv', 'Ventaja'],
+              ['dis', 'Desventaja'],
+            ]
+              .map(
+                ([v, l]) =>
+                  `<label class="check"><input type="radio" name="adv" value="${v}" ${mode === v ? 'checked' : ''}>${l}</label>`,
+              )
+              .join('')}</fieldset>`
+      }
       <p class="small">Daño: <b>${esc(dmgText)}</b></p>
       <details class="physical-dice"><summary>Uso mis propios dados</summary><div class="form-grid">${noAttack ? '' : field('Mi d20', 'myD20', '', 'number', 'min="1" max="20"')}${field('Suma del daño', 'myDamage', '', 'number', 'min="0" max="999"')}</div></details>
       <div class="actions">${noAttack ? '' : button('Tirar ataque', 'monster-roll-attack', '')}${button('Tirar daño', 'monster-roll-damage', noAttack ? '' : 'secondary')}</div>
@@ -575,5 +605,6 @@ const MonsterUI = (() => {
     themeOf,
     encounterTheme,
     xp: id => byId(id)?.xp || 0,
+    byId,
   };
 })();

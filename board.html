@@ -40,12 +40,14 @@
   <body class="board-page">
     <div class="board-shell">
       <header class="board-top" id="board-top"></header>
-      <div class="board-stage" id="stage">
-        <canvas id="board" aria-label="Mapa del tablero"></canvas>
-        <div class="board-turn" id="board-turn" hidden></div>
-        <div class="board-hint" id="board-hint" role="status" aria-live="polite"></div>
-        <div class="board-card" id="board-card" hidden></div>
-        <div class="board-panel" id="board-panel" hidden></div>
+      <div class="board-main">
+        <div class="board-stage" id="stage">
+          <canvas id="board" aria-label="Mapa del tablero"></canvas>
+          <div class="board-turn" id="board-turn" hidden></div>
+          <div class="board-hint" id="board-hint" role="status" aria-live="polite"></div>
+          <div class="board-card" id="board-card" hidden></div>
+          <div class="board-panel" id="board-panel" hidden></div>
+        </div>
       </div>
       <nav class="board-tools" id="board-tools" aria-label="Herramientas del tablero"></nav>
     </div>
