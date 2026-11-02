@@ -642,7 +642,7 @@
     }
     drawTarget();
     // Herramientas en curso
-    if (S.drag?.token) drawRuler(S.drag.from, S.drag.token, info(S.drag.token).speed, S.drag.risk);
+    if (S.drag?.token) drawRuler(S.drag.from, S.drag.token, info(S.drag.token).speed, S.drag.risk, S.drag.plan);
     if (S.drag?.ruler) drawRuler(S.drag.ruler.a, S.drag.ruler.b);
     if (S.drag?.rect) {
       const r = S.drag.rect;
@@ -905,7 +905,7 @@
     }
     ctx.restore();
   }
-  function drawRuler(a, b, speed, risk = []) {
+  function drawRuler(a, b, speed, risk = [], plan = null) {
     const c = cellPx(),
       o = origin(),
       size = b.size || 1;
@@ -913,9 +913,9 @@
       ay = o.y + (a.y + size / 2) * c,
       bx = o.x + (b.x + size / 2) * c,
       by = o.y + (b.y + size / 2) * c;
-    const ft = BC.feet(S.grid, a, { x: BC.snap(b.x), y: BC.snap(b.y) }),
+    const ft = plan ? plan.cost : BC.feet(S.grid, a, { x: BC.snap(b.x), y: BC.snap(b.y) }),
       diff = BC.difficultOnPath(S.grid, S.terrain, a, b),
-      over = speed && ft > speed;
+      over = plan ? !plan.ok : speed && ft > speed;
     ctx.strokeStyle = over || risk?.length ? '#eb5757' : '#e0be80';
     ctx.lineWidth = 3 / S.view.s;
     ctx.setLineDash([10 / S.view.s, 6 / S.view.s]);
@@ -928,7 +928,15 @@
       ft +
       ' pies' +
       (diff ? ' · terreno difícil' : '') +
-      (over ? ' · más que tu velocidad' : '') +
+      (plan
+        ? plan.blocked
+          ? ' · no es tu turno'
+          : plan.ok
+            ? ` · te quedan ${plan.budget - plan.used}`
+            : ` · no te alcanza (te quedan ${plan.left})`
+        : over
+          ? ' · más que tu velocidad'
+          : '') +
       (risk?.length ? ' · ⚠ ataque de oportunidad: ' + risk.map(k => k.name).join(', ') : '');
     ctx.font = `700 ${16 / S.view.s}px Inter, system-ui, sans-serif`;
     const tw = ctx.measureText(text).width;
@@ -1146,6 +1154,26 @@
     if (moved && d.group?.length) return dropGroup(d, x - d.start.x, y - d.start.y);
     if (!moved) return tapToken(t.id);
     const before = S.tokens.find(k => k.id === t.id);
+    let plan = null;
+    if (before && limited(before)) {
+      const why = turnBlock(before);
+      if (why) {
+        toast(why);
+        return pick();
+      }
+      plan = BC.moveTo(S.grid, S.terrain, turnPts(before), { x, y }, budget(before));
+      if (!plan.ok) {
+        toast(`No te alcanza el movimiento: te quedan ${plan.left} de ${budget(before)} pies este turno.`);
+        return pick();
+      }
+    }
+    if (before && inCombat() && !isFree(d, before)) {
+      const risk = threats({ ...before, x, y }, [
+        { x: d.start.x, y: d.start.y },
+        { x, y },
+      ]);
+      if (risk.length && !(await confirmMove(risk))) return pick();
+    }
     S.tokens = S.tokens.map(k => (k.id === t.id ? { ...k, x, y } : k));
     S.sel = t.id;
     if (dmView() && !enemies(t, tokenById(S.target))) S.target = null;
@@ -1153,6 +1181,10 @@
     try {
       const rows = await Cloud.updateToken(t.id, { x, y });
       if (!rows.length) throw Error('No podés mover esa ficha.');
+      if (plan) {
+        moves().tokens[t.id] = plan.pts;
+        saveMoves();
+      }
       afterMove(d, x, y);
     } catch (e) {
       S.tokens = S.tokens.map(k => (k.id === t.id ? before : k));
@@ -1293,7 +1325,70 @@
       y = Math.round(d.token.y);
     if (x === last.x && y === last.y) return;
     d.path.push(...BC.steps(last, { x, y }).slice(1));
-    d.risk = inCombat() && !d.group?.length ? threats({ ...d.token, x, y }, d.path) : [];
+    // Solo cuenta dónde empieza y dónde termina: tantear el recorrido arrastrando no provoca nada.
+    const t = tokenById(d.token.id);
+    d.risk = inCombat() && !d.group?.length && t && !isFree(d, t) ? threats({ ...t, x, y }, [d.start, { x, y }]) : [];
+    d.plan =
+      t && limited(t)
+        ? turnBlock(t)
+          ? { ok: false, blocked: true, cost: 0 }
+          : { ...BC.moveTo(S.grid, S.terrain, turnPts(t), { x, y }, budget(t)), budget: budget(t) }
+        : null;
+  }
+  const isFree = (d, t) => d.free || !!H.disengaged?.(t) || (!!t.combatant_id && S.disengaged.has(t.combatant_id));
+
+  // ---------- Movimiento por turno (jugadores en combate) ----------
+  // Cada jugador tiene su velocidad por turno (el doble si usó Correr). Se guarda en este dispositivo
+  // para que recargar la página no lo reinicie. El DM mueve sin límite.
+  const movesKey = () => 'dnd-board-moves-' + S.id;
+  const turnKey = () => {
+    const e = S.party?.encounter;
+    return e?.active ? e.round + ':' + e.current_id : '';
+  };
+  function moves() {
+    const k = turnKey();
+    if (!S.moves || S.moves.key !== k) {
+      let saved = null;
+      try {
+        saved = JSON.parse(localStorage.getItem(movesKey()) || 'null');
+      } catch {}
+      S.moves = saved?.key === k && saved.tokens ? saved : { key: k, tokens: {} };
+    }
+    return S.moves;
+  }
+  function saveMoves() {
+    try {
+      localStorage.setItem(movesKey(), JSON.stringify(S.moves));
+    } catch {}
+  }
+  const limited = t => inCombat() && !TV && !dmView() && mine(t);
+  const budget = t => H.speed?.(t) ?? info(t).speed ?? 30;
+  // Puntos del turno; si el DM la movió mientras tanto, se sigue desde donde está.
+  function turnPts(t) {
+    const list = moves().tokens[t.id];
+    if (!list?.length) return [{ x: t.x, y: t.y, ft: 0 }];
+    const last = list[list.length - 1];
+    return last.x === t.x && last.y === t.y ? list : [{ x: t.x, y: t.y, ft: last.ft }];
+  }
+  function turnBlock(t) {
+    const c = (S.party?.combatants || []).find(x => x.character_id && x.character_id === t.character_id);
+    if (!c || S.party.encounter.current_id === c.id) return '';
+    return 'Todavía no es tu turno: esperá para moverte (si hace falta, el DM puede mover tu ficha).';
+  }
+  // Antes de provocar, se pregunta: evita ataques de oportunidad por un arrastre sin querer.
+  function confirmMove(list) {
+    return new Promise(ok => {
+      let yes = false;
+      modal(
+        '¿Moverte igual?',
+        `<p>Salir del alcance de <b>${esc(list.map(k => k.name).join(', '))}</b> provoca un ataque de oportunidad.</p><p class="small muted">Si usaste Destrabarse, marcalo antes (en tu ficha o en el panel). Soltar con Mayúsculas o Alt es un movimiento libre que no provoca (empujón, teletransporte).</p>`,
+        () => {
+          yes = true;
+        },
+        'Mover igual',
+      );
+      $('#modal').addEventListener('close', () => ok(yes), { once: true });
+    });
   }
   // Enemigos de los que sale del alcance (para avisar mientras arrastra). El alcance real lo sabe cada página.
   function threats(mover, path) {
@@ -1308,11 +1403,11 @@
     if (!inCombat() || d.group?.length) return;
     const t = tokenById(d.token.id);
     if (!t || !sideOf(t)) return;
-    const path = d.path.slice();
-    const end = path[path.length - 1];
-    if (end.x !== x || end.y !== y) path.push(...BC.steps(end, { x, y }).slice(1));
-    const free = d.free || !!H.disengaged?.(t) || (t.combatant_id && S.disengaged.has(t.combatant_id));
-    const msg = { t: 'moved', id: t.id, map: S.mapId, path, free };
+    const path = [
+      { x: d.start.x, y: d.start.y },
+      { x, y },
+    ];
+    const msg = { t: 'moved', id: t.id, map: S.mapId, path, free: isFree(d, t) };
     S.channel?.send(msg);
     onMoved(msg);
   }
@@ -1361,6 +1456,7 @@
     tools();
     panel();
     pick();
+    dock(); // también cuando solo cambió el panel (plegar, destrabarse)
     turn();
     S.dirty = true;
   }

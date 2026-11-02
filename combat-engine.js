@@ -118,6 +118,24 @@
     c.spells = [];
     c.effects = c.effects.filter(x => x.kind !== 'unsettling' && x.kind !== 'ready');
     s.reactionUsed = false;
+    c.rolled = {};
+    c.extraRolls = 0;
+  }
+  // Tiradas hechas con la página durante el combate: cada una vale una vez por turno (los ataques de
+  // la acción, tantas como ataques tenga). Para repetir, el DM habilita otra tirada (extraRolls).
+  // Fuera del seguimiento de turnos no hay límite.
+  function rollsLeft(s, key, max = 1) {
+    const c = data(s);
+    if (!c.active) return Infinity;
+    return Math.max(0, max - ((c.rolled || {})[key] || 0)) + (c.extraRolls || 0);
+  }
+  function takeRoll(s, key, max = 1) {
+    const c = data(s);
+    if (!c.active) return;
+    const used = (c.rolled || {})[key] || 0;
+    if (used < max) c.rolled = { ...(c.rolled || {}), [key]: used + 1 };
+    else if ((c.extraRolls || 0) > 0) c.extraRolls--;
+    else throw Error('Ya hiciste esa tirada en este turno. Si hay que repetirla, pedile al DM que te habilite otra.');
   }
   function end(s) {
     data(s).onTurn = false;
@@ -131,6 +149,8 @@
     c.bonus = null;
     c.spells = [];
     c.effects = c.effects.filter(x => !['unsettling', 'ready'].includes(x.kind));
+    c.rolled = {};
+    c.extraRolls = 0;
   }
   function inspiration(s, k, target, value) {
     const d = root.Rules.stats(s),
@@ -159,6 +179,8 @@
   const api = {
     fresh,
     data,
+    rollsLeft,
+    takeRoll,
     kind,
     availableSlots,
     blocked,

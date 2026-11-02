@@ -422,6 +422,39 @@ const RollUI = (() => {
   // Con multiclase, cada conjuro usa la CD y el ataque de la clase que lo lanza.
   const caster = sp => Classes.spellCaster(state, sp.id);
   const spellStats = sp => R.stats(caster(sp));
+  // Ataques por lanzamiento: Descarga sobrenatural suma rayos por nivel; Rayo abrasador, 3 y uno más por nivel extra.
+  function beams(sp, slot) {
+    if (sp.srd?.beam || sp.id === 'eldritch-blast') {
+      const L = R.totalLevel ? R.totalLevel(state) : state.level;
+      return 1 + (L >= 5) + (L >= 11) + (L >= 17);
+    }
+    if (sp.id === 'scorching-ray') return 3 + Math.max(0, slot - 2);
+    return 1;
+  }
+  // En combate, cada tirada del conjuro vale una vez por turno (el DM puede habilitar otra).
+  const spellKeys = () => {
+    const { sp, info, slot } = spellSession,
+      n = beams(sp, slot);
+    return { atk: ['spell:' + sp.id + ':atk', n], dmg: ['spell:' + sp.id + ':dmg', info.attack ? n : 1] };
+  };
+  function lockSpell() {
+    if (!spellSession) return;
+    const k = spellKeys();
+    for (const [action, [key, max]] of [
+      ['spell-roll-attack', k.atk],
+      ['spell-roll-damage', k.dmg],
+    ]) {
+      const btn = document.querySelector(`#dialog-form [data-action=${action}]`);
+      if (!btn) continue;
+      const left = Combat.rollsLeft(state, key, max);
+      btn.disabled = left === 0;
+      if (left === 0 && !btn.parentElement.querySelector('.roll-locked'))
+        btn.insertAdjacentHTML(
+          'afterend',
+          '<span class="small roll-locked">🔒 Ya tirada este turno · el DM puede habilitar otra</span>',
+        );
+    }
+  }
   function spell(sp, slot = sp.level) {
     const info = spellInfo(sp, slot),
       st = spellStats(sp),
@@ -442,6 +475,7 @@ const RollUI = (() => {
       <div class="attack-log" id="attack-log" aria-live="polite"><p class="small muted">Revisá los dados: salen del texto del conjuro y podés corregirlos.</p></div>`,
       null,
     );
+    lockSpell();
   }
   function logLine(html, cls = '') {
     const el = document.getElementById('attack-log');
@@ -456,6 +490,8 @@ const RollUI = (() => {
       r = readD20(fd),
       extra = readBonus(fd),
       total = r.kept + st.attack + extra.total;
+    commit('Tirada de ataque: ' + sp.name, s => Combat.takeRoll(s, ...spellKeys().atk));
+    lockSpell();
     spellSession.crit = r.kept === 20;
     const own = document.querySelector('#dialog-form [name=myD20]');
     if (own) own.value = '';
@@ -524,6 +560,10 @@ const RollUI = (() => {
       rolls = groups.flatMap(([n, sides]) => roll(sides, n * k));
       sum = rolls.reduce((a, b) => a + b, 0);
     }
+    commit('Tirada de ' + (info.heal ? 'curación' : 'daño') + ': ' + sp.name, s =>
+      Combat.takeRoll(s, ...spellKeys().dmg),
+    );
+    lockSpell();
     const dice = (rolls.length ? rolls.join('+') : 'dados físicos ' + sum) + (flat ? ' + ' + flat : '');
     sum += flat;
     const total = Math.max(0, sum + mod),

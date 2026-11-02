@@ -796,7 +796,14 @@
           !int(x.value, 0, 100),
       ) ||
       !list(c.checks, 100) ||
-      c.checks.some(x => !int(x, 10, 5000))
+      c.checks.some(x => !int(x, 10, 5000)) ||
+      (c.rolled !== undefined &&
+        (!c.rolled ||
+          typeof c.rolled !== 'object' ||
+          Array.isArray(c.rolled) ||
+          Object.keys(c.rolled).length > 200 ||
+          Object.entries(c.rolled).some(([k, v]) => !txt(k, 150) || !int(v, 0, 999)))) ||
+      (c.extraRolls !== undefined && !int(c.extraRolls, 0, 99))
     )
       fail();
     return JSON.parse(JSON.stringify(o));

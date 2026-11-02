@@ -53,12 +53,22 @@ const AttackUI = (() => {
     const twoHands = Boolean(document.querySelector('#dialog-form [name=twoHands]')?.checked);
     return { item, p: A.profile(state, item, { mode: session.mode, twoHands }) };
   }
+  // Ataques que permite este modo en el turno: los de la acción de Atacar, o uno.
+  const cap = () => (session.mode === 'action' ? A.attacksPerAction(state) : 1);
+  const rollKey = () => 'atk:' + session.mode;
   function drawLog() {
     const el = document.getElementById('attack-log');
     if (!el) return;
-    el.innerHTML = session.log.length
-      ? session.log.map(x => `<p class="${x.cls || ''}">${x.html}</p>`).join('')
-      : '<p class="small muted">Tirá el ataque y después el daño si impacta.</p>';
+    const left = Combat.rollsLeft(state, rollKey(), cap());
+    el.innerHTML =
+      (session.log.length
+        ? session.log.map(x => `<p class="${x.cls || ''}">${x.html}</p>`).join('')
+        : '<p class="small muted">Tirá el ataque y después el daño si impacta.</p>') +
+      (left === 0
+        ? `<p class="small roll-locked">🔒 Ya tiraste ${cap() > 1 ? 'los ' + cap() + ' ataques' : 'el ataque'} de ${session.mode === 'action' ? 'tu acción' : session.mode === 'bonus' ? 'tu acción adicional' : 'tu reacción'} en este turno. Si hay que repetir, el DM puede habilitarte otra tirada.</p>`
+        : '');
+    const submit = document.querySelector('#dialog-form button[type=submit]');
+    if (submit) submit.disabled = left === 0;
     const dmg = document.querySelector('[data-action=attack-damage]');
     if (dmg) {
       dmg.disabled = !session.last;
@@ -84,7 +94,12 @@ const AttackUI = (() => {
     if (!item) throw Error('Arma no encontrada.');
     const why = reason(mode);
     if (why) throw Error(why);
-    session = { itemId: id, mode, attacks: 0, last: null, log: [], spent: false, target: null };
+    // Reabrir la misma arma en el mismo turno conserva lo tirado (un impacto sin daño sigue pendiente).
+    const turnNow = Combat.data(state).turn;
+    session =
+      session && session.itemId === id && session.mode === mode && session.turn === turnNow
+        ? session
+        : { itemId: id, mode, attacks: 0, last: null, log: [], spent: false, target: null, turn: turnNow };
     const foes = TableUI.targets().monsters;
     const p = A.profile(state, item, { mode }),
       w = p.weapon,
@@ -117,6 +132,8 @@ const AttackUI = (() => {
       target = form.get('target') || '',
       foe = target && TableUI.targets().monsters.find(f => f.id === target);
     const mine = takeInput('myD20', 1, 20);
+    // En combate, cada ataque se tira una sola vez (el DM puede habilitar otra tirada).
+    commit('Tirada de ataque con ' + item.name, s => Combat.takeRoll(s, rollKey(), cap()));
     spendAction(item.name);
     const r =
         mine === null

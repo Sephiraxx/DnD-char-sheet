@@ -36,7 +36,7 @@
       if (c.actor?.characterId) {
         const row = party?.characters.find(x => x.id === c.actor.characterId),
           x = row && PV.summarize(row.data);
-        return `${head}<p><b>${esc(c.actor.name)}</b>${x && !x.broken ? ` · ${x.hp ?? '—'}/${x.maxHP} PG · CA ${x.ac}` : ''}</p><p class="small muted">Los jugadores atacan desde su ficha. Tocá una criatura para sus acciones.</p>${next}`;
+        return `${head}<p><b>${esc(c.actor.name)}</b>${x && !x.broken ? ` · ${x.hp ?? '—'}/${x.maxHP} PG · CA ${x.ac}` : ''}</p><p class="small muted">Los jugadores atacan desde su ficha. Tocá una criatura para sus acciones.</p><div class="actions">${button('↻ Otra tirada', 'reroll', 'secondary', `data-id="${c.actor.characterId}" title="Le permite repetir una tirada de ataque o de conjuro"`)}</div>${next}`;
       }
       return `${head}<p class="small muted">Tocá una criatura del mapa para ver sus acciones. Después tocá a un personaje para elegirlo como objetivo: la ventana de ataque ya lo trae elegido, con ventaja si lo flanquean.</p><p class="small muted">Al mover una ficha en combate, quien sale del alcance de un enemigo provoca un ataque de oportunidad (Mayúsculas al soltar: movimiento libre).</p>${next}`;
     }

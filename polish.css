@@ -1824,3 +1824,8 @@ button.cc-stat {
 .initiative-list .who b {
   overflow-wrap: anywhere;
 }
+.roll-locked {
+  display: block;
+  margin-top: 6px;
+  color: var(--gold);
+}

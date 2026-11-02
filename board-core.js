@@ -340,6 +340,25 @@
       out.push({ x: Math.round(a.x + ((b.x - a.x) * i) / n), y: Math.round(a.y + ((b.y - a.y) * i) / n) });
     return out;
   }
+  // Pies que cuesta un recorrido casilla por casilla: el terreno difícil cuesta el doble.
+  function pathCost(g, terrain, path) {
+    const t = cells(g, terrain || '');
+    let ft = 0;
+    for (let i = 1; i < path.length; i++)
+      ft += g.feet * (terrainType(at(g, t, path[i].x, path[i].y)).difficult ? 2 : 1);
+    return ft;
+  }
+  // Movimiento del turno: puntos donde la ficha se detuvo (con los pies gastados hasta ahí).
+  // Volver a un punto anterior devuelve el movimiento (sirve para corregir un arrastre).
+  function moveTo(g, terrain, pts, to, budget) {
+    const back = pts.findIndex(p => p.x === to.x && p.y === to.y);
+    if (back >= 0) return { ok: true, pts: pts.slice(0, back + 1), used: pts[back].ft, cost: 0 };
+    const last = pts[pts.length - 1],
+      cost = pathCost(g, terrain, steps(last, to)),
+      used = last.ft + cost;
+    if (used > budget) return { ok: false, pts, used: last.ft, cost, left: budget - last.ft };
+    return { ok: true, pts: [...pts, { x: to.x, y: to.y, ft: used }], used, cost };
+  }
   // Alcance de un monstruo según sus acciones («Alcance 10 pies» / «reach 10 ft.»). 5 si no dice.
   function reachFromText(texts) {
     let best = 5;
@@ -457,6 +476,8 @@
     provokers,
     steps,
     reachFromText,
+    pathCost,
+    moveTo,
   };
   if (typeof module !== 'undefined') module.exports = api;
   root.BoardCore = api;
