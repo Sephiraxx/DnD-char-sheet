@@ -127,3 +127,40 @@ test('los Dados de Golpe se gastan y recuperan por tipo de dado (mago 3 / guerre
   s.hdSpent = 2;
   assert.equal(left(), JSON.stringify(['1d10', '1d6']));
 });
+
+test('paladín: romper el juramento pasa a Rompejuramentos y la expiación lo devuelve', () => {
+  const g = load();
+  const s = g.Rules.validate({
+    ...g.Rules.initial(),
+    classId: 'paladin',
+    level: 5,
+    classSubclass: 'paladin-oath-of-devotion',
+  });
+  assert.equal(g.Classes.oath(s).canBreak, true);
+  g.Classes.breakOath(s, 'Ejecutó al prisionero', '2026-11-01T00:00:00.000Z');
+  g.Rules.validate(s);
+  assert.equal(s.classSubclass, 'paladin-oathbreaker');
+  assert.equal(s.oathBroken.from, 'paladin-oath-of-devotion');
+  const granted = Object.keys(g.Classes.granted(s).details);
+  assert.ok(granted.includes('hellish-rebuke') && granted.includes('darkness'));
+  assert.ok(!granted.includes('sanctuary'));
+  assert.match(g.Classes.resources(s).find(r => r.id === 'channel').text, /Aspecto aterrador/);
+  assert.ok(g.Classes.features(s).some(f => f.name === 'Rompejuramentos' && /Controlar muertos vivientes/.test(f.es)));
+  assert.throws(() => g.Classes.breakOath(s), /ya está roto/);
+  g.Classes.atone(s);
+  assert.equal(s.classSubclass, 'paladin-oath-of-devotion');
+  assert.equal(s.oathBroken, undefined);
+  assert.ok(Object.keys(g.Classes.granted(s).details).includes('sanctuary'));
+});
+
+test('paladín multiclase: el juramento roto cambia la subclase de la clase secundaria', () => {
+  const g = load();
+  const s = g.Rules.validate(fixture('wizard-3.json'));
+  s.abilities.str = 13;
+  s.abilities.cha = 13;
+  s.multiclass = [{ classId: 'paladin', level: 3, subclass: 'paladin-oath-of-vengeance', spells: [], prepared: [] }];
+  g.Classes.breakOath(s);
+  g.Rules.validate(s);
+  assert.equal(s.multiclass[0].subclass, 'paladin-oathbreaker');
+  assert.equal(s.classSubclass, fixture('wizard-3.json').classSubclass);
+});

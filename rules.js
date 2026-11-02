@@ -655,6 +655,16 @@
     if (o.inspirationSpent !== null && !int(o.inspirationSpent, 0, stats(o).inspirationMax)) fail();
     if (o.hdSpent !== null && !int(o.hdSpent, 0, totalLevel(o))) fail();
     if (o.heroicInspiration !== undefined && typeof o.heroicInspiration !== 'boolean') fail();
+    // Juramento roto: el juramento anterior, para poder volver con Expiación.
+    if (
+      o.oathBroken !== undefined &&
+      (!o.oathBroken ||
+        typeof o.oathBroken !== 'object' ||
+        !txt(o.oathBroken.from, 100) ||
+        !txt(o.oathBroken.date, 40) ||
+        !txt(o.oathBroken.reason ?? '', 300))
+    )
+      fail();
     // Conjuros favoritos de la vista compacta de combate.
     if (o.favorites !== undefined && (!list(o.favorites, 60) || o.favorites.some(x => !txt(x, 100)))) fail();
     if (root.Effects && !root.Effects.valid(o)) fail();

@@ -1617,3 +1617,14 @@ button.cc-stat {
   margin: 2px 0 0;
   font-size: 0.78rem;
 }
+
+/* Juramento de paladín: el roto se marca en rojo. */
+.oath-card.broken {
+  border-color: var(--red);
+}
+.oath-card.broken h2 {
+  color: var(--red);
+}
+.oath-card {
+  margin-top: 16px;
+}
