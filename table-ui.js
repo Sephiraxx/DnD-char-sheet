@@ -393,6 +393,12 @@ const TableUI = (() => {
         );
         return `${p.from || 'El DM'} te aplicó: ${name}${rounds ? ' (' + Effects.remaining({ rounds }) + ')' : ''}.`;
       }
+      case 'reroll':
+        commit('DM: otra tirada habilitada', s => {
+          const c = Combat.data(s);
+          c.extraRolls = Math.min(99, (c.extraRolls || 0) + 1);
+        });
+        return '↻ El DM te habilitó otra tirada.';
       case 'inspiration':
         commit(p.on === false ? 'DM: Inspiración retirada' : 'DM: Inspiración recibida', s => {
           s.heroicInspiration = p.on !== false;

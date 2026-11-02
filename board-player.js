@@ -18,6 +18,13 @@
     const c = Combat.data(state);
     return c.active && c.onTurn && /Destrab/i.test((c.action || '') + ' ' + (c.bonus || ''));
   }
+  // Velocidad del turno: la de la ficha (con armadura pesada, forma salvaje…) y el doble si usó Correr.
+  function speed() {
+    if (!state || typeof combatSpeed !== 'function') return null;
+    const c = Combat.data(state),
+      dash = c.active && c.onTurn && /Correr/i.test((c.action || '') + ' ' + (c.bonus || ''));
+    return combatSpeed() * (dash ? 2 : 1);
+  }
   function opportunity({ reactor, mover }) {
     if (!state || !mine(reactor)) return;
     const why = Combat.blocked(state, 'reaction');
@@ -52,6 +59,7 @@
     dock: () => (state && typeof combatCompact === 'function' ? combatCompact() : ''),
     reach: t => (mine(t) ? reach() : null),
     disengaged: t => mine(t) && disengaged(),
+    speed: t => (mine(t) ? speed() : null),
     opportunity,
   };
   Object.assign(actions, {

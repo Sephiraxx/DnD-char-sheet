@@ -217,3 +217,22 @@ test('alcance de monstruos a partir del texto de sus acciones', () => {
   assert.equal(B.reachFromText(['Melee Weapon Attack: +4 to hit, reach 5 ft., one target.', 'Ranged 80/320 ft.']), 5);
   assert.equal(B.reachFromText([]), 5);
 });
+
+test('movimiento del turno: costo, terreno difícil, límite y volver atrás', () => {
+  const g = B.normGrid({ cols: 10, rows: 3 });
+  const t = B.paint(g, '', [[3, 0]], 'w');
+  assert.equal(B.pathCost(g, '', B.steps({ x: 0, y: 0 }, { x: 4, y: 0 })), 20);
+  assert.equal(B.pathCost(g, t, B.steps({ x: 0, y: 0 }, { x: 4, y: 0 })), 25, 'el agua cuesta el doble');
+  let pts = [{ x: 0, y: 0, ft: 0 }];
+  let r = B.moveTo(g, '', pts, { x: 4, y: 0 }, 30);
+  assert.ok(r.ok);
+  assert.equal(r.used, 20);
+  pts = r.pts;
+  r = B.moveTo(g, '', pts, { x: 7, y: 0 }, 30);
+  assert.ok(!r.ok, 'se pasa de 30 pies');
+  assert.equal(r.left, 10);
+  r = B.moveTo(g, '', pts, { x: 0, y: 0 }, 30);
+  assert.ok(r.ok);
+  assert.equal(r.used, 0, 'volver al inicio devuelve el movimiento');
+  assert.equal(r.pts.length, 1);
+});

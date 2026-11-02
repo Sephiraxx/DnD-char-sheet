@@ -129,6 +129,7 @@
     turn: ['▶', ''],
     'combat-end': ['■', ''],
     inspiration: ['★', 'k-dm'],
+    reroll: ['↻', 'k-dm'],
     'bonus-die': ['◆', 'k-dm'],
     effect: ['⧗', 'k-dm'],
     attack: ['⚔', ''],
@@ -201,6 +202,8 @@
         return `<b>${esc(p.from || 'DM')}</b>: ${esc(target)} recibe un d${esc(p.die)}${p.reason ? ' (' + esc(p.reason) + ')' : ''}`;
       case 'inspiration':
         return `<b>DM</b>: ${esc(target)} ${p.on === false ? 'pierde' : 'recibe'} Inspiración`;
+      case 'reroll':
+        return `<b>DM</b>: ${esc(target)} puede repetir una tirada`;
       case 'level':
         return `<b>DM</b>: ${esc(target)} puede subir a nivel ${esc(p.level || '')}`;
       case 'turn':

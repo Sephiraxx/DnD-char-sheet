@@ -19,6 +19,7 @@
     'effect',
     'gold-remove',
     'xp',
+    'reroll',
   ];
   let client = null,
     loading = null,

@@ -613,7 +613,7 @@ const actions = {
       row = characterById(id);
     modal(
       targetName(id),
-      `<div class="actions">${button('Dado del DM', 'bonus-die', 'secondary', `data-id="${id}"`)}${button('Oro y objetos', 'give', 'secondary', `data-id="${id}"`)}${button('Mensaje privado', 'message', 'secondary', `data-id="${id}"`)}</div><div class="actions section-space">${button('Descanso corto', 'rest-short', 'secondary', `data-id="${id}"`)}${button('Descanso largo', 'rest-long', 'secondary', `data-id="${id}"`)}${button('Habilitar subida de nivel', 'level', 'secondary', `data-id="${id}"`)}</div><div class="divider"></div><p class="small">Quitar la ficha de la mesa no la borra del dispositivo del jugador.</p>${button('Quitar de la mesa', 'kick', 'secondary', `data-id="${id}"`)}<p class="small muted section-space">Última actualización: ${esc(new Date(row.updated_at).toLocaleString('es-AR'))}</p>`,
+      `<div class="actions">${button('↻ Otra tirada', 'reroll', 'secondary', `data-id="${id}" title="En combate, cada ataque o conjuro se tira una vez: esto le permite repetir una"`)}${button('Dado del DM', 'bonus-die', 'secondary', `data-id="${id}"`)}${button('Oro y objetos', 'give', 'secondary', `data-id="${id}"`)}${button('Mensaje privado', 'message', 'secondary', `data-id="${id}"`)}</div><div class="actions section-space">${button('Descanso corto', 'rest-short', 'secondary', `data-id="${id}"`)}${button('Descanso largo', 'rest-long', 'secondary', `data-id="${id}"`)}${button('Habilitar subida de nivel', 'level', 'secondary', `data-id="${id}"`)}</div><div class="divider"></div><p class="small">Quitar la ficha de la mesa no la borra del dispositivo del jugador.</p>${button('Quitar de la mesa', 'kick', 'secondary', `data-id="${id}"`)}<p class="small muted section-space">Última actualización: ${esc(new Date(row.updated_at).toLocaleString('es-AR'))}</p>`,
       () => true,
       'Cerrar',
     );
@@ -833,6 +833,11 @@ const actions = {
     const on = Boolean(e.dataset.on);
     await send('inspiration', { on }, e.dataset.id);
     toast(on ? 'Inspiración entregada.' : 'Inspiración retirada.');
+  },
+  // En combate, cada tirada de la ficha vale una vez; esto le habilita una más.
+  reroll: async e => {
+    await send('reroll', {}, e.dataset.id);
+    toast('Le habilitaste otra tirada.');
   },
 };
 async function rest(type, id) {
