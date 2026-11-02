@@ -801,7 +801,89 @@
     return () => c.removeChannel(channel);
   }
 
+  // ---------- Tablero (migración 008): mapas, fichas sobre el mapa y niebla ----------
+  async function board(campaignId) {
+    const c = await api();
+    await user();
+    const [b, maps] = await Promise.all([
+      c.from('boards').select('*').eq('campaign_id', campaignId).maybeSingle().then(check),
+      c.from('maps').select('*').eq('campaign_id', campaignId).order('sort').order('created_at').then(check),
+    ]);
+    const tokens = check(await c.from('map_tokens').select('*').eq('campaign_id', campaignId));
+    return { board: b, maps, tokens };
+  }
+  async function saveMap(campaignId, row, id = null) {
+    const c = await api();
+    const q = id ? c.from('maps').update(row).eq('id', id) : c.from('maps').insert({ ...row, campaign_id: campaignId });
+    return check(await q.select().single());
+  }
+  async function deleteMap(id, imagePath) {
+    const c = await api();
+    check(await c.from('maps').delete().eq('id', id));
+    if (imagePath) await c.storage.from('maps').remove([imagePath]);
+  }
+  async function setBoardMap(campaignId, mapId) {
+    check(
+      await (
+        await api()
+      )
+        .from('boards')
+        .upsert({ campaign_id: campaignId, map_id: mapId }, { onConflict: 'campaign_id' }),
+    );
+  }
+  async function addTokens(rows) {
+    if (!rows.length) return [];
+    return check(await (await api()).from('map_tokens').insert(rows).select());
+  }
+  async function updateToken(id, patch) {
+    return check(await (await api()).from('map_tokens').update(patch).eq('id', id).select());
+  }
+  async function removeToken(id) {
+    check(await (await api()).from('map_tokens').delete().eq('id', id));
+  }
+  async function uploadMapImage(campaignId, blob, ext = 'webp') {
+    const path = campaignId + '/' + crypto.randomUUID() + '.' + ext;
+    check(
+      await (
+        await api()
+      ).storage
+        .from('maps')
+        .upload(path, blob, { contentType: blob.type || 'image/' + ext, cacheControl: '31536000', upsert: false }),
+    );
+    return path;
+  }
+  async function mapImageUrl(path) {
+    const r = check(await (await api()).storage.from('maps').createSignedUrl(path, 6 * 3600));
+    return r.signedUrl;
+  }
+  // Cambios en vivo del tablero (aparte de subscribe: así una mesa sin la migración 008 sigue funcionando)
+  // y un canal efímero para arrastres en curso y señales («ping»), que no se guardan.
+  async function subscribeBoard(campaignId, handler, onMessage) {
+    const c = await api();
+    await user();
+    const filter = 'campaign_id=eq.' + campaignId;
+    const channel = c.channel('tablero-' + campaignId, { config: { broadcast: { self: false } } });
+    for (const table of ['maps', 'boards', 'map_tokens'])
+      channel.on('postgres_changes', { event: '*', schema: 'public', table, filter }, p => handler(table, p));
+    channel.on('broadcast', { event: 'board' }, p => onMessage?.(p.payload));
+    await new Promise(ok => channel.subscribe(s => (s === 'SUBSCRIBED' || s === 'CHANNEL_ERROR' ? ok() : null)));
+    return {
+      send: payload => channel.send({ type: 'broadcast', event: 'board', payload }),
+      close: () => c.removeChannel(channel),
+    };
+  }
+
   root.Cloud = {
+    board,
+    saveMap,
+    deleteMap,
+    setBoardMap,
+    addTokens,
+    updateToken,
+    removeToken,
+    uploadMapImage,
+    mapImageUrl,
+    subscribeBoard,
     enabled,
     order,
     addCombatant,

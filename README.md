@@ -127,6 +127,19 @@ Opcional. Con la mesa configurada, cada jugador se une con un código y la party
 - **Áreas y fuego amigo:** en un conjuro de salvación (Bola de fuego, Manos ardientes…) también se marca a los aliados o a uno mismo si quedan dentro. Cada ficha alcanzada recibe el pedido, tira su salvación y se aplica el daño completo o la mitad. Las acciones de salvación de los monstruos (alientos, auras) funcionan igual: el DM tira o ajusta el daño, elige quiénes quedan en el área y cada jugador salva. Requiere `supabase/migrations/005_area_saves.sql`.
 - «Terminar turno» de un jugador pasa la iniciativa al siguiente. Los turnos de las criaturas los pasa el DM.
 
+### Tablero (mapa en vivo)
+
+Un mapa compartido para jugar en la mesa, en la tele o a distancia. El DM lo abre con **Tablero** en su pantalla; cada jugador, con **Tablero** en la sección **Mesa** de su ficha. Requiere `supabase/migrations/008_board.sql`.
+
+- **Mapas del DM (Mapas → Nuevo mapa):** una imagen (JPG, PNG o WebP, se achica a 4096 px y se guarda en WebP), un archivo de **Dungeondraft o Dungeon Alchemist** (`.dd2vtt` / `.uvtt`, trae la cuadrícula exacta y las paredes) o un mapa en blanco para pintar. Se preparan antes de la sesión: los jugadores solo ven el que está **en la mesa** («Mostrar a la mesa»). **Ajustes** alinea la cuadrícula con el dibujo (tamaño de casilla y desfase) con vista previa en vivo.
+- **Fichas:** la party aparece sola en el mapa de la mesa y las criaturas del combate entran al lanzar un encuentro (las ocultas siguen ocultas hasta que el DM las revela). Cada ficha muestra retrato, anillo de PG, estados y un halo en su turno. El DM mueve todo y agrega PNJ u objetos; cada jugador mueve solo la suya, y los demás la ven moverse en vivo. Al arrastrar se ven los pies recorridos, en rojo si superan la velocidad.
+- **Niebla de guerra:** pincel para revelar u ocultar, rectángulos, «Revelar todo / Cubrir todo» y **Sala**, que revela un cuarto entero hasta sus muros, puertas o paredes importadas. Los jugadores no ven lo que hay bajo la niebla (tampoco fichas); el DM la ve translúcida.
+- **Terreno:** piso, madera, pasto, tierra, arena, agua, escombros, hielo, árboles, roca, muro, puerta, abismo y lava, con pincel, rectángulo o «Sala con muros». El agua, los escombros, el hielo, los árboles y la lava cuentan como terreno difícil al medir.
+- **Medir y señalar:** la regla mide en pies (cada casilla, también en diagonal, son 5). Mantener apretado o la herramienta **Señalar** marca un punto para todos.
+- **Tele:** **📺 Tele** da un enlace (`board.html?tv=1#…`) que muestra la vista de los jugadores a pantalla completa, sin herramientas y con el turno en grande. Si la tele no entró nunca a la mesa, pide el código. «Enviar mi vista a la tele» la encuadra donde está mirando el DM; los jugadores pueden activar «Seguir al DM».
+- **Permisos:** las imágenes están en un bucket privado y cada jugador solo puede leer la del mapa en la mesa. Mapas en preparación y fichas ocultas no les llegan. La niebla se dibuja en cada pantalla: quien inspeccione la imagen del mapa activo con herramientas de desarrollador podría verla entera.
+- El almacenamiento gratuito de Supabase alcanza para cientos de mapas en WebP. Si se llenara, borrá mapas viejos desde **Mapas**.
+
 ### Configurar el servidor (una sola vez)
 
 1. Crear un proyecto gratuito en [supabase.com](https://supabase.com).
@@ -176,5 +189,7 @@ npm run format     # formatea el código y actualiza la versión de sw.js
 npm run stamp      # solo actualiza la versión de sw.js
 npm run check      # verifica formato y corre las pruebas (node --test)
 ```
+
+Los permisos del esquema se prueban en un Postgres local con `tools/test-sql.sh` (imita `auth` y `storage` de Supabase y revisa qué ve y qué puede tocar cada jugador en el tablero).
 
 Las pruebas cargan los scripts del navegador en Node (`test/load.js`) y usan fichas de ejemplo de `test/fixtures/`. La app abre desde la caché del service worker (al instante y sin red). La versión de esa caché es un resumen del contenido de los archivos: después de cualquier cambio corré `npm run stamp` (o `npm run format`), y `npm run check` falla si te lo olvidás. Un archivo nuevo de la app va también en la lista `FILES` de `sw.js`. Los celulares instalan la versión nueva en segundo plano: si la app recién se abrió se recarga sola; si está en uso, aparece «Hay una versión nueva» con un botón para actualizar. En localhost el service worker sigue pidiendo todo a la red.
