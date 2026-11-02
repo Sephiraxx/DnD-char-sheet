@@ -533,12 +533,20 @@ html {
 .monster-hp .text-btn {
   padding: 4px 6px;
 }
-@media (max-width: 600px) {
+/* Las filas se acomodan al ancho de la tarjeta, no de la pantalla: en la columna del DM (360 px)
+   los controles van debajo del nombre en vez de aplastarlo. */
+.initiative-list {
+  container-type: inline-size;
+}
+@container (max-width: 560px) {
   .initiative-list li {
     grid-template-columns: 34px minmax(0, 1fr);
+    row-gap: 6px;
   }
   .initiative-list .init {
     grid-row: 1 / span 2;
+    align-self: start;
+    padding-top: 2px;
   }
   .initiative-list .who {
     min-width: 0;
@@ -548,6 +556,10 @@ html {
     grid-column: 2;
     min-width: 0;
     flex-wrap: wrap;
+    row-gap: 2px;
+  }
+  .monster-hp .text-btn[data-action='init-remove'] {
+    margin-left: auto;
   }
 }
 .dm-layout > .stack > .party-grid {
@@ -1799,4 +1811,16 @@ button.cc-stat {
 }
 .oath-card {
   margin-top: 16px;
+}
+.hp-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 4px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.initiative-list .who b {
+  overflow-wrap: anywhere;
 }
