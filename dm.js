@@ -405,7 +405,7 @@ function initiativeCard(t) {
       return `<li class="${i === t.turn ? 'current' : ''} ${down ? 'down' : ''} ${e.hidden ? 'hidden-combatant' : ''}"><span class="init">${e.init ?? '—'}</span><span class="who"><b>${e.monsterId ? `<button type="button" class="text-btn monster-name" data-action="monster-open" data-entry="${e.id}">${esc(e.name)}</button>` : esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
         e.characterId
           ? button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)
-          : `<input type="number" aria-label="PG de ${esc(e.name)}" data-monster-hp="${e.id}" value="${e.hp ?? ''}" min="0" max="99999">/${e.max ?? '—'}${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}${button('Estados', 'init-conditions', 'text-btn', `data-entry="${e.id}"`)}${button(e.hidden ? 'Mostrar' : 'Ocultar', 'init-hide', 'text-btn', `data-entry="${e.id}"`)}`
+          : `<label class="hp-edit"><span>PG</span><input type="number" aria-label="PG de ${esc(e.name)}" data-monster-hp="${e.id}" value="${e.hp ?? ''}" min="0" max="99999"><span>/ ${e.max ?? '—'}</span></label>${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}${button('Estados', 'init-conditions', 'text-btn', `data-entry="${e.id}"`)}${button(e.hidden ? 'Mostrar' : 'Ocultar', 'init-hide', 'text-btn', `data-entry="${e.id}"`)}`
       }${button('×', 'init-remove', 'text-btn', `data-entry="${e.id}" aria-label="Quitar ${esc(e.name)}"`)}</span></li>`;
     })
     .join('');
