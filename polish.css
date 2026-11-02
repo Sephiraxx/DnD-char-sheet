@@ -776,7 +776,7 @@ label.check:has(input[name='heroic']:checked) {
   z-index: 2000;
   display: grid;
   place-items: center;
-  background: radial-gradient(ellipse, #080e18c9, #03060cf5 80%);
+  background: radial-gradient(ellipse, #080e18, #03060c 80%);
   animation: enc-life 3.2s linear both;
   cursor: pointer;
 }
@@ -785,7 +785,7 @@ label.check:has(input[name='heroic']:checked) {
 }
 .enc-boss {
   --enc: #c9a2ff;
-  background: radial-gradient(ellipse, #100b1de8, #010104 70%);
+  background: radial-gradient(ellipse, #100b1d, #010104 70%);
 }
 .enc-reinforce {
   --enc: #f2a65a;
@@ -810,9 +810,9 @@ label.check:has(input[name='heroic']:checked) {
   position: relative;
   z-index: 3;
   box-sizing: border-box;
-  width: min(100%, 1200px);
+  width: min(100%, 1600px);
   min-width: 0;
-  padding: 40px clamp(20px, 5vw, 80px);
+  padding: 28px clamp(12px, 2vw, 40px);
   text-align: center;
   color: var(--enc);
   background: radial-gradient(ellipse, #050911f0 15%, #050911a6 45%, transparent 72%);
@@ -820,12 +820,12 @@ label.check:has(input[name='heroic']:checked) {
 .enc-heading {
   position: relative;
   font-family: Georgia, serif;
-  font-size: clamp(2rem, 9vmin, 6rem);
+  font-size: clamp(2.6rem, min(11vw, 13vh), 9rem);
   font-weight: bold;
   line-height: 1.12;
   overflow-wrap: anywhere;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.015em;
   text-shadow:
     0 2px 3px #000,
     0 0 20px #000,
@@ -835,6 +835,13 @@ label.check:has(input[name='heroic']:checked) {
   display: block;
   font: inherit;
   animation: enc-slam 0.4s ease-out both;
+}
+.enc-mark {
+  display: block;
+  width: clamp(2.75rem, min(7vw, 8vh), 6rem);
+  height: clamp(2.75rem, min(7vw, 8vh), 6rem);
+  margin: 0 auto clamp(10px, 2vmin, 24px);
+  fill: currentColor;
 }
 .enc-battle .enc-heading::before {
   content: '';
@@ -852,7 +859,7 @@ label.check:has(input[name='heroic']:checked) {
   display: block;
   margin-top: 18px;
   color: #e7deda;
-  font-size: clamp(0.8rem, 2vmin, 1.2rem);
+  font-size: clamp(0.85rem, min(3vw, 3vh), 2rem);
   letter-spacing: 0.15em;
   text-transform: uppercase;
   animation: enc-arrive 0.4s 0.2s both;
@@ -1057,6 +1064,8 @@ body.enc-stomp .workspace {
     animation: enc-flash 0.3s ease-in reverse both;
   }
   .enc-fx *,
+  .enc-fx *::before,
+  .enc-fx *::after,
   body.enc-shake .workspace,
   body.enc-stomp .workspace {
     animation: none !important;

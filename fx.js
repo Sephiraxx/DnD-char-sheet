@@ -116,26 +116,31 @@ const EncounterFX = (() => {
       'fx-stage fx-seal',
     );
   }
-  function fire(id) {
-    return svg(
-      `<defs><linearGradient id="enc-fire-${id}" x2="0" y2="1"><stop stop-color="#fff4bd"/><stop offset=".38" stop-color="#ffb332"/><stop offset="1" stop-color="#b62435"/></linearGradient></defs>${many(
+  function fire(id, height = 0.76) {
+    // En TV ensanchamos el dibujo, así las llamas no se aplastan al llenar la pantalla.
+    const width = Math.max(600, Math.round((600 * innerWidth) / (innerHeight * height)));
+    return (
+      `<svg class="fx-fire" viewBox="0 0 ${width} 600" preserveAspectRatio="none" aria-hidden="true">` +
+      `<defs>${many(3, j => `<linearGradient id="enc-fire-${id}-${j}" x2="0" y2="1"><stop stop-color="${['#e56336', '#ffcc63', '#fff6c6'][j]}"/><stop offset="1" stop-color="${['#64182a', '#d63724', '#ff8d28'][j]}"/></linearGradient>`)}</defs>${many(
         3,
         j =>
           group(
-            many(7, i => {
-              const x = i * 100 - 30;
+            many(8, i => {
+              const step = width / 8,
+                breadth = Math.max(80, step * 0.65);
+              const x = (i + 0.3 + j * 0.12) * step;
+              const h = (1 - Math.abs(x - width / 2) / (width * 0.85)) * [550, 410, 245][j] + ((i * 47) % 105);
+              const tip = x + breadth * 0.25 + ((i * 29) % 65);
               return path(
-                `M${x} 610 C${x - 45} 480 ${x + 85} 410 ${x + 20} ${190 + (i % 3) * 65} C${x + 155} 330 ${x + 42} 410 ${x + 110} 435 C${x + 165} 470 ${x + 160} 560 ${x + 175} 610Z`,
+                `M${x - breadth * 0.8} 610 C${x - breadth} ${600 - h * 0.45} ${tip + breadth * 0.6} ${600 - h * 0.65} ${tip} ${600 - h} C${tip + breadth} ${600 - h * 0.7} ${x - breadth * 0.1} ${600 - h * 0.35} ${x + breadth * 0.65} ${600 - h * 0.4} Q${x + breadth * 1.4} ${600 - h * 0.25} ${x + breadth * 1.2} 610Z`,
                 'fx-flame',
-                `style="--d:${(i % 3) * -0.4}s"`,
+                `style="--d:${i * -0.23}s;--speed:${[1.6, 1.15, 0.85][j]}s"`,
               );
-            }),
+            }) + `<rect x="0" y="585" width="${width}" height="25"/>`,
             'fx-fire-band',
-            `style="--i:${j};fill:url(#enc-fire-${id})"`,
+            `style="fill:url(#enc-fire-${id}-${j})"`,
           ),
-      )}`,
-      'fx-fire',
-      'preserveAspectRatio="none"',
+      )}</svg><div class="fx-heat-glow"></div>`
     );
   }
   const claws = () =>
@@ -153,11 +158,7 @@ const EncounterFX = (() => {
       ),
     );
   function dragon(v, id) {
-    const wing = svg(
-      path('M60 250Q90 65 295 100L225 170 340 130 290 210 430 160 375 260Q250 205 180 290Z', 'fx-wing') +
-        path('M360 135q35-30 70 0-35 26-70 0Z', 'fx-glint'),
-      'fx-stage fx-dragon',
-    );
+    const eyes = `<svg class="fx-dragon-eyes" viewBox="0 0 600 180" aria-hidden="true"><defs><radialGradient id="enc-eye-${id}"><stop stop-color="#fff9d8"/><stop offset=".4" stop-color="var(--a)"/><stop offset="1" stop-color="var(--a)" stop-opacity=".06"/></radialGradient></defs>${many(2, i => at(i ? 450 : 150, 50, `<g transform="scale(${i ? -1 : 1} 1)">${group(path('M-115 0Q-40-45 105 28Q-30 90-115 0Z', '', `fill="url(#enc-eye-${id})"`) + path('M-15-14Q-29 28-12 57Q1 24-15-14Z', 'fx-dark') + path('M-122-18Q-38-63 118 16', 'fx-dragon-brow'), 'fx-dragon-lid')}</g>`))}</svg>`;
     const signatures = {
       fire: () => fire(id) + particles(12, 'fx-ember'),
       ice: () =>
@@ -172,32 +173,47 @@ const EncounterFX = (() => {
         ),
       lightning: () =>
         svg(
-          path('M0 300 180 230 142 320 340 200 295 303 600 160 390 350 412 275 205 410 235 330Z', 'fx-lightning') +
-            path('M300 300 345 425 320 400 375 545M390 270 420 100 450 145 510 20', 'fx-lines'),
-        ),
-      poison: () =>
-        fog() +
-        svg(
-          many(
-            7,
-            i =>
-              `<circle class="fx-cloud" cx="${65 + i * 80}" cy="${310 + (i % 2) * 90}" r="90" style="--d:${i * -0.3}s"/>`,
+          group(
+            many(2, i =>
+              group(
+                path(
+                  'M125-20 155 85 128 125 180 165 148 230 205 270 170 335 240 405 218 510M148 230 95 255 110 300 55 345M180 165 230 145 245 180M475-20 435 90 460 145 405 190 430 260 385 315 425 365 365 460 390 550M430 260 490 285 472 330 530 400M405 190 360 170 340 215M300-20 280 75 310 118 265 180 295 240M280 75 245 85 230 118',
+                ),
+                i ? 'fx-bolt-core' : 'fx-bolt-glow',
+              ),
+            ),
+            'fx-strikes',
           ),
+          'fx-lightning',
+          'preserveAspectRatio="none"',
+        ) + '<div class="fx-lightning-flash"></div>',
+      poison: () =>
+        '<div class="fx-toxic-bed"></div>' +
+        many(
+          16,
+          i =>
+            `<i class="fx-toxic-puff" style="left:${-15 + (i % 8) * 16}%;top:${44 + Math.floor(i / 8) * 20 + (i % 3) * 5}%;--d:${i * -0.27}s;--depth:${i < 8 ? 0.65 : 1}"></i>`,
         ) +
-        particles(8, 'fx-drop'),
+        particles(8, 'fx-toxic-drop'),
       acid: () =>
         svg(
-          path('M0 390Q180 140 390 300T600 320L600 440Q300 300 0 520Z', 'fx-acid-wave') +
-            many(
-              10,
-              i =>
-                `<g transform="translate(${50 + i * 55} ${200 + (i % 3) * 90})">${path('M0-28Q30 12 0 20Q-24 10 0-28Z', 'fx-acid', `style="--d:${i * -0.18}s"`)}</g>`,
-            ),
+          `<defs><radialGradient id="enc-acid-${id}"><stop stop-color="#ffffcd"/><stop offset=".25" stop-color="#edff5d"/><stop offset="1" stop-color="#718800" stop-opacity=".15"/></radialGradient></defs><ellipse cx="330" cy="520" rx="245" ry="65" fill="url(#enc-acid-${id})"/>${group(path('M-30 90Q155 100 338 459L310 487Q110 175-30 140Z', 'fx-acid-stream') + path('M-30 110Q120 130 326 472', 'fx-acid-core fx-lines'), 'fx-acid-jet')}<ellipse class="fx-acid-pool" cx="330" cy="520" rx="180" ry="24"/>${many(14, i => at(330, 475, group(path('M0-16Q17 4 0 14Q-13 5 0-16Z', 'fx-acid-drop'), 'fx-acid-splash', `style="--dx:${(i - 6.5) * 37}px;--lift:${-65 - (i % 4) * 50}px;--d:${i * -0.17}s"`)))}${many(8, i => at(190 + i * 38, 515, `<circle class="fx-sizzle" r="${4 + (i % 3) * 3}" style="--d:${i * -0.3}s"/>`))}`,
           'fx-breath',
           'preserveAspectRatio="none"',
         ),
     };
-    return `<div class="fx-sweep">${signatures[v]()}</div>${wing}`;
+    return `<div class="${v === 'lightning' ? 'fx-storm' : 'fx-sweep'}">${signatures[v]()}</div>${eyes}`;
+  }
+  // Dientes cuadrados: dos radios y cuatro esquinas por paso. La velocidad sigue la cantidad de dientes.
+  function cog(id, teeth, small = false) {
+    const point = (r, a) => `${(r * Math.cos(a)).toFixed(2)} ${(r * Math.sin(a)).toFixed(2)}`;
+    const outline =
+      many(teeth, i => {
+        const a = (i * 2 * Math.PI) / teeth,
+          step = Math.PI / teeth;
+        return `${i ? 'L' : 'M'}${point(85, a - step)}L${point(85, a - step * 0.55)}L${point(102, a - step * 0.55)}L${point(102, a + step * 0.55)}L${point(85, a + step * 0.55)}L${point(85, a + step)}`;
+      }) + 'Z';
+    return `<svg class="fx-cog ${small ? 'fx-cog-small' : ''}" viewBox="-110 -110 220 220" aria-hidden="true" style="--speed:${teeth / 2}s"><defs><linearGradient id="enc-metal-${id}"><stop stop-color="#f2e3b3"/><stop offset=".3" stop-color="#8d9da7"/><stop offset=".55" stop-color="#d4e5e9"/><stop offset="1" stop-color="#42525f"/></linearGradient></defs>${path(outline, '', `fill="url(#enc-metal-${id})" stroke="#d1dde0" stroke-width="2"`)}<circle r="72" fill="#10212c" stroke="#56656d" stroke-width="8"/>${many(6, i => `<g transform="rotate(${i * 60})">${path('M-7-69H7V-20H-7Z', '', `fill="url(#enc-metal-${id})"`)}</g>`)}<circle r="25" fill="url(#enc-metal-${id})"/><circle r="12" fill="#071017"/></svg>`;
   }
   const THEMES = {
     undead: () =>
@@ -206,15 +222,23 @@ const EncounterFX = (() => {
         many(
           4,
           i =>
-            `<g transform="translate(${85 + i * 145} 480)">${group(
+            `<g transform="translate(${85 + i * 145} 160)">${group(
               path(
-                'M-22 130-20 10-34-28-29-33-11-9-9-61-2-64 2-13 9-75 16-73 14-10 26-59 33-56 26 4 39-29 46-25 32 28 22 130Z',
-              ) + group(skull, 'fx-bone', 'transform="translate(0 65)"'),
+                'M-22 70-20 10-34-28-29-33-11-9-9-61-2-64 2-13 9-75 16-73 14-10 26-59 33-56 26 4 39-29 46-25 32 28 22 70Z',
+              ) +
+                path('M-12 70Q-18 190-12 310T-7 430M8 70Q15 200 8 300T10 430', 'fx-arm-bones fx-lines') +
+                path('M-14 35H20M-13 45H19', 'fx-bone fx-lines'),
               'fx-hand',
               `style="--d:${i * -0.15}s"`,
             )}</g>`,
         ),
-        'fx-ground',
+        'fx-ground fx-hands',
+        'preserveAspectRatio="none"',
+      ) +
+      many(
+        4,
+        i =>
+          `<svg class="fx-skull-drift" viewBox="-30 -35 60 65" aria-hidden="true" style="left:${12 + i * 23}%;--d:${i * -0.63}s">${skull}</svg>`,
       ),
     necro: (_, id) =>
       seal(id) +
@@ -263,18 +287,27 @@ const EncounterFX = (() => {
     dragon,
     giant: () =>
       svg(
-        path(
-          'M300 600 283 510 315 450 270 380 310 300M300 600 390 515 374 470 480 400 510 320M300 600 180 530 194 480 110 450 70 360M315 450 390 410M270 380 200 350',
-          'fx-crack fx-lines',
-        ) +
-          many(
-            12,
-            i =>
-              `<g transform="translate(${60 + i * 45} 550)">${path('M-12-8 4-17 18 2 7 16-17 7Z', 'fx-debris', `style="--i:${i};--d:${(i % 4) * -0.15}s"`)}</g>`,
+        group(
+          many(2, i =>
+            path(
+              'M300 620 275 480 312 390 260 280 300 140M290 520 180 445 195 350 85 275 0 90M300 600 405 450 390 370 505 250 600 120M195 350 120 375 45 340M312 390 390 260 385 110 455 0M260 280 190 175 110 110M405 450 490 460 600 360',
+              i ? 'fx-fracture-core' : 'fx-fracture-lip',
+              'vector-effect="non-scaling-stroke"',
+            ),
           ),
-        'fx-ground',
-      ) + fog(),
-    fiend: (_, id) => seal(id, true) + fire(id) + particles(12, 'fx-ember'),
+          'fx-fracture',
+        ),
+        'fx-cracks',
+        'preserveAspectRatio="none"',
+      ) +
+      many(
+        14,
+        i =>
+          `<svg class="fx-rock" viewBox="-30 -30 60 60" aria-hidden="true" style="left:${3 + i * 7}%;--size:${0.5 + (i % 4) * 0.35};--dx:${(i - 6.5) * 3}vw;--d:${(i % 4) * -0.19}s">${path('M-25-13 1-26 23-10 28 14 6 27-23 15Z')}${path('M-25-13 0 2 28 14M0 2 1-26M0 2 6 27', 'fx-rock-face fx-lines')}</svg>`,
+      ) +
+      '<div class="fx-dust-bed"></div>' +
+      many(5, i => `<i class="fx-dust" style="left:${i * 24 - 15}%;--d:${i * -0.25}s"></i>`),
+    fiend: (_, id) => seal(id, true) + fire(id, 0.52) + particles(12, 'fx-ember'),
     aberration: () =>
       svg(
         many(
@@ -294,15 +327,7 @@ const EncounterFX = (() => {
             'fx-eye',
           ),
       ),
-    beast: () =>
-      claws() +
-      svg(
-        rings() +
-          path(
-            'M270 440Q240 420 245 458 260 487 300 480 340 487 355 458 360 420 330 440ZM243 416a13 20 0 1 0-1 0M275 402a13 20 0 1 0-1 0M312 402a13 20 0 1 0-1 0M345 416a13 20 0 1 0-1 0',
-            'fx-paw',
-          ),
-      ),
+    beast: () => claws() + svg(rings()),
     monstrosity: () =>
       claws() +
       svg(
@@ -313,7 +338,13 @@ const EncounterFX = (() => {
             'fx-predator',
           ),
       ),
-    swarm: () => `${particles(36, 'fx-bug')}<div class="fx-nest"></div>`,
+    swarm: () =>
+      many(
+        36,
+        i =>
+          `<i class="fx-bug" style="left:${i % 7 === 0 ? 42 + (i % 15) : i % 2 ? 76 + (i % 19) : 3 + (i % 19)}%;top:${5 + ((i * 29) % 90)}%;--d:${i * -0.19}s"></i>`,
+      ) +
+      `<div class="fx-near-bugs">${many(4, i => `<i class="fx-bug" style="left:${5 + i * 26}%;top:${12 + i * 23}%;--d:${i * -0.31}s"></i>`)}</div><div class="fx-nest"></div>`,
     warband: () =>
       svg(
         rings() +
@@ -323,19 +354,22 @@ const EncounterFX = (() => {
               `<g transform="translate(${i ? 490 : 110} 80)">${path('M0 0V450', 'fx-lines')}${path('M0 10H75L60 150 28 130 0 150Z', 'fx-banner')}</g>`,
           ),
       ) + many(8, i => `<div class="fx-arrow" style="--i:${i};left:${8 + i * 11}%;top:${18 + (i % 4) * 19}%"></div>`),
-    humanoid: () =>
+    humanoid: (_, id) =>
       svg(
-        many(
-          2,
-          i =>
-            `<g transform="rotate(${i ? -42 : 42} 300 300)">${group(
-              path('M300 90 315 130 308 370H292L285 130Z', 'fx-steel') +
-                path('M260 370H340V385H307V465H293V385H260Z', 'fx-hilt') +
-                path('M297 145H302V350H297Z', 'fx-steel-glint'),
-              'fx-sword',
-              `style="--i:${i}"`,
-            )}</g>`,
-        ),
+        `<defs><linearGradient id="enc-steel-${id}"><stop stop-color="#51677c"/><stop offset=".45" stop-color="#eaffff"/><stop offset=".52" stop-color="#8da8bf"/><stop offset="1" stop-color="#c4d6e1"/></linearGradient></defs>` +
+          many(
+            2,
+            i =>
+              `<g transform="rotate(${i ? -42 : 42} 300 300)">${group(
+                path('M300 55 325 105 318 370H282L275 105Z', 'fx-steel', `style="fill:url(#enc-steel-${id})"`) +
+                  path('M240 370Q300 340 360 370L355 389Q300 375 245 389Z', 'fx-hilt') +
+                  path('M289 385H311V477L300 491 289 477Z', 'fx-grip') +
+                  path('M293 140H306V340H293Z', 'fx-steel-glint'),
+                'fx-sword',
+                `style="--i:${i}"`,
+              )}</g>`,
+          ),
+        'fx-stage fx-duel',
       ) + particles(14, 'fx-metal-spark'),
     web: () =>
       svg(
@@ -373,19 +407,8 @@ const EncounterFX = (() => {
             )}</g>`,
         ),
       )}`,
-    construct: () =>
-      svg(
-        many(
-          2,
-          i =>
-            `<g transform="translate(${i ? '375 375' : '225 225'})">${group(
-              `<circle r="90" stroke-dasharray="24 22" stroke-width="30"/><circle r="73"/><circle r="35"/>${path('M-35 0H35M0-35V35')}`,
-              'fx-gear fx-lines',
-              `style="--i:${i}"`,
-            )}</g>`,
-        ) +
-          group(`<circle cx="300" cy="300" r="42"/>${path('M275 300 300 275 325 300 300 325Z', 'fx-dark')}`, 'fx-core'),
-      ) + fog(),
+    construct: (_, id) =>
+      `<div class="fx-machine fx-machine-left"><div class="fx-cog-seat">${cog(id + '-a', 16)}</div><div class="fx-cog-seat fx-small-seat">${cog(id + '-b', 12, true)}</div></div><div class="fx-machine fx-machine-right"><div class="fx-cog-seat">${cog(id + '-c', 16)}</div></div><svg class="fx-construct-eye" viewBox="-60 -60 120 120" aria-hidden="true">${group('<circle r="48" fill="#142f38" stroke="#c9d5be" stroke-width="5"/><circle r="32"/><path class="fx-dark" d="M0-26 15 0 0 26-15 0Z"/>', 'fx-core')}</svg>${many(6, i => `<i class="fx-steam" style="left:${i % 2 ? 75 : 8}%;top:${32 + i * 6}%;--d:${i * -0.3}s"></i>`)}`,
     plant: (_, id) =>
       svg(
         `<defs><clipPath id="enc-vine-${id}"><rect class="fx-reveal" width="600" height="600"/></clipPath></defs><g clip-path="url(#enc-vine-${id})">${many(
@@ -404,15 +427,15 @@ const EncounterFX = (() => {
     ooze: () =>
       `<div class="fx-slime-cap"></div>${many(9, i => `<i class="fx-drip" style="left:${i * 12}%;--i:${i}"></i>`)}${particles(12, 'fx-bubble')}`,
     fey: () =>
-      `<div class="fx-iridescence"></div>${particles(20)}${svg(
+      `<div class="fx-iridescence"></div><div class="fx-aurora"></div>${many(30, i => `<i class="fx-fey-mote" style="--angle:${i * 137}deg;--radius:${12 + (i % 6) * 5}vmin;--d:${i * -0.19}s"></i>`)}${svg(
         many(
-          5,
+          10,
           i =>
-            `<g transform="translate(${90 + i * 105} ${170 + (i % 2) * 240})">${group(
+            `<g transform="translate(${50 + ((i * 97) % 510)} ${90 + (i % 3) * 190})"><g transform="scale(${0.35 + (i % 5) * 0.14})">${group(
               path('M0 0C-65-70-58 30 0 10 58 30 65-70 0 0M0 0V22', 'fx-butterfly'),
               'fx-fairy',
               `style="--d:${i * -0.4}s"`,
-            )}</g>`,
+            )}</g></g>`,
         ),
       )}`,
     celestial: () =>
@@ -459,7 +482,7 @@ const EncounterFX = (() => {
       validTheme
         ? `<div class="enc-theme theme-${theme} v-${element}" aria-hidden="true">${THEMES[theme](element, id)}</div>`
         : ''
-    }<div class="enc-text"><div class="enc-heading">${echo}${split}<strong>${title}</strong></div>${count ? `<small>${esc(count)} ${count === 1 ? 'enemigo' : 'enemigos'}</small>` : ''}</div>`;
+    }<div class="enc-text"><svg class="enc-mark" viewBox="0 0 100 100" aria-hidden="true"><path d="M14 4 29 10 74 68 66 75 19 18ZM3 66 9 60 39 86 33 93ZM16 75 25 82 10 99 2 92ZM86 4 71 10 26 68 34 75 81 18ZM97 66 91 60 61 86 67 93ZM84 75 75 82 90 99 98 92Z"/></svg><div class="enc-heading">${echo}${split}<strong>${title}</strong></div>${count ? `<small>${esc(count)} ${count === 1 ? 'enemigo' : 'enemigos'}</small>` : ''}</div>`;
     box.addEventListener('click', clear);
     (document.querySelector('dialog[open]') || document.body).append(box);
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {

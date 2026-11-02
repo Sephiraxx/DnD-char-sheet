@@ -166,34 +166,19 @@
   height: 76%;
 }
 .fx-fire-band {
-  opacity: calc(0.85 - var(--i) * 0.15);
-  transform-origin: 300px 600px;
-  transform: scaleY(calc(1 - var(--i) * 0.17));
+  opacity: 0.95;
 }
 .fx-flame {
   transform-box: fill-box;
   transform-origin: 50% 100%;
-  animation: fx-flicker 0.9s var(--d) ease-in-out infinite alternate;
+  animation: fx-flicker var(--speed) var(--d) ease-in-out infinite alternate;
 }
 .fx-sweep {
   position: absolute;
   inset: 0;
   animation: fx-breath 0.4s ease-out both;
 }
-.fx-dragon {
-  top: -27%;
-  opacity: 0.65;
-  animation: fx-sway 2s ease-in-out infinite alternate;
-}
-.fx-wing {
-  fill: #1b0c18;
-  stroke: var(--a);
-  stroke-width: 1;
-}
-.fx-glint {
-  fill: var(--a);
-  animation: fx-pulse 1.8s infinite alternate;
-}
+
 .fx-breath {
   inset: 0;
   width: 100%;
@@ -205,35 +190,7 @@
   stroke-width: 2;
   animation: fx-float 1.8s var(--d) infinite alternate;
 }
-.fx-lightning {
-  fill: #e9e6ff;
-  animation: fx-pulse 1.4s infinite alternate;
-}
-.fx-cloud {
-  opacity: 0.22;
-  animation: fx-float 2s var(--d) infinite alternate;
-}
-.fx-acid-wave {
-  opacity: 0.6;
-  animation: fx-float 1.4s infinite alternate;
-}
-.fx-acid {
-  fill: #e4ff57;
-  animation: fx-fall 2s var(--d) infinite;
-}
-.fx-crack {
-  stroke-width: 5;
-  transform-origin: 300px 600px;
-  animation: fx-open 0.35s both;
-}
-.fx-debris {
-  fill: #756757;
-  stroke: #e6bb86;
-  animation: fx-debris 2.4s var(--d) infinite;
-}
-.theme-giant .fx-fog {
-  --a: #b4a08a;
-}
+
 .theme-fiend .fx-fire {
   height: 52%;
 }
@@ -266,10 +223,7 @@
   stroke: #b95248;
   stroke-width: 2;
 }
-.fx-paw {
-  opacity: 0.45;
-  animation: fx-pulse 1.5s infinite alternate;
-}
+
 .fx-shock {
   fill: none;
   stroke: currentColor;
@@ -284,32 +238,34 @@
 .fx-nest {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse, transparent 30%, #100e08e0);
+  background: radial-gradient(ellipse, transparent 16%, #070701d9 60%, #020300 90%);
+  animation: fx-nest 3.2s both;
 }
 .fx-bug {
   position: absolute;
-  width: 7px;
-  height: 12px;
+  width: clamp(8px, 1.3vmin, 22px);
+  height: clamp(14px, 2.3vmin, 38px);
   z-index: 1;
-  border-radius: 50%;
-  background: #0b0b08;
-  border: 1px solid #a39e80;
+  border-radius: 45%;
+  background: linear-gradient(90deg, #13110b, #9b8750 50%, #1d1a0e);
+  border: 1px solid #bfa96d;
   animation: fx-buzz 1.7s var(--d) ease-in-out infinite;
 }
 .fx-bug::before,
 .fx-bug::after {
   content: '';
   position: absolute;
-  width: 9px;
-  height: 5px;
-  border: 1px solid #c1ba9999;
+  width: 140%;
+  height: 65%;
+  background: #d7cf9a33;
+  border: 1px solid #e0d4a4aa;
   border-radius: 50%;
   top: 0;
   transform: rotate(-30deg);
-  left: -8px;
+  left: -125%;
 }
 .fx-bug::after {
-  left: 4px;
+  left: 80%;
   transform: rotate(30deg);
 }
 .fx-arrow {
@@ -403,13 +359,7 @@
 .fx-element {
   stroke-width: 20;
 }
-.fx-gear {
-  stroke-width: 6;
-  animation: fx-turn 6s linear infinite;
-}
-.fx-gear[style='--i:1'] {
-  animation-direction: reverse;
-}
+
 .fx-core {
   fill: #baffeb;
   animation: fx-pulse 1.8s infinite alternate;
@@ -473,7 +423,7 @@
   box-shadow: 0 0 8px currentColor;
 }
 .fx-fairy {
-  animation: fx-float 2s var(--d) infinite alternate;
+  animation: fx-flutter 2.5s var(--d) ease-in-out infinite alternate;
 }
 .fx-butterfly {
   fill: #efc9efaa;
@@ -803,14 +753,460 @@
   }
 }
 
-/* El vapor sale por dos válvulas; cada bocanada comparte una sola capa. */
-.theme-construct .fx-fog {
-  width: 45%;
-  height: 40%;
-  left: -5%;
-  bottom: 5%;
+/* Correcciones de escala: las siluetas siguen el viewport y el título queda adelante. */
+.fx-hands {
+  height: 90%;
+  opacity: 0.72;
 }
-.theme-construct .fx-fog-back {
-  left: 60%;
+.fx-hands .fx-bone {
+  stroke: #174b42;
+  stroke-width: 3;
+}
+.fx-arm-bones {
+  stroke: #9bd9ba;
+  stroke-width: 8;
+}
+.fx-skull-drift {
+  bottom: 0;
+  width: clamp(36px, 8vmin, 100px);
+  height: clamp(40px, 9vmin, 115px);
+  fill: #d4edc7;
+  animation: fx-skull-rise 3s var(--d) ease-out infinite;
+}
+.fx-heat-glow {
+  position: absolute;
+  inset: auto -5% -8%;
+  height: 45%;
+  background: radial-gradient(ellipse at 50% 100%, #ffc34fa6, #c52e2944 45%, transparent 72%);
+  animation: fx-pulse 1.6s infinite alternate;
+}
+.fx-dragon-eyes {
+  width: min(88vw, 80vmin);
+  height: 24vmin;
+  left: 50%;
+  top: 7%;
+  transform: translateX(-50%);
+}
+.fx-dragon-lid {
+  transform-origin: 0 20px;
+  animation:
+    fx-open 0.4s both,
+    fx-pulse 2s 0.4s infinite alternate;
+}
+.fx-dragon-brow {
+  fill: none;
+  stroke: var(--a);
+  stroke-width: 6;
+  opacity: 0.55;
+}
+.fx-storm {
+  position: absolute;
+  inset: 0;
+}
+.fx-lightning {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none !important;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.fx-bolt-core {
+  fill: none;
+  stroke: #f8f5ff;
+  stroke-width: 2.5;
+}
+.fx-bolt-glow {
+  fill: none;
+  stroke: #9f82ff;
+  stroke-width: 12;
+  filter: blur(6px);
+}
+.fx-strikes {
+  animation: fx-strikes 3.2s linear both;
+}
+.fx-lightning-flash {
+  position: absolute;
+  inset: 0;
+  background: #dfd3ff;
+  animation: fx-flash 0.4s 0.06s both;
+}
+.fx-toxic-bed {
+  position: absolute;
+  inset: 25% 0 0;
+  background:
+    radial-gradient(ellipse at 50% 65%, #c3de5055, transparent 65%), linear-gradient(transparent 20%, #071407f5);
+}
+.fx-toxic-puff {
+  position: absolute;
+  width: clamp(180px, 38vw, 800px);
+  height: 33vmin;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #bbd85d99, #54883b88 40%, #2c582c33 60%, transparent 73%);
+  opacity: var(--depth);
+  animation: fx-toxic-roll 2.6s var(--d) ease-in-out infinite alternate;
+}
+.fx-toxic-drop {
+  position: absolute;
+  width: clamp(4px, 0.8vmin, 12px);
+  height: clamp(12px, 2.7vmin, 40px);
+  background: linear-gradient(#91a43d33, #cfe675);
+  border-radius: 0 0 50% 50%;
+  animation: fx-fall 2.2s var(--d) infinite;
+}
+.fx-acid-stream {
+  fill: #b4d320;
+}
+.fx-acid-core {
+  stroke: #faffb6;
+  stroke-width: 7;
+}
+.fx-acid-jet {
+  transform-origin: 0 100px;
+  animation:
+    fx-tear 0.4s both,
+    fx-acid-flow 1.3s 0.4s infinite alternate;
+}
+.fx-acid-pool {
+  fill: #cce72c;
+  stroke: #f7ffa0;
+  stroke-width: 3;
+  animation: fx-pulse 1.3s infinite alternate;
+}
+.fx-acid-splash {
+  fill: #eaff65;
+  animation: fx-splash 1.9s var(--d) linear infinite;
+}
+.fx-acid-drop {
+  animation: fx-splash-lift 1.9s var(--d) ease-in-out infinite;
+}
+.fx-sizzle {
+  fill: #ecff7b33;
+  stroke: #f0ff9a;
+  stroke-width: 2;
+  animation: fx-sizzle 1.6s var(--d) infinite;
+}
+.fx-cracks {
+  inset: auto 0 0;
+  width: 100%;
+  height: 36%;
+}
+.fx-fracture {
+  fill: none;
+  stroke-linejoin: bevel;
+  transform-origin: 300px 600px;
+  animation: fx-open 0.35s both;
+}
+.fx-fracture-lip {
+  stroke: #c6a777;
+  stroke-width: clamp(8px, 2.4vmin, 30px);
+}
+.fx-fracture-core {
+  stroke: #070809;
+  stroke-width: clamp(4px, 1.4vmin, 18px);
+}
+.fx-rock {
+  top: 83%;
+  width: calc(5vmin * var(--size));
+  height: calc(5vmin * var(--size));
+  fill: #6f6b5c;
+  stroke: #b0a38b;
+  stroke-width: 2;
+  animation: fx-rock-fall 2.5s var(--d) ease-in infinite;
+}
+.fx-rock-face {
+  stroke: #323531;
+  stroke-width: 2;
+}
+.fx-dust-bed {
+  position: absolute;
+  inset: auto 0 0;
+  height: 36%;
+  background: radial-gradient(ellipse at bottom, #b5a07f66, transparent 75%);
+}
+.fx-dust,
+.fx-steam {
+  position: absolute;
   bottom: -5%;
+  width: 45vmin;
+  height: 35vmin;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #baab8c88, #aa987744 38%, transparent 70%);
+  animation: fx-dust 2.4s var(--d) infinite;
+}
+.fx-near-bugs {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  filter: blur(1.2px);
+}
+.fx-near-bugs .fx-bug {
+  width: 3vmin;
+  height: 5vmin;
+  animation: fx-near 0.95s var(--d) ease-in-out infinite;
+}
+.fx-machine {
+  position: absolute;
+  width: 50vmin;
+  height: 72vmin;
+}
+.fx-machine-left {
+  left: -10vmin;
+  top: 15%;
+}
+.fx-machine-right {
+  right: -14vmin;
+  top: 46%;
+}
+.fx-cog-seat {
+  position: absolute;
+  width: 38vmin;
+  height: 38vmin;
+}
+.fx-small-seat {
+  width: 28.5vmin;
+  height: 28.5vmin;
+  left: 20.8vmin;
+  top: 29vmin;
+}
+.fx-cog {
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 50%;
+  animation: fx-turn var(--speed) linear infinite;
+}
+.fx-cog-small {
+  animation-direction: reverse;
+}
+.fx-construct-eye {
+  width: 18vmin;
+  height: 18vmin;
+  top: 22%;
+  left: calc(50% - 9vmin);
+}
+.fx-steam {
+  width: 25vmin;
+  height: 28vmin;
+  bottom: auto;
+  background: radial-gradient(ellipse, #d3e5dd66, #afc8c333 35%, transparent 68%);
+}
+.fx-duel {
+  width: min(84vmin, 1100px);
+  height: min(84vmin, 1100px);
+  transform: translateY(-6vmin);
+}
+.fx-hilt {
+  fill: #a1aeb8;
+  stroke: #e1c899;
+  stroke-width: 2;
+}
+.fx-grip {
+  fill: #493c39;
+  stroke: #a99472;
+  stroke-width: 3;
+}
+.fx-aurora {
+  position: absolute;
+  inset: 8% -30% 5%;
+  background: linear-gradient(
+    170deg,
+    transparent 22%,
+    #819be422 35%,
+    #a5eac952 44%,
+    #d7b4ed55 51%,
+    #d9adbf11 65%,
+    transparent 75%
+  );
+  mask-image: radial-gradient(ellipse, #000, transparent 70%);
+  animation: fx-aurora 3s ease-in-out infinite alternate;
+}
+.fx-fey-mote {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: clamp(3px, 0.55vmin, 8px);
+  height: clamp(3px, 0.55vmin, 8px);
+  border-radius: 50%;
+  background: #fff0d1;
+  box-shadow: 0 0 8px #b9f1d0;
+  animation: fx-fey-spiral 3.2s var(--d) linear infinite;
+}
+@keyframes fx-skull-rise {
+  from {
+    transform: translateY(0) rotate(-12deg);
+    opacity: 0;
+  }
+  20%,
+  65% {
+    opacity: 0.8;
+  }
+  to {
+    transform: translate(5vmin, -65vh) rotate(18deg);
+    opacity: 0;
+  }
+}
+@keyframes fx-strikes {
+  0% {
+    opacity: 0;
+  }
+  8%,
+  31%,
+  61% {
+    opacity: 1;
+  }
+  16%,
+  28%,
+  40%,
+  56%,
+  72%,
+  100% {
+    opacity: 0.16;
+  }
+}
+@keyframes fx-toxic-roll {
+  from {
+    transform: translate(-4vmin, 4vmin) scale(0.9);
+  }
+  to {
+    transform: translate(5vmin, -3vmin) scale(1.25);
+  }
+}
+@keyframes fx-acid-flow {
+  from {
+    transform: skewY(-2deg);
+  }
+  to {
+    transform: skewY(2deg);
+  }
+}
+@keyframes fx-splash {
+  from {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  18%,
+  70% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(var(--dx));
+    opacity: 0;
+  }
+}
+@keyframes fx-splash-lift {
+  from {
+    transform: translateY(0) scale(0.3);
+  }
+  45% {
+    transform: translateY(var(--lift)) rotate(25deg) scale(1);
+  }
+  to {
+    transform: translateY(90px) rotate(65deg) scale(0.6);
+  }
+}
+@keyframes fx-sizzle {
+  from {
+    transform: translateY(0) scale(0.1);
+    opacity: 0;
+  }
+  30%,
+  65% {
+    opacity: 0.9;
+  }
+  to {
+    transform: translateY(-70px) scale(1.3);
+    opacity: 0;
+  }
+}
+@keyframes fx-rock-fall {
+  from {
+    transform: translate(0, 12vh) rotate(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  40% {
+    transform: translate(calc(var(--dx) * 0.55), -35vh) rotate(100deg);
+    opacity: 1;
+  }
+  to {
+    transform: translate(var(--dx), 25vh) rotate(220deg);
+    opacity: 0;
+  }
+}
+@keyframes fx-dust {
+  from {
+    transform: translateY(8vmin) scale(0.3);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.85;
+  }
+  to {
+    transform: translate(4vmin, -22vmin) scale(1.8);
+    opacity: 0;
+  }
+}
+@keyframes fx-nest {
+  from {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+  12.5%,
+  75% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+}
+@keyframes fx-near {
+  from {
+    transform: translate(-30vmin, 10vmin) rotate(-25deg) scale(0.7);
+    opacity: 0;
+  }
+  25%,
+  70% {
+    opacity: 0.9;
+  }
+  to {
+    transform: translate(60vmin, -20vmin) rotate(35deg) scale(1.5);
+    opacity: 0;
+  }
+}
+@keyframes fx-aurora {
+  from {
+    transform: rotate(-15deg) translateY(-4%);
+  }
+  to {
+    transform: rotate(8deg) translateY(6%);
+  }
+}
+@keyframes fx-fey-spiral {
+  from {
+    transform: rotate(var(--angle)) translateX(var(--radius)) scale(0.4);
+    opacity: 0;
+  }
+  25%,
+  65% {
+    opacity: 1;
+  }
+  to {
+    transform: rotate(calc(var(--angle) + 160deg)) translateX(calc(var(--radius) * 0.65)) translateY(-12vmin) scale(1.2);
+    opacity: 0;
+  }
+}
+@keyframes fx-flutter {
+  from {
+    transform: rotate(-12deg) translate(-20px, 20px);
+  }
+  50% {
+    transform: rotate(12deg) translate(38px, -45px);
+  }
+  to {
+    transform: rotate(-8deg) translate(-25px, -75px);
+  }
 }
