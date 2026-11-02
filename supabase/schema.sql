@@ -811,3 +811,12 @@ begin
   new.updated_at := now();
   return new;
 end $$;
+
+-- ---------- Keep-alive (migración 009) ----------
+create or replace function public.keep_alive() returns timestamptz
+language sql stable as $$
+  select now();
+$$;
+grant execute on function public.keep_alive() to anon, authenticated;
+-- Que la API vea la función nueva sin esperar.
+notify pgrst, 'reload schema';

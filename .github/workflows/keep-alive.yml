@@ -1,0 +1,37 @@
+# Mantiene despierta la mesa compartida: Supabase pausa los proyectos gratuitos con poca actividad en una semana.
+# Hace una consulta pequeña tres veces por día con la clave pública de config.js (la misma que usa la app).
+# Si falla (por ejemplo, el proyecto ya está pausado), GitHub avisa por email.
+name: keep-alive
+on:
+  schedule:
+    - cron: '17 3,11,19 * * *'
+  workflow_dispatch:
+  # Al cambiar este archivo, el PR prueba la consulta.
+  pull_request:
+    paths: ['.github/workflows/keep-alive.yml']
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Consultar la base de datos
+        run: |
+          eval "$(node -e '
+            globalThis.window = {};
+            require("./config.js");
+            const c = window.CLOUD_CONFIG || {};
+            console.log("URL=" + JSON.stringify(c.url || ""));
+            console.log("KEY=" + JSON.stringify(c.key || ""));
+          ')"
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then echo "config.js no tiene un proyecto de Supabase: nada que mantener."; exit 0; fi
+          # Llama a public.keep_alive() (migración 009): una consulta real a la base, sin datos de la mesa.
+          code=$(curl -s -o /tmp/r.txt -w '%{http_code}' --max-time 30 -X POST \
+            "$URL/rest/v1/rpc/keep_alive" -H "apikey: $KEY" -H "Content-Type: application/json" -d '{}')
+          echo "Respuesta de Supabase: $code $(cat /tmp/r.txt)"
+          if [ "$code" = "200" ]; then exit 0; fi
+          if grep -q PGRST202 /tmp/r.txt; then
+            echo "Falta la función keep_alive: ejecutá supabase/migrations/009_keep_alive.sql en Supabase → SQL Editor."
+          else
+            echo "La base no respondió: si el proyecto está pausado, reanudalo en el panel de Supabase."
+          fi
+          exit 1

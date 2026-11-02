@@ -150,6 +150,7 @@ Un mapa compartido para jugar en la mesa, en la tele o a distancia. El DM lo abr
 5. **Authentication → URL Configuration:** en *Site URL* poner `https://sephiraxx.github.io/DnD-char-sheet/` y en *Redirect URLs* agregar `https://sephiraxx.github.io/DnD-char-sheet/**` (y `http://localhost:8080/**` para probar). Lo usan los enlaces de acceso por email.
 6. Opcional: **Attack Protection → Captcha** con Cloudflare Turnstile; la clave pública del sitio va en `config.js` (`captchaSiteKey`).
 7. Publicar los cambios (GitHub Pages).
+8. Supabase pausa los proyectos gratuitos con poca actividad en una semana. El workflow `keep-alive` de GitHub Actions llama tres veces por día a `public.keep_alive()` (migración `009_keep_alive.sql`) con la clave pública de `config.js` para evitarlo; si la consulta falla, GitHub avisa por email. Se puede correr a mano desde **Actions → keep-alive → Run workflow**.
 
 ### Acceso con email y contraseña
 
