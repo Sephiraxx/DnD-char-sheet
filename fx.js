@@ -215,30 +215,87 @@ const EncounterFX = (() => {
       }) + 'Z';
     return `<svg class="fx-cog ${small ? 'fx-cog-small' : ''}" viewBox="-110 -110 220 220" aria-hidden="true" style="--speed:${teeth / 2}s"><defs><linearGradient id="enc-metal-${id}"><stop stop-color="#f2e3b3"/><stop offset=".3" stop-color="#8d9da7"/><stop offset=".55" stop-color="#d4e5e9"/><stop offset="1" stop-color="#42525f"/></linearGradient></defs>${path(outline, '', `fill="url(#enc-metal-${id})" stroke="#d1dde0" stroke-width="2"`)}<circle r="72" fill="#10212c" stroke="#56656d" stroke-width="8"/>${many(6, i => `<g transform="rotate(${i * 60})">${path('M-7-69H7V-20H-7Z', '', `fill="url(#enc-metal-${id})"`)}</g>`)}<circle r="25" fill="url(#enc-metal-${id})"/><circle r="12" fill="#071017"/></svg>`;
   }
+  function forearm(i) {
+    // Radio y cúbito anchos y afinados; las falanges quedan separadas por las articulaciones.
+    const fingers = [
+      ['M64 108 49 102M42 98 32 88M30 80Q32 70 42 74', [47, 102, 31, 85], [66, 111], 9],
+      ['M73 87 62 68M59 58 62 42M66 32Q78 24 81 35', [60, 63, 63, 36], [75, 92], 7],
+      ['M92 82 88 59M89 49 96 31M102 23Q115 24 111 38', [88, 54, 98, 26], [93, 88], 2],
+      ['M111 88 116 68M119 58 129 45M136 40Q148 46 137 55', [117, 63, 133, 42], [110, 94], -7],
+      ['M128 104 139 89M147 81 154 75M162 76Q169 86 155 89', [143, 85, 159, 74], [124, 108], -11],
+    ];
+    const bones =
+      path('M55 357Q48 350 56 338L66 153Q60 143 66 132Q78 122 85 135L79 153 74 336Q84 348 74 359Z') +
+      path('M106 358Q95 349 103 337L99 157Q91 140 102 130Q115 123 124 138L115 160 122 339Q132 351 120 360Z');
+    const palm =
+      path('M83 126 66 111M90 122 75 94M97 121 93 90M104 125 110 96M110 130 124 109', 'fx-phalanges') +
+      many(
+        6,
+        j =>
+          `<ellipse cx="${77 + (j % 3) * 15}" cy="${127 + Math.floor(j / 3) * 10}" rx="6" ry="5" class="fx-knuckle"/>`,
+      );
+    const hand = many(5, j => {
+      const [d, joints, origin, curl] = fingers[j];
+      return group(
+        path(d, 'fx-phalanges') +
+          many(2, k => `<circle cx="${joints[k * 2]}" cy="${joints[k * 2 + 1]}" r="4.5" class="fx-knuckle"/>`) +
+          `<circle cx="${origin[0]}" cy="${origin[1]}" r="5" class="fx-knuckle"/>`,
+        'fx-finger',
+        `style="transform-origin:${origin[0]}px ${origin[1]}px;--curl:${curl}deg;--d:${(i + j) * -0.17}s"`,
+      );
+    });
+    return `<div class="fx-grave" style="left:${13 + i * 18.5}%;--height:${[29, 32, 30, 31, 28][i]}vmin;--tilt:${[-12, 8, -4, 11, -8][i]}deg;--delay:${i * 0.065}s"><svg class="fx-forearm" viewBox="0 0 180 360" aria-hidden="true">${group(bones, 'fx-forearm-bones')}${palm}${hand}</svg></div>`;
+  }
+  function rock(i) {
+    // Fragmentos asimétricos, con una sola cara clara: nada de centro ni rayos que parezcan una tuerca.
+    const shapes = [
+      ['M-28-8-11-26 2-16 24-19 19 9 4 27-21 15Z', 'M-28-8-11-26 2-16 24-19 3 1Z'],
+      ['M-26-20 3-27 27-2 11 25-17 12Z', 'M-26-20 3-27 27-2-4-5Z'],
+      ['M-25-5-18-24 15-28 28 9 8 16-10 29Z', 'M-25-5-18-24 15-28 4-1Z'],
+      ['M-30 5-7-26 8-16 26-12 18 10 26 23-15 19Z', 'M-30 5-7-26 8-16 26-12-1 4Z'],
+    ];
+    const [outline, face] = shapes[i % shapes.length];
+    return `<svg class="fx-rock" viewBox="-32 -32 64 64" aria-hidden="true" style="left:${3 + i * 7}%;--size:${[0.65, 1.4, 0.85, 1.8, 1.1][i % 5]};--dx:${(i - 6.5) * 3}vw;--turn:${i * 53}deg;--d:${(i % 4) * -0.19}s">${path(outline, 'fx-rock-body')}${path(face, 'fx-rock-face')}</svg>`;
+  }
+  function cracks() {
+    // Cada grieta es una abertura rellena que termina en punta; sólo iluminamos uno de sus bordes.
+    const cuts = [
+      [
+        'M280 620 285 480 270 400 301 320 280 230 305 90 295 235 316 321 290 405 310 480 320 620Z',
+        'M280 620 285 480 270 400 301 320 280 230 305 90',
+      ],
+      ['M270 535 185 438 168 344 80 288 0 75 94 273 186 326 205 421 300 515Z', 'M270 535 185 438 168 344 80 288 0 75'],
+      [
+        'M300 585 398 450 370 362 486 275 600 110 500 291 394 373 422 453 330 605Z',
+        'M300 585 398 450 370 362 486 275 600 110',
+      ],
+      ['M304 355 375 246 369 120 455 0 382 125 391 250 319 369Z', 'M304 355 375 246 369 120 455 0'],
+      ['M183 369 106 388 35 335 110 377 180 358Z', 'M183 369 106 388 35 335'],
+      ['M406 459 492 475 600 355 495 460 413 447Z', 'M406 459 492 475 600 355'],
+    ];
+    return svg(
+      group(
+        cuts.map(c => path(c[0], 'fx-fracture-cut')).join('') +
+          path(cuts.map(c => c[1]).join(' '), 'fx-fracture-edge', 'vector-effect="non-scaling-stroke"'),
+        'fx-fracture',
+      ),
+      'fx-cracks',
+      'preserveAspectRatio="none"',
+    );
+  }
   const THEMES = {
     undead: () =>
       fog() +
-      svg(
-        many(
-          4,
-          i =>
-            `<g transform="translate(${85 + i * 145} 160)">${group(
-              path(
-                'M-22 70-20 10-34-28-29-33-11-9-9-61-2-64 2-13 9-75 16-73 14-10 26-59 33-56 26 4 39-29 46-25 32 28 22 70Z',
-              ) +
-                path('M-12 70Q-18 190-12 310T-7 430M8 70Q15 200 8 300T10 430', 'fx-arm-bones fx-lines') +
-                path('M-14 35H20M-13 45H19', 'fx-bone fx-lines'),
-              'fx-hand',
-              `style="--d:${i * -0.15}s"`,
-            )}</g>`,
-        ),
-        'fx-ground fx-hands',
-        'preserveAspectRatio="none"',
+      many(5, forearm) +
+      many(
+        10,
+        i =>
+          `<svg class="fx-grave-clod" viewBox="-30 -30 60 60" aria-hidden="true" style="left:${11 + Math.floor(i / 2) * 18.5 + (i % 2) * 4}%;--dx:${i % 2 ? 6 : -6}vmin;--delay:${Math.floor(i / 2) * 0.065}s;--size:${1.2 + (i % 3) * 0.45}vmin">${path('M-25-4-9-21 15-16 24 8 0 22-18 13Z')}</svg>`,
       ) +
       many(
         4,
         i =>
-          `<svg class="fx-skull-drift" viewBox="-30 -35 60 65" aria-hidden="true" style="left:${12 + i * 23}%;--d:${i * -0.63}s">${skull}</svg>`,
+          `<svg class="fx-skull-drift" viewBox="-24 -28 48 50" aria-hidden="true" style="left:${12 + i * 23}%;--size:${[8, 9, 7.5, 8.5][i]}vmin;--d:${i * -0.63}s">${skull}</svg>`,
       ),
     necro: (_, id) =>
       seal(id) +
@@ -286,25 +343,8 @@ const EncounterFX = (() => {
       ),
     dragon,
     giant: () =>
-      svg(
-        group(
-          many(2, i =>
-            path(
-              'M300 620 275 480 312 390 260 280 300 140M290 520 180 445 195 350 85 275 0 90M300 600 405 450 390 370 505 250 600 120M195 350 120 375 45 340M312 390 390 260 385 110 455 0M260 280 190 175 110 110M405 450 490 460 600 360',
-              i ? 'fx-fracture-core' : 'fx-fracture-lip',
-              'vector-effect="non-scaling-stroke"',
-            ),
-          ),
-          'fx-fracture',
-        ),
-        'fx-cracks',
-        'preserveAspectRatio="none"',
-      ) +
-      many(
-        14,
-        i =>
-          `<svg class="fx-rock" viewBox="-30 -30 60 60" aria-hidden="true" style="left:${3 + i * 7}%;--size:${0.5 + (i % 4) * 0.35};--dx:${(i - 6.5) * 3}vw;--d:${(i % 4) * -0.19}s">${path('M-25-13 1-26 23-10 28 14 6 27-23 15Z')}${path('M-25-13 0 2 28 14M0 2 1-26M0 2 6 27', 'fx-rock-face fx-lines')}</svg>`,
-      ) +
+      cracks() +
+      many(14, rock) +
       '<div class="fx-dust-bed"></div>' +
       many(5, i => `<i class="fx-dust" style="left:${i * 24 - 15}%;--d:${i * -0.25}s"></i>`),
     fiend: (_, id) => seal(id, true) + fire(id, 0.52) + particles(12, 'fx-ember'),

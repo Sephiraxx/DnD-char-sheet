@@ -127,15 +127,6 @@
   width: 100%;
   height: 63%;
 }
-.fx-hand {
-  transform-origin: 0 130px;
-  animation:
-    fx-rise 0.4s ease-out both,
-    fx-sway 2s 0.4s ease-in-out infinite alternate;
-}
-.fx-bone {
-  opacity: 0.65;
-}
 .fx-soul {
   transform-origin: 300px 300px;
   animation: fx-spiral 2.8s var(--d) linear infinite;
@@ -496,14 +487,6 @@
     opacity: 0.9;
   }
 }
-@keyframes fx-rise {
-  from {
-    transform: translateY(180px);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
 @keyframes fx-sway {
   from {
     transform: rotate(-2deg);
@@ -754,23 +737,51 @@
 }
 
 /* Correcciones de escala: las siluetas siguen el viewport y el título queda adelante. */
-.fx-hands {
-  height: 90%;
-  opacity: 0.72;
+.fx-grave {
+  position: absolute;
+  bottom: -2vmin;
+  width: calc(var(--height) * 0.5);
+  height: min(var(--height), 30vh);
+  margin-left: calc(var(--height) * -0.25);
+  transform: rotate(var(--tilt));
+  transform-origin: 50% 100%;
 }
-.fx-hands .fx-bone {
-  stroke: #174b42;
-  stroke-width: 3;
+.fx-forearm {
+  width: 100%;
+  height: 100%;
+  animation: fx-grave-emerge 0.4s var(--delay) cubic-bezier(0.16, 0.8, 0.3, 1) both;
 }
-.fx-arm-bones {
-  stroke: #9bd9ba;
-  stroke-width: 8;
+.fx-forearm-bones {
+  fill: #b4e4ce;
+  stroke: #426e64;
+  stroke-width: 1.5;
+}
+.fx-phalanges {
+  fill: none;
+  stroke: #c2ead7;
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+.fx-knuckle {
+  fill: #558e7c;
+  stroke: #d3efdf;
+  stroke-width: 2;
+}
+.fx-finger {
+  animation: fx-grasp 1.6s var(--d) ease-in-out infinite alternate;
+}
+.fx-grave-clod {
+  bottom: 0;
+  width: var(--size);
+  height: var(--size);
+  fill: #796b50 !important;
+  animation: fx-dirt-kick 1.2s var(--delay) ease-out both;
 }
 .fx-skull-drift {
-  bottom: 0;
-  width: clamp(36px, 8vmin, 100px);
-  height: clamp(40px, 9vmin, 115px);
-  fill: #d4edc7;
+  bottom: -3vmin;
+  width: var(--size);
+  height: var(--size);
+  fill: #d4edc7 !important;
   animation: fx-skull-rise 3s var(--d) ease-out infinite;
 }
 .fx-heat-glow {
@@ -890,6 +901,7 @@
   inset: auto 0 0;
   width: 100%;
   height: 36%;
+  z-index: 1;
 }
 .fx-fracture {
   fill: none;
@@ -897,26 +909,31 @@
   transform-origin: 300px 600px;
   animation: fx-open 0.35s both;
 }
-.fx-fracture-lip {
-  stroke: #c6a777;
-  stroke-width: clamp(8px, 2.4vmin, 30px);
+.fx-fracture-cut {
+  fill: #030507;
+  stroke: none;
 }
-.fx-fracture-core {
-  stroke: #070809;
-  stroke-width: clamp(4px, 1.4vmin, 18px);
+.fx-fracture-edge {
+  fill: none;
+  stroke: #b6a17f;
+  stroke-width: clamp(1px, 0.17vmin, 2px);
+  opacity: 0.8;
 }
 .fx-rock {
   top: 83%;
   width: calc(5vmin * var(--size));
   height: calc(5vmin * var(--size));
-  fill: #6f6b5c;
-  stroke: #b0a38b;
-  stroke-width: 2;
+  z-index: 2;
   animation: fx-rock-fall 2.5s var(--d) ease-in infinite;
 }
+.fx-rock-body {
+  fill: #625f53;
+  stroke: #918775;
+  stroke-width: 1;
+}
 .fx-rock-face {
-  stroke: #323531;
-  stroke-width: 2;
+  fill: #b8ad95;
+  stroke: none;
 }
 .fx-dust-bed {
   position: absolute;
@@ -1031,6 +1048,39 @@
   box-shadow: 0 0 8px #b9f1d0;
   animation: fx-fey-spiral 3.2s var(--d) linear infinite;
 }
+@keyframes fx-grave-emerge {
+  from {
+    transform: translateY(110%) rotate(-5deg);
+  }
+  to {
+    transform: translateY(0) rotate(0);
+  }
+}
+@keyframes fx-grasp {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(var(--curl));
+  }
+}
+@keyframes fx-dirt-kick {
+  from {
+    transform: translate(0, 2vmin) scale(0.5);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.9;
+  }
+  45% {
+    transform: translate(calc(var(--dx) * 0.5), -10vmin) rotate(55deg);
+    opacity: 0.8;
+  }
+  to {
+    transform: translate(var(--dx), 3vmin) rotate(135deg);
+    opacity: 0;
+  }
+}
 @keyframes fx-skull-rise {
   from {
     transform: translateY(0) rotate(-12deg);
@@ -1041,7 +1091,7 @@
     opacity: 0.8;
   }
   to {
-    transform: translate(5vmin, -65vh) rotate(18deg);
+    transform: translate(4vmin, max(-35vh, -45vmin)) rotate(18deg);
     opacity: 0;
   }
 }
@@ -1120,18 +1170,18 @@
 }
 @keyframes fx-rock-fall {
   from {
-    transform: translate(0, 12vh) rotate(0);
+    transform: translate(0, 12vh) rotate(var(--turn));
     opacity: 0;
   }
   15% {
     opacity: 1;
   }
   40% {
-    transform: translate(calc(var(--dx) * 0.55), -35vh) rotate(100deg);
+    transform: translate(calc(var(--dx) * 0.55), -35vh) rotate(calc(var(--turn) + 100deg));
     opacity: 1;
   }
   to {
-    transform: translate(var(--dx), 25vh) rotate(220deg);
+    transform: translate(var(--dx), 25vh) rotate(calc(var(--turn) + 220deg));
     opacity: 0;
   }
 }
