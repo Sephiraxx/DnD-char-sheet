@@ -77,7 +77,7 @@ const RollFX = (() => {
   return { show };
 })();
 
-/* Aviso de combate a pantalla completa (encuentro lanzado o refuerzos): destello, temblor y un grito que cae. */
+/* Aviso de combate a pantalla completa: golpe, suspenso y retirada en tres tiempos. */
 const EncounterFX = (() => {
   'use strict';
   const esc = v =>
@@ -85,138 +85,389 @@ const EncounterFX = (() => {
       /[&<>"']/g,
       c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
     );
-  let timer;
-  // Capa de fondo según el tipo de criatura (muertos vivientes, dragones, gigantes…). Solo formas CSS/SVG.
-  const rand = (a, b) => a + Math.random() * (b - a);
+  let timer,
+    serial = 0,
+    current;
   const many = (n, fn) => Array.from({ length: n }, (_, i) => fn(i)).join('');
-  // Llamas: lenguas con punta, núcleo claro y brasas que suben. Colores por variable (--f1 claro, --f2 oscuro).
-  function tongue(x, w, h, lean) {
-    const B = 200;
-    return `M${x - w / 2} ${B} C${x - w / 2} ${B - h * 0.45} ${x - w * 0.15} ${B - h * 0.6} ${x + lean} ${B - h} C${x + w * 0.2} ${B - h * 0.62} ${x + w / 2} ${B - h * 0.45} ${x + w / 2} ${B} Z`;
-  }
-  const flames = n => {
-    const outer = [],
-      inner = [];
-    for (let i = 0; i < n; i++) {
-      const x = (i + 0.5) * (400 / n) + rand(-6, 6),
-        w = rand(34, 52),
-        h = rand(90, 170),
-        lean = rand(-10, 10),
-        d = rand(0, 0.45).toFixed(2),
-        f = rand(0.22, 0.4).toFixed(2);
-      outer.push(`<path class="flame" style="--d:${d}s;--f:${f}s" d="${tongue(x, w, h, lean)}"/>`);
-      inner.push(
-        `<path class="flame core" style="--d:${d}s;--f:${f}s" d="${tongue(x, w * 0.5, h * 0.55, lean * 0.6)}"/>`,
-      );
-    }
-    const embers = many(
-      18,
-      () =>
-        `<span class="fx-ember" style="left:${rand(2, 98).toFixed(0)}%;--d:${rand(0.3, 1.6).toFixed(2)}s;--x:${rand(-40, 40).toFixed(0)}px"></span>`,
-    );
-    return `<svg class="fx-fire" viewBox="0 0 400 200" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="fx-fire-g" x1="0" y1="1" x2="0" y2="0"><stop offset="0" style="stop-color:var(--f2)"/><stop offset="0.7" style="stop-color:var(--f1)"/><stop offset="1" style="stop-color:var(--f1);stop-opacity:0"/></linearGradient></defs>${outer.join('')}${inner.join('')}</svg>${embers}`;
-  };
-  const bolts = () =>
-    `<svg class="fx-bolts" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden="true"><path d="M90 0 L70 70 L100 74 L60 170 L120 90 L88 86 L120 0 Z"/><path d="M310 0 L290 60 L318 64 L280 150 L338 80 L306 76 L334 0 Z"/></svg>`;
-  const rising = (n, glyph) =>
+  const path = (d, cls = '', extra = '') => `<path class="${cls}" d="${d}" ${extra}/>`;
+  const svg = (art, cls = 'fx-stage', extra = '') =>
+    `<svg class="${cls}" viewBox="0 0 600 600" aria-hidden="true" ${extra}>${art}</svg>`;
+  const group = (art, cls, extra = '') => `<g class="${cls}" ${extra}>${art}</g>`;
+  const at = (x, y, art) => `<g transform="translate(${x} ${y})">${art}</g>`;
+  const skull =
+    '<path d="M-17 2C-30-33 30-33 17 2L12 8V19H-12V8Z"/><path class="fx-dark" d="M-15-9h10v10h-10Zm20 0h10v10H5ZM-3 3l6 0-3-6ZM-7 9h3v10h-3Zm11 0h3v10H4Z"/>';
+  const fog = () => '<div class="fx-fog"></div><div class="fx-fog fx-fog-back"></div>';
+  const particles = (n, cls = 'fx-mote') =>
     many(
       n,
-      () =>
-        `<span class="fx-rise" style="left:${rand(4, 94).toFixed(0)}%;--d:${rand(0, 1.2).toFixed(2)}s;--s:${rand(0.8, 1.8).toFixed(2)}">${glyph}</span>`,
+      i =>
+        `<i class="${cls}" style="--i:${i};left:${8 + ((i * 37) % 85)}%;top:${12 + ((i * 23) % 76)}%;--d:${(i % 6) * -0.27}s"></i>`,
     );
-  const circle = () =>
-    `<svg class="fx-circle" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="92"/><circle cx="100" cy="100" r="74" class="dash"/><path d="M100 26 L164 137 L36 137 Z M100 174 L36 63 L164 63 Z"/><text x="100" y="15">ᚠ ᚢ ᚦ ᚨ ᚱ ᚲ ᚷ ᚹ ᚺ ᚾ ᛁ ᛃ</text></svg>`;
-  const THEMES = {
-    undead: () => `<div class="fx-fog"></div>${rising(12, '☠')}`,
-    necro: () => `<div class="fx-fog"></div>${circle()}${rising(8, '☠')}`,
-    arcane: () =>
-      `${circle()}${many(14, () => `<span class="fx-spark" style="left:${rand(10, 90).toFixed(0)}%;top:${rand(10, 90).toFixed(0)}%;--d:${rand(0, 1.4).toFixed(2)}s"></span>`)}`,
-    cult: () => `${circle()}<div class="fx-fog"></div>`,
-    dragon: v => `${flames(14)}${v === 'lightning' ? bolts() : ''}`,
-    giant: () =>
-      `<svg class="fx-cracks" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden="true"><path d="M200 300 L190 250 L215 210 L195 160 L220 120 L205 70"/><path d="M200 300 L240 260 L230 225 L280 200 L300 150"/><path d="M200 300 L150 270 L160 230 L110 205 L95 160"/><path d="M215 210 L260 185"/><path d="M195 160 L150 140"/></svg>`,
-    fiend: () =>
-      `${flames(18)}<svg class="fx-sigil" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="80"/><path d="M100 20 L147 165 L23 75 L177 75 L53 165 Z"/></svg>`,
-    aberration: () =>
-      `<svg class="fx-tentacles" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden="true">${['M-10 300 C60 220 20 140 90 110', 'M410 300 C340 220 380 140 310 110', 'M-10 40 C70 60 60 130 120 150', 'M410 40 C330 60 340 130 280 150', 'M120 310 C140 250 100 220 150 190', 'M280 310 C260 250 300 220 250 190'].map(d => `<path d="${d}"/>`).join('')}</svg><div class="fx-eye"><i></i></div>`,
-    beast: () => `<div class="fx-claws">${many(3, i => `<i style="--i:${i}"></i>`)}</div>`,
-    monstrosity: () =>
-      `<div class="fx-claws">${many(3, i => `<i style="--i:${i}"></i>`)}</div>${many(3, i => `<span class="fx-ring" style="--d:${(i * 0.25).toFixed(2)}s"></span>`)}`,
-    swarm: () =>
-      many(
-        40,
-        () =>
-          `<span class="fx-bug" style="left:${rand(0, 100).toFixed(0)}%;top:${rand(0, 100).toFixed(0)}%;--x:${rand(-120, 120).toFixed(0)}px;--y:${rand(-120, 120).toFixed(0)}px;--d:${rand(0, 0.8).toFixed(2)}s"></span>`,
-      ),
-    warband: () =>
-      `${many(9, i => `<span class="fx-arrow" style="top:${(8 + i * 10 + rand(-3, 3)).toFixed(0)}%;--d:${rand(0, 0.9).toFixed(2)}s;--r:${rand(-8, 8).toFixed(0)}deg"></span>`)}${many(2, i => `<span class="fx-ring drum" style="--d:${(0.2 + i * 0.5).toFixed(2)}s"></span>`)}`,
-    humanoid: () => `<div class="fx-blades"><i></i><i></i></div>`,
-    web: () =>
-      `<svg class="fx-web" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden="true">${[0, 1]
-        .map(side => {
-          const x = side ? 400 : 0,
-            dir = side ? -1 : 1;
-          const spokes = [0, 20, 40, 60, 80].map(a => {
-            const r = (a * Math.PI) / 180;
-            return `M${x} 0 L${x + dir * Math.cos(r) * 260} ${Math.sin(r) * 260}`;
-          });
-          const rings = [60, 120, 180].map(
-            rr =>
-              `M${x + dir * rr} 0 ${[20, 40, 60, 80].map(a => `L${x + dir * Math.cos((a * Math.PI) / 180) * rr} ${Math.sin((a * Math.PI) / 180) * rr}`).join(' ')}`,
-          );
-          return [...spokes, ...rings].map(d => `<path d="${d}"/>`).join('');
-        })
-        .join('')}</svg><div class="fx-spider"><i></i></div>`,
-    elemental: () => `<div class="fx-vortex"></div>`,
-    construct: () =>
-      `${[0, 1].map(i => `<svg class="fx-gear g${i}" viewBox="0 0 100 100" aria-hidden="true"><path d="${gear()}"/><circle cx="50" cy="50" r="14"/></svg>`).join('')}`,
-    plant: () =>
-      `<svg class="fx-vines" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden="true">${['M0 300 C40 240 10 200 60 170 C90 150 70 110 110 90', 'M400 300 C360 240 390 200 340 170 C310 150 330 110 290 90', 'M0 0 C50 40 30 80 80 100', 'M400 0 C350 40 370 80 320 100'].map(d => `<path d="${d}"/>`).join('')}</svg>`,
-    ooze: () =>
-      many(
-        10,
+  const rings = () => many(3, i => `<circle class="fx-shock" cx="300" cy="300" r="80" style="--d:${i * -0.65}s"/>`);
+  // El trazo punteado ya está dibujado: la máscara se abre con transform, sin repintar el trazo.
+  function seal(id, infernal = false) {
+    const key = `enc-reveal-${id}`;
+    return svg(
+      `<defs><clipPath id="${key}"><rect class="fx-reveal" width="600" height="600"/></clipPath></defs><g clip-path="url(#${key})" class="fx-lines"><circle cx="300" cy="300" r="224" stroke-dasharray="6 8"/><circle cx="300" cy="300" r="200"/>${path(infernal ? 'M300 95 420 465 105 235H495L180 465Z' : 'M300 105 470 397H130ZM300 495 130 203H470Z')}</g>${many(
+        12,
         i =>
-          `<span class="fx-drip" style="left:${(5 + i * 10 + rand(-3, 3)).toFixed(0)}%;--d:${rand(0, 0.8).toFixed(2)}s;--l:${rand(20, 60).toFixed(0)}%"></span>`,
+          `<g transform="rotate(${i * 30} 300 300)">${path('M290 65v30m0-24 17 10-17 8', 'fx-rune', `style="--d:${i * 0.07}s"`)}</g>`,
+      )}`,
+      'fx-stage fx-seal',
+    );
+  }
+  function fire(id) {
+    return svg(
+      `<defs><linearGradient id="enc-fire-${id}" x2="0" y2="1"><stop stop-color="#fff4bd"/><stop offset=".38" stop-color="#ffb332"/><stop offset="1" stop-color="#b62435"/></linearGradient></defs>${many(
+        3,
+        j =>
+          group(
+            many(7, i => {
+              const x = i * 100 - 30;
+              return path(
+                `M${x} 610 C${x - 45} 480 ${x + 85} 410 ${x + 20} ${190 + (i % 3) * 65} C${x + 155} 330 ${x + 42} 410 ${x + 110} 435 C${x + 165} 470 ${x + 160} 560 ${x + 175} 610Z`,
+                'fx-flame',
+                `style="--d:${(i % 3) * -0.4}s"`,
+              );
+            }),
+            'fx-fire-band',
+            `style="--i:${j};fill:url(#enc-fire-${id})"`,
+          ),
+      )}`,
+      'fx-fire',
+      'preserveAspectRatio="none"',
+    );
+  }
+  const claws = () =>
+    svg(
+      many(3, i =>
+        at(
+          0,
+          i * 65 - 55,
+          group(
+            path('M100 175 450 340 432 344 485 383 370 341 385 338 95 190Z', 'fx-cut'),
+            'fx-claw',
+            `style="--i:${i}"`,
+          ),
+        ),
       ),
+    );
+  function dragon(v, id) {
+    const wing = svg(
+      path('M60 250Q90 65 295 100L225 170 340 130 290 210 430 160 375 260Q250 205 180 290Z', 'fx-wing') +
+        path('M360 135q35-30 70 0-35 26-70 0Z', 'fx-glint'),
+      'fx-stage fx-dragon',
+    );
+    const signatures = {
+      fire: () => fire(id) + particles(12, 'fx-ember'),
+      ice: () =>
+        svg(
+          many(
+            12,
+            i =>
+              `<g transform="translate(${30 + i * 48} ${220 + (i % 3) * 75})">${path('M0 100 18-100 42 45 25 80Z', 'fx-ice', `style="--d:${(i % 4) * -0.2}s"`)}</g>`,
+          ),
+          'fx-breath',
+          'preserveAspectRatio="none"',
+        ),
+      lightning: () =>
+        svg(
+          path('M0 300 180 230 142 320 340 200 295 303 600 160 390 350 412 275 205 410 235 330Z', 'fx-lightning') +
+            path('M300 300 345 425 320 400 375 545M390 270 420 100 450 145 510 20', 'fx-lines'),
+        ),
+      poison: () =>
+        fog() +
+        svg(
+          many(
+            7,
+            i =>
+              `<circle class="fx-cloud" cx="${65 + i * 80}" cy="${310 + (i % 2) * 90}" r="90" style="--d:${i * -0.3}s"/>`,
+          ),
+        ) +
+        particles(8, 'fx-drop'),
+      acid: () =>
+        svg(
+          path('M0 390Q180 140 390 300T600 320L600 440Q300 300 0 520Z', 'fx-acid-wave') +
+            many(
+              10,
+              i =>
+                `<g transform="translate(${50 + i * 55} ${200 + (i % 3) * 90})">${path('M0-28Q30 12 0 20Q-24 10 0-28Z', 'fx-acid', `style="--d:${i * -0.18}s"`)}</g>`,
+            ),
+          'fx-breath',
+          'preserveAspectRatio="none"',
+        ),
+    };
+    return `<div class="fx-sweep">${signatures[v]()}</div>${wing}`;
+  }
+  const THEMES = {
+    undead: () =>
+      fog() +
+      svg(
+        many(
+          4,
+          i =>
+            `<g transform="translate(${85 + i * 145} 480)">${group(
+              path(
+                'M-22 130-20 10-34-28-29-33-11-9-9-61-2-64 2-13 9-75 16-73 14-10 26-59 33-56 26 4 39-29 46-25 32 28 22 130Z',
+              ) + group(skull, 'fx-bone', 'transform="translate(0 65)"'),
+              'fx-hand',
+              `style="--d:${i * -0.15}s"`,
+            )}</g>`,
+        ),
+        'fx-ground',
+      ),
+    necro: (_, id) =>
+      seal(id) +
+      fog() +
+      svg(
+        many(
+          6,
+          i =>
+            `<g transform="rotate(${i * 60} 300 300)">${group(
+              group(skull, 'fx-soul-head', 'transform="translate(300 100)"') +
+                path('M300 115q-30 50 0 100-5-60 12-90', 'fx-soul-tail'),
+              'fx-soul',
+              `style="--d:${i * -0.3}s"`,
+            )}</g>`,
+        ),
+      ),
+    arcane: (_, id) =>
+      `${
+        seal(id) +
+        svg(
+          group(
+            '<circle cx="300" cy="300" r="165" stroke-dasharray="80 15 3 15"/><ellipse cx="300" cy="300" rx="255" ry="100"/>',
+            'fx-orbit fx-lines',
+          ) +
+            many(
+              8,
+              i =>
+                `<g transform="rotate(${i * 45} 300 300)">${group('<circle cx="300" cy="60" r="5"/>', 'fx-orbit')}</g>`,
+            ),
+        )
+      }<div class="fx-entry-light"></div>`,
+    cult: (_, id) =>
+      seal(id, true) +
+      svg(
+        many(
+          2,
+          i =>
+            `<g transform="translate(${i ? 525 : 75} 210)">${path('M-80 350Q-65 25 0-80 65 25 80 350Z', 'fx-hood')}${path('M-20 20Q0-55 20 20L12 60H-12Z', 'fx-dark')}</g>`,
+        ) +
+          many(
+            7,
+            i =>
+              `<g transform="translate(${60 + i * 80} ${500 + Math.abs(3 - i) * 18})"><path d="M-6 0H6V55H-6Z" fill="#9c655b"/>${path('M0 0Q-20-18 0-44 17-18 0 0Z', 'fx-candle', `style="--d:${i * -0.2}s"`)}</g>`,
+          ),
+      ),
+    dragon,
+    giant: () =>
+      svg(
+        path(
+          'M300 600 283 510 315 450 270 380 310 300M300 600 390 515 374 470 480 400 510 320M300 600 180 530 194 480 110 450 70 360M315 450 390 410M270 380 200 350',
+          'fx-crack fx-lines',
+        ) +
+          many(
+            12,
+            i =>
+              `<g transform="translate(${60 + i * 45} 550)">${path('M-12-8 4-17 18 2 7 16-17 7Z', 'fx-debris', `style="--i:${i};--d:${(i % 4) * -0.15}s"`)}</g>`,
+          ),
+        'fx-ground',
+      ) + fog(),
+    fiend: (_, id) => seal(id, true) + fire(id) + particles(12, 'fx-ember'),
+    aberration: () =>
+      svg(
+        many(
+          4,
+          i =>
+            `<g transform="rotate(${i * 90} 300 300)">${path(
+              'M-20 0C160 30 15 210 120 220S220 140 165 120Q125 100 136 145',
+              'fx-tentacle',
+              `style="--d:${i * -0.3}s"`,
+            )}</g>`,
+        ) +
+          group(
+            `<ellipse cx="300" cy="190" rx="102" ry="53" fill="#efd6bb"/>${group(
+              '<circle cx="300" cy="190" r="42" fill="#be783c"/><ellipse cx="300" cy="190" rx="9" ry="38" fill="#080b13"/><circle cx="312" cy="176" r="6" fill="white"/>',
+              'fx-pupil',
+            )}`,
+            'fx-eye',
+          ),
+      ),
+    beast: () =>
+      claws() +
+      svg(
+        rings() +
+          path(
+            'M270 440Q240 420 245 458 260 487 300 480 340 487 355 458 360 420 330 440ZM243 416a13 20 0 1 0-1 0M275 402a13 20 0 1 0-1 0M312 402a13 20 0 1 0-1 0M345 416a13 20 0 1 0-1 0',
+            'fx-paw',
+          ),
+      ),
+    monstrosity: () =>
+      claws() +
+      svg(
+        rings() +
+          group(
+            path('M150 165 260 195Q225 225 150 165ZM450 165 340 195Q375 225 450 165Z') +
+              path('M225 188v21m150-21v21', 'fx-dark fx-lines'),
+            'fx-predator',
+          ),
+      ),
+    swarm: () => `${particles(36, 'fx-bug')}<div class="fx-nest"></div>`,
+    warband: () =>
+      svg(
+        rings() +
+          many(
+            2,
+            i =>
+              `<g transform="translate(${i ? 490 : 110} 80)">${path('M0 0V450', 'fx-lines')}${path('M0 10H75L60 150 28 130 0 150Z', 'fx-banner')}</g>`,
+          ),
+      ) + many(8, i => `<div class="fx-arrow" style="--i:${i};left:${8 + i * 11}%;top:${18 + (i % 4) * 19}%"></div>`),
+    humanoid: () =>
+      svg(
+        many(
+          2,
+          i =>
+            `<g transform="rotate(${i ? -42 : 42} 300 300)">${group(
+              path('M300 90 315 130 308 370H292L285 130Z', 'fx-steel') +
+                path('M260 370H340V385H307V465H293V385H260Z', 'fx-hilt') +
+                path('M297 145H302V350H297Z', 'fx-steel-glint'),
+              'fx-sword',
+              `style="--i:${i}"`,
+            )}</g>`,
+        ),
+      ) + particles(14, 'fx-metal-spark'),
+    web: () =>
+      svg(
+        many(
+          2,
+          i =>
+            `<g transform="${i ? 'translate(600 0) scale(-1 1)' : ''}">${group(
+              path(
+                'M0 0 450 70M0 0 380 210M0 0 240 360M0 0 70 450M0 0 0 500M120 18Q100 55 100 57T64 96 18 120M240 37Q190 115 201 112T128 192 37 240M360 56Q290 175 300 168T192 288 56 360',
+                'fx-lines',
+              ),
+              'fx-web',
+            )}</g>`,
+        ) +
+          group(
+            `${path('M430-300V215', 'fx-lines')}<ellipse cx="430" cy="235" rx="16" ry="24"/>${path(
+              'M420 220 395 202 382 220M418 231 387 227 377 247M419 242 391 254 388 271M440 220 465 202 478 220M442 231 473 227 483 247M441 242 469 254 472 271',
+              'fx-lines',
+            )}`,
+            'fx-spider',
+          ),
+      ),
+    elemental: () =>
+      `<div class="fx-vortex"></div>${svg(
+        many(
+          4,
+          i =>
+            `<g transform="rotate(${i * 90} 300 300)">${group(
+              path(
+                'M300 80Q500 100 510 300',
+                'fx-element fx-lines',
+                `style="stroke:${['#ff8d49', '#67d9ff', '#b5bd7b', '#e6eeff'][i]}"`,
+              ) + path('M280 77 300 56 322 80 300 104Z'),
+              'fx-orbit',
+            )}</g>`,
+        ),
+      )}`,
+    construct: () =>
+      svg(
+        many(
+          2,
+          i =>
+            `<g transform="translate(${i ? '375 375' : '225 225'})">${group(
+              `<circle r="90" stroke-dasharray="24 22" stroke-width="30"/><circle r="73"/><circle r="35"/>${path('M-35 0H35M0-35V35')}`,
+              'fx-gear fx-lines',
+              `style="--i:${i}"`,
+            )}</g>`,
+        ) +
+          group(`<circle cx="300" cy="300" r="42"/>${path('M275 300 300 275 325 300 300 325Z', 'fx-dark')}`, 'fx-core'),
+      ) + fog(),
+    plant: (_, id) =>
+      svg(
+        `<defs><clipPath id="enc-vine-${id}"><rect class="fx-reveal" width="600" height="600"/></clipPath></defs><g clip-path="url(#enc-vine-${id})">${many(
+          2,
+          i =>
+            `<g transform="${i ? 'translate(600 0) scale(-1 1)' : ''}">${path(
+              'M0 600C180 470 0 420 90 310S20 200 120 70M60 440 30 410M74 337 110 330M80 245 45 230',
+              'fx-vine fx-lines',
+            )}${many(
+              5,
+              j =>
+                `<g transform="translate(${70 + (j % 2) * 20} ${120 + j * 90})">${path('M0 0Q-65-55-40-75 10-65 0 0Q55-10 60-48 8-50 0 0Z', 'fx-leaf', `style="--d:${j * 0.08}s"`)}</g>`,
+            )}</g>`,
+        )}</g>`,
+      ) + particles(10, 'fx-petal'),
+    ooze: () =>
+      `<div class="fx-slime-cap"></div>${many(9, i => `<i class="fx-drip" style="left:${i * 12}%;--i:${i}"></i>`)}${particles(12, 'fx-bubble')}`,
     fey: () =>
-      many(
-        26,
-        () =>
-          `<span class="fx-spark fey" style="left:${rand(2, 98).toFixed(0)}%;top:${rand(2, 98).toFixed(0)}%;--d:${rand(0, 1.6).toFixed(2)}s"></span>`,
-      ),
-    celestial: () => `<div class="fx-rays"></div>`,
+      `<div class="fx-iridescence"></div>${particles(20)}${svg(
+        many(
+          5,
+          i =>
+            `<g transform="translate(${90 + i * 105} ${170 + (i % 2) * 240})">${group(
+              path('M0 0C-65-70-58 30 0 10 58 30 65-70 0 0M0 0V22', 'fx-butterfly'),
+              'fx-fairy',
+              `style="--d:${i * -0.4}s"`,
+            )}</g>`,
+        ),
+      )}`,
+    celestial: () =>
+      `<div class="fx-rays"></div>${svg(
+        `<ellipse class="fx-halo" cx="300" cy="165" rx="140" ry="35"/>${many(
+          9,
+          i =>
+            `<g transform="translate(${60 + i * 60} ${90 + (i % 3) * 130})">${group(
+              path('M0 100Q-38 25 15-65 55 0 0 100Z') +
+                path('M0 90 15-50M6 35 30 6M9 8 34-20M2 58-18 30', 'fx-feather-vein fx-lines'),
+              'fx-feather',
+              `style="--d:${i * -0.25}s"`,
+            )}</g>`,
+        )}`,
+      )}`,
   };
-  function gear() {
-    let d = '';
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2,
-        b = a + Math.PI / 12;
-      const p = (r, t) => `${(50 + r * Math.cos(t)).toFixed(1)} ${(50 + r * Math.sin(t)).toFixed(1)}`;
-      d += `${i ? 'L' : 'M'}${p(46, a - 0.12)} L${p(46, a + 0.12)} L${p(36, b - 0.1)} L${p(36, b + 0.1)} `;
-    }
-    return d + 'Z';
+  function clear() {
+    clearTimeout(timer);
+    current?.remove();
+    current = null;
+    document.body.classList.remove('enc-shake', 'enc-stomp');
   }
   function show({ style = 'battle', cry = '¡Combate!', count = 0, theme = '', variant = '' } = {}) {
-    document.getElementById('encounter-fx')?.remove();
-    clearTimeout(timer);
+    clear();
+    const id = ++serial;
+    const validTheme = Object.hasOwn(THEMES, theme);
+    const kind = ['battle', 'ambush', 'boss', 'reinforce'].includes(style) ? style : 'battle';
+    const element = ['fire', 'ice', 'lightning', 'poison', 'acid'].includes(variant) ? variant : 'fire';
     const box = document.createElement('div');
+    current = box;
     box.id = 'encounter-fx';
-    box.className = 'enc-fx enc-' + (['battle', 'ambush', 'boss', 'reinforce'].includes(style) ? style : 'battle');
+    box.className = `enc-fx enc-${kind}`;
     box.setAttribute('role', 'alert');
-    const layer = THEMES[theme]
-      ? `<div class="enc-theme theme-${theme} ${variant ? 'v-' + esc(variant) : ''}" aria-hidden="true">${THEMES[theme](variant)}</div>`
-      : '';
-    box.innerHTML = `<div class="enc-flash"></div>${layer}<div class="enc-text"><span class="enc-swords" aria-hidden="true">⚔</span><strong>${esc(cry)}</strong>${count ? `<small>${count} ${count === 1 ? 'enemigo' : 'enemigos'}</small>` : ''}</div>`;
-    box.addEventListener('click', () => box.remove());
+    const title = esc(cry);
+    const echo =
+      kind === 'reinforce'
+        ? many(3, i => `<span class="enc-echo" aria-hidden="true" style="--i:${i}">${title}</span>`)
+        : '';
+    const split =
+      kind === 'ambush'
+        ? `<span class="enc-half enc-left" aria-hidden="true">${title}</span><span class="enc-half enc-right" aria-hidden="true">${title}</span>`
+        : '';
+    box.innerHTML = `<div class="enc-flash"></div>${
+      validTheme
+        ? `<div class="enc-theme theme-${theme} v-${element}" aria-hidden="true">${THEMES[theme](element, id)}</div>`
+        : ''
+    }<div class="enc-text"><div class="enc-heading">${echo}${split}<strong>${title}</strong></div>${count ? `<small>${esc(count)} ${count === 1 ? 'enemigo' : 'enemigos'}</small>` : ''}</div>`;
+    box.addEventListener('click', clear);
     (document.querySelector('dialog[open]') || document.body).append(box);
-    document.body.classList.remove('enc-shake', 'enc-stomp');
-    void document.body.offsetWidth;
-    document.body.classList.add(theme === 'giant' ? 'enc-stomp' : 'enc-shake');
-    navigator.vibrate?.([120, 60, 220]);
-    timer = setTimeout(() => {
-      box.remove();
-      document.body.classList.remove('enc-shake', 'enc-stomp');
-    }, 3200);
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      void document.body.offsetWidth;
+      document.body.classList.add(theme === 'giant' ? 'enc-stomp' : 'enc-shake');
+      navigator.vibrate?.([120, 60, 220]);
+    }
+    timer = setTimeout(clear, 3200);
   }
   return { show, themes: Object.keys(THEMES) };
 })();

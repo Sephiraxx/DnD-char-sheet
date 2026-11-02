@@ -771,12 +771,13 @@ label.check:has(input[name='heroic']:checked) {
   --enc: #f39995;
   position: fixed;
   inset: 0;
+  isolation: isolate;
   overflow: hidden;
   z-index: 2000;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at center, #0b171ccc 0%, #0b171cf2 70%);
-  animation: enc-life 2.8s ease forwards;
+  background: radial-gradient(ellipse, #080e18c9, #03060cf5 80%);
+  animation: enc-life 3.2s linear both;
   cursor: pointer;
 }
 .enc-ambush {
@@ -784,6 +785,7 @@ label.check:has(input[name='heroic']:checked) {
 }
 .enc-boss {
   --enc: #c9a2ff;
+  background: radial-gradient(ellipse, #100b1de8, #010104 70%);
 }
 .enc-reinforce {
   --enc: #f2a65a;
@@ -791,88 +793,220 @@ label.check:has(input[name='heroic']:checked) {
 .enc-flash {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, var(--enc) 0%, transparent 65%);
+  z-index: 2;
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--enc) 65%, transparent), transparent 70%);
   opacity: 0;
-  animation: enc-flash 0.7s ease-out;
+  animation: enc-flash 0.4s ease-out both;
+}
+.enc-boss .enc-flash {
+  animation: enc-glow 1.8s ease-in-out infinite alternate;
+}
+.enc-ambush .enc-flash {
+  inset: 45% -10%;
+  background: #e0be8066;
+  animation: enc-wipe 0.35s ease-out both;
 }
 .enc-text {
   position: relative;
-  display: grid;
-  width: 100%;
+  z-index: 3;
+  box-sizing: border-box;
+  width: min(100%, 1200px);
   min-width: 0;
-  max-width: 1100px;
-  justify-items: center;
-  gap: 6px;
+  padding: 40px clamp(20px, 5vw, 80px);
   text-align: center;
-  padding: 0 16px;
-}
-.enc-text strong {
-  min-width: 0;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-  font-family: Georgia, serif;
-  font-size: clamp(2.6rem, 12vw, 5.5rem);
   color: var(--enc);
-  letter-spacing: 0.04em;
+  background: radial-gradient(ellipse, #050911f0 15%, #050911a6 45%, transparent 72%);
+}
+.enc-heading {
+  position: relative;
+  font-family: Georgia, serif;
+  font-size: clamp(2rem, 9vmin, 6rem);
+  font-weight: bold;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
   text-transform: uppercase;
-  text-shadow: 0 0 28px color-mix(in srgb, var(--enc) 55%, transparent);
-  animation: enc-slam 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  letter-spacing: 0.04em;
+  text-shadow:
+    0 2px 3px #000,
+    0 0 20px #000,
+    0 0 36px #000;
+}
+.enc-heading strong {
+  display: block;
+  font: inherit;
+  animation: enc-slam 0.4s ease-out both;
+}
+.enc-battle .enc-heading::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: -3%;
+  right: -3%;
+  top: 50%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--enc), transparent);
+  transform: rotate(-8deg);
+  animation: enc-slash 0.3s ease-out both;
 }
 .enc-text small {
-  color: var(--muted);
-  font-size: 1rem;
-  letter-spacing: 0.12em;
+  display: block;
+  margin-top: 18px;
+  color: #e7deda;
+  font-size: clamp(0.8rem, 2vmin, 1.2rem);
+  letter-spacing: 0.15em;
   text-transform: uppercase;
-  animation: enc-rise 0.5s 0.35s ease both;
+  animation: enc-arrive 0.4s 0.2s both;
 }
-.enc-swords {
-  font-size: 3rem;
-  color: var(--enc);
-  animation: enc-swords 0.6s 0.1s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+.enc-boss .enc-heading strong {
+  animation: enc-heavy 0.8s cubic-bezier(0.16, 0.65, 0.25, 1) both;
+}
+.enc-reinforce .enc-heading strong {
+  animation: enc-arrive 0.4s both;
+}
+.enc-echo,
+.enc-half {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.enc-echo {
+  opacity: 0;
+  animation: enc-echo 0.85s calc(var(--i) * 0.1s) both;
+}
+.enc-ambush .enc-heading strong {
+  animation: enc-solid 0.4s steps(1) both;
+}
+.enc-half {
+  animation: enc-half 0.35s ease-out both;
+}
+.enc-left {
+  clip-path: inset(0 50% 0 0);
+  --side: -1;
+}
+.enc-right {
+  clip-path: inset(0 0 0 50%);
+  --side: 1;
 }
 body.enc-shake .workspace {
-  animation: enc-shake 0.45s 0.15s;
+  animation: enc-shake 0.4s 0.1s;
+}
+body.enc-shake:has(.enc-boss) .workspace {
+  animation: enc-rumble 2.4s linear;
+}
+body.enc-stomp .workspace {
+  animation: enc-stomp 0.8s;
 }
 @keyframes enc-life {
   0% {
     opacity: 0;
   }
-  8%,
-  80% {
+  5%,
+  75% {
     opacity: 1;
   }
   100% {
     opacity: 0;
-    visibility: hidden;
   }
 }
 @keyframes enc-flash {
-  0% {
-    opacity: 0.9;
+  from {
+    opacity: 0.8;
   }
-  100% {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes enc-glow {
+  from {
+    opacity: 0.08;
+  }
+  to {
+    opacity: 0.22;
+  }
+}
+@keyframes enc-wipe {
+  from {
+    transform: scaleY(8) rotate(-12deg);
+    opacity: 0.8;
+  }
+  to {
+    transform: scaleY(0) rotate(-12deg);
     opacity: 0;
   }
 }
 @keyframes enc-slam {
-  0% {
-    transform: scale(2.6);
+  from {
+    transform: scale(1.9) rotate(-4deg);
     opacity: 0;
   }
-  100% {
+  70% {
+    transform: scale(0.96);
+    opacity: 1;
+  }
+  to {
     transform: scale(1);
     opacity: 1;
   }
 }
-@keyframes enc-rise {
+@keyframes enc-slash {
   from {
-    transform: translateY(10px);
+    transform: rotate(-8deg) scaleX(0);
+  }
+  to {
+    transform: rotate(-8deg) scaleX(1);
+  }
+}
+@keyframes enc-arrive {
+  from {
+    transform: translateY(-45px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes enc-heavy {
+  from {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes enc-echo {
+  from {
+    transform: translateY(-100px);
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.3;
+  }
+  to {
+    transform: translateY(45px);
     opacity: 0;
   }
 }
-@keyframes enc-swords {
+@keyframes enc-solid {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes enc-half {
   from {
-    transform: rotate(-90deg) scale(0.3);
+    transform: translateX(calc(var(--side) * 70vw));
+    opacity: 0;
+  }
+  80% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(0);
     opacity: 0;
   }
 }
@@ -881,27 +1015,56 @@ body.enc-shake .workspace {
   100% {
     transform: none;
   }
-  20% {
-    transform: translate(-6px, 2px);
+  25% {
+    transform: translate(-5px, 2px);
+  }
+  50% {
+    transform: translate(4px, -2px);
+  }
+  75% {
+    transform: translate(-2px, 1px);
+  }
+}
+@keyframes enc-rumble {
+  0%,
+  40%,
+  80%,
+  100% {
+    transform: none;
+  }
+  20%,
+  60% {
+    transform: translateY(2px);
+  }
+}
+@keyframes enc-stomp {
+  0%,
+  100% {
+    transform: none;
+  }
+  18% {
+    transform: translateY(14px);
   }
   40% {
-    transform: translate(5px, -3px);
+    transform: translateY(-5px);
   }
-  60% {
-    transform: translate(-4px, 1px);
-  }
-  80% {
-    transform: translate(3px, -1px);
+  65% {
+    transform: translateY(3px);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .enc-fx,
-  .enc-flash,
-  .enc-text strong,
-  .enc-text small,
-  .enc-swords,
-  body.enc-shake .workspace {
-    animation: none;
+  .enc-fx {
+    animation: enc-flash 0.3s ease-in reverse both;
+  }
+  .enc-fx *,
+  body.enc-shake .workspace,
+  body.enc-stomp .workspace {
+    animation: none !important;
+  }
+  .enc-half,
+  .enc-echo,
+  .enc-flash {
+    display: none;
   }
 }
 /* Encuentros preparados en la pantalla del DM. */
