@@ -208,7 +208,9 @@ const TableUI = (() => {
       header(
         PV.esc(l.campaignName),
         `Código <b class="table-code">${PV.esc(l.code)}</b>${dm ? ' · DM: ' + PV.esc(dm.display_name || 'sin nombre') + (online.some(p => p.role === 'dm') ? ' <span class="online-dot" title="Conectado"></span>' : '') : ''}${party ? '<br><span class="small">Libros de la mesa: ' + PV.esc(Cloud.cleanSettings(party.campaign.settings).sources.join(', ')) + (party.campaign.settings?.rules ? ' · Reglas de la casa: ' + PV.esc(party.campaign.settings.rules) : '') + '</span>' : ''}`,
-        button('Actualizar', 'table-refresh') + button('Salir de la mesa', 'table-leave'),
+        `<a class="button secondary" href="./board.html#${encodeURIComponent(l.campaignId)}">Tablero</a>` +
+          button('Actualizar', 'table-refresh') +
+          button('Salir de la mesa', 'table-leave'),
       ) +
       (error && party ? `<div class="banner"><p>${PV.esc(error)}</p></div>` : '') +
       requestBanner() +
