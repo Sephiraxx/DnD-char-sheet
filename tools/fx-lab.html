@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Laboratorio de encuentros</title>
+    <link rel="icon" href="../assets/icon.svg" />
+    <link rel="stylesheet" href="../style.css" />
+    <link rel="stylesheet" href="../polish.css" />
+    <link rel="stylesheet" href="../creature-fx.css" />
+    <style>
+      body {
+        margin: 0;
+        padding: clamp(16px, 4vw, 60px);
+      }
+      .workspace {
+        display: block;
+        max-width: 1100px;
+        margin: auto;
+      }
+      .lab-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+        gap: 12px;
+        margin: 24px 0;
+      }
+      button,
+      select {
+        min-height: 44px;
+      }
+      .lab-card {
+        padding: 24px;
+        border: 1px solid #83714b;
+        border-radius: 12px;
+        background: #13232b;
+      }
+      .lab-note {
+        color: #dbcfae;
+      }
+    </style>
+    <script src="../fx.js" defer></script>
+  </head>
+  <body>
+    <div class="workspace">
+      <h1>Laboratorio de encuentros</h1>
+      <p>Elegí el tono del aviso y tocá una criatura. Tocá la pantalla para cerrar el efecto.</p>
+      <label for="style">Estilo del título</label>
+      <select id="style">
+        <option value="battle">Combate</option>
+        <option value="ambush">Emboscada</option>
+        <option value="boss">Jefe</option>
+        <option value="reinforce">Refuerzos</option>
+      </select>
+      <p class="lab-note">
+        Movimiento reducido: activalo en tu sistema para ver un fundido suave con un tinte estático, sin temblores.
+      </p>
+      <div class="lab-grid" id="themes" aria-label="Criaturas y variantes"></div>
+      <div class="lab-card">
+        <h2>El paso olvidado</h2>
+        <p>La party cruza el puente. Algo se mueve entre las ruinas…</p>
+        <p>Guerrera · 28 PG &nbsp; Bardo · 19 PG &nbsp; Druida · 24 PG</p>
+      </div>
+    </div>
+    <script>
+      window.addEventListener('DOMContentLoaded', () => {
+        const grid = document.getElementById('themes');
+        const choices = EncounterFX.themes.map(theme => [theme, '', theme]);
+        for (const variant of ['fire', 'ice', 'lightning', 'poison', 'acid']) {
+          choices.push(['dragon', variant, 'dragon · ' + variant]);
+        }
+        for (const [theme, variant, label] of choices) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = label;
+          button.addEventListener('click', () =>
+            EncounterFX.show({
+              style: document.getElementById('style').value,
+              theme,
+              variant,
+              cry: '¡Combate!',
+              count: 3,
+            }),
+          );
+          grid.append(button);
+        }
+      });
+    </script>
+  </body>
+</html>
