@@ -396,7 +396,8 @@ function initiativeCard(t) {
   const items = t.entries
     .map((e, i) => {
       const pc = e.characterId ? characterById(e.characterId) : null,
-        x = pc ? PV.summarize(pc.data) : null;
+        s = pc ? PV.summarize(pc.data) : null,
+        x = s && !s.broken ? s : null; // Una ficha ilegible no rompe la iniciativa.
       const sub = x
         ? `${x.hp ?? '—'}/${x.maxHP} PG · CA ${x.ac}${x.conditions.length ? ' · ' + esc(x.conditions.join(', ')) : ''}`
         : `CA ${e.ac ?? '—'} · ${STATUS_LABEL[e.status] || e.status}${e.hidden ? ' · oculta' : ''}${e.conditions.length ? ' · ' + esc(e.conditions.join(', ')) : ''}${e.max ? `<span class="monster-hpbar" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Math.round(((e.hp ?? e.max) / e.max) * 100)))}%"></i></span>` : ''}`;

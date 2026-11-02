@@ -841,6 +841,25 @@
   async function removeToken(id) {
     check(await (await api()).from('map_tokens').delete().eq('id', id));
   }
+  // Encuentros preparados en el tablero (migración 010): fichas marcadas «enc:<encuentro>:<criatura>».
+  async function stagedTokens(campaignId, encounterId) {
+    const rows = check(
+      await (await api()).from('map_tokens').select('id, map_id, stage, combatant_id').eq('campaign_id', campaignId),
+    );
+    return rows.filter(r => String(r.stage || '').startsWith('enc:' + encounterId + ':'));
+  }
+  // Al lanzar: cada criatura nueva ocupa su ficha preparada (y aparece donde la dejó el DM).
+  async function linkStaged(campaignId, links) {
+    const c = await api();
+    for (const l of links)
+      check(
+        await c
+          .from('map_tokens')
+          .update({ combatant_id: l.combatantId, name: l.name, label: l.label, hidden: !!l.hidden })
+          .eq('campaign_id', campaignId)
+          .eq('stage', l.stage),
+      );
+  }
   async function uploadMapImage(campaignId, blob, ext = 'webp') {
     const path = campaignId + '/' + crypto.randomUUID() + '.' + ext;
     check(
@@ -874,6 +893,8 @@
   }
 
   root.Cloud = {
+    stagedTokens,
+    linkStaged,
     board,
     saveMap,
     deleteMap,

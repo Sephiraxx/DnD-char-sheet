@@ -385,3 +385,25 @@
     flex: 0 0 auto;
   }
 }
+.board-enc-list {
+  display: grid;
+  gap: 8px;
+}
+.board-enc {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: grid;
+  gap: 6px;
+}
+.board-enc.on {
+  border-color: var(--gold);
+}
+.board-enc p {
+  margin: 2px 0 0;
+}
+.board-enc .button {
+  min-height: 34px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}

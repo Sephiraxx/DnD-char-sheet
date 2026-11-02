@@ -53,3 +53,17 @@ update boards set map_id = '30000000-0000-0000-0000-000000000002';
 reset role; set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
 select pg_temp.check('al cambiar el mapa, el jugador ve el nuevo', (select name from maps) = 'Secreto' and (select count(*) from map_tokens) = 1);
 with u as (update map_tokens set x = 2 where id = '40000000-0000-0000-0000-00000000000a' returning 1) select pg_temp.check('no mueve su ficha en un mapa que no está en el tablero', (select count(*) from u) = 0);
+
+-- Migración 010: fichas preparadas.
+reset role;
+update map_tokens set stage = 'enc:e1:m1', hidden = true where id = '40000000-0000-0000-0000-000000000003';
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+select pg_temp.check('jugador no ve criaturas preparadas', (select count(*) from map_tokens where stage is not null) = 0);
+update map_tokens set stage = 'hack' where id = '40000000-0000-0000-0000-00000000000a';
+reset role; set role authenticated;
+select pg_temp.check('jugador no cambia la marca de preparación', (select stage is null from map_tokens where id = '40000000-0000-0000-0000-00000000000a'));
+reset role;
+insert into combatants (id, campaign_id, kind, name) values ('50000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','monster','Jefe');
+update map_tokens set combatant_id = '50000000-0000-0000-0000-000000000001', hidden = false where stage = 'enc:e1:m1';
+delete from combatants where id = '50000000-0000-0000-0000-000000000001';
+select pg_temp.check('si la criatura sale del combate, la ficha preparada queda', (select combatant_id is null and stage = 'enc:e1:m1' from map_tokens where id = '40000000-0000-0000-0000-000000000003'));

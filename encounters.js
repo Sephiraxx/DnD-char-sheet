@@ -36,10 +36,21 @@ const Encounters = (() => {
     ['celestial', 'Celestial'],
   ];
   const key = () => 'dnd-dm-prepared-' + current;
+  // Cada criatura tiene un id propio: el tablero la coloca en el mapa antes de lanzar el encuentro.
+  const uid = () => 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   function list() {
     try {
       const v = JSON.parse(localStorage.getItem(key()) || '[]');
-      return Array.isArray(v) ? v : [];
+      if (!Array.isArray(v)) return [];
+      let changed = false;
+      for (const enc of v)
+        for (const m of enc.monsters || [])
+          if (!m.uid) {
+            m.uid = uid();
+            changed = true;
+          }
+      if (changed) localStorage.setItem(key(), JSON.stringify(v));
+      return v;
     } catch {
       return [];
     }
@@ -57,7 +68,7 @@ const Encounters = (() => {
     save(items);
   }
   function addMonsters(id, rows) {
-    update(id, enc => enc.monsters.push(...rows));
+    update(id, enc => enc.monsters.push(...rows.map(m => ({ ...m, uid: m.uid || uid() }))));
   }
 
   function card() {
@@ -111,9 +122,39 @@ const Encounters = (() => {
     return MonsterUI.encounterTheme(enc.monsters);
   }
 
+  const initials = n =>
+    typeof BoardCore !== 'undefined' ? BoardCore.initials(n) : String(n).slice(0, 2).toUpperCase();
+  // Si el DM dejó el encuentro colocado en un mapa, las criaturas aparecen ahí (y se ofrece mostrar ese mapa).
+  async function placeOnBoard(enc, links) {
+    let staged;
+    try {
+      staged = await Cloud.stagedTokens(current, enc.id);
+    } catch {
+      return; // Sin tablero (migraciones 008/010): el encuentro se lanza igual.
+    }
+    if (!staged.length) return;
+    await Cloud.linkStaged(
+      current,
+      links.filter(l => staged.some(s => s.stage === l.stage)),
+    );
+    const maps = [...new Set(staged.map(s => s.map_id))];
+    try {
+      const b = await Cloud.board(current);
+      const name = b.maps.find(m => m.id === maps[0])?.name || 'su mapa';
+      if (
+        maps.length === 1 &&
+        b.board?.map_id !== maps[0] &&
+        confirm(`«${enc.name}» está colocado en «${name}». ¿Mostrar ese mapa en la mesa?`)
+      )
+        await Cloud.setBoardMap(current, maps[0]);
+    } catch (e) {
+      toast(e.message);
+    }
+  }
   async function launch(id) {
     const enc = get(id);
     if (!enc?.monsters.length) throw Error('Agregá criaturas al encuentro primero.');
+    const links = [];
     await actions['init-party']();
     await encounterChange(async () => {
       const groups = new Map();
@@ -122,14 +163,21 @@ const Encounters = (() => {
         const names = await MonsterUI.claimNames(name, ms.length);
         for (let i = 0; i < ms.length; i++) {
           const m = ms[i];
-          await Cloud.addCombatant(
+          const added = await Cloud.addCombatant(
             current,
             { kind: 'monster', name: names[i], init: d20() + (m.initMod || 0), tiebreak: m.initMod || 0 },
             { hp: m.hp, max_hp: m.hp, ac: m.ac, saves: m.saves || {}, monster_id: m.monsterId || null },
           );
+          links.push({
+            stage: 'enc:' + enc.id + ':' + m.uid,
+            combatantId: added.id,
+            name: names[i],
+            label: initials(names[i]),
+          });
         }
       }
     });
+    await placeOnBoard(enc, links);
     await announce(enc.style, enc.cry, enc.monsters.length, await themeFor(enc));
     await send('roll-request', { type: 'initiative', id: '', label: 'Iniciativa' });
     update(id, e => (e.launched = true));
