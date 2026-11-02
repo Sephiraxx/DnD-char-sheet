@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#10252a" />
+    <meta
+      name="description"
+      content="Tablero de la mesa: mapa, fichas, niebla de guerra y terreno, en vivo para el DM y la party."
+    />
+    <title>Tablero · Cuaderno de aventura</title>
+    <link rel="icon" type="image/svg+xml" href="./assets/icon.svg" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./polish.css" />
+    <link rel="stylesheet" href="./board.css" />
+    <script src="./catalog.js" defer></script>
+    <script src="./class-data.js" defer></script>
+    <script src="./names-es.js" defer></script>
+    <script src="./feat-data.js" defer></script>
+    <script src="./feats.js" defer></script>
+    <script src="./magic-items.js" defer></script>
+    <script src="./campaign-data.js" defer></script>
+    <script src="./equipment-data.js" defer></script>
+    <script src="./equipment.js" defer></script>
+    <script src="./class-rules.js" defer></script>
+    <script src="./combat-engine.js" defer></script>
+    <script src="./effects.js" defer></script>
+    <script src="./rules.js" defer></script>
+    <script src="./campaign.js" defer></script>
+    <script src="./defenses.js" defer></script>
+    <script src="./config.js" defer></script>
+    <script src="./cloud.js" defer></script>
+    <script src="./party-view.js" defer></script>
+    <script src="./party-store.js" defer></script>
+    <script src="./board-core.js" defer></script>
+    <script src="./board.js" defer></script>
+    <script src="./updates.js" defer></script>
+  </head>
+  <body class="board-page">
+    <div class="board-shell">
+      <header class="board-top" id="board-top"></header>
+      <div class="board-stage" id="stage">
+        <canvas id="board" aria-label="Mapa del tablero"></canvas>
+        <div class="board-turn" id="board-turn" hidden></div>
+        <div class="board-hint" id="board-hint" role="status" aria-live="polite"></div>
+        <div class="board-card" id="board-card" hidden></div>
+        <div class="board-panel" id="board-panel" hidden></div>
+      </div>
+      <nav class="board-tools" id="board-tools" aria-label="Herramientas del tablero"></nav>
+    </div>
+    <div class="board-message" id="board-message" hidden></div>
+    <dialog id="modal" aria-labelledby="dialog-title"><div id="modal-content"></div></dialog>
+    <div id="toast" hidden role="status" aria-live="polite"></div>
+    <noscript>Activá JavaScript para usar el tablero.</noscript>
+  </body>
+</html>

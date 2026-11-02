@@ -258,7 +258,7 @@ function draw() {
   const list = summaries();
   const t = tracker();
   $('#main').innerHTML =
-    `<div class="dm-head"><div><p class="eyebrow">MESA EN VIVO · ${list.length} ficha${list.length === 1 ? '' : 's'}</p><h1>${esc(party.campaign.name)}</h1><p class="small muted">${settingsSummary(Cloud.cleanSettings(party.campaign.settings))}</p></div><div class="dm-code"><span>CÓDIGO</span><b>${esc(party.campaign.code)}</b>${button('Copiar', 'copy-code', 'secondary', `data-code="${esc(party.campaign.code)}"`)}</div><div class="dm-toolbar">${button('Pedir tirada a todos', 'request', '')}${button('Mensaje a todos', 'message')}${button('Descanso corto', 'rest-short')}${button('Descanso largo', 'rest-long')}<details class="dm-menu"><summary class="button secondary">Mesa ▾</summary><div class="dm-menu-list">${button('Ajustes de la mesa', 'settings')}${button('Mis mesas', 'home')}${button('Eliminar mesa', 'delete-table', 'danger', `data-id="${esc(party.campaign.id)}" data-name="${esc(party.campaign.name)}"`)}</div></details></div></div>
+    `<div class="dm-head"><div><p class="eyebrow">MESA EN VIVO · ${list.length} ficha${list.length === 1 ? '' : 's'}</p><h1>${esc(party.campaign.name)}</h1><p class="small muted">${settingsSummary(Cloud.cleanSettings(party.campaign.settings))}</p></div><div class="dm-code"><span>CÓDIGO</span><b>${esc(party.campaign.code)}</b>${button('Copiar', 'copy-code', 'secondary', `data-code="${esc(party.campaign.code)}"`)}</div><div class="dm-toolbar">${button('Pedir tirada a todos', 'request', '')}<a class="button secondary" href="./board.html#${encodeURIComponent(party.campaign.id)}">Tablero</a>${button('Mensaje a todos', 'message')}${button('Descanso corto', 'rest-short')}${button('Descanso largo', 'rest-long')}<details class="dm-menu"><summary class="button secondary">Mesa ▾</summary><div class="dm-menu-list">${button('Ajustes de la mesa', 'settings')}${button('Mis mesas', 'home')}${button('Eliminar mesa', 'delete-table', 'danger', `data-id="${esc(party.campaign.id)}" data-name="${esc(party.campaign.name)}"`)}</div></details></div></div>
   ${error ? `<div class="banner"><p>${esc(error)}</p>${button('Reintentar', 'refresh')}</div>` : ''}
   <div class="dm-layout"><div class="stack">
     <div class="party-grid">${
@@ -396,7 +396,8 @@ function initiativeCard(t) {
   const items = t.entries
     .map((e, i) => {
       const pc = e.characterId ? characterById(e.characterId) : null,
-        x = pc ? PV.summarize(pc.data) : null;
+        s = pc ? PV.summarize(pc.data) : null,
+        x = s && !s.broken ? s : null; // Una ficha ilegible no rompe la iniciativa.
       const sub = x
         ? `${x.hp ?? '—'}/${x.maxHP} PG · CA ${x.ac}${x.conditions.length ? ' · ' + esc(x.conditions.join(', ')) : ''}`
         : `CA ${e.ac ?? '—'} · ${STATUS_LABEL[e.status] || e.status}${e.hidden ? ' · oculta' : ''}${e.conditions.length ? ' · ' + esc(e.conditions.join(', ')) : ''}${e.max ? `<span class="monster-hpbar" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Math.round(((e.hp ?? e.max) / e.max) * 100)))}%"></i></span>` : ''}`;
