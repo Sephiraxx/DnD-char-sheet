@@ -539,9 +539,11 @@ html {
   container-type: inline-size;
 }
 @container (max-width: 560px) {
+  /* Dos filas: número, nombre y PG arriba; los botones abajo. */
   .initiative-list li {
-    grid-template-columns: 34px minmax(0, 1fr);
-    row-gap: 6px;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    row-gap: 4px;
+    column-gap: 8px;
   }
   .initiative-list .init {
     grid-row: 1 / span 2;
@@ -553,14 +555,55 @@ html {
     overflow-wrap: anywhere;
   }
   .initiative-list .monster-hp {
-    grid-column: 2;
-    min-width: 0;
-    flex-wrap: wrap;
-    row-gap: 2px;
+    display: contents;
   }
-  .monster-hp .text-btn[data-action='init-remove'] {
+  .initiative-list .hp-edit {
+    grid-column: 3;
+    grid-row: 1;
+    margin: 0;
+    align-self: start;
+  }
+  .initiative-list .hp-edit > span:first-child {
+    display: none; /* «PG» ya se entiende por la barra */
+  }
+  .initiative-list .init-actions {
+    grid-column: 2 / span 2;
+    grid-row: 2;
+  }
+  .initiative-list .init-actions [data-action='init-remove'] {
     margin-left: auto;
   }
+  /* Personajes: sin PG que editar, «Init» y quitar van en la misma fila del nombre. */
+  .initiative-list li.pc .init {
+    grid-row: 1;
+  }
+  .initiative-list li.pc .init-actions {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  /* Derrotadas: una sola fila, solo PG (para revivir) y quitar. */
+  .initiative-list li.down {
+    grid-template-columns: 30px minmax(0, 1fr) auto auto;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  .initiative-list li.down .init {
+    grid-row: 1;
+  }
+  .initiative-list li.down .init-actions {
+    grid-column: 4;
+    grid-row: 1;
+  }
+  .initiative-list li.down .init-actions > :not([data-action='init-remove']),
+  .initiative-list li.down .monster-hpbar {
+    display: none;
+  }
+}
+.init-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
 }
 .dm-layout > .stack > .party-grid {
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
