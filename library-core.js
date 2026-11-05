@@ -491,7 +491,26 @@
     const sz =
       /^(tiny|small|medium|large|huge|[gc]arg[ao]ntuan)/.exec(head) ||
       /(diminut[oa]|pequeñ[oa]|median[oa]|grande|enorme|gargantues[co]a?)$/.exec(head);
-    if (!sz) return null;
+    // Tamaño mal leído («Pequeíia»): la última palabra se parece a uno.
+    if (!sz) {
+      const words = (cut >= 0 ? t.slice(0, cut) : t).trim().split(/\s+/);
+      const last = key(words.pop() || '');
+      const hit = [
+        'diminuto',
+        'diminuta',
+        'pequeno',
+        'pequena',
+        'mediano',
+        'mediana',
+        'grande',
+        'enorme',
+        'gargantuesco',
+      ].find(w => last.length >= 5 && lev(w, last) <= 2);
+      if (!hit) return null;
+      const base = TYPE.find(([re]) => re.test(words.join(' ')))?.[1];
+      const size = SIZE[hit.replace('pequeno', 'pequeño').replace('pequena', 'pequeña')] || 'Mediano';
+      return base ? { size, type: base, align: cut >= 0 ? t.slice(cut + 1).trim() : '' } : null;
+    }
     const rest = head.replace(sz[0], '');
     const base = TYPE.find(([re]) => re.test(rest))?.[1];
     if (!base) return null;
@@ -864,15 +883,30 @@
       kind = null;
     if (typeAt >= 0) {
       kind = parseTypeLine(lines[typeAt].t);
-      for (let i = typeAt - 1; i >= Math.max(0, typeAt - 3); i--) {
+      // Nombre: un título justo arriba (más grande que la línea del tipo, en mayúsculas o corto). Si no
+      // está ahí (otra columna), el título grande más cercano en la página.
+      const tbh = lines[typeAt].bh ?? lines[typeAt].h;
+      const titleish = (l, t) => {
+        if (t.length < 2 || t.length > 60 || !/[A-Za-zÁÉÍÓÚÑáéíóúñ]{2}/.test(t) || /[.:;,-]$/.test(t)) return false;
+        const letters = t.replace(/[^A-Za-zÁÉÍÓÚÑáéíóúñ]/g, '');
+        const caps = letters.replace(/[^A-ZÁÉÍÓÚÑ]/g, '').length >= letters.length * 0.7;
+        return (
+          (l.bh ?? l.h) >= tbh + 1 || caps || (t.length <= 40 && t.split(/\s+/).length <= 6 && !/^[a-záéíóúñ]/.test(t))
+        );
+      };
+      const nameOf = i => {
         let t = lines[i].t.trim();
         // «L a g a r t o v e r d o s o»: letras sueltas, se juntan (y se separan con el vocabulario).
         if (/^(\S ){3,}\S$/.test(t)) t = spaced(t.replace(/ /g, ''), opts.bookWords);
-        if (t.length >= 2 && t.length <= 60 && /[A-Za-zÁÉÍÓÚÑáéíóúñ]{2}/.test(t) && !/[.:;]$/.test(t)) {
-          name = niceName(t);
-          break;
-        }
-      }
+        return titleish(lines[i], t) ? t : '';
+      };
+      for (let i = typeAt - 1; i >= Math.max(0, typeAt - 3) && !name; i--) name = nameOf(i) ? niceName(nameOf(i)) : '';
+      if (!name)
+        for (let i = typeAt - 4; i >= Math.max(0, typeAt - 30) && lines[i].page === lines[typeAt].page; i--)
+          if ((lines[i].bh ?? lines[i].h) >= tbh + 1.5 && nameOf(i)) {
+            name = niceName(nameOf(i));
+            break;
+          }
     } else issues.push('Sin línea de tamaño y tipo');
     if (!name) issues.push('Sin nombre');
     const startY = lines[a];
@@ -1160,7 +1194,14 @@
       if (k >= 0) lists.actions = lists.traits.splice(k);
     }
     const crv = parseCR(f.cr || '');
-    if (!crv) issues.push('Sin desafío');
+    // Criaturas invocadas o compañeros (Tasha, Xanathar): «Desafío: —» y PG o CA que dependen de tu
+    // nivel o del nivel del conjuro. No es un error: se guarda la fórmula para leerla en la mesa.
+    const summon =
+      /^\s*[-—–]/.test(f.cr || '') ||
+      /(tu nivel|nivel de(l)? conjuro|nivel del? (explorador|art[ií]fice|druida|guerrero|mago|clérigo)|your level|spell'?s? level|\bBC\b|\bPB\b)/i.test(
+        (f.hp || '') + ' ' + (f.ac || ''),
+      );
+    if (!crv && !summon) issues.push('Sin desafío');
     const ac = /\d+/.exec(
       (f.ac || '').replace(/^\s*([lIO\d]{1,2})(?![A-Za-z])/, x => x.replace(/[lI]/g, '1').replace(/O/g, '0')),
     );
@@ -1179,6 +1220,10 @@
         ];
         issues.push('PG calculados con los dados');
       }
+    }
+    if (summon && !hp) {
+      const base = /^\s*([\dlISO]{1,3})(?=\s*(\+|\(|o\b|$))/.exec(f.hp || '');
+      if (base) hp = [null, base[1].replace(/[lI]/g, '1').replace(/S/g, '5').replace(/O/g, '0')];
     }
     if (!ac) issues.push('Sin CA');
     if (!hp) issues.push('Sin PG');
@@ -1224,6 +1269,17 @@
       page: lines[a].page + 1,
     };
     if (english) m.lang_book = 'en';
+    if (summon) {
+      m.summon = true;
+      const note = s =>
+        feet(
+          String(s || '')
+            .replace(/\s+/g, ' ')
+            .trim(),
+        ).slice(0, 300);
+      if (/[a-z]{3}/i.test((f.hp || '').replace(/^[^(]*\(\s*\d+d\d+[^)]*\)/, ''))) m.hpNote = note(f.hp);
+      if (/\+\s*(BC|PB|el nivel|the level|tu|your)/i.test(f.ac || '')) m.acNote = note(f.ac);
+    }
     if (issues.length) m.issues = issues;
     void startY;
     return m;
@@ -1304,7 +1360,15 @@
               .split(' ')
               .map(part =>
                 [...part]
-                  .map(ch => (ch === 'í' || ch === 'i' ? '[ií1l]' : ch === 'ó' || ch === 'o' ? '[oó0]' : ch))
+                  .map(ch =>
+                    ch === 'í' || ch === 'i'
+                      ? '[ií1l]'
+                      : ch === 'ó' || ch === 'o'
+                        ? '[oó0]'
+                        : ch === 'l'
+                          ? '[l1IJ]'
+                          : ch,
+                  )
                   .join('\\s?'),
               )
               .join('\\s+'),

@@ -418,6 +418,7 @@ const MonsterUI = (() => {
       ${m.actions.length ? '<h3 class="section-space">Acciones</h3>' + m.actions.map(a => act(a, 'actions')).join('') : ''}
       ${m.reactions.length ? '<h3 class="section-space">Reacciones</h3>' + m.reactions.map(a => act(a, 'reactions')).join('') : ''}
       ${m.legendary.length ? '<h3 class="section-space">Acciones legendarias</h3>' + m.legendary.map(a => act(a, 'legendary')).join('') : ''}
+      ${m.summon ? `<p class="small section-space"><b>Criatura invocada o compañero:</b> sin desafío propio.${m.acNote ? ' CA: ' + esc(m.acNote) + '.' : ''}${m.hpNote ? ' PG: ' + esc(m.hpNote) + '.' : ''} Ajustá la CA y los PG al agregarla.</p>` : ''}
       <p class="small muted section-space">${m.book ? `De tu biblioteca: ${esc(m.book)}${m.page ? ', pág. ' + m.page : ''}.${m.issues ? ' Datos incompletos: ' + esc(m.issues.join(', ')) + '.' : ''}` : 'Basado en el SRD 5.1 (CC-BY-4.0), traducido al español.'}</p>`;
   }
   async function view(id) {
