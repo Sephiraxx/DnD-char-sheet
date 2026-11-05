@@ -744,3 +744,37 @@ test('conjuro cuyo nombre cae arriba de la página (y desafío 0 mal leído)', (
   assert.ok(!sp[1].issues);
   assert.deepEqual(L.parseCR('O (1 O PX)'), { cr: 0, xp: 10 });
 });
+
+test('criaturas invocadas (Tasha): «Desafío: —» y PG que dependen del nivel no son un error', () => {
+  const lines = L.readLines([
+    page([
+      ['ESPÍRITU DE PRUEBA', 40, 100, 14, 'title'],
+      ['Bestia Pequeíia', 40, 116],
+      ['Clase de Armadura: 11 + el nivel del conjuro (armadura natural)', 40, 128],
+      ['Puntos de golpe: 2O + 5 por cada nivel de conjuro superior al 2', 40, 138],
+      ['Velocidad: 30 pies', 40, 148],
+      ['FUE DES CON INT SAB CAR', 40, 160],
+      ['18 (+4) 11 (+0) 16 (+3) 4 (-3) 14 (+2) 5 (-3)', 40, 170],
+      ['Desafío: - Bonificador por competencia: igual a tu bonificador', 40, 182],
+      [
+        [
+          ['Golpe.', 'name'],
+          [
+            'Ataque con arma cuerpo a cuerpo: +4 a impactar, alcance 5 pies. Impacto: 6 (1d8 + 2) de daño contundente.',
+            'body',
+          ],
+        ],
+        40,
+        194,
+      ],
+    ]),
+  ]);
+  const [m] = L.monsters(lines, { prefix: 't' });
+  assert.equal(m.name, 'Espíritu de prueba');
+  assert.equal(m.size, 'Pequeño');
+  assert.equal(m.summon, true);
+  assert.equal(m.hp, 20);
+  assert.match(m.hpNote, /por cada nivel de conjuro/);
+  assert.match(m.acNote, /nivel del conjuro/);
+  assert.equal(m.issues, undefined);
+});
