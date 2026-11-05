@@ -1,2 +1,6 @@
 node_modules/
 .DS_Store
+.tmp-test/
+__pycache__/
+dnd-personal-library*.json
+book-library-cache/

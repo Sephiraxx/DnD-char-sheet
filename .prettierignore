@@ -9,3 +9,4 @@ vendor/
 monsters-data.js
 .tmp-test
 feat-data.js
+book-content-data.js

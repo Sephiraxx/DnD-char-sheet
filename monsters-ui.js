@@ -19,7 +19,13 @@ const MonsterUI = (() => {
 
   // Bestiario del SRD y, si hay, las criaturas importadas de la biblioteca del DM.
   function load() {
-    const lib = () => (typeof LibraryUI !== 'undefined' ? LibraryUI.attach() : null);
+    const lib = () => {
+      if (window.BookContentData) {
+        const ids = new Set(window.MonsterData.map(m => m.id));
+        window.MonsterData.push(...window.BookContentData.monsters.filter(m => !ids.has(m.id)));
+      }
+      return typeof LibraryUI !== 'undefined' ? LibraryUI.attach() : null;
+    };
     if (window.MonsterData) return Promise.resolve(lib());
     return (loading ||= new Promise((ok, fail) => {
       const s = document.createElement('script');
@@ -388,7 +394,7 @@ const MonsterUI = (() => {
       cha: ['CHA', 'CAR'],
     };
     for (const part of String(m.saves || '').split(',')) {
-      const x = /([A-Z]{3})\s*\+(\d+)/i.exec(part.trim());
+      const x = /([A-Z]{3})\s*([+-]\d+)/i.exec(part.trim());
       if (!x) continue;
       const key = Object.keys(names).find(k => names[k].includes(x[1].toUpperCase()));
       if (key) out[key] = Number(x[2]);
@@ -419,7 +425,7 @@ const MonsterUI = (() => {
       ${m.reactions.length ? '<h3 class="section-space">Reacciones</h3>' + m.reactions.map(a => act(a, 'reactions')).join('') : ''}
       ${m.legendary.length ? '<h3 class="section-space">Acciones legendarias</h3>' + m.legendary.map(a => act(a, 'legendary')).join('') : ''}
       ${m.summon ? `<p class="small section-space"><b>Criatura invocada o compañero:</b> sin desafío propio.${m.acNote ? ' CA: ' + esc(m.acNote) + '.' : ''}${m.hpNote ? ' PG: ' + esc(m.hpNote) + '.' : ''} Ajustá la CA y los PG al agregarla.</p>` : ''}
-      <p class="small muted section-space">${m.book ? `De tu biblioteca: ${esc(m.book)}${m.page ? ', pág. ' + m.page : ''}.${m.issues ? ' Datos incompletos: ' + esc(m.issues.join(', ')) + '.' : ''}` : 'Basado en el SRD 5.1 (CC-BY-4.0), traducido al español.'}</p>`;
+      <p class="small muted section-space">${m.bundled ? `Catálogo compartido: ${esc(m.source)}, PDF p. ${m.page}. Estadísticas básicas y daño base; otros poderes, alcances y efectos requieren consultar la fuente.` : m.book ? `De tu biblioteca: ${esc(m.book)}${m.page ? ', pág. ' + m.page : ''}.${m.issues ? ' Datos incompletos: ' + esc(m.issues.join(', ')) + '.' : ''}` : 'Basado en el SRD 5.1 (CC-BY-4.0), traducido al español.'}</p>`;
   }
   async function view(id) {
     await load();

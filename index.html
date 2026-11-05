@@ -29,6 +29,8 @@
     <script src="./magic-items.js" defer></script>
     <script src="./companions.js" defer></script>
     <script src="./campaign-data.js" defer></script>
+    <script src="./book-content-data.js" defer></script>
+    <script src="./book-content.js" defer></script>
     <script src="./equipment-data.js" defer></script>
     <script src="./equipment.js" defer></script>
     <script src="./class-rules.js" defer></script>
@@ -88,7 +90,8 @@
           <div id="breadcrumb">Empezá tu ficha</div>
         </div>
         <div class="top-actions">
-          <button class="button secondary" data-action="party">Personajes</button
+          <a class="icon-btn" href="./compendium.html" aria-label="Libros y catálogo" title="Libros y catálogo">📚</a
+          ><button class="button secondary" data-action="party">Personajes</button
           ><span id="save-status" role="status">Sin personaje abierto</span
           ><button
             class="icon-btn"
@@ -102,8 +105,8 @@
       </header>
       <main id="main" tabindex="-1"></main>
       <footer class="page-footer">
-        Tus cambios se guardan en este navegador. Usá una copia para pasarlos a otro dispositivo.
-        <button class="text-btn" data-action="backup">Exportar</button> ·
+        <a href="./compendium.html">Libros y catálogo</a> · Tus cambios se guardan en este navegador. Usá una copia para
+        pasarlos a otro dispositivo. <button class="text-btn" data-action="backup">Exportar</button> ·
         <button class="text-btn" data-action="sources">Reglas y créditos</button>
       </footer>
     </div>

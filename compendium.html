@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#10252a" />
+    <title>Libros y catálogo · Cuaderno de aventura</title>
+    <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./party.css" />
+    <link rel="stylesheet" href="./library.css" />
+    <script src="./catalog.js" defer></script>
+    <script src="./class-data.js" defer></script>
+    <script src="./names-es.js" defer></script>
+    <script src="./campaign-data.js" defer></script>
+    <script src="./book-content-data.js" defer></script>
+    <script src="./book-content.js" defer></script>
+    <script src="./monsters-data.js" defer></script>
+    <script src="./compendium.js" defer></script>
+    <script src="./updates.js" defer></script>
+  </head>
+  <body class="library-page">
+    <a class="skip" href="#main">Ir al catálogo</a>
+    <div class="library-workspace">
+      <header class="topbar">
+        <div>
+          <span class="eyebrow">CUADERNO DE AVENTURA</span>
+          <div>Libros y catálogo</div>
+        </div>
+        <nav class="top-actions" aria-label="Volver a la partida">
+          <a class="button secondary" href="./">Crear / abrir ficha</a
+          ><a class="button secondary" href="./dm.html">Pantalla del DM</a>
+        </nav>
+      </header>
+      <main id="main" tabindex="-1">
+        <section class="library-intro">
+          <span class="eyebrow">EL MISMO CATÁLOGO PARA TODA LA MESA</span>
+          <h1>Las opciones de tu próxima aventura</h1>
+          <p>
+            Clases, subclases, conjuros y criaturas incluidos en la aplicación. Todos los que abren este sitio reciben
+            el mismo contenido, sin importar archivos.
+          </p>
+          <p id="compendium-counts" class="small" role="status"></p>
+        </section>
+        <section class="card library-search" aria-label="Buscar contenido">
+          <form id="compendium-form">
+            <label class="field"
+              >Buscar en el catálogo<input
+                id="compendium-q"
+                type="search"
+                maxlength="200"
+                placeholder="Mar abierto, libertad de las olas, azotamentes…"
+            /></label>
+            <div class="form-grid">
+              <label class="field"
+                >Tipo<select id="compendium-kind">
+                  <option value="">Todas las opciones</option>
+                  <option value="class">Clases</option>
+                  <option value="subclass">Subclases</option>
+                  <option value="spell">Conjuros</option>
+                  <option value="creature">Criaturas</option>
+                  <option value="race">Razas y variantes</option>
+                  <option value="background">Trasfondos</option>
+                  <option value="feat">Dotes</option>
+                </select></label
+              >
+              <label class="field"
+                >Libro / fuente<select id="compendium-source">
+                  <option value="">Todos los libros</option>
+                </select></label
+              >
+            </div>
+            <button class="button" type="submit">Buscar</button>
+          </form>
+          <p class="small muted">
+            Creación y subida de nivel usan los libros habilitados en tu ficha o los que elige el DM en Mesa → Ajustes.
+            Tal'Dorei aparece como material de terceros y requiere habilitar su fuente. La ficha sigue las reglas de
+            2014.
+          </p>
+        </section>
+        <p id="compendium-status" role="status" aria-live="polite"></p>
+        <section class="library-results" id="compendium-results" aria-label="Opciones del catálogo"></section>
+        <section class="card library-help">
+          <h2>Qué incluyen los libros</h2>
+          <p id="compendium-coverage"></p>
+          <p>
+            «Incluido» indica que una opción está en el selector correspondiente. Los efectos especiales de clases y
+            subclases pueden necesitar recursos, notas o resolución en la mesa. Las criaturas de libros añaden
+            estadísticas básicas y, donde se verificó la extracción, daño base de ataques; no todos sus poderes ni
+            acciones están automatizados.
+          </p>
+          <details>
+            <summary>Consultar el estado de cada PDF</summary>
+            <div id="compendium-books"></div>
+          </details>
+          <p class="small">
+            Los libros personales de tu cuenta se gestionan en la
+            <a href="./dm.html">Biblioteca del DM</a>. Esa biblioteca es independiente del catálogo compartido.
+          </p>
+        </section>
+      </main>
+    </div>
+    <dialog id="compendium-detail" aria-labelledby="compendium-detail-title">
+      <div class="modal-head">
+        <h2 id="compendium-detail-title"></h2>
+        <button class="icon-btn" id="compendium-close" aria-label="Cerrar detalles">×</button>
+      </div>
+      <div class="library-reader-body" id="compendium-detail-body"></div>
+    </dialog>
+    <noscript>Activá JavaScript para consultar el catálogo.</noscript>
+  </body>
+</html>

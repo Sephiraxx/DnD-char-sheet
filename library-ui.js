@@ -295,7 +295,7 @@ const LibraryUI = (() => {
   }
   async function refresh() {
     if (!window.MonsterData) return;
-    window.MonsterData = window.MonsterData.filter(m => !m.book);
+    window.MonsterData = window.MonsterData.filter(m => !m.book || m.bundled);
     attached = null;
     vocab = null;
     await attach();

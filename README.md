@@ -1,5 +1,16 @@
 # Cuaderno de aventura — D&D 5e 2014
 
+## Catálogo compartido de libros
+
+GitHub Pages distribuye el mismo catálogo a todos los jugadores y DMs. No hace falta importar archivos personales para usar sus opciones: **13 clases, 119 subclases, 526 conjuros, 155 razas/variantes y 78 trasfondos**. La fuente de Tal'Dorei se habilita por separado en los libros de la ficha o de la mesa; incluye el Juramento del Mar Abierto y sus dos conjuros, con su progresión de conjuros siempre preparados.
+
+El bestiario suma **561 entradas de libros** a los 334 monstruos SRD. Incluyen CA, PG, dados de golpe, características, salvaciones y desafío; **315 entradas** tienen ataques con daño base verificado (496 ataques). Los poderes adicionales, condiciones de objetivo, alcances y demás efectos se revisan en el libro y se resuelven en la mesa. Puede haber versiones de la misma criatura en distintas fuentes. El filtro por libro distingue las versiones.
+
+Las nuevas mesas habilitan por defecto las fuentes reconocidas de la colección compatibles con 2014; las mesas existentes conservan sus permisos. **Libros y catálogo** muestra las opciones y la cobertura real de cada libro. Los 335 PDFs inventariados **no están convertidos por completo**: 51 necesitan reconocimiento de texto; las clases nuevas de homebrew, otras subclases y las reglas revisadas siguen pendientes. El contenido de otras ediciones no se mezcla con las reglas de 2014.
+
+`book-content-data.js` contiene datos de juego y metadatos compartidos; `book-content.js` incorpora las opciones verificadas antes de cargar las fichas. `node tools/build-shared-content.js "paquete-personal.json"` regenera los datos públicos a partir de la extracción validada; `--check` comprueba que coinciden. El archivo público no contiene páginas, PDFs ni prosa completa de los libros. Los nuevos archivos están incluidos en la caché del service worker para que todos reciban el mismo catálogo al actualizar la aplicación.
+
+
 ## Crear y cambiar de personaje
 
 En la primera visita, elegí **Crear personaje** o **Importar una ficha JSON**. Si ya tenés una abierta, usá **Personajes → Crear personaje**. El creador ocupa toda la pantalla y va paso a paso, una decisión por pantalla: **Clase → Trasfondo → Raza → Características → Habilidades → Conjuros → Equipo → Detalles → Revisar**. Podés empezar en cualquier nivel del 1 al 20.
@@ -20,7 +31,7 @@ En la primera visita, elegí **Crear personaje** o **Importar una ficha JSON**. 
 
 Se pueden habilitar **30 libros de la línea 2014**, hasta The Book of Many Things (noviembre de 2023): PHB, Xanathar, Tasha, Costa de la Espada, Strixhaven, Ravnica, Eberron, Tome of Foes, Volo, Elemental Evil, Monsters of the Multiverse, Wildemount, Theros, Van Richten, Fizban, Witchlight, Spelljammer, Dragonlance, Glory of the Giants, Planescape, The Book of Many Things, Acquisitions Incorporated, Saltmarsh, Tomb of Annihilation, Descent into Avernus, Icewind Dale, Lost Laboratory of Kwalish y los suplementos One Grung Above, Locathah Rising y The Tortle Package. Quedan fuera Unearthed Arcana, Plane Shift y los libros de 2024.
 
-Por defecto siguen habilitados **PHB 2014, Xanathar, Tasha, Costa de la Espada, Strixhaven, Ravnica, Eberron: Rising from the Last War y Mordenkainen: Tome of Foes**; el DM elige los de su mesa en **Mesa → Ajustes** y cada ficha conserva su selección desde **Libros habilitados**. Monsters of the Multiverse no reemplaza a Volo ni a Tome of Foes: ambas versiones aparecen con su fuente para que la mesa elija.
+Las fuentes oficiales reconocidas de la colección se habilitan por defecto en fichas y mesas nuevas; el DM elige los de su mesa en **Mesa → Ajustes** y cada ficha conserva su selección desde **Libros habilitados**. Monsters of the Multiverse no reemplaza a Volo ni a Tome of Foes: ambas versiones aparecen con su fuente para que la mesa elija.
 
 El creador y **Personaje → Elegir / cambiar** incluyen **155 razas o variantes** y **78 trasfondos**. Además de las de los ocho libros por defecto, suman aasimar, firbolg, goliat, kenku, hombre lagarto, tabaxi, tritón, yuan-ti, genasi, aarakocra, leonino, sátiro, dhampir, sangre bruja, renacido, dracónidos de Fizban y de Wildemount, hada, harengon, las razas de Spelljammer, kender, verdan, locathah, grung y tortuguino, y trasfondos como Atormentado, Investigador, Caballero de Solamnia, Tallador de runas, Guardián del portal, Recompensado y Arruinado. Las versiones con aumentos flexibles (+2/+1 o +1/+1/+1) lo indican. Las armaduras naturales (hombre lagarto, tortuguino, locathah, autognomo, thri-kreen) entran en el cálculo de CA.
 
@@ -30,7 +41,7 @@ Las tarjetas muestran fuente, tamaño, velocidad, aumentos de referencia, compet
 
 Algunos trasfondos de Strixhaven y Ravnica y las marcas de Eberron amplían la lista de la clase: esos conjuros aparecen como opciones normales al tener acceso al nivel. Esto **no significa conocerlos ni tenerlos preparados**, ni concede espacios extra. Las dotes y magia innata son elecciones separadas, con su propia característica y límites. Por ejemplo, elegí y registrá Iniciado de Strixhaven para el trasfondo que lo otorga.
 
-Los ocho libros por defecto habilitan **483 conjuros únicos** de los 524 del catálogo; con todos los libros están los 524 conjuros y 105 dotes de la línea 2014. Los de Costa de la Espada reeditados en Tasha se encuentran desde ambas fuentes y usan el texto corregido de la línea 2014. Un libro puede aportar razas, trasfondos o ampliar listas sin incorporar conjuros exclusivos nuevos; Tome of Foes no aporta conjuros exclusivos a este índice.
+El catálogo oficial base incluye 524 conjuros y 105 dotes; Tal'Dorei añade dos conjuros. Los libros habilitados filtran las nuevas elecciones. Los de Costa de la Espada reeditados en Tasha se encuentran desde ambas fuentes y usan el texto corregido de la línea 2014. Un libro puede aportar razas, trasfondos o ampliar listas sin incorporar conjuros exclusivos nuevos; Tome of Foes no aporta conjuros exclusivos a este índice.
 
 Deshabilitar un libro conserva las elecciones previas. **Todo el catálogo → Extra del DM** mantiene acceso a cualquier conjuro, incluso fuera de los libros habilitados. Los nombres personalizados se pueden seguir escribiendo eligiendo la opción personalizada del selector.
 
@@ -50,7 +61,7 @@ Los números salen de `node tools/build-spell-dice.js <carpeta data/spells de 5e
 
 ## Clase y subida de nivel
 
-**Clase** muestra la progresión de nivel 1 a 20, rasgos nuevos, subclase y elecciones pendientes. Incluye un índice de **118 subclases**, **151 opciones de rasgos** y **102 dotes** de las fuentes incluidas: estilos, maniobras, infusiones, Metamagia, invocaciones y pactos, entre otras.
+**Clase** muestra la progresión de nivel 1 a 20, rasgos nuevos, subclase y elecciones pendientes. Incluye un índice de **119 subclases**, **151 opciones de rasgos** y **102 dotes** de las fuentes incluidas: estilos, maniobras, infusiones, Metamagia, invocaciones y pactos, entre otras.
 
 **Defensas:** la ficha junta las resistencias, inmunidades y vulnerabilidades de la raza, de la Furia mientras dura y las que anotás (objetos, conjuros, rasgos) en la tarjeta «Defensas». El daño con tipo se ajusta solo: el que manda el DM (con tipo en su diálogo), los ataques de monstruos (con el tipo de cada parte), las salvaciones de área y el que anotás vos. El mensaje dice qué se aplicó.
 
@@ -75,7 +86,7 @@ En **Conjuros → Agregar / preparar conjuros**:
 
 Se distinguen conjuros conocidos, preparados, libro de mago, conjuros siempre preparados por subclase, Secretos mágicos y Arcanum del brujo. El mago conserva los rituales del libro aunque no estén preparados. Los espacios de pacto tienen su nivel propio y se recuperan con descanso corto. Un conjuro extra no concede espacios adicionales.
 
-El catálogo contiene **524 conjuros**, todos con nombres de referencia y resúmenes de mesa en español. Los resúmenes explican la función del efecto; **no son traducciones íntegras de los libros** y no sustituyen sus tablas, estadísticas de invocaciones, excepciones ni todos los aumentos por espacio. Los nombres ingleses siguen disponibles para buscar. No se incluyen Unearthed Arcana ni las revisiones de 2024. Los 319 textos SRD originales se conservan en los datos como referencia, sin mostrarlos como descripción principal.
+El catálogo contiene **526 conjuros**, todos con nombres de referencia y resúmenes de mesa en español. Los resúmenes explican la función del efecto; **no son traducciones íntegras de los libros** y no sustituyen sus tablas, estadísticas de invocaciones, excepciones ni todos los aumentos por espacio. Los nombres ingleses siguen disponibles para buscar. No se incluyen Unearthed Arcana ni las revisiones de 2024. Los 319 textos SRD originales se conservan en los datos como referencia, sin mostrarlos como descripción principal.
 
 Caballero arcano y Embaucador arcano: las restricciones de escuelas y excepciones de aprendizaje se revisan en mesa. Los conjuros opcionales, reemplazos especiales y elecciones internas de listas de subclase pueden requerir registro manual.
 
@@ -94,7 +105,7 @@ Caballero arcano y Embaucador arcano: las restricciones de escuelas y excepcione
 - Los Dados de Golpe usan el dado de la clase. En descanso corto se suma CON a cada dado, con mínimo de 0 PG por dado. Los recursos se recuperan según su descanso; el descanso largo devuelve hasta la mitad del máximo de Dados de Golpe (mínimo uno).
 - El daño recuerda las salvaciones de concentración. Ataques, daño a enemigos, alcance, componentes, objetivos, condiciones y duraciones se resuelven en mesa.
 
-El combate automatiza recursos y acciones comunes, **no todos los efectos de las 118 subclases**. Por ejemplo, las reacciones especiales pueden necesitar notas, ajustes o la opción del DM. La multiclase calcula nivel de lanzador, espacios (con el pacto del brujo aparte), competencias y rasgos de cada clase. La velocidad y los bonos de equipo se registran manualmente. Las condiciones son recordatorios y no alteran todas las tiradas.
+El combate automatiza recursos y acciones comunes, **no todos los efectos de las 119 subclases**. Por ejemplo, las reacciones especiales pueden necesitar notas, ajustes o la opción del DM. La multiclase calcula nivel de lanzador, espacios (con el pacto del brujo aparte), competencias y rasgos de cada clase. La velocidad y los bonos de equipo se registran manualmente. Las condiciones son recordatorios y no alteran todas las tiradas.
 
 **Objetos mágicos** (en Equipo): un catálogo de 96 objetos de 2014 —anillos y capas de protección, brazales de defensa, amuletos y cinturones que fijan características, armas, armaduras y escudos +1/+2/+3, focos de lanzador (+1/+2/+3 al ataque y la CD de conjuros), varitas y bastones con cargas, objetos de resistencia y pociones de curación— y objetos propios del DM. Si piden sintonía, solo funcionan sintonizados (máximo 3). Sus bonos se aplican solos a la CA, salvaciones, pruebas, iniciativa, conjuros, puntuaciones, PG y resistencias; las armas mágicas suman a su ataque y daño. Las cargas se gastan con un toque, aparecen en la vista compacta de combate y se recuperan al terminar un descanso largo (al amanecer). Las pociones tiran su curación y se descuentan.
 
