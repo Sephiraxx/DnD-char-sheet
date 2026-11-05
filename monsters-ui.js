@@ -15,7 +15,6 @@ const MonsterUI = (() => {
   const crText = cr => (cr === 0.125 ? '1/8' : cr === 0.25 ? '1/4' : cr === 0.5 ? '1/2' : String(cr));
   let loading = null,
     query = '',
-    crMax = '',
     panel = null; // ataque abierto: { entryId, action, last }
 
   function load() {
@@ -113,77 +112,213 @@ const MonsterUI = (() => {
       : '';
   }
 
-  // ---------- Elegir monstruos ----------
+  // ---------- Bestiario: elegir criaturas (tarjetas, filtros y una bandeja con la dificultad) ----------
   // target: id de un encuentro preparado (las criaturas se guardan ahí y no van a la iniciativa).
   let target = null;
+  const TYPE_GROUPS = [
+    ['humanoide', 'Humanoides'],
+    ['bestia', 'Bestias'],
+    ['muerto viviente', 'Muertos vivientes'],
+    ['monstruosidad', 'Monstruosidades'],
+    ['dragón', 'Dragones'],
+    ['infernal', 'Infernales'],
+    ['gigante', 'Gigantes'],
+    ['elemental', 'Elementales'],
+    ['aberración', 'Aberraciones'],
+    ['constructo', 'Constructos'],
+    ['feérico', 'Feéricos'],
+    ['celestial', 'Celestiales'],
+    ['planta', 'Plantas'],
+    ['cieno', 'Cienos'],
+    ['enjambre', 'Enjambres'],
+  ];
+  const CR_RANGES = [
+    ['', 'Todos'],
+    ['party', 'Para tu party'],
+    ['0-0.5', 'VD 0 a 1/2'],
+    ['1-4', 'VD 1 a 4'],
+    ['5-10', 'VD 5 a 10'],
+    ['11-16', 'VD 11 a 16'],
+    ['17-30', 'VD 17+'],
+  ];
+  const TAGS = [
+    ['fly', '🪽 Vuela'],
+    ['swim', '🌊 Nada'],
+    ['spells', '✦ Conjuros'],
+    ['legendary', '♛ Legendaria'],
+    ['ranged', '🏹 A distancia'],
+  ];
+  const baseType = m => m.type.split(' (')[0];
+  const has = {
+    fly: m => /vuelo/i.test(m.speed),
+    swim: m => /nado/i.test(m.speed),
+    spells: m => m.traits.some(([n]) => /conjuros/i.test(n)),
+    legendary: m => m.legendary.length > 0,
+    ranged: m => m.actions.some(a => /a distancia/i.test(a.d || '')),
+  };
+  const RECENT_KEY = 'dnd-dm-recent-monsters';
+  const recent = () => {
+    try {
+      const v = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+      return Array.isArray(v) ? v.filter(byId) : [];
+    } catch {
+      return [];
+    }
+  };
+  const pick = {
+    type: '',
+    cr: '',
+    tags: new Set(),
+    tray: new Map(), // id → cantidad
+    open: null, // tarjeta con el bloque de estadísticas abierto
+    shown: 48,
+    hp: 'avg',
+    hidden: false,
+  };
+  const partyLevel = () => {
+    const ls = (party?.characters || []).map(c => PV.summarize(c.data).level || 1);
+    return ls.length ? Math.round(ls.reduce((a, b) => a + b, 0) / ls.length) : 0;
+  };
+  function crIn(m, range) {
+    if (!range) return true;
+    if (range === 'party') {
+      const L = partyLevel() || 1;
+      return m.cr >= Math.min(L / 4, 1) - 0.01 && m.cr <= L + 1;
+    }
+    const [a, b] = range.split('-').map(Number);
+    return m.cr >= a && m.cr <= b;
+  }
   async function picker(prepId = null) {
     await load();
     target = prepId;
+    pick.tray = new Map();
+    pick.open = null;
+    pick.shown = 48;
     modal(
       prepId ? 'Agregar a «' + (Encounters.get(prepId)?.name || 'encuentro') + '»' : 'Agregar criaturas',
-      `<div class="form-grid">${field('Buscar', 'q', query, 'search', 'id="monster-q" placeholder="goblin, dragon, zombie…" autocomplete="off"')}${select(
-        'Desafío hasta',
-        'cr',
-        [['', 'Cualquiera'], ...[0.25, 0.5, 1, 2, 3, 4, 5, 8, 10, 15, 20, 30].map(c => [c, 'VD ' + crText(c)])],
-        crMax,
-      )}</div><div id="monster-results" class="party-list monster-results"></div><details class="battle-rule"><summary>Criatura propia (sin estadísticas del SRD)</summary><p class="small">Usá «Criatura propia» en la iniciativa.</p></details>`,
+      `<div class="bestiary-search">${field('Buscar', 'q', query, 'search', 'id="monster-q" placeholder="goblin, dragón, zombi, lobo…" autocomplete="off"')}</div><div id="bestiary-filters"></div><div id="monster-results" class="bestiary-grid"></div><div id="bestiary-tray" class="bestiary-tray"></div>`,
       null,
     );
+    const d = document.getElementById('modal');
+    d.classList.add('bestiary-modal');
+    d.addEventListener('close', () => d.classList.remove('bestiary-modal'), { once: true });
+    drawPicker();
+    document.getElementById('monster-q')?.focus();
+  }
+  const chip = (action, v, label, on, extra = '') =>
+    `<button type="button" class="chip ${on ? 'selected' : ''}" data-action="${action}" data-v="${esc(v)}" aria-pressed="${on}" ${extra}>${label}</button>`;
+  function drawPicker() {
+    drawFilters();
     drawResults();
+    drawTray();
+  }
+  function drawFilters() {
+    const box = document.getElementById('bestiary-filters');
+    if (!box) return;
+    const L = partyLevel();
+    const used = new Set(MonsterData.map(baseType));
+    const rec = recent();
+    box.innerHTML = `<div class="chips bestiary-chips" role="group" aria-label="Tipo">${chip('bes-type', '', 'Todos', !pick.type)}${TYPE_GROUPS.filter(
+      ([k]) => used.has(k),
+    )
+      .map(([k, l]) => chip('bes-type', k, l, pick.type === k))
+      .join('')}</div><div class="chips bestiary-chips" role="group" aria-label="Desafío">${CR_RANGES.map(([k, l]) =>
+      k === 'party' && !L ? '' : chip('bes-cr', k, k === 'party' ? `${l} (nivel ${L})` : l, pick.cr === k),
+    ).join(
+      '',
+    )}<span class="bestiary-sep"></span>${TAGS.map(([k, l]) => chip('bes-tag', k, l, pick.tags.has(k))).join('')}</div>${
+      rec.length && !query.trim()
+        ? `<div class="chips bestiary-recent"><span class="small muted">Usadas hace poco:</span>${rec
+            .slice(0, 10)
+            .map(id => chip('bes-add', id, '+ ' + esc(byId(id).name), false, `data-id="${id}"`))
+            .join('')}</div>`
+        : ''
+    }`;
+  }
+  function filtered() {
+    const q = query.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    return MonsterData.filter(
+      m =>
+        (!q || norm(m.name + ' ' + (m.english || '') + ' ' + m.type).includes(q)) &&
+        (!pick.type || baseType(m) === pick.type) &&
+        crIn(m, pick.cr) &&
+        [...pick.tags].every(k => has[k](m)),
+    ).sort((a, b) => a.cr - b.cr || a.name.localeCompare(b.name, 'es'));
+  }
+  function card(m) {
+    const n = pick.tray.get(m.id) || 0,
+      tags = TAGS.filter(([k]) => has[k](m)).map(([, l]) => l.split(' ')[0]);
+    const open = pick.open === m.id;
+    return `<article class="bestiary-card ${n ? 'picked' : ''} ${open ? 'open' : ''}"><button type="button" class="bestiary-main" data-action="bes-add" data-id="${m.id}" title="Agregar uno"><span class="bestiary-cr">VD ${crText(m.cr)}</span><span class="bestiary-name">${esc(m.name)}</span><span class="bestiary-meta">${esc(cap(m.type.split(' (')[0]))} · ${esc(m.size)}${m.english && m.english !== m.name ? ' · ' + esc(m.english) : ''}</span><span class="bestiary-stats"><span>CA <b>${m.ac}</b></span><span>PG <b>${m.hp}</b></span><span>${m.xp} XP</span>${tags.length ? `<span class="bestiary-tags">${tags.join(' ')}</span>` : ''}</span></button>${n ? `<span class="bestiary-count">${n}</span>` : ''}<button type="button" class="bestiary-info" data-action="bes-info" data-id="${m.id}" aria-expanded="${open}" aria-label="Ver estadísticas de ${esc(m.name)}" title="Ver estadísticas">${open ? '×' : 'ⓘ'}</button>${open ? `<div class="bestiary-block">${statBlock(m)}</div>` : ''}</article>`;
   }
   function drawResults() {
     const box = document.getElementById('monster-results');
     if (!box) return;
-    const q = query.trim().toLowerCase();
-    const list = MonsterData.filter(
-      m =>
-        (!q || (m.name + ' ' + (m.english || '')).toLowerCase().includes(q) || m.type.includes(q)) &&
-        (crMax === '' || m.cr <= Number(crMax)),
-    )
-      .sort((a, b) => a.cr - b.cr || a.name.localeCompare(b.name))
-      .slice(0, 40);
+    const list = filtered(),
+      shown = list.slice(0, pick.shown);
     box.innerHTML = list.length
-      ? list
-          .map(
-            m =>
-              `<div class="list-row"><div><b>${esc(m.name)}</b><p class="small muted">VD ${crText(m.cr)} · ${esc(cap(m.type))} ${esc(m.size.toLowerCase())} · CA ${m.ac} · ${m.hp} PG</p></div><div class="actions">${button('Ver', 'monster-view', 'text-btn', `data-id="${m.id}"`)}${button('Agregar', 'monster-add', '', `data-id="${m.id}"`)}</div></div>`,
-          )
-          .join('')
-      : '<p class="muted">Sin resultados.</p>';
+      ? `<p class="small muted bestiary-count-line">${list.length} criatura${list.length === 1 ? '' : 's'} · tocá una tarjeta para sumarla, ⓘ para ver su bloque</p>${shown.map(card).join('')}${list.length > shown.length ? `<div class="bestiary-more">${button('Ver ' + Math.min(48, list.length - shown.length) + ' más', 'bes-more', 'secondary')}</div>` : ''}`
+      : '<p class="muted">Ninguna criatura coincide. Probá con otro nombre (también en inglés) o quitá filtros.</p>';
   }
-  function add(id) {
-    const m = byId(id);
-    modal(
-      'Agregar ' + m.name,
-      `<div class="form-grid">${field('Cantidad', 'count', 1, 'number', 'min="1" max="20" required')}${select(
-        'PG',
-        'hpMode',
-        [
-          ['avg', 'Promedio (' + m.hp + ')'],
-          ['roll', 'Tirar ' + m.hd],
-        ],
-        'avg',
-      )}</div>${
-        target
-          ? '<p class="small">Se guardan en el encuentro preparado; nadie las ve hasta que lo lanzás.</p>'
-          : `<label class="check"><input type="checkbox" name="hidden">Agregarlas ocultas (los jugadores no las ven hasta que las reveles)</label><p class="small">La iniciativa se tira para cada una (d20 ${sign(mod(m.ab[1]))}); podés corregirla con «Init».</p>`
-      }`,
-      async fd => {
-        const n = int(fd, 'count', 1, 20),
-          saves = saveBonuses(m),
-          hps = Array.from({ length: n }, () =>
-            fd.get('hpMode') === 'roll' ? Math.max(1, rollDice(m.hd).total) : m.hp,
-          );
-        if (target) {
-          Encounters.addMonsters(
-            target,
-            hps.map(hp => ({ name: m.name, monsterId: m.id, hp, ac: m.ac, saves, initMod: mod(m.ab[1]) })),
-          );
-          toast(`${n} × ${m.name} en «${Encounters.get(target)?.name}».`);
-          return;
-        }
+  // Bandeja: lo elegido, con cantidades y la dificultad del encuentro tal como quedaría.
+  function drawTray() {
+    const box = document.getElementById('bestiary-tray');
+    if (!box) return;
+    const items = [...pick.tray.entries()].filter(([, n]) => n > 0);
+    const total = items.reduce((a, [, n]) => a + n, 0);
+    if (!total) {
+      box.innerHTML = `<p class="small muted">Elegí criaturas para armar ${target ? 'el encuentro' : 'el combate'}. La dificultad se calcula con tu party.</p>`;
+      return;
+    }
+    const before = target
+      ? (Encounters.get(target)?.monsters || []).map(x => ({ monsterId: x.monsterId }))
+      : tracker()
+          .entries.filter(x => x.kind === 'monster')
+          .map(x => ({ monsterId: x.monsterId, hp: x.hp }));
+    const after = [...before, ...items.flatMap(([id, n]) => Array.from({ length: n }, () => ({ monsterId: id })))];
+    const d = difficulty({ entries: after });
+    box.innerHTML = `<div class="bestiary-picked">${items
+      .map(
+        ([id, n]) =>
+          `<span class="bestiary-pill"><button type="button" class="text-btn" data-action="bes-dec" data-id="${id}" aria-label="Uno menos">−</button><b>${n} × ${esc(byId(id).name)}</b><button type="button" class="text-btn" data-action="bes-add" data-id="${id}" aria-label="Uno más">+</button></span>`,
+      )
+      .join(
+        '',
+      )}</div><div class="bestiary-commit">${d ? `<span class="difficulty-badge ${esc(d.label.toLowerCase())}" title="${d.adjusted} XP ajustado · umbrales ${d.sums.join(' / ')}">${d.label}${before.length ? ' (con las que ya están)' : ''}</span>` : '<span class="small muted">Sin personajes en la mesa: no se calcula la dificultad.</span>'}<label class="field bestiary-hp">PG<select name="bes-hp" data-action="bes-hp"><option value="avg" ${pick.hp === 'avg' ? 'selected' : ''}>Promedio</option><option value="roll" ${pick.hp === 'roll' ? 'selected' : ''}>Tirados</option></select></label>${target ? '' : `<label class="check"><input type="checkbox" name="bes-hidden" ${pick.hidden ? 'checked' : ''}>Ocultas</label>`}${button('Vaciar', 'bes-clear', 'text-btn')}${button(`Agregar ${total} ${target ? 'al encuentro' : 'a la iniciativa'}`, 'bes-commit', '')}</div>`;
+  }
+  function trayAdd(id, k) {
+    const n = Math.max(0, Math.min(20, (pick.tray.get(id) || 0) + k));
+    if (n) pick.tray.set(id, n);
+    else pick.tray.delete(id);
+    drawResults();
+    drawTray();
+  }
+  async function commit() {
+    const items = [...pick.tray.entries()].filter(([, n]) => n > 0);
+    if (!items.length) throw Error('Elegí al menos una criatura.');
+    const hpOf = m => (pick.hp === 'roll' ? Math.max(1, rollDice(m.hd).total) : m.hp);
+    let total = 0;
+    for (const [id, n] of items) {
+      const m = byId(id),
+        saves = saveBonuses(m);
+      total += n;
+      if (target)
+        Encounters.addMonsters(
+          target,
+          Array.from({ length: n }, () => ({
+            name: m.name,
+            monsterId: m.id,
+            hp: hpOf(m),
+            ac: m.ac,
+            saves,
+            initMod: mod(m.ab[1]),
+          })),
+        );
+      else {
         const names = await claimNames(m.name, n);
-        for (let i = 0; i < n; i++)
+        for (let i = 0; i < n; i++) {
+          const hp = hpOf(m);
           await Cloud.addCombatant(
             current,
             {
@@ -191,15 +326,26 @@ const MonsterUI = (() => {
               name: names[i],
               init: d20() + mod(m.ab[1]),
               tiebreak: mod(m.ab[1]),
-              hidden: fd.has('hidden'),
+              hidden: pick.hidden,
             },
-            { hp: hps[i], max_hp: hps[i], ac: m.ac, saves, monster_id: m.id },
+            { hp, max_hp: hp, ac: m.ac, saves, monster_id: m.id },
           );
-        await refresh();
-        toast(`${n} × ${m.name} en la iniciativa${fd.has('hidden') ? ' (ocultas)' : ''}.`);
-      },
-      'Agregar',
+        }
+      }
+    }
+    try {
+      const ids = items.map(([id]) => id);
+      localStorage.setItem(
+        RECENT_KEY,
+        JSON.stringify([...ids, ...recent().filter(x => !ids.includes(x))].slice(0, 20)),
+      );
+    } catch {}
+    document.getElementById('modal').close();
+    if (!target) await refresh();
+    toast(
+      `${total} criatura${total === 1 ? '' : 's'} ${target ? 'en «' + (Encounters.get(target)?.name || 'el encuentro') + '»' : 'en la iniciativa' + (pick.hidden ? ' (ocultas)' : '')}.`,
     );
+    pick.tray = new Map();
   }
 
   // Numeración continua: si ya hay «Goblin», pasa a «Goblin 1» y los nuevos siguen desde ahí.
@@ -510,7 +656,37 @@ const MonsterUI = (() => {
   Object.assign(actions, {
     'init-monster-srd': () => picker(),
     'monster-view': e => view(e.dataset.id),
-    'monster-add': e => add(e.dataset.id),
+    'bes-type': e => {
+      pick.type = e.dataset.v;
+      pick.shown = 48;
+      drawPicker();
+    },
+    'bes-cr': e => {
+      pick.cr = e.dataset.v;
+      pick.shown = 48;
+      drawPicker();
+    },
+    'bes-tag': e => {
+      pick.tags.has(e.dataset.v) ? pick.tags.delete(e.dataset.v) : pick.tags.add(e.dataset.v);
+      pick.shown = 48;
+      drawPicker();
+    },
+    'bes-add': e => trayAdd(e.dataset.id, 1),
+    'bes-dec': e => trayAdd(e.dataset.id, -1),
+    'bes-info': e => {
+      pick.open = pick.open === e.dataset.id ? null : e.dataset.id;
+      drawResults();
+    },
+    'bes-more': () => {
+      pick.shown += 48;
+      drawResults();
+    },
+    'bes-clear': () => {
+      pick.tray = new Map();
+      drawResults();
+      drawTray();
+    },
+    'bes-commit': commit,
     'monster-open': e => open(e.dataset.entry),
     'monster-attack': e => attack(e.dataset.entry, e.dataset.kind, e.dataset.name, Boolean(e.dataset.noattack)),
     'monster-roll-attack': rollAttack,
@@ -525,14 +701,14 @@ const MonsterUI = (() => {
     }
     if (e.target.id === 'monster-q') {
       query = e.target.value;
+      pick.shown = 48;
+      drawFilters();
       drawResults();
     }
   });
   document.addEventListener('change', e => {
-    if (e.target.name === 'cr' && document.getElementById('monster-results')) {
-      crMax = e.target.value;
-      drawResults();
-    }
+    if (e.target.name === 'bes-hp') pick.hp = e.target.value === 'roll' ? 'roll' : 'avg';
+    if (e.target.name === 'bes-hidden') pick.hidden = e.target.checked;
   });
   // Si ya hay criaturas del SRD en la iniciativa, se cargan los datos para la dificultad.
   if (
