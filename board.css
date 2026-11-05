@@ -532,3 +532,8 @@ html.board-open body {
   padding: 4px 12px;
   font-size: 0.82rem;
 }
+
+.board-dock .saves-card {
+  margin-bottom: 12px;
+  border-color: var(--gold);
+}

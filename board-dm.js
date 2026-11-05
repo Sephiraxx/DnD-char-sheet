@@ -24,7 +24,20 @@
   const actionButtons = (entry, a, kind) =>
     `${a.atk !== undefined ? button('Atacar', 'monster-attack', '', `data-entry="${entry.id}" data-kind="${kind}" data-name="${esc(a.n)}"`) : ''}${a.dc ? button('Pedir salvación', 'monster-save', 'secondary', `data-entry="${entry.id}" data-kind="${kind}" data-name="${esc(a.n)}"`) : ''}${a.atk === undefined && a.dmg ? button('Tirar daño', 'monster-attack', 'secondary', `data-entry="${entry.id}" data-kind="${kind}" data-name="${esc(a.n)}" data-noattack="1"`) : ''}`;
   const short = s => (s.length > 150 ? s.slice(0, 147) + '…' : s);
+  // Salvaciones pendientes (conjuros de área de los jugadores): se resuelven también desde el tablero.
+  let savesSeen = 0;
+  function saves() {
+    const html = typeof savesCard === 'function' ? savesCard() : '',
+      n = typeof pendingSaves === 'function' ? pendingSaves().reduce((a, x) => a + x.targets.length, 0) : 0;
+    if (n > savesSeen) setTimeout(() => Board.expand(), 0);
+    savesSeen = n;
+    return html;
+  }
   function dock(c) {
+    const pending = saves();
+    return pending + dockBody(c);
+  }
+  function dockBody(c) {
     const t = tracker(),
       turn = t.turn >= 0 ? t.entries[t.turn] : null,
       next = t.entries.length
