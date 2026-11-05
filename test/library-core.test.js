@@ -778,3 +778,41 @@ test('criaturas invocadas (Tasha): «Desafío: —» y PG que dependen del nivel
   assert.match(m.acNote, /nivel del conjuro/);
   assert.equal(m.issues, undefined);
 });
+
+test('criatura creada por un conjuro: toma el nombre del conjuro', () => {
+  const lines = L.readLines([
+    page([
+      ['SIERVO DE PRUEBA', 40, 60, 10, 'title'],
+      ['Transmutación nivel 3', 40, 74],
+      ['Tiempo de lanzamiento: 10 minutos', 40, 86],
+      ['Alcance: Toque', 40, 96],
+      ['Componentes: V, S', 40, 106],
+      ['Duración: 8 horas', 40, 116],
+      ['Un objeto pequeño cobra vida y obedece tus órdenes hasta que el conjuro termina.', 40, 128],
+      ['Autómata pequeño, sin alineamiento', 40, 150],
+      ['Clase de Armadura: 15 (armadura natural)', 40, 162],
+      ['Puntos de golpe: 10 (4d4)', 40, 172],
+      ['Velocidad: 30 pies', 40, 182],
+      ['FUE DES CON INT SAB CAR', 40, 194],
+      ['4 (-3) 16 (+3) 10 (+0) 2 (-4) 10 (+0) 1 (-5)', 40, 204],
+      ['ACCIONES', 40, 218, 10, 'title'],
+      [
+        [
+          ['Golpe.', 'name'],
+          [
+            'Ataque con arma cuerpo a cuerpo: +S a impactar, alcance 5 pies. Impacto: 5 (1d4 + 3) de d a ñ o contu n d e nte.',
+            'body',
+          ],
+        ],
+        40,
+        230,
+      ],
+    ]),
+  ]);
+  const [m] = L.monsters(lines, { prefix: 't' });
+  assert.equal(m.name, 'Siervo de prueba');
+  assert.equal(m.summon, true);
+  assert.equal(m.issues, undefined);
+  assert.equal(m.actions[0].atk, 5);
+  assert.deepEqual(m.actions[0].dmg, [['1d4+3', 'contundente']]);
+});
