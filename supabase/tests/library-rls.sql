@@ -1,4 +1,4 @@
--- Permisos de la biblioteca (migración 011): lo importado es privado; un libro compartido con una mesa
+-- Permisos de la biblioteca (migraciones 011 y 012): lo importado es privado; un libro compartido con una mesa
 -- deja ver sus conjuros y objetos a los miembros, nunca las criaturas. Cada «ok:» es una comprobación.
 \set ON_ERROR_STOP 1
 insert into auth.users values ('00000000-0000-0000-0000-0000000000d1','dm@x'),('00000000-0000-0000-0000-0000000000a1','a@x'),('00000000-0000-0000-0000-0000000000e1','e@x');
@@ -13,8 +13,10 @@ insert into library_books (id,title,lang) values ('50000000-0000-0000-0000-00000
 insert into library_entries (book_id,kind,key,name,data) values
  ('50000000-0000-0000-0000-000000000001','monster','mm:goblin','Goblin','{"ac":15}'),
  ('50000000-0000-0000-0000-000000000001','spell','mm:bola','Bola','{}'),
- ('50000000-0000-0000-0000-000000000001','item','mm:anillo','Anillo','{}');
-select pg_temp.check('el dueño ve sus entradas', (select count(*) from library_entries) = 3);
+ ('50000000-0000-0000-0000-000000000001','item','mm:anillo','Anillo','{}'),
+ ('50000000-0000-0000-0000-000000000001','feature','sub:x:Y','Rasgo','{}'),
+ ('50000000-0000-0000-0000-000000000001','feat','feat:alert','Alerta','{}');
+select pg_temp.check('el dueño ve sus entradas', (select count(*) from library_entries) = 5);
 do $$ begin
   begin update library_books set shared_with = '10000000-0000-0000-0000-0000000000ff'; raise exception 'FALLA: compartió con una mesa ajena';
   exception when others then raise notice 'ok: no comparte con una mesa de la que no es miembro'; end;
@@ -29,7 +31,7 @@ reset role; set role authenticated; set request.jwt.claim.sub = '00000000-0000-0
 update library_books set shared_with = '10000000-0000-0000-0000-0000000000c1';
 reset role; set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000a1';
 select pg_temp.check('compartido: el jugador ve el libro', (select count(*) from library_books) = 1);
-select pg_temp.check('compartido: ve conjuros y objetos, no criaturas', (select array_agg(kind order by kind) from library_entries) = array['item','spell']);
+select pg_temp.check('compartido: ve conjuros, objetos, rasgos y dotes, no criaturas', (select array_agg(kind order by kind) from library_entries) = array['feat','feature','item','spell']);
 with u as (update library_entries set name = 'X' returning 1) select pg_temp.check('el jugador no edita entradas ajenas', (select count(*) from u) = 0);
 with u as (delete from library_books returning 1) select pg_temp.check('el jugador no borra el libro', (select count(*) from u) = 0);
 do $$ begin

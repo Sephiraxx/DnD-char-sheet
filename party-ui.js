@@ -218,13 +218,13 @@ const PartyUI = (() => {
       )
         .map(l => {
           const fs = C.features({ ...state, level: l }, l).filter(f => f.level === l);
-          return `<details ${l === state.level ? 'open' : ''}><summary>Nivel ${l}${l === state.level ? ' · Actual' : ''}${C.asiLevels(state).includes(l) ? ' · Mejora o dote' : ''}</summary>${fs.map(f => `<div class="feature"><h3>${esc(f.name)}</h3><p class="small">${esc(f.source)}${f.children?.length ? ' · ' + f.children.map(esc).join(' · ') : ''}</p>${f.es ? `<p class="small">${esc(f.es)}</p>` : ''}${f.text ? `<details><summary>Texto SRD (inglés)</summary><p class="spell-reference">${esc(f.text)}</p></details>` : `<a href="${classLink(state)}" target="_blank" rel="noopener">Consultar el rasgo y sus elecciones</a>`}</div>`).join('') || '<p class="small">Consultá el aumento de recursos y las mejoras de los rasgos previos.</p>'}</details>`;
+          return `<details ${l === state.level ? 'open' : ''}><summary>Nivel ${l}${l === state.level ? ' · Actual' : ''}${C.asiLevels(state).includes(l) ? ' · Mejora o dote' : ''}</summary>${fs.map(f => `<div class="feature"><h3>${esc(f.name)}</h3><p class="small">${esc(f.source)}${f.children?.length ? ' · ' + f.children.map(esc).join(' · ') : ''}</p>${f.es ? `<p class="small">${esc(f.es)}</p>` : ''}${f.book ? LibraryText.html(f.book, !f.es && l === state.level) : ''}${f.text ? `<details><summary>Texto SRD (inglés)</summary><p class="spell-reference">${esc(f.text)}</p></details>` : f.book ? '' : `<a href="${classLink(state)}" target="_blank" rel="noopener">Consultar el rasgo y sus elecciones</a>`}</div>`).join('') || '<p class="small">Consultá el aumento de recursos y las mejoras de los rasgos previos.</p>'}</details>`;
         })
         .join('')}</div></section><div class="stack"><section class="card"><h2>Elecciones registradas</h2>${
         Object.entries(state.classChoices || {})
           .map(
             ([name, ids]) =>
-              `<div class="feature"><h3>${esc(NamesEs.choice(name))}</h3><p>${ids.map(x => esc(D.options.find(o => o.id === x)?.name || x)).join(', ')}</p></div>`,
+              `<div class="feature"><h3>${esc(NamesEs.choice(name))}</h3><p>${ids.map(x => esc(D.options.find(o => o.id === x)?.name || x)).join(', ')}</p>${typeof LibraryText !== 'undefined' ? ids.map(x => (LibraryText.option(x) ? `<p class="small"><b>${esc(D.options.find(o => o.id === x)?.name || x)}</b></p>${LibraryText.html(LibraryText.option(x))}` : '')).join('') : ''}</div>`,
           )
           .join('') ||
         '<p class="small">Estilos, infusiones, Metamagia, invocaciones y otras elecciones aparecerán acá.</p>'
@@ -432,7 +432,7 @@ const PartyUI = (() => {
         .join(
           '',
         )}<p class="small section-space">Competencia de clase: ${c.saves.map(k => R.attrs[k]).join(', ')}.</p></section></div></div>${EquipmentUI.panel(state)}${defensesCard()}${Campaign.sheetOrigins()}<section class="card section-space"><h2>Rasgos y notas</h2>${state.features
-        .map(x => `<div class="feature"><h3>${esc(x.name)}</h3><p>${esc(x.text)}</p></div>`)
+        .map(x => `<div class="feature"><h3>${esc(x.name)}</h3><p>${esc(x.text)}</p>${featBook(x)}</div>`)
         .join(
           '',
         )}<div class="actions">${button('Ver clase y todos sus niveles', 'class-open')}${button('Añadir rasgo', 'feature-new')}${button('Editar rasgos propios', 'feature-manage')}</div></section>`
@@ -569,6 +569,12 @@ const PartyUI = (() => {
     document.body.classList.remove('creator-open');
   }
   // Estados posibles de un conjuro para esta ficha (los mismos que antes ofrecía el desplegable).
+  // Una dote elegida («Dote: …» en los rasgos): su texto en los libros importados.
+  function featBook(x) {
+    if (typeof LibraryText === 'undefined' || !/^Dote:/.test(x.text || '')) return '';
+    const f = Catalog.feats.find(c => c.name === x.name && (state.progression?.learnedFeats || []).includes(c.id));
+    return f ? LibraryText.html(LibraryText.feat(f.id)) : '';
+  }
   function spellOptions(sp, s, d, mode, g) {
     let options = [['no', 'No seleccionado']];
     const valid = Campaign.enabled(s, sp) && (C.member(sp, s) || g.expanded.includes(sp.id));

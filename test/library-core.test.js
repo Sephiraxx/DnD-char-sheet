@@ -605,3 +605,113 @@ test('páginas con la fuente sin letras: se avisan; las tablas de números no', 
   };
   assert.deepEqual(L.unreadablePages([table, garbled]), [2]);
 });
+
+// Datos del sitio inventados para probar el lector de rasgos (nombres del sitio ≠ nombres del libro).
+const CLASSES = {
+  classes: {
+    bard: {
+      id: 'bard',
+      name: 'Bardo',
+      english: 'Bard',
+      source: 'PHB',
+      features: [{ name: 'Inspiración bárdica', english: 'Bardic Inspiration', level: 1, source: 'PHB', children: [] }],
+    },
+  },
+  subclasses: [
+    {
+      id: 'bard-college-of-tests',
+      classId: 'bard',
+      name: 'Colegio de las Pruebas',
+      english: 'College of Tests',
+      source: 'PHB',
+      features: [
+        { name: 'Colegio de las Pruebas', english: 'College of Tests', level: 3, source: 'PHB', children: [] },
+        { name: 'Voz firme', english: 'Steady Voice', level: 6, source: 'PHB', children: [] },
+        { name: 'Canto final', english: 'Final Song', level: 14, source: 'PHB', children: [] },
+      ],
+    },
+  ],
+  options: [
+    { id: 'opt-a', name: 'Mirada lejana', english: 'Far Gaze', source: 'PHB', types: ['EI'] },
+    { id: 'opt-b', name: 'Paso de sombra', english: 'Shadow Step', source: 'PHB', types: ['EI'] },
+    { id: 'opt-c', name: 'Voz del abismo profundo', english: 'Voice of the Deep', source: 'PHB', types: ['EI'] },
+  ],
+};
+const FEATS = { feats: [{ id: 'alert', name: 'Alerta', english: 'Alert', sourceKey: 'PHB' }] };
+const BODY = 'Este es un texto corrido de prueba que ocupa toda la línea del libro.';
+
+test('rasgos de subclase por sección y nivel, opciones y dotes por nombre', () => {
+  const rows = [];
+  let y = 40;
+  const add = (t, size = 8, f = 'B') => {
+    rows.push([[[t, f]], 40, y, size]);
+    y += size + 3;
+  };
+  add('BARDO', 24, 'T');
+  for (let i = 0; i < 6; i++) add(BODY);
+  add('INSPIRACIÓN BÁRDICA', 9, 'S');
+  add('Podés inspirar a otros con tus palabras y tu música durante el combate.');
+  add('COLEGIO DE LAS PRUEBAS', 12, 'T');
+  add('Los bardos de este colegio ponen todo a prueba antes de creerlo cierto.');
+  add('OÍDO ATENTO', 9, 'S');
+  add('Cuando te unes a este colegio en el nivel 3, ganas competencia en Perspicacia.');
+  add('VOZ INQUEBRANTABLE', 9, 'S'); // el sitio la llama «Voz firme»
+  add('A partir del nivel 6, tu voz no puede ser silenciada por la magia de nadie.');
+  add('ÚLTIMA CANCIÓN', 9, 'S');
+  add('Al llegar al nivel 1 4, tu canto final cura a todos los aliados que te oigan.');
+  const page1 = page(rows);
+  y = 40;
+  rows.length = 0;
+  add('INVOCACIONES', 12, 'T');
+  for (let i = 0; i < 3; i++) add(BODY);
+  add('MIRADA LEJANA', 9, 'S');
+  add('Requisitos: nivel 5. Podés ver a través de los ojos de un aliado cercano.');
+  add('PASO DE SOMBRA', 9, 'S');
+  add('Requisitos: nivel 7. Te teletransportás entre sombras hasta 30 pies.');
+  add('VOZ DEL ABISMO', 9, 'S'); // el sitio: «Voz del abismo profundo»
+  add('Requisitos: nivel 9. Hablás con las criaturas del fondo del mar.');
+  add('DOTES', 12, 'T');
+  add('ALERTA', 9, 'S');
+  add('Siempre atento al peligro: +5 a la iniciativa y no te sorprenden.');
+  const lines = L.readLines([page1, page(rows)]);
+  const targets = L.ruleTargets(CLASSES, FEATS);
+  const r = L.rules(lines, targets, {});
+  const by = Object.fromEntries(r.map(x => [x.key, x.data]));
+  assert.match(by['sub:bard-college-of-tests:College of Tests'].text, /competencia en Perspicacia/);
+  assert.match(by['sub:bard-college-of-tests:Steady Voice'].text, /no puede ser silenciada/);
+  assert.match(by['sub:bard-college-of-tests:Final Song'].text, /cura a todos/);
+  assert.match(by['class:bard:Bardic Inspiration'].text, /inspirar a otros/);
+  assert.match(by['opt:opt-a'].text, /^Requisitos: nivel 5/);
+  assert.match(by['opt:opt-c'].text, /fondo del mar/);
+  assert.match(by['feat:alert'].text, /iniciativa/);
+  assert.equal(by['feat:alert'].id, 'feat:alert');
+  assert.equal(r.find(x => x.key === 'feat:alert').kind, 'feat');
+});
+
+test('rasgos con «Rasgo de … de nivel N» (como Tasha)', () => {
+  const rows = [];
+  let y = 40;
+  const add = (t, size = 8, f = 'B') => {
+    rows.push([[[t, f]], 40, y, size]);
+    y += size + 3;
+  };
+  add('BARDO', 24, 'T');
+  for (let i = 0; i < 4; i++) add(BODY);
+  add('COLEGIO DE LAS PRUEBAS', 12, 'T');
+  add(BODY);
+  add('OÍDO ATENTO', 10, 'S');
+  add('Rasgo del colegio de las pruebas de nivel 3', 9, 'L');
+  add('Ganás competencia en Perspicacia y en una herramienta a tu elección.');
+  add('VOZ INQUEBRANTABLE', 10, 'S');
+  add('Rasgo del colegio de las pruebas de nivel 6', 9, 'L');
+  add('Tu voz no puede ser silenciada por la magia de nadie mientras cantes.');
+  add('ÚLTIMA CANCIÓN', 10, 'S');
+  add('Rasgo del colegio de las pruebas de nivel 14', 9, 'L');
+  add('Tu canto final cura a todos los aliados que te oigan cuando caés.');
+  const r = L.rules(L.readLines([page(rows)]), L.ruleTargets(CLASSES, FEATS), {});
+  const by = Object.fromEntries(r.map(x => [x.key, x.data.text]));
+  assert.match(by['sub:bard-college-of-tests:College of Tests'], /Perspicacia/);
+  assert.match(by['sub:bard-college-of-tests:Steady Voice'], /silenciada/);
+  assert.match(by['sub:bard-college-of-tests:Final Song'], /cura a todos/);
+  assert.ok(!/Rasgo del colegio/.test(by['sub:bard-college-of-tests:Steady Voice']));
+});

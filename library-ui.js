@@ -10,6 +10,8 @@ const LibraryUI = (() => {
     ['monster', 'criaturas'],
     ['spell', 'conjuros'],
     ['item', 'objetos'],
+    ['feature', 'rasgos y opciones de clase'],
+    ['feat', 'dotes'],
   ];
   let books = null, // libros de la cuenta (y los compartidos con sus mesas)
     loadError = '',
@@ -37,7 +39,7 @@ const LibraryUI = (() => {
     if (books === null && !loadError) loadBooks().then(() => typeof draw === 'function' && draw());
     const mine = (books || []).filter(b => !isShared(b));
     const shared = (books || []).filter(isShared);
-    return `<section class="card library-card"><div class="card-header"><h2>Biblioteca</h2>${button('Importar PDF', 'lib-import')}</div><p class="small muted">Tus libros en PDF: las criaturas aparecen en «Monstruo del SRD» y en el tablero. Los PDF no se suben; solo lo que se encuentra en ellos, en tu cuenta.</p>${
+    return `<section class="card library-card"><div class="card-header"><h2>Biblioteca</h2>${button('Importar PDF', 'lib-import')}</div><p class="small muted">Tus libros en PDF: las criaturas aparecen en «Monstruo del SRD» y en el tablero; los rasgos de clase, opciones y dotes, en las fichas (compartí el libro con la mesa para que los vean los jugadores). Los PDF no se suben; solo lo que se encuentra en ellos, en tu cuenta.</p>${
       loadError ? `<p class="small">${esc(loadError)}</p>` : ''
     }${
       books === null
@@ -46,7 +48,7 @@ const LibraryUI = (() => {
           ? `<div class="library-books">${mine
               .map(
                 b =>
-                  `<div class="library-book"><div><b>${esc(b.title)}</b><p class="small muted">${b.lang === 'en' ? 'Inglés · ' : ''}${esc(countText(b.counts))}${b.shared_with === current ? ' · compartido con esta mesa' : ''}</p></div><div class="actions">${button('Ver', 'lib-browse', 'text-btn', `data-id="${b.id}"`)}${button(b.shared_with === current ? 'Dejar de compartir' : 'Compartir con la mesa', 'lib-share', 'text-btn', `data-id="${b.id}" title="Los jugadores de esta mesa ven sus conjuros y objetos (nunca las criaturas)"`)}${button('Eliminar', 'lib-delete', 'text-btn danger-text', `data-id="${b.id}"`)}</div></div>`,
+                  `<div class="library-book"><div><b>${esc(b.title)}</b><p class="small muted">${b.lang === 'en' ? 'Inglés · ' : ''}${esc(countText(b.counts))}${b.shared_with === current ? ' · compartido con esta mesa' : ''}</p></div><div class="actions">${button('Ver', 'lib-browse', 'text-btn', `data-id="${b.id}"`)}${button(b.shared_with === current ? 'Dejar de compartir' : 'Compartir con la mesa', 'lib-share', 'text-btn', `data-id="${b.id}" title="Los jugadores de esta mesa ven sus conjuros, objetos, rasgos de clase y dotes (nunca las criaturas)"`)}${button('Eliminar', 'lib-delete', 'text-btn danger-text', `data-id="${b.id}"`)}</div></div>`,
               )
               .join('')}</div>`
           : loadError
@@ -122,6 +124,16 @@ const LibraryUI = (() => {
   const uuid = () =>
     crypto.randomUUID?.() ||
     'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => ((Math.random() * 16) | 0).toString(16));
+  // Rasgos de clase y subclase, opciones (invocaciones, maniobras…) y dotes: el sitio ya conoce sus
+  // nombres y niveles; del libro sale el texto.
+  function rules(lines, opts) {
+    if (typeof ClassData === 'undefined' || !LC.rules) return { feature: [], feat: [] };
+    const found = LC.rules(lines, LC.ruleTargets(ClassData, typeof Catalog !== 'undefined' ? Catalog : null), opts);
+    return {
+      feature: found.filter(x => x.kind === 'feature').map(x => x.data),
+      feat: found.filter(x => x.kind === 'feat').map(x => x.data),
+    };
+  }
   async function parse(file, onPage) {
     const id = uuid(),
       prefix = 'lib:' + id.slice(0, 8);
@@ -144,6 +156,7 @@ const LibraryUI = (() => {
       monster: LC.monsters(lines, opts),
       spell: LC.spells(lines, opts),
       item: LC.items(lines, opts),
+      ...rules(lines, opts),
     };
   }
 
@@ -312,6 +325,17 @@ const LibraryUI = (() => {
       browsing.rows[kind] = (await Cloud.libraryEntries(kind)).filter(r => r.book_id === browsing.id);
     drawList();
   }
+  // «Dominio del Ocaso · nivel 6», «Invocación», «Dote».
+  function ruleWhere(x) {
+    if (x.target === 'feat') return 'Dote';
+    if (x.target === 'option') return 'Opción de clase';
+    const D = typeof ClassData !== 'undefined' ? ClassData : null;
+    const owner =
+      x.target === 'subclass'
+        ? D?.subclasses.find(s => s.id === x.ref)?.name
+        : Object.values(D?.classes || {}).find(c => c.id === x.ref)?.name;
+    return [owner, x.level ? 'nivel ' + x.level : ''].filter(Boolean).join(' · ');
+  }
   function drawList() {
     const box = document.getElementById('lib-list');
     if (!box || !browsing) return;
@@ -324,6 +348,8 @@ const LibraryUI = (() => {
               return `<div class="list-row"><span><b>${esc(x.name)}</b> <span class="small muted">VD ${MonsterUI.crText(x.cr)} · ${esc(x.type)} · pág. ${x.page}${x.issues ? ' · ⚠ ' + esc(x.issues.join(', ')) : ''}</span></span>${button('Ver', 'monster-view', 'text-btn', `data-id="${esc(x.id)}"`)}</div>`;
             if (browsing.kind === 'spell')
               return `<details class="library-entry"><summary><b>${esc(x.name)}</b> <span class="small muted">${x.level ? 'Nivel ' + x.level : 'Truco'} · ${esc(x.school)} · pág. ${x.page}</span></summary><p class="small">${esc(x.time)} · ${esc(x.range)} · ${esc(x.components)} · ${esc(x.duration)}</p><p class="small">${esc(x.text)}</p>${x.higher ? `<p class="small"><b>A niveles superiores.</b> ${esc(x.higher)}</p>` : ''}</details>`;
+            if (browsing.kind === 'feature' || browsing.kind === 'feat')
+              return `<details class="library-entry"><summary><b>${esc(x.name)}</b> <span class="small muted">${esc(ruleWhere(x))} · pág. ${x.page}</span></summary><p class="small library-text">${esc(x.text)}</p></details>`;
             return `<details class="library-entry"><summary><b>${esc(x.name)}</b> <span class="small muted">${esc(x.detail)} · pág. ${x.page}</span></summary><p class="small">${esc(x.text)}</p></details>`;
           })
           .join('')

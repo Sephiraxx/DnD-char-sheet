@@ -543,13 +543,21 @@
   FEATURE_ES['paladin · Romper tu juramento'] = FEATURE_ES['paladin · Breaking Your Oath'];
   const featureEs = (s, f) =>
     FEATURE_ES[(sub(s)?.id || '') + ' · ' + (f.english || f.name)] || FEATURE_ES[id(s) + ' · ' + (f.english || f.name)];
+  // Texto del rasgo en los libros importados por el DM (Biblioteca), si lo hay.
+  const bookText = (scope, owner, f) =>
+    root.LibraryText && owner ? root.LibraryText.feature(scope, owner, f.english || f.name) : null;
   function features(s, level = s.level) {
-    return [...info(s).features.filter(x => !x.optional || s.optionalClassFeatures), ...(sub(s)?.features || [])]
-      .filter(x => x.level <= level)
-      .map(f => {
+    const cls = info(s)
+        .features.filter(x => !x.optional || s.optionalClassFeatures)
+        .map(f => [f, 'class', id(s)]),
+      subs = (sub(s)?.features || []).map(f => [f, 'sub', sub(s).id]);
+    return [...cls, ...subs]
+      .filter(([x]) => x.level <= level)
+      .map(([f, scope, owner]) => {
         const children = (f.children || []).map(c => [c, FEATURE_ES[id(s) + ' · ' + c]]).filter(x => x[1]);
         const es = featureEs(s, f) || children.map(([c, t]) => c + ': ' + t).join(' ');
-        return es ? { ...f, es } : f;
+        const book = bookText(scope, owner, f);
+        return es || book ? { ...f, ...(es ? { es } : {}), ...(book ? { book } : {}) } : f;
       });
   }
 

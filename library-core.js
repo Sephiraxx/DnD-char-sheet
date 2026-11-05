@@ -1502,6 +1502,662 @@
     return out;
   }
 
+  // ---------- Rasgos de clase y subclase, opciones de clase y dotes ----------
+  // El sitio ya conoce los nombres (en castellano y en inglés), los niveles y el libro de cada rasgo:
+  // acá se busca su título en el PDF y se toma el texto hasta el título siguiente.
+  function ruleTargets(D, Cat) {
+    const out = [];
+    const feats = list =>
+      (list || []).map(f => ({
+        en: f.english || f.name,
+        names: [f.name, f.english],
+        level: f.level,
+        children: f.children || [],
+        source: f.source,
+      }));
+    for (const c of Object.values(D?.classes || {}))
+      out.push({ kind: 'class', id: c.id, source: c.source, names: [c.name, c.english], features: feats(c.features) });
+    for (const sc of D?.subclasses || [])
+      out.push({
+        kind: 'subclass',
+        id: sc.id,
+        classId: sc.classId,
+        source: sc.source,
+        names: [sc.name, sc.english],
+        features: feats(sc.features),
+      });
+    for (const o of D?.options || [])
+      out.push({
+        kind: 'option',
+        id: o.id,
+        source: o.source,
+        group: String(o.types?.[0] || '').split(':')[0],
+        names: [o.name, o.english],
+      });
+    for (const f of Cat?.feats || [])
+      out.push({ kind: 'feat', id: f.id, source: f.sourceKey, group: 'feat', names: [f.name, f.english] });
+    return out;
+  }
+  const nameKeys = names => [
+    ...new Set(
+      names
+        .filter(Boolean)
+        .map(n => key(n))
+        .filter(k => k.length >= 3),
+    ),
+  ];
+  function rules(lines, targets, opts = {}) {
+    const body = (() => {
+      const count = new Map();
+      for (const l of lines) if (!l.edge && l.t.length > 40) count.set(l.bh, (count.get(l.bh) || 0) + l.t.length);
+      return [...count].sort((a, b) => b[1] - a[1])[0]?.[0] || 9;
+    })();
+    // Tamaño del texto corrido de cada página (algunos PDF cambian la escala de página a página).
+    const pageBody = new Map();
+    {
+      const count = new Map();
+      for (const l of lines)
+        if (!l.edge && l.t.length > 30) {
+          const k = l.page + '|' + l.bh;
+          count.set(k, (count.get(k) || 0) + l.t.length);
+        }
+      for (const [k, n] of count) {
+        const pg = Number(k.slice(0, k.indexOf('|'))),
+          bh = Number(k.slice(k.indexOf('|') + 1));
+        if (!pageBody.has(pg) || n > pageBody.get(pg)[1]) pageBody.set(pg, [bh, n]);
+      }
+    }
+    const bodyAt = l => pageBody.get(l.page)?.[0] ?? body;
+    // Cabeceras que se repiten en muchas páginas («CAPÍTULO 1: OPCIONES DE PERSONAJE»): no son títulos.
+    const repeated = new Set();
+    {
+      // Misma línea en muchas páginas y siempre a la misma altura: una cabecera, no un título.
+      const pagesOf = new Map();
+      for (const l of lines)
+        if (l.t.length <= 60) {
+          const k = key(l.t);
+          if (k.length < 6) continue;
+          if (!pagesOf.has(k)) pagesOf.set(k, { pages: new Set(), ys: [] });
+          pagesOf.get(k).pages.add(l.page);
+          pagesOf.get(k).ys.push(l.y);
+        }
+      for (const [k, { pages, ys }] of pagesOf) {
+        if (pages.size < 6) continue;
+        const mean = ys.reduce((a, b) => a + b, 0) / ys.length;
+        const sd = Math.sqrt(ys.reduce((a, b) => a + (b - mean) ** 2, 0) / ys.length);
+        if (sd < 25) repeated.add(k);
+      }
+    }
+    // Fuente del texto corrido de cada página (los PDF numeran las fuentes por página).
+    const pageFont = new Map();
+    {
+      const count = new Map();
+      for (const l of lines)
+        for (const r of l.runs) {
+          const k = l.page + '|' + r.f;
+          count.set(k, (count.get(k) || 0) + r.t.length);
+        }
+      for (const [k, n] of count) {
+        const [pg, f] = [Number(k.slice(0, k.indexOf('|'))), k.slice(k.indexOf('|') + 1)];
+        if (!pageFont.has(pg) || n > pageFont.get(pg)[1]) pageFont.set(pg, [f, n]);
+      }
+    }
+    const bodyOf = l => pageFont.get(l.page)?.[0];
+    // Títulos: una línea corta sola (más grande o en otra fuente), o «Nombre.» al empezar un párrafo.
+    const keyAt = lines.map(l => (l.t.length <= 90 ? key(l.t) : ''));
+    const inlineAt = lines.map(l => {
+      const r0 = l.runs[0];
+      const m = /^([^.:]{3,70}?)\s*[.:]\s+\S/.exec(l.t);
+      return m && r0 && r0.f !== bodyOf(l) && r0.t.trim().length <= m[1].length + 3 ? key(m[1]) : '';
+    });
+    const LEVEL_LINE =
+      /^(rasgo (de|del) .{2,40} (de|del) nive[l1/I|]\s*\d|\d{1,2}(st|nd|rd|th)[\s-]+level .{2,40} feature|nivel \d{1,2}\s*:)/i;
+    // Cabecera o pie de página de verdad (no un título que cae arriba de la página).
+    const noise = l =>
+      /^\d{1,3}$/.test(l.t) ||
+      (l.edge && (repeated.has(key(l.t)) || /\d/.test(l.t) || /cap[ií]tulo|chapter/i.test(l.t) || l.t.length < 4));
+    const isTitle = i => {
+      const l = lines[i];
+      if (!l || noise(l) || l.t.length > 90 || /[.,;]$/.test(l.t) || !/[A-Za-zÁÉÍÓÚÑáéíóúñ]{3}/.test(l.t)) return false;
+      // «Rasgo de alquimista de nivel 3» (Tasha) dice el nivel del rasgo de arriba: no es un título.
+      if (LEVEL_LINE.test(l.t)) return false;
+      if (/�/.test(l.t) || (l.t.match(/[A-Za-zÁÉÍÓÚÑáéíóúñ ]/g) || []).length < l.t.length * 0.75) return false;
+      if (repeated.has(key(l.t))) return false;
+      if (l.bh >= bodyAt(l) + 0.5) return true;
+      if (l.t.length > 60) return false;
+      return l.runs.every(r => r.f !== bodyOf(l)) || (l.t === l.t.toUpperCase() && /[A-ZÁÉÍÓÚÑ]{3}/.test(l.t));
+    };
+    const style = i => (lines[i].runs[0]?.f || '') + '|' + Math.round(lines[i].bh * 2);
+    // Dónde aparece un nombre como título (línea completa) o como nombre de párrafo.
+    const index = new Map();
+    lines.forEach((l, i) => {
+      if (keyAt[i] && isTitle(i)) (index.get(keyAt[i]) || index.set(keyAt[i], []).get(keyAt[i])).push([i, 'title']);
+      // Títulos partidos en dos líneas («Canalizar divinidad:» / «Santuario del ocaso»).
+      if (keyAt[i] && isTitle(i) && i + 1 < lines.length && isTitle(i + 1) && Math.abs(lines[i + 1].bh - l.bh) < 0.3) {
+        const k2 = keyAt[i] + keyAt[i + 1];
+        (index.get(k2) || index.set(k2, []).get(k2)).push([i, 'title2']);
+      }
+      if (inlineAt[i]) (index.get(inlineAt[i]) || index.set(inlineAt[i], []).get(inlineAt[i])).push([i, 'inline']);
+    });
+    const find = (names, from = 0, to = lines.length) =>
+      nameKeys(names)
+        .flatMap(k => index.get(k) || [])
+        .filter(([i]) => i >= from && i < to)
+        .sort((a, b) => a[0] - b[0]);
+    // Texto desde un título hasta el próximo del mismo estilo (o uno mayor), o hasta `stop`.
+    // Palabras partidas por el reconocimiento de texto («esc uelas», «deta ll adas»): se juntan si juntas
+    // forman una palabra que el libro usa y alguna de las partes no lo es.
+    const bookWords = new Map();
+    for (const l of lines)
+      for (const w of l.t.split(/[^A-Za-zÁÉÍÓÚÑáéíóúñü]+/))
+        if (w.length >= 3) bookWords.set(key(w), (bookWords.get(key(w)) || 0) + 1);
+    const known = w => (bookWords.get(key(w)) || 0) >= 2;
+    function rejoin(run) {
+      const ws = run.split(' ');
+      for (let pass = 0; pass < 2; pass++)
+        for (let i = 0; i + 1 < ws.length; i++) {
+          const a = ws[i],
+            b = ws[i + 1];
+          if ((a.length <= 5 || b.length <= 5) && known(a + b) && (!known(a) || !known(b))) {
+            ws.splice(i, 2, a + b);
+            i--;
+          }
+        }
+      return ws.join(' ');
+    }
+    function textFrom(at, how, stop) {
+      const st = style(at),
+        big = lines[at].bh;
+      const start = how === 'inline' ? at : at + (how === 'title2' ? 2 : 1);
+      const parts = [];
+      if (how === 'inline') parts.push(lines[at].t.replace(/^[^.:]{3,70}?\s*[.:]\s+/, ''));
+      let end = Math.min(stop ?? lines.length, start + 160);
+      for (let j = how === 'inline' ? at + 1 : start; j < end; j++) {
+        const l = lines[j];
+        if (noise(l)) continue;
+        if (isTitle(j) && (style(j) === st || l.bh > big + 0.4)) break;
+        if (how === 'inline' && inlineAt[j] && l.runs[0]?.f === lines[at].runs[0]?.f) break;
+        parts.push(l.t);
+      }
+      return mergeSplits(
+        parts
+          .join(' ')
+          .replace(/([a-záéíóúñ])- ([a-záéíóúñ])/gi, '$1$2')
+          .replace(/\s+/g, ' ')
+          .trim(),
+        opts.vocab,
+      )
+        .replace(/[A-Za-zÁÉÍÓÚÑáéíóúñü]+(?: [A-Za-zÁÉÍÓÚÑáéíóúñü]+)+/g, rejoin)
+        .slice(0, 8000);
+    }
+    const found = [];
+    const add = (t, key, name, at, how, stop, extra = {}) => {
+      const text = textFrom(at, how, stop);
+      if (text.length >= 20)
+        found.push({
+          kind: t.kind === 'feat' ? 'feat' : 'feature',
+          key,
+          source: t.source,
+          data: { target: t.kind, ref: t.id, name, text, page: lines[at].page + 1, ...extra },
+        });
+    };
+    // Clases y subclases. El libro se parte en capítulos de clase (el título más grande con el nombre
+    // de la clase); dentro, cada subclase es un título con subtítulos (sus rasgos). Los nombres del sitio
+    // no siempre son los del libro: la subclase se reconoce por el parecido del nombre y por los niveles
+    // de sus rasgos, y cada subtítulo se asigna por nombre o por el nivel que dice su texto.
+    // Nombres parecidos: iguales, o el del libro empieza con el del sitio («Habilidad sin par» → «… sin parangón»).
+    const close = (a, b) =>
+      a === b || (a.length >= 6 && b.startsWith(a)) || (b.length >= 12 && a.startsWith(b) && a.length - b.length <= 4);
+    const nameHit = (names, k) => !!k && nameKeys(names).some(n => close(n, k));
+    const LEVEL_RE =
+      /(?:nive[l1/I|]|level)\s*(1\s?\d|\d{1,2})\b|(\d{1,2})\s*\.?\s*[ºo°]?\s*nivel\b|(\d{1,2})(?:st|nd|rd|th)[\s-]+level/i;
+    const levelOf = t => {
+      const m = LEVEL_RE.exec(t.slice(0, 260));
+      const n = m ? Number(String(m[1] || m[2] || m[3]).replace(/\s/g, '')) : null;
+      return n >= 1 && n <= 20 ? n : null;
+    };
+    const tableLike = l => /nivel de|level|bonificador|\d+\s+\d+\s+\d+/i.test(l.t) && /\d/.test(l.t);
+    const nice = t => (t === t.toUpperCase() ? t.charAt(0) + t.slice(1).toLowerCase() : t).replace(/\s+/g, ' ').trim();
+    // Palabras que comparten todas las subclases de una clase («Dominio», «Círculo»…): no distinguen.
+    const STOP = new Set(
+      'de dei deia ia ei ios ias of the y and camino way dominio domain circuio circle coiegio coiiege senda path juramento oath escueia school tradicion tradition arquetipo archetype patron'.split(
+        ' ',
+      ),
+    );
+    const words = t =>
+      String(t)
+        .split(/[^A-Za-zÁÉÍÓÚÑáéíóúñÜü]+/)
+        .map(key)
+        .filter(w => w.length >= 3 && !STOP.has(w));
+    const sim = (names, t) => {
+      const tw = words(t),
+        tk = key(t);
+      let best = 0;
+      for (const n of names.filter(Boolean)) {
+        const nk = key(n),
+          nw = words(n);
+        if (close(nk, tk)) return 1;
+        const common = nw.filter(w => tw.some(x => close(w, x) || (w.length >= 5 && lev(w, x) <= 1))).length;
+        best = Math.max(best, nw.length ? common / Math.max(nw.length, tw.length) : 0);
+        // Parecido letra a letra, sin las palabras genéricas («Colegio de los…»), que no distinguen.
+        const a = nw.join(''),
+          b = tw.join('');
+        if (a.length >= 5 && b.length >= 5) best = Math.max(best, 1 - lev(a, b) / Math.max(a.length, b.length) - 0.15);
+      }
+      return Math.max(0, best);
+    };
+    const titles = [];
+    for (let i = 0; i < lines.length; i++) if (isTitle(i)) titles.push(i);
+    // Capítulos de clase: el título más grande con el nombre de la clase.
+    const classT = targets.filter(x => x.kind === 'class');
+    const chapterHits = [];
+    for (const i of titles)
+      for (const c of classT)
+        if (nameKeys(c.names).some(n => keyAt[i] === n)) chapterHits.push({ i, c, bh: lines[i].bh });
+    const chapters = [];
+    if (chapterHits.length) {
+      const top = Math.max(...chapterHits.map(h => h.bh));
+      const big = chapterHits.filter(h => h.bh >= top * 0.85 && h.bh >= body * 1.4).sort((a, b) => a.i - b.i);
+      for (const h of big) if (!chapters.some(c => c.c === h.c)) chapters.push({ c: h.c, start: h.i });
+      chapters.forEach((c, n) => (c.end = chapters[n + 1]?.start ?? Math.min(lines.length, c.start + 6000)));
+    }
+    // Secciones candidatas: un título y sus subtítulos (con el nivel de cada uno según su texto).
+    // Subtítulo de un rasgo: en mayúsculas o más grande que el texto, sin números (no es una fila de tabla).
+    const upper = t => {
+      const letters = t.replace(/[^A-Za-zÁÉÍÓÚÑáéíóúñ]/g, '');
+      return letters.length >= 3 && letters.replace(/[^A-ZÁÉÍÓÚÑ]/g, '').length >= letters.length * 0.7;
+    };
+    const subLike = i => {
+      const l = lines[i];
+      if (!isTitle(i) || tableLike(l) || l.t.length > 70 || !/^[A-Za-zÁÉÍÓÚÑ¡¿]/.test(l.t)) return false;
+      if (/\d/.test(l.t.replace(/\(d\d+\)|d\d+/g, ''))) return false;
+      if (!upper(l.t) && l.bh < bodyAt(l) + 0.8) return false;
+      const next = lines.slice(i + 1, i + 3).find(x => !x.edge);
+      return !(next && /^n\s*ivel/i.test(next.t));
+    };
+    // Mismo estilo de título: mismo tamaño y misma fuente (en otra página la fuente puede tener otro número).
+    // Si el PDF numera las fuentes para todo el libro, la fuente decide; si las numera por página
+    // (escaneos con texto), solo se puede comparar el tamaño (con margen: varía un poco).
+    const fontSet = new Set(lines.flatMap(l => l.runs.map(r => r.f)));
+    const pagesN = new Set(lines.map(l => l.page)).size;
+    const globalFonts = fontSet.size < pagesN * 1.5;
+    const sameStyle = (a, b) => {
+      const A = lines[a],
+        B = lines[b];
+      if (Math.abs(A.bh - B.bh) > Math.max(0.45, A.bh * 0.04) || upper(A.t) !== upper(B.t)) return false;
+      const sf = A.runs[0]?.f === B.runs[0]?.f;
+      return globalFonts ? sf : sf || A.page !== B.page || Math.abs(A.bh - B.bh) <= 0.25;
+    };
+    function section(h, limit) {
+      const big = lines[h].bh;
+      let end = h + 1;
+      const max = Math.min(limit ?? lines.length, h + 420);
+      while (
+        end < max &&
+        !(isTitle(end) && (sameStyle(end, h) || lines[end].bh >= big + 2.5) && !tableLike(lines[end]))
+      )
+        end++;
+      const subs = [];
+      for (let i = h + 1; i < end; i++) if (!sameStyle(i, h) && subLike(i)) subs.push(i);
+      const parts = subs.map((i, n) => {
+        const text = textFrom(i, 'title', subs[n + 1] ?? end);
+        return { i, text, level: levelOf(text), k: keyAt[i] };
+      });
+      return { h, end, parts, levels: new Set(parts.map(p => p.level).filter(Boolean)) };
+    }
+    const regionOf = classId => chapters.find(c => c.c.id === classId);
+    const subT = targets.filter(x => x.kind === 'subclass');
+    const pairs = [];
+    const cands = new Map(); // título → sección
+    for (const ch of chapters) {
+      const mine = subT.filter(t => t.classId === ch.c.id);
+      const sizes = titles.filter(i => i > ch.start && i < ch.end).map(i => lines[i].bh);
+      for (const i of titles) {
+        if (i <= ch.start || i >= ch.end || lines[i].bh < bodyAt(lines[i]) + 0.8 || /^\d/.test(lines[i].t)) continue;
+        const sec = cands.get(i) || section(i, ch.end);
+        cands.set(i, sec);
+        if (sec.parts.length < 2) continue;
+        for (const t of mine) {
+          const lv = new Set(t.features.map(f => f.level));
+          const inter = [...lv].filter(x => sec.levels.has(x)).length;
+          const lvScore = inter / new Set([...lv, ...sec.levels]).size;
+          const named = sec.parts.filter(p => t.features.some(f => nameHit(f.names, p.k))).length / t.features.length;
+          const sn = sim(t.names, lines[i].t);
+          const score = sn * 4 + (sn === 1 ? 3 : 0) + lvScore * 2 + named * 3;
+          if (score >= 2.6) pairs.push({ t, i, score, lvScore, sn });
+        }
+      }
+      void sizes;
+    }
+    const emit = (t, prefix, sec, first) => {
+      const feats = t.features;
+      const assigned = new Map(feats.map(f => [f, []]));
+      let prev = first;
+      for (const p of sec.parts) {
+        let f = feats.find(x => nameHit(x.names, p.k));
+        if (!f && p.level !== null) {
+          const same = feats.filter(x => x.level === p.level);
+          const title = p.title || lines[p.i].t;
+          const ranked = same
+            .map((x, n) => ({ x, sc: sim(x.names, title) * 2 + (assigned.get(x).length ? 0 : 1) - n * 0.01 }))
+            .sort((a, b) => b.sc - a.sc);
+          f = ranked[0]?.x || null;
+          if (!f && first && p.level <= first.level) f = first;
+          if (!f) f = prev; // nivel que el sitio no lista por separado: va con el rasgo anterior
+        } else if (!f) f = prev;
+        if (!f) continue;
+        const child = f.children.find(c => nameHit([c], p.k));
+        assigned.get(f).push({ ...p, title: nice(p.title || lines[p.i].t), child });
+        prev = f;
+      }
+      for (const f of feats) {
+        const parts = assigned.get(f);
+        if (!parts.length) continue;
+        const text =
+          parts.length === 1 && nameHit(f.names, parts[0].k)
+            ? parts[0].text
+            : parts.map(p => p.title + '. ' + p.text).join('\n\n');
+        if (text.length < 20) continue;
+        found.push({
+          kind: 'feature',
+          key: prefix + t.id + ':' + f.en,
+          source: f.source || t.source,
+          data: {
+            target: t.kind,
+            ref: t.id,
+            name: f.names[0],
+            feature: f.en,
+            level: f.level,
+            text,
+            page: lines[parts[0].i].page + 1,
+          },
+        });
+        for (const p of parts.filter(x => x.child))
+          found.push({
+            kind: 'feature',
+            key: prefix + t.id + ':' + f.en + '/' + p.child,
+            source: f.source || t.source,
+            data: {
+              target: t.kind,
+              ref: t.id,
+              name: p.child,
+              feature: f.en,
+              child: p.child,
+              level: f.level,
+              text: p.text,
+              page: lines[p.i].page + 1,
+            },
+          });
+      }
+    };
+    // Asignación: primero las parejas más seguras; un título y una subclase se usan una sola vez.
+    const usedT = new Set(),
+      usedI = new Set(),
+      chosen = [];
+    // Libros como el de Tasha: cada rasgo lleva debajo «Rasgo de alquimista de nivel 3», que dice de
+    // quién es y su nivel. Se agrupan por ese nombre.
+    const LV2 =
+      /^rasgo (?:de|del) (.{2,60}?) (?:de|del) nive[l1/I|]\s*([\dlI]{1,2})\b|^(\d{1,2})(?:st|nd|rd|th)[\s-]+level (.{2,60}?) feature/i;
+    const groups = new Map();
+    const lvLines = [];
+    lines.forEach((l, i) => {
+      const m = LV2.exec(l.t);
+      if (!m || l.t.length > 90) return;
+      let at = i - 1;
+      while (at > i - 4 && at >= 0 && (lines[at].edge || !lines[at].t.trim())) at--;
+      if (at < 0 || lines[at].edge) return;
+      // Título en dos líneas («CANALIZAR DIVINIDAD:» / «SANTUARIO DEL CREPÚSCULO»).
+      let t0 = at;
+      if (
+        at > 0 &&
+        isTitle(at - 1) &&
+        Math.abs(lines[at - 1].bh - lines[at].bh) < 0.3 &&
+        /[:,]$|^[A-ZÁÉÍÓÚÑ ]+$/.test(lines[at - 1].t)
+      )
+        t0 = at - 1;
+      const title = lines
+        .slice(t0, at + 1)
+        .map(x => x.t)
+        .join(' ');
+      const level = Number(String(m[2] || m[3]).replace(/[lI]/g, '1'));
+      const who = (m[1] || m[4]).trim();
+      lvLines.push({ i, t0, title, level, who, k: key(title) });
+    });
+    lvLines.forEach((x, n) => {
+      const stop = lvLines[n + 1]?.t0 ?? Math.min(lines.length, x.i + 120);
+      x.text = textFrom(x.i, 'title', stop);
+      const g = key(x.who);
+      if (!groups.has(g)) groups.set(g, { who: x.who, parts: [] });
+      groups.get(g).parts.push(x);
+    });
+    const classByKey = new Map(classT.flatMap(c => nameKeys(c.names).map(k => [k, c])));
+    // Cada grupo de subclase pertenece a la última clase que apareció antes en el libro.
+    let lastClass = null;
+    const subGroups = [];
+    for (const [g, gr] of groups) {
+      const cls = classByKey.get(g) || [...classByKey].find(([k]) => k.length >= 5 && lev(k, g) <= 1)?.[1];
+      if (cls) {
+        lastClass = cls;
+        if (!usedT.has(cls)) {
+          usedT.add(cls);
+          emit(cls, 'class:', { parts: gr.parts }, null);
+        }
+        continue;
+      }
+      subGroups.push({ g, gr, cls: lastClass });
+    }
+    const groupScore = (t, gr) => {
+      const lv = new Set(t.features.map(f => f.level)),
+        glv = new Set(gr.parts.map(p => p.level));
+      const lvScore = [...lv].filter(x => glv.has(x)).length / new Set([...lv, ...glv]).size;
+      const named =
+        gr.parts.filter(p => t.features.some(f => nameHit(f.names, p.k))).length / Math.max(1, t.features.length);
+      return { sc: sim(t.names, gr.who), lvScore, named };
+    };
+    const usedG = new Set();
+    const assignGroups = (minSim, srcs) => {
+      const opts3 = [];
+      for (const sg of subGroups) {
+        if (usedG.has(sg.g)) continue;
+        for (const t of subT) {
+          if (usedT.has(t) || (sg.cls && t.classId !== sg.cls.id) || (srcs && !srcs.has(t.source))) continue;
+          const { sc, lvScore, named } = groupScore(t, sg.gr);
+          if (sc >= minSim || (srcs && lvScore >= 0.6)) opts3.push({ t, sg, score: sc * 4 + lvScore * 2 + named * 3 });
+        }
+      }
+      for (const p of opts3.sort((a, b) => b.score - a.score)) {
+        if (usedT.has(p.t) || usedG.has(p.sg.g)) continue;
+        usedT.add(p.t);
+        usedG.add(p.sg.g);
+        emit(p.t, 'sub:', { parts: p.sg.gr.parts }, p.t.features[0]);
+        assignGroups.got[p.t.source] = (assignGroups.got[p.t.source] || 0) + 1;
+      }
+    };
+    assignGroups.got = {};
+    assignGroups(0.5, null);
+    // Segunda vuelta: lo que quedó, solo con subclases de los libros que este PDF ya mostró ser.
+    assignGroups(9, new Set(Object.keys(assignGroups.got).filter(k => assignGroups.got[k] >= 2)));
+    for (const p of pairs.sort((a, b) => b.score - a.score)) {
+      if (usedT.has(p.t) || usedI.has(p.i)) continue;
+      // Un título dentro de la sección de otra subclase ya elegida es un subtítulo, no otra subclase.
+      // (Salvo que tenga justo el nombre de la subclase: entonces la otra sección termina ahí.)
+      if (p.sn < 1 && chosen.some(c => p.i > c.i && p.i < cands.get(c.i).end)) continue;
+      usedT.add(p.t);
+      usedI.add(p.i);
+      chosen.push(p);
+    }
+    // Libros sin capítulos por clase (Ravenloft, Dragonlance…): un título con el nombre exacto de la
+    // subclase, con subtítulos y niveles que corresponden.
+    for (const t of subT) {
+      if (usedT.has(t)) continue;
+      let best = null;
+      for (const i of titles) {
+        if (usedI.has(i) || lines[i].bh < bodyAt(lines[i]) + 0.8) continue;
+        // «BARDO: COLEGIO DE LOS ESPÍRITUS»: la clase antes de los dos puntos.
+        const [pre, post] = lines[i].t.includes(':') ? lines[i].t.split(/:(.*)/s) : ['', lines[i].t];
+        const cls = classT.find(c => c.id === t.classId);
+        const named =
+          nameKeys(t.names).some(n => close(n, keyAt[i]) || close(n, key(post))) ||
+          (pre && cls && nameKeys(cls.names).includes(key(pre)) && sim(t.names, post) >= 0.5);
+        if (!named) continue;
+        if (chosen.some(c => i > c.i && i < cands.get(c.i).end)) continue;
+        const sec = cands.get(i) || section(i);
+        cands.set(i, sec);
+        const lv = new Set(t.features.map(f => f.level));
+        const lvScore = [...lv].filter(x => sec.levels.has(x)).length / new Set([...lv, ...sec.levels]).size;
+        if (sec.parts.length >= 2 && lvScore >= 0.5 && (!best || lvScore > best.lvScore))
+          best = { t, i, lvScore, sn: 1 };
+      }
+      if (best) {
+        usedT.add(t);
+        usedI.add(best.i);
+        chosen.push(best);
+      }
+    }
+    // Nombres que no se parecen («Ocaso» / «Crepúsculo»): en cada capítulo, los títulos con el mismo estilo
+    // que las subclases ya reconocidas y los niveles que corresponden, para las subclases de este libro.
+    {
+      const per = {};
+      for (const p of chosen) per[p.t.source] = (per[p.t.source] || 0) + 1;
+      const bookSrc = new Set(Object.keys(per).filter(k => per[k] >= 2));
+      for (const ch of chapters) {
+        const refs = chosen.filter(p => p.i > ch.start && p.i < ch.end).map(p => p.i);
+        if (!refs.length) continue;
+        const rest = subT.filter(t => t.classId === ch.c.id && !usedT.has(t) && bookSrc.has(t.source));
+        const free = [...cands.keys()].filter(
+          i =>
+            i > ch.start &&
+            i < ch.end &&
+            !usedI.has(i) &&
+            cands.get(i).parts.length >= 2 &&
+            refs.some(r => sameStyle(r, i)) &&
+            !chosen.some(c => i > c.i && i < cands.get(c.i).end),
+        );
+        const opts2 = [];
+        for (const t of rest)
+          for (const i of free) {
+            const sec = cands.get(i),
+              lv = new Set(t.features.map(f => f.level));
+            const lvScore = [...lv].filter(x => sec.levels.has(x)).length / new Set([...lv, ...sec.levels]).size;
+            if (lvScore >= 0.6) opts2.push({ t, i, score: lvScore * 2 + sim(t.names, lines[i].t) * 4 });
+          }
+        for (const p of opts2.sort((a, b) => b.score - a.score)) {
+          if (usedT.has(p.t) || usedI.has(p.i)) continue;
+          usedT.add(p.t);
+          usedI.add(p.i);
+          chosen.push(p);
+        }
+      }
+    }
+    // Una sección termina donde empieza la de otra subclase elegida.
+    const starts = chosen.map(p => p.i).sort((a, b) => a - b);
+    for (const p of chosen) {
+      const sec = cands.get(p.i);
+      const limit = starts.find(x => x > p.i) ?? Infinity;
+      const parts = sec.parts.filter(x => x.i < limit);
+      if (parts.length && limit < sec.end) {
+        const last = parts[parts.length - 1];
+        parts[parts.length - 1] = { ...last, text: textFrom(last.i, 'title', limit) };
+      }
+      emit(p.t, 'sub:', { ...sec, parts }, p.t.features[0]);
+    }
+    // Rasgos de la clase: en su capítulo, antes de la primera subclase.
+    for (const ch of chapters) {
+      const firstSub = Math.min(ch.end, ...chosen.filter(p => p.i > ch.start && p.i < ch.end).map(p => p.i));
+      const parts = [];
+      const subs = titles.filter(
+        i => i > ch.start && i < firstSub && lines[i].bh < lines[ch.start].bh - 0.3 && !tableLike(lines[i]),
+      );
+      subs.forEach((i, n) => {
+        const text = textFrom(i, 'title', subs[n + 1] ?? firstSub);
+        parts.push({ i, text, level: levelOf(text), k: keyAt[i] });
+      });
+      if (usedT.has(ch.c)) continue;
+      // Solo los subtítulos con el nombre de un rasgo (en la introducción de la clase hay de todo).
+      emit(
+        { ...ch.c, features: ch.c.features },
+        'class:',
+        { parts: parts.filter(p => ch.c.features.some(f => nameHit(f.names, p.k))) },
+        null,
+      );
+    }
+    void regionOf;
+    // Opciones (invocaciones, maniobras, infusiones…) y dotes: el nombre como título o párrafo.
+    const optT = targets.filter(x => x.kind === 'option' || x.kind === 'feat');
+    const hitOf = new Map();
+    const usedAt = new Set();
+    for (const t of optT) {
+      const hits = find(t.names);
+      if (!hits.length) continue;
+      // Si aparece varias veces, el que trae un requisito o el texto más largo.
+      let best = null;
+      for (const [i, how] of hits.slice(0, 12)) {
+        const text = textFrom(i, how);
+        const score = text.length + (/^(prerrequisito|requisito|prerequisite)/i.test(text) ? 5000 : 0);
+        if (!best || score > best.score) best = { i, how, score };
+      }
+      hitOf.set(t, best);
+      usedAt.add(best.i);
+    }
+    // Las que no coinciden: la lista del libro donde están sus compañeras (mismo tipo y libro), con el
+    // mismo estilo, y el nombre más parecido.
+    const groupsO = new Map();
+    for (const t of optT) {
+      const g = t.kind + '|' + t.source + '|' + t.group;
+      if (!groupsO.has(g)) groupsO.set(g, []);
+      groupsO.get(g).push(t);
+    }
+    const entryName = (i, how) =>
+      how === 'inline' ? /^([^.:]{3,70}?)\s*[.:]\s+/.exec(lines[i].t)?.[1] || '' : lines[i].t;
+    for (const list of groupsO.values()) {
+      const anchors = list.map(t => hitOf.get(t)).filter(Boolean);
+      const rest = list.filter(t => !hitOf.has(t));
+      if (anchors.length < 2 || !rest.length) continue;
+      const how = anchors.filter(a => a.how === 'inline').length > anchors.length / 2 ? 'inline' : 'title';
+      const ref = anchors.find(a => (a.how === 'inline') === (how === 'inline'));
+      const idx = anchors.map(a => a.i).sort((a, b) => a - b);
+      const from = Math.max(0, idx[0] - 80),
+        to = Math.min(lines.length, idx[idx.length - 1] + 200);
+      const entries = [];
+      for (let i = from; i < to; i++) {
+        if (usedAt.has(i)) continue;
+        if (
+          how === 'inline'
+            ? inlineAt[i] && lines[i].runs[0]?.f === lines[ref.i].runs[0]?.f
+            : isTitle(i) && sameStyle(i, ref.i)
+        )
+          entries.push(i);
+      }
+      const opts4 = [];
+      for (const t of rest)
+        for (const i of entries) {
+          const sc = sim(t.names, entryName(i, how));
+          // Un nombre de una sola palabra necesita parecerse mucho («Cargador» no es «Escurridizo»).
+          if (sc >= (words(t.names[0]).length <= 1 ? 0.7 : 0.5)) opts4.push({ t, i, sc });
+        }
+      for (const p of opts4.sort((a, b) => b.sc - a.sc)) {
+        if (hitOf.has(p.t) || usedAt.has(p.i)) continue;
+        hitOf.set(p.t, { i: p.i, how });
+        usedAt.add(p.i);
+      }
+    }
+    for (const [t, best] of hitOf) add(t, (t.kind === 'feat' ? 'feat:' : 'opt:') + t.id, t.names[0], best.i, best.how);
+    // Solo los libros que este PDF es: un libro cuenta si se encontró una buena parte de lo suyo.
+    const total = {},
+      got = {};
+    for (const t of targets) total[t.source] = (total[t.source] || 0) + 1 + (t.features?.length || 0);
+    for (const f of found) got[f.source] = (got[f.source] || 0) + 1;
+    const sources = Object.keys(got).filter(k => got[k] >= 4 && got[k] >= total[k] * 0.15);
+    // Rasgos de subclase (comprobados por sección y niveles) valen con menos; opciones y dotes sueltas no.
+    const subGot = {};
+    for (const f of found) if (f.data.target === 'subclass') subGot[f.source] = (subGot[f.source] || 0) + 1;
+    const ok = f => sources.includes(f.source) || (f.data.target === 'subclass' && subGot[f.source] >= 2);
+    const seen = new Set();
+    return found
+      .filter(f => ok(f) && !seen.has(f.key) && seen.add(f.key))
+      .map(f => ({ ...f, data: { ...f.data, id: f.key.slice(0, 160), source: f.source } }));
+  }
+
   const detectLang = lines => {
     let es = 0,
       en = 0;
@@ -1540,6 +2196,8 @@
     monsters,
     spells,
     items,
+    ruleTargets,
+    rules,
     parseSchoolLine,
     detectLang,
     unreadablePages,

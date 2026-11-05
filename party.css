@@ -637,3 +637,16 @@
 .library-entry summary {
   cursor: pointer;
 }
+
+/* Textos de rasgos, opciones y dotes leídos de los libros (Biblioteca) */
+.library-text {
+  white-space: pre-line;
+}
+.library-feature {
+  margin-top: 0.35rem;
+}
+.library-feature summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--muted, #666);
+}
