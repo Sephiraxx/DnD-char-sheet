@@ -323,7 +323,7 @@ const LevelUp = (() => {
       )
       .join(
         '',
-      )}</div>${chosen ? `<section class="card creator-detail"><h3>${esc(chosen.name)}</h3>${featDetail(chosen.id)}<label class="field">Tus elecciones y notas de la dote<textarea name="featNotes" maxlength="1000" placeholder="Por ejemplo: +1 a Destreza; trucos elegidos…">${esc(d.featNotes)}</textarea></label></section>` : ''}`;
+      )}</div>${chosen ? `<section class="card creator-detail"><h3>${esc(chosen.name)}</h3>${typeof LibraryText !== 'undefined' ? LibraryText.html(LibraryText.feat(chosen.id), true) : ''}${featDetail(chosen.id)}<label class="field">Tus elecciones y notas de la dote<textarea name="featNotes" maxlength="1000" placeholder="Por ejemplo: +1 a Destreza; trucos elegidos…">${esc(d.featNotes)}</textarea></label></section>` : ''}`;
   }
 
   // Lo que hace la dote, lo que se elige ahora y lo que queda a cargo del jugador.
@@ -332,6 +332,9 @@ const LevelUp = (() => {
     skills: d.featSkills,
     expertise: d.featExpertise ? [d.featExpertise] : [],
   });
+  // Resumen corto del texto del libro (Biblioteca) en una tarjeta de opción.
+  const bookBrief = x =>
+    x ? `<span class="creator-brief">${esc(x.text.length > 260 ? x.text.slice(0, 257) + '…' : x.text)}</span>` : '';
   function featDetail(id) {
     const f = fx();
     if (!f) return '';
@@ -474,7 +477,7 @@ const LevelUp = (() => {
               on = picks.includes(o.id),
               req = requirement(o),
               blocked = !on && pactMissing(o, n);
-            return `<button type="button" class="creator-card ${on ? 'selected' : ''}" data-lv="choice" data-group="${esc(gr.name)}" data-id="${esc(o.id)}" ${had || blocked ? 'disabled' : ''} aria-pressed="${on}"><span class="creator-card-title">${esc(o.name)}</span><span class="creator-meta">${esc(o.source)}${had ? ' · ya la tenés' : ''}</span>${req ? `<span class="creator-meta ${blocked ? 'req-missing' : ''}">Requiere: ${esc(req)}</span>` : ''}${o.text ? `<span class="creator-brief">${esc(o.text)}</span>` : ''}</button>`;
+            return `<button type="button" class="creator-card ${on ? 'selected' : ''}" data-lv="choice" data-group="${esc(gr.name)}" data-id="${esc(o.id)}" ${had || blocked ? 'disabled' : ''} aria-pressed="${on}"><span class="creator-card-title">${esc(o.name)}</span><span class="creator-meta">${esc(o.source)}${had ? ' · ya la tenés' : ''}</span>${req ? `<span class="creator-meta ${blocked ? 'req-missing' : ''}">Requiere: ${esc(req)}</span>` : ''}${bookBrief(typeof LibraryText !== 'undefined' && LibraryText.option(o.id)) || (o.text ? `<span class="creator-brief">${esc(o.text)}</span>` : '')}</button>`;
           })
           .join('')}</div></section>`;
       })

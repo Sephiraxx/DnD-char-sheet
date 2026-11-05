@@ -836,7 +836,7 @@ create table if not exists public.library_entries (
   id uuid primary key default gen_random_uuid(),
   book_id uuid not null references public.library_books on delete cascade,
   owner_id uuid not null default auth.uid() references auth.users on delete cascade,
-  kind text not null check (kind in ('monster', 'spell', 'item')),
+  kind text not null check (kind in ('monster', 'spell', 'item', 'feature', 'feat')),
   key text not null check (char_length(key) between 1 and 160),
   name text not null check (char_length(name) between 1 and 200),
   data jsonb not null check (pg_column_size(data) < 120000),
