@@ -261,7 +261,7 @@ function draw() {
   $('#main').innerHTML =
     `<div class="dm-head"><div><p class="eyebrow">MESA EN VIVO · ${list.length} ficha${list.length === 1 ? '' : 's'}</p><h1>${esc(party.campaign.name)}</h1><p class="small muted">${settingsSummary(Cloud.cleanSettings(party.campaign.settings))}</p></div><div class="dm-code"><span>CÓDIGO</span><b>${esc(party.campaign.code)}</b>${button('Copiar', 'copy-code', 'secondary', `data-code="${esc(party.campaign.code)}"`)}</div><div class="dm-toolbar">${button('Pedir tirada a todos', 'request', '')}${button('Tablero', 'board-open', '')}${button('Mensaje a todos', 'message')}${button('Descanso corto', 'rest-short')}${button('Descanso largo', 'rest-long')}<details class="dm-menu"><summary class="button secondary">Mesa ▾</summary><div class="dm-menu-list">${button('Ajustes de la mesa', 'settings')}${button('Mis mesas', 'home')}${button('Eliminar mesa', 'delete-table', 'danger', `data-id="${esc(party.campaign.id)}" data-name="${esc(party.campaign.name)}"`)}</div></details></div></div>
   ${error ? `<div class="banner"><p>${esc(error)}</p>${button('Reintentar', 'refresh')}</div>` : ''}
-  <div class="dm-layout"><div class="stack">
+  <div class="dm-layout"><div class="stack dm-main">
     <div class="party-grid">${
       list.length
         ? list
@@ -277,11 +277,12 @@ function draw() {
         : `<section class="card"><h2>Esperando a la party</h2><p>Cada jugador abre su ficha, entra en <b>Mesa</b> y escribe el código <b class="table-code">${esc(party.campaign.code)}</b>.</p></section>`
     }</div>
     ${feedCard()}
-  </div><div class="stack">
-    ${typeof Sessions !== 'undefined' ? Sessions.card() : ''}
+  </div><div class="stack dm-combat">
     ${savesCard()}
     ${initiativeCard(t)}
     ${typeof Encounters !== 'undefined' ? Encounters.card() : ''}
+  </div><div class="stack dm-side">
+    ${typeof Sessions !== 'undefined' ? Sessions.card() : ''}
     ${TableExtras.dmHtml(party)}
     <section class="card"><div class="card-header"><h2>Notas del DM</h2></div><label class="field"><span class="visually-hidden">Notas privadas</span><textarea id="dm-notes" style="min-height:160px" placeholder="Solo se guardan en este dispositivo.">${esc(localStorage.getItem(notesKey()) || '')}</textarea></label></section>
   </div></div>`;
@@ -404,11 +405,11 @@ function initiativeCard(t) {
         ? `${x.hp ?? '—'}/${x.maxHP} PG · CA ${x.ac}${x.conditions.length ? ' · ' + esc(x.conditions.join(', ')) : ''}`
         : `CA ${e.ac ?? '—'} · ${STATUS_LABEL[e.status] || e.status}${e.hidden ? ' · oculta' : ''}${e.conditions.length ? ' · ' + esc(e.conditions.join(', ')) : ''}${e.max ? `<span class="monster-hpbar" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Math.round(((e.hp ?? e.max) / e.max) * 100)))}%"></i></span>` : ''}`;
       const down = x ? x.hp === 0 : e.hp === 0;
-      return `<li class="${i === t.turn ? 'current' : ''} ${down ? 'down' : ''} ${e.hidden ? 'hidden-combatant' : ''}"><span class="init">${e.init ?? '—'}</span><span class="who"><b>${e.monsterId ? `<button type="button" class="text-btn monster-name" data-action="monster-open" data-entry="${e.id}">${esc(e.name)}</button>` : esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
+      return `<li class="${i === t.turn ? 'current' : ''} ${down ? 'down' : ''} ${e.characterId ? 'pc' : ''} ${e.hidden ? 'hidden-combatant' : ''}"><span class="init">${e.init ?? '—'}</span><span class="who"><b>${e.monsterId ? `<button type="button" class="text-btn monster-name" data-action="monster-open" data-entry="${e.id}">${esc(e.name)}</button>` : esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
         e.characterId
-          ? button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)
-          : `<label class="hp-edit"><span>PG</span><input type="number" aria-label="PG de ${esc(e.name)}" data-monster-hp="${e.id}" value="${e.hp ?? ''}" min="0" max="99999"><span>/ ${e.max ?? '—'}</span></label>${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}${button('Estados', 'init-conditions', 'text-btn', `data-entry="${e.id}"`)}${button(e.hidden ? 'Mostrar' : 'Ocultar', 'init-hide', 'text-btn', `data-entry="${e.id}"`)}`
-      }${button('×', 'init-remove', 'text-btn', `data-entry="${e.id}" aria-label="Quitar ${esc(e.name)}"`)}</span></li>`;
+          ? `<span class="init-actions">${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}`
+          : `<label class="hp-edit"><span>PG</span><input type="number" aria-label="PG de ${esc(e.name)}" data-monster-hp="${e.id}" value="${e.hp ?? ''}" min="0" max="99999"><span>/ ${e.max ?? '—'}</span></label><span class="init-actions">${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}${button('Estados', 'init-conditions', 'text-btn', `data-entry="${e.id}"`)}${button(e.hidden ? 'Mostrar' : 'Ocultar', 'init-hide', 'text-btn', `data-entry="${e.id}"`)}`
+      }${button('×', 'init-remove', 'text-btn', `data-entry="${e.id}" aria-label="Quitar ${esc(e.name)}"`)}</span></span></li>`;
     })
     .join('');
   return `<section class="card"><div class="card-header"><h2>Iniciativa${t.round ? ' · ronda ' + t.round : ''}</h2></div>
@@ -914,3 +915,5 @@ const hashId = location.hash.includes('=') ? '' : location.hash.slice(1);
 const start = hashId || localStorage.getItem('dnd-dm-last');
 if (Cloud.enabled && start) open(start);
 else draw();
+// Si la mesa cargó antes que encuentros y sesiones (scripts posteriores), se redibuja con sus tarjetas.
+document.addEventListener('DOMContentLoaded', () => party && draw());

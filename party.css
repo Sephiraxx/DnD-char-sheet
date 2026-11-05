@@ -550,3 +550,33 @@
     width: 100%;
   }
 }
+
+/* Pantalla del DM: en la compu, la mesa a la izquierda, el combate al medio y lo demás a la derecha;
+   en pantallas medianas, el combate va debajo de la party y la columna derecha queda más corta. */
+.dm-layout {
+  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-areas:
+    'main side'
+    'combat side';
+}
+.dm-layout > .dm-main {
+  grid-area: main;
+}
+.dm-layout > .dm-combat {
+  grid-area: combat;
+}
+.dm-layout > .dm-side {
+  grid-area: side;
+}
+@media (min-width: 1280px) {
+  .dm-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 430px) 330px;
+    grid-template-areas: 'main combat side';
+  }
+}
+@media (max-width: 980px) {
+  .dm-layout {
+    grid-template-columns: 1fr;
+    grid-template-areas: 'main' 'combat' 'side';
+  }
+}
