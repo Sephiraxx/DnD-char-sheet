@@ -39,7 +39,7 @@ const LibraryUI = (() => {
     if (books === null && !loadError) loadBooks().then(() => typeof draw === 'function' && draw());
     const mine = (books || []).filter(b => !isShared(b));
     const shared = (books || []).filter(isShared);
-    return `<section class="card library-card"><div class="card-header"><h2>Biblioteca</h2>${button('Importar PDF', 'lib-import')}</div><p class="small muted">Tus libros en PDF: las criaturas aparecen en «Monstruo del SRD» y en el tablero; los rasgos de clase, opciones y dotes, en las fichas (compartí el libro con la mesa para que los vean los jugadores). Los PDF no se suben; solo lo que se encuentra en ellos, en tu cuenta.</p>${
+    return `<section class="card library-card"><div class="card-header"><h2>Biblioteca</h2>${button('Importar PDF', 'lib-import')}</div><p class="small muted">Tus libros en PDF: las criaturas aparecen en «Monstruo del SRD» y en el tablero; los rasgos de clase, opciones y dotes, en las fichas (compartí el libro con una mesa para que los vean sus jugadores). Los PDF no se suben; solo lo que se encuentra en ellos, en tu cuenta${current ? '' : ': podés importarlos antes de tener una mesa'}.</p>${
       loadError ? `<p class="small">${esc(loadError)}</p>` : ''
     }${
       books === null
@@ -48,7 +48,7 @@ const LibraryUI = (() => {
           ? `<div class="library-books">${mine
               .map(
                 b =>
-                  `<div class="library-book"><div><b>${esc(b.title)}</b><p class="small muted">${b.lang === 'en' ? 'Inglés · ' : ''}${esc(countText(b.counts))}${b.shared_with === current ? ' · compartido con esta mesa' : ''}</p></div><div class="actions">${button('Ver', 'lib-browse', 'text-btn', `data-id="${b.id}"`)}${button(b.shared_with === current ? 'Dejar de compartir' : 'Compartir con la mesa', 'lib-share', 'text-btn', `data-id="${b.id}" title="Los jugadores de esta mesa ven sus conjuros, objetos, rasgos de clase y dotes (nunca las criaturas)"`)}${button('Eliminar', 'lib-delete', 'text-btn danger-text', `data-id="${b.id}"`)}</div></div>`,
+                  `<div class="library-book"><div><b>${esc(b.title)}</b><p class="small muted">${b.lang === 'en' ? 'Inglés · ' : ''}${esc(countText(b.counts))}${b.shared_with && b.shared_with === current ? ' · compartido con esta mesa' : b.shared_with ? ' · compartido con una mesa' : ''}</p></div><div class="actions">${button('Ver', 'lib-browse', 'text-btn', `data-id="${b.id}"`)}${current ? button(b.shared_with === current ? 'Dejar de compartir' : 'Compartir con la mesa', 'lib-share', 'text-btn', `data-id="${b.id}" title="Los jugadores de esta mesa ven sus conjuros, objetos, rasgos de clase y dotes (nunca las criaturas)"`) : ''}${button('Eliminar', 'lib-delete', 'text-btn danger-text', `data-id="${b.id}"`)}</div></div>`,
               )
               .join('')}</div>`
           : loadError
@@ -391,3 +391,5 @@ const LibraryUI = (() => {
   });
   return { card, attach, refresh, parse };
 })();
+// dm.js dibuja la portada antes de que cargue este archivo: se redibuja para que aparezca la Biblioteca.
+if (typeof current !== 'undefined' && !current && typeof draw === 'function') setTimeout(draw, 0);

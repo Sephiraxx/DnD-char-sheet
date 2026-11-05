@@ -715,3 +715,32 @@ test('rasgos con «Rasgo de … de nivel N» (como Tasha)', () => {
   assert.match(by['sub:bard-college-of-tests:Final Song'], /cura a todos/);
   assert.ok(!/Rasgo del colegio/.test(by['sub:bard-college-of-tests:Steady Voice']));
 });
+
+test('conjuro cuyo nombre cae arriba de la página (y desafío 0 mal leído)', () => {
+  const p1 = page([
+    ['BOLA DE PRUEBA', 40, 300, 10, 'title'],
+    ['Evocación de nivel 3', 40, 314],
+    ['Tiempo de lanzamiento: 1 acción', 40, 326],
+    ['Alcance: 150 pies', 40, 336],
+    ['Componentes: V, S, M', 40, 346],
+    ['Duración: instantáneo', 40, 356],
+    ['Una bola de prueba estalla y cada criatura en el área hace una salvación.', 40, 368],
+    ['Si la falla, recibe 8d6 de daño de fuego, o la mitad si la supera.', 40, 378],
+  ]);
+  const p2 = page([
+    ['RAYO DE PRUEBA', 40, 40, 10, 'title'], // arriba de la página: queda marcado como borde
+    ['Evocación de nivel 3', 40, 60],
+    ['Tiempo de lanzamiento: 1 acción', 40, 72],
+    ['Alcance: Personal (línea de 100 pies)', 40, 82],
+    ['Componentes: V, S, M', 40, 92],
+    ['Duración: instantáneo', 40, 102],
+    ['Un rayo de prueba sale de vos en una línea y daña a todo lo que toca.', 40, 114],
+  ]);
+  const sp = L.spells(L.readLines([p1, p2]), {});
+  assert.deepEqual(
+    sp.map(s => s.name),
+    ['Bola de prueba', 'Rayo de prueba'],
+  );
+  assert.ok(!sp[1].issues);
+  assert.deepEqual(L.parseCR('O (1 O PX)'), { cr: 0, xp: 10 });
+});

@@ -391,13 +391,14 @@
   function parseCR(text) {
     text = fixDigits(String(text || ''))
       .replace(/\b(\d) (\d)(?=\s*\()/g, '$1$2')
-      .replace(/^\s*[Il](?=\s*\()/, '1');
+      .replace(/^\s*[Il](?=\s*\()/, '1')
+      .replace(/^\s*[Oo](?=\s*\()/, '0');
     const m = /^\s*(\d+\s*\/\s*\d+|\d+|½|¼|⅛)/.exec(text || '');
     if (!m) {
       // Número ilegible («S (1.800 PX)»): el desafío sale de los PX.
       const px = /\(\s*([\d.,\s]+)\s*(px|xp|pe)/i.exec(text) || /\(\s*(?:px|xp|pe)\s*([\d.,]+(?:\s\d{3})*)/i.exec(text);
       const xp = px && Number(px[1].replace(/[.,\s]/g, ''));
-      const cr = xp && Object.keys(XP_BY_CR).find(k => XP_BY_CR[k] === xp && xp > 10);
+      const cr = xp && Object.keys(XP_BY_CR).find(k => XP_BY_CR[k] === xp);
       return cr !== undefined && cr !== null && xp ? { cr: Number(cr), xp } : null;
     }
     const raw = m[1].replace(/\s/g, '');
@@ -1351,9 +1352,19 @@
         }
       if (schoolAt < 0) continue;
       const sl = parseSchoolLine(lines[schoolAt].t);
+      // Nombre: la línea de arriba que no es texto corrido ni cabecera de página. Un nombre arriba de
+      // la página queda marcado como borde, pero sigue siendo el nombre.
+      const header = l =>
+        /^\d{1,3}$/.test(l.t) || (l.edge && (/\d/.test(l.t) || /cap.{0,3}tulo|chapter|p.?ltulo/i.test(l.t)));
       let nameAt = schoolAt - 1;
-      while (nameAt > schoolAt - 3 && nameAt >= 0 && (lines[nameAt].edge || lines[nameAt].t.length < 2)) nameAt--;
-      const name = nameAt >= 0 ? niceName(lines[nameAt].t) : '';
+      while (
+        nameAt > schoolAt - 4 &&
+        nameAt >= 0 &&
+        (header(lines[nameAt]) || lines[nameAt].t.length < 2 || /[.,;]$/.test(lines[nameAt].t.trim()))
+      )
+        nameAt--;
+      const nameLine = nameAt >= 0 ? lines[nameAt] : null;
+      const name = nameLine && !header(nameLine) && !/[.,;]$/.test(nameLine.t.trim()) ? niceName(nameLine.t) : '';
       const f = {};
       let i = a,
         last = null;
