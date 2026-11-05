@@ -1776,7 +1776,9 @@
         }
       return ws.join(' ');
     }
-    function textFrom(at, how, stop) {
+    // `until`: en vez del estilo del título, se corta solo en un título de ese tamaño o mayor (así entran
+    // las tablas que van dentro del rasgo, como «Conjuros adicionales del Insondable»).
+    function textFrom(at, how, stop, until) {
       const st = style(at),
         big = lines[at].bh;
       const start = how === 'inline' ? at : at + (how === 'title2' ? 2 : 1);
@@ -1786,9 +1788,11 @@
       for (let j = how === 'inline' ? at + 1 : start; j < end; j++) {
         const l = lines[j];
         if (noise(l)) continue;
-        if (isTitle(j) && (style(j) === st || l.bh > big + 0.4)) break;
+        if (isTitle(j) && (until ? l.bh >= until - 0.3 : style(j) === st || l.bh > big + 0.4)) break;
         if (how === 'inline' && inlineAt[j] && l.runs[0]?.f === lines[at].runs[0]?.f) break;
-        parts.push(l.t);
+        // Títulos de tabla y filas («1 dormir, fuego feérico»): cada una en su renglón.
+        const row = isTitle(j) || /^(\d{1,2}\s|\d{1,2}$|d\d+\b|nivel de\b|level\b)/i.test(l.t);
+        parts.push(row ? '¶' + l.t + (isTitle(j) ? '¶' : '') : l.t);
       }
       return mergeSplits(
         parts
@@ -1799,6 +1803,8 @@
         opts.vocab,
       )
         .replace(/[A-Za-zÁÉÍÓÚÑáéíóúñü]+(?: [A-Za-zÁÉÍÓÚÑáéíóúñü]+)+/g, rejoin)
+        .replace(/\s*(¶\s*)+/g, '\n')
+        .trim()
         .slice(0, 8000);
     }
     const found = [];
@@ -2036,7 +2042,7 @@
     });
     lvLines.forEach((x, n) => {
       const stop = lvLines[n + 1]?.t0 ?? Math.min(lines.length, x.i + 120);
-      x.text = textFrom(x.i, 'title', stop);
+      x.text = textFrom(x.i, 'title', stop, lines[x.t0].bh);
       const g = key(x.who);
       if (!groups.has(g)) groups.set(g, { who: x.who, parts: [] });
       groups.get(g).parts.push(x);
@@ -2252,7 +2258,16 @@
         usedAt.add(p.i);
       }
     }
-    for (const [t, best] of hitOf) add(t, (t.kind === 'feat' ? 'feat:' : 'opt:') + t.id, t.names[0], best.i, best.how);
+    for (const [t, best] of hitOf)
+      add(
+        t,
+        (t.kind === 'feat' ? 'feat:' : 'opt:') + t.id,
+        t.names[0],
+        best.i,
+        best.how,
+        undefined,
+        t.group ? { group: t.group } : {},
+      );
     // Solo los libros que este PDF es: un libro cuenta si se encontró una buena parte de lo suyo.
     const total = {},
       got = {};

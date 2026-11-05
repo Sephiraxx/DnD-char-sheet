@@ -325,22 +325,52 @@ const LibraryUI = (() => {
       browsing.rows[kind] = (await Cloud.libraryEntries(kind)).filter(r => r.book_id === browsing.id);
     drawList();
   }
-  // «Dominio del Ocaso · nivel 6», «Invocación», «Dote».
+  // «Brujo: El Insondable · nivel 1», «Invocación sobrenatural (brujo)», «Dote».
+  const OPTION_KIND = {
+    EI: 'Invocación sobrenatural (brujo)',
+    PB: 'Don del pacto (brujo)',
+    MV: 'Maniobra (guerrero)',
+    AI: 'Infusión (artífice)',
+    FS: 'Estilo de combate',
+    AS: 'Disparo arcano (guerrero)',
+    ED: 'Disciplina elemental (monje)',
+    MM: 'Metamagia (hechicero)',
+    RN: 'Runa (guerrero)',
+  };
   function ruleWhere(x) {
     if (x.target === 'feat') return 'Dote';
-    if (x.target === 'option') return 'Opción de clase';
     const D = typeof ClassData !== 'undefined' ? ClassData : null;
-    const owner =
-      x.target === 'subclass'
-        ? D?.subclasses.find(s => s.id === x.ref)?.name
-        : Object.values(D?.classes || {}).find(c => c.id === x.ref)?.name;
-    return [owner, x.level ? 'nivel ' + x.level : ''].filter(Boolean).join(' · ');
+    if (x.target === 'option') {
+      const types = D?.options.find(o => o.id === x.ref)?.types || [x.group || ''];
+      return OPTION_KIND[String(types[0]).split(':')[0]] || 'Opción de clase';
+    }
+    const sub = x.target === 'subclass' ? D?.subclasses.find(s => s.id === x.ref) : null;
+    const cls = D?.classes[sub ? sub.classId : x.ref];
+    const owner = sub ? `${cls?.name || ''}: ${sub.name}` : cls?.name || '';
+    const part = x.child
+      ? `parte de «${D ? (sub || cls)?.features?.find(f => f.english === x.feature)?.name || x.feature : x.feature}»`
+      : '';
+    return [owner, x.level ? 'nivel ' + x.level : '', part].filter(Boolean).join(' · ');
   }
   function drawList() {
     const box = document.getElementById('lib-list');
     if (!box || !browsing) return;
     const q = LC.key(document.getElementById('lib-q')?.value || '');
-    const rows = (browsing.rows[browsing.kind] || []).filter(r => !q || LC.key(r.name).includes(q)).slice(0, 150);
+    const rules = browsing.kind === 'feature' || browsing.kind === 'feat';
+    let rows = (browsing.rows[browsing.kind] || []).filter(
+      r => !q || LC.key(r.name).includes(q) || (rules && LC.key(ruleWhere(r.data)).includes(q)),
+    );
+    // Rasgos agrupados por clase y subclase, en orden de nivel.
+    if (rules)
+      rows = rows
+        .map(r => ({ r, w: ruleWhere(r.data) }))
+        .sort(
+          (a, b) =>
+            a.w.split(' · ')[0].localeCompare(b.w.split(' · ')[0], 'es') ||
+            (a.r.data.level || 0) - (b.r.data.level || 0),
+        )
+        .map(x => x.r);
+    rows = rows.slice(0, rules ? 600 : 150);
     box.innerHTML = rows.length
       ? rows
           .map(({ data: x }) => {
