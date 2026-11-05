@@ -17,8 +17,10 @@ const MonsterUI = (() => {
     query = '',
     panel = null; // ataque abierto: { entryId, action, last }
 
+  // Bestiario del SRD y, si hay, las criaturas importadas de la biblioteca del DM.
   function load() {
-    if (window.MonsterData) return Promise.resolve();
+    const lib = () => (typeof LibraryUI !== 'undefined' ? LibraryUI.attach() : null);
+    if (window.MonsterData) return Promise.resolve(lib());
     return (loading ||= new Promise((ok, fail) => {
       const s = document.createElement('script');
       s.src = './monsters-data.js';
@@ -28,7 +30,7 @@ const MonsterUI = (() => {
         fail(Error('No se pudieron cargar los monstruos. Revisá tu conexión.'));
       };
       document.head.append(s);
-    }));
+    })).then(lib);
   }
   const byId = id => window.MonsterData?.find(m => m.id === id);
   function rollDice(expr) {
@@ -150,8 +152,8 @@ const MonsterUI = (() => {
   ];
   const baseType = m => m.type.split(' (')[0];
   const has = {
-    fly: m => /vuelo/i.test(m.speed),
-    swim: m => /nado/i.test(m.speed),
+    fly: m => /vuel|volar|fly/i.test(m.speed),
+    swim: m => /nad|swim/i.test(m.speed),
     spells: m => m.traits.some(([n]) => /conjuros/i.test(n)),
     legendary: m => m.legendary.length > 0,
     ranged: m => m.actions.some(a => /a distancia/i.test(a.d || '')),
@@ -166,6 +168,7 @@ const MonsterUI = (() => {
     }
   };
   const pick = {
+    book: '', // '' todos, 'srd' o el nombre de un libro de la biblioteca
     type: '',
     cr: '',
     tags: new Set(),
@@ -218,22 +221,31 @@ const MonsterUI = (() => {
     const L = partyLevel();
     const used = new Set(MonsterData.map(baseType));
     const rec = recent();
-    box.innerHTML = `<div class="chips bestiary-chips" role="group" aria-label="Tipo">${chip('bes-type', '', 'Todos', !pick.type)}${TYPE_GROUPS.filter(
-      ([k]) => used.has(k),
-    )
-      .map(([k, l]) => chip('bes-type', k, l, pick.type === k))
-      .join('')}</div><div class="chips bestiary-chips" role="group" aria-label="Desafío">${CR_RANGES.map(([k, l]) =>
-      k === 'party' && !L ? '' : chip('bes-cr', k, k === 'party' ? `${l} (nivel ${L})` : l, pick.cr === k),
-    ).join(
-      '',
-    )}<span class="bestiary-sep"></span>${TAGS.map(([k, l]) => chip('bes-tag', k, l, pick.tags.has(k))).join('')}</div>${
-      rec.length && !query.trim()
-        ? `<div class="chips bestiary-recent"><span class="small muted">Usadas hace poco:</span>${rec
-            .slice(0, 10)
-            .map(id => chip('bes-add', id, '+ ' + esc(byId(id).name), false, `data-id="${id}"`))
-            .join('')}</div>`
-        : ''
-    }`;
+    // Libros: el SRD y los de la biblioteca del DM (si importó alguno).
+    const bookList = [...new Set(MonsterData.map(m => m.book).filter(Boolean))].sort((a, b) =>
+      a.localeCompare(b, 'es'),
+    );
+    const booksRow = bookList.length
+      ? `<div class="chips bestiary-chips" role="group" aria-label="Libro">${chip('bes-book', '', 'Todos los libros', !pick.book)}${chip('bes-book', 'srd', 'SRD', pick.book === 'srd')}${bookList.map(b => chip('bes-book', b, esc(b), pick.book === b)).join('')}</div>`
+      : '';
+    box.innerHTML =
+      booksRow +
+      `<div class="chips bestiary-chips" role="group" aria-label="Tipo">${chip('bes-type', '', 'Todos', !pick.type)}${TYPE_GROUPS.filter(
+        ([k]) => used.has(k),
+      )
+        .map(([k, l]) => chip('bes-type', k, l, pick.type === k))
+        .join('')}</div><div class="chips bestiary-chips" role="group" aria-label="Desafío">${CR_RANGES.map(([k, l]) =>
+        k === 'party' && !L ? '' : chip('bes-cr', k, k === 'party' ? `${l} (nivel ${L})` : l, pick.cr === k),
+      ).join(
+        '',
+      )}<span class="bestiary-sep"></span>${TAGS.map(([k, l]) => chip('bes-tag', k, l, pick.tags.has(k))).join('')}</div>${
+        rec.length && !query.trim()
+          ? `<div class="chips bestiary-recent"><span class="small muted">Usadas hace poco:</span>${rec
+              .slice(0, 10)
+              .map(id => chip('bes-add', id, '+ ' + esc(byId(id).name), false, `data-id="${id}"`))
+              .join('')}</div>`
+          : ''
+      }`;
   }
   function filtered() {
     const q = query.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -242,6 +254,7 @@ const MonsterUI = (() => {
       m =>
         (!q || norm(m.name + ' ' + (m.english || '') + ' ' + m.type).includes(q)) &&
         (!pick.type || baseType(m) === pick.type) &&
+        (!pick.book || (pick.book === 'srd' ? !m.book : m.book === pick.book)) &&
         crIn(m, pick.cr) &&
         [...pick.tags].every(k => has[k](m)),
     ).sort((a, b) => a.cr - b.cr || a.name.localeCompare(b.name, 'es'));
@@ -250,7 +263,7 @@ const MonsterUI = (() => {
     const n = pick.tray.get(m.id) || 0,
       tags = TAGS.filter(([k]) => has[k](m)).map(([, l]) => l.split(' ')[0]);
     const open = pick.open === m.id;
-    return `<article class="bestiary-card ${n ? 'picked' : ''} ${open ? 'open' : ''}"><button type="button" class="bestiary-main" data-action="bes-add" data-id="${m.id}" title="Agregar uno"><span class="bestiary-cr">VD ${crText(m.cr)}</span><span class="bestiary-name">${esc(m.name)}</span><span class="bestiary-meta">${esc(cap(m.type.split(' (')[0]))} · ${esc(m.size)}${m.english && m.english !== m.name ? ' · ' + esc(m.english) : ''}</span><span class="bestiary-stats"><span>CA <b>${m.ac}</b></span><span>PG <b>${m.hp}</b></span><span>${m.xp} XP</span>${tags.length ? `<span class="bestiary-tags">${tags.join(' ')}</span>` : ''}</span></button>${n ? `<span class="bestiary-count">${n}</span>` : ''}<button type="button" class="bestiary-info" data-action="bes-info" data-id="${m.id}" aria-expanded="${open}" aria-label="Ver estadísticas de ${esc(m.name)}" title="Ver estadísticas">${open ? '×' : 'ⓘ'}</button>${open ? `<div class="bestiary-block">${statBlock(m)}</div>` : ''}</article>`;
+    return `<article class="bestiary-card ${n ? 'picked' : ''} ${open ? 'open' : ''}"><button type="button" class="bestiary-main" data-action="bes-add" data-id="${m.id}" title="Agregar uno"><span class="bestiary-cr">VD ${crText(m.cr)}</span><span class="bestiary-name">${esc(m.name)}</span><span class="bestiary-meta">${esc(cap(m.type.split(' (')[0]))} · ${esc(m.size)}${m.english && m.english !== m.name ? ' · ' + esc(m.english) : ''}${m.book ? ' · ' + esc(m.book.length > 30 ? m.book.slice(0, 28) + '…' : m.book) : ''}${m.issues ? ' · ⚠' : ''}</span><span class="bestiary-stats"><span>CA <b>${m.ac}</b></span><span>PG <b>${m.hp}</b></span><span>${m.xp} XP</span>${tags.length ? `<span class="bestiary-tags">${tags.join(' ')}</span>` : ''}</span></button>${n ? `<span class="bestiary-count">${n}</span>` : ''}<button type="button" class="bestiary-info" data-action="bes-info" data-id="${m.id}" aria-expanded="${open}" aria-label="Ver estadísticas de ${esc(m.name)}" title="Ver estadísticas">${open ? '×' : 'ⓘ'}</button>${open ? `<div class="bestiary-block">${statBlock(m)}</div>` : ''}</article>`;
   }
   function drawResults() {
     const box = document.getElementById('monster-results');
@@ -405,7 +418,7 @@ const MonsterUI = (() => {
       ${m.actions.length ? '<h3 class="section-space">Acciones</h3>' + m.actions.map(a => act(a, 'actions')).join('') : ''}
       ${m.reactions.length ? '<h3 class="section-space">Reacciones</h3>' + m.reactions.map(a => act(a, 'reactions')).join('') : ''}
       ${m.legendary.length ? '<h3 class="section-space">Acciones legendarias</h3>' + m.legendary.map(a => act(a, 'legendary')).join('') : ''}
-      <p class="small muted section-space">Basado en el SRD 5.1 (CC-BY-4.0), traducido al español.</p>`;
+      <p class="small muted section-space">${m.book ? `De tu biblioteca: ${esc(m.book)}${m.page ? ', pág. ' + m.page : ''}.${m.issues ? ' Datos incompletos: ' + esc(m.issues.join(', ')) + '.' : ''}` : 'Basado en el SRD 5.1 (CC-BY-4.0), traducido al español.'}</p>`;
   }
   async function view(id) {
     await load();
@@ -663,6 +676,11 @@ const MonsterUI = (() => {
     },
     'bes-cr': e => {
       pick.cr = e.dataset.v;
+      pick.shown = 48;
+      drawPicker();
+    },
+    'bes-book': e => {
+      pick.book = e.dataset.v;
       pick.shown = 48;
       drawPicker();
     },

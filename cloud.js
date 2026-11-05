@@ -893,7 +893,89 @@
     };
   }
 
+  // ---------- Biblioteca (migración 011): lo importado de los libros de cada uno ----------
+  const LIBRARY_HINT = 'Falta ejecutar supabase/migrations/011_library.sql en Supabase (SQL Editor).';
+  const libraryError = e => (/library_|does not exist|PGRST20[05]/i.test(e.message) ? Error(LIBRARY_HINT) : e);
+  async function libraryBooks() {
+    const c = await api();
+    await user();
+    try {
+      return check(await c.from('library_books').select('*').order('created_at'));
+    } catch (e) {
+      throw libraryError(e);
+    }
+  }
+  async function saveLibraryBook(row) {
+    const c = await api();
+    const me = await user();
+    try {
+      return check(
+        await c
+          .from('library_books')
+          .insert({ ...row, owner_id: me.id })
+          .select()
+          .single(),
+      );
+    } catch (e) {
+      throw libraryError(e);
+    }
+  }
+  async function updateLibraryBook(id, patch) {
+    const c = await api();
+    return check(await c.from('library_books').update(patch).eq('id', id).select().single());
+  }
+  async function deleteLibraryBook(id) {
+    const c = await api();
+    check(await c.from('library_books').delete().eq('id', id));
+  }
+  // De a tandas: un libro grande tiene cientos de entradas. onProgress(hechas, total).
+  async function addLibraryEntries(bookId, entries, onProgress) {
+    const c = await api();
+    const me = await user();
+    for (let i = 0; i < entries.length; i += 100) {
+      const rows = entries.slice(i, i + 100).map(e => ({
+        book_id: bookId,
+        owner_id: me.id,
+        kind: e.kind,
+        key: e.data.id,
+        name: String(e.data.name || 'Sin nombre').slice(0, 200),
+        data: e.data,
+      }));
+      check(await c.from('library_entries').upsert(rows, { onConflict: 'book_id,kind,key' }));
+      onProgress?.(Math.min(entries.length, i + 100), entries.length);
+    }
+  }
+  // Todas las entradas de un tipo que esta cuenta puede ver (las suyas y las de libros compartidos).
+  async function libraryEntries(kind) {
+    const c = await api();
+    await user();
+    const out = [];
+    try {
+      for (let from = 0; ; from += 1000) {
+        const page = check(
+          await c
+            .from('library_entries')
+            .select('book_id,key,name,data')
+            .eq('kind', kind)
+            .order('name')
+            .range(from, from + 999),
+        );
+        out.push(...page);
+        if (page.length < 1000) break;
+      }
+    } catch (e) {
+      throw libraryError(e);
+    }
+    return out;
+  }
+
   root.Cloud = {
+    libraryBooks,
+    saveLibraryBook,
+    updateLibraryBook,
+    deleteLibraryBook,
+    addLibraryEntries,
+    libraryEntries,
     stagedTokens,
     linkStaged,
     board,

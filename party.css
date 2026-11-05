@@ -580,3 +580,60 @@
     grid-template-areas: 'main' 'combat' 'side';
   }
 }
+
+/* ---------- Biblioteca del DM ---------- */
+.library-books {
+  display: grid;
+  gap: 8px;
+}
+.library-book {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: grid;
+  gap: 4px;
+}
+.library-book p {
+  margin: 2px 0 0;
+}
+.library-book .actions {
+  gap: 4px 10px;
+}
+#modal.library-modal {
+  width: min(820px, calc(100% - 24px));
+}
+.library-progress:not(:empty) {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--panel2);
+  font-size: 0.85rem;
+}
+.library-results {
+  display: grid;
+  gap: 10px;
+}
+.library-result {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.library-flagged {
+  max-height: 240px;
+  overflow: auto;
+  padding-left: 18px;
+}
+.library-list {
+  display: grid;
+  gap: 4px;
+  max-height: 60dvh;
+  overflow: auto;
+  margin-top: 8px;
+}
+.library-entry {
+  border-bottom: 1px solid var(--line);
+  padding: 6px 0;
+}
+.library-entry summary {
+  cursor: pointer;
+}
