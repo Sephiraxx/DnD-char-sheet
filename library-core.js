@@ -794,7 +794,10 @@
   // Una acción: bonificador de ataque, daño y salvación (si la tiene).
   function parseAction(n, d) {
     const a = { n, d };
-    d = fixDigits(d);
+    // «+S a impactar», «+l0 a impactar»: letras que son números después de un signo.
+    d = fixDigits(d).replace(/([+\-]\s?)([SslIO]{1,2}|\d[SslIO]|[SslIO]\d)(?=\s)/g, (x, sg, v) =>
+      /[A-Za-z]/.test(v) ? sg + v.replace(/[Ss]/g, '5').replace(/[lI]/g, '1').replace(/O/g, '0') : x,
+    );
     const atk =
       /([+\-]\s*\d+)\s*(a\s*l\s*a\s*t\s*a\s*q\s*u\s*e|a\s*i\s*m\s*p\s*a\s*c\s*t\s*a\s*r|para\s*impactar|para\s*golpear|al\s*impacto|to\s*hit)/i.exec(
         d,
@@ -816,6 +819,16 @@
         if (k || es) type = k ? DMG_TYPES[k] : es;
       }
       if (/^(damage|da[ñn]o|de|puntos)$/.test(type)) type = '';
+      // Tipo partido por el reconocimiento de texto («de d a f'i o contu n d e»): se busca en lo que sigue.
+      const known = Object.values(DMG_TYPES).concat(Object.keys(DMG_TYPES));
+      if (!known.includes(type)) {
+        const after = d
+          .slice(m.index + m[0].length - m[2].length, m.index + m[0].length + 40)
+          .toLowerCase()
+          .replace(/[^a-záéíóúñ]/g, '');
+        const hit = known.find(w => after.includes(w.normalize('NFC')));
+        if (hit) type = DMG_TYPES[hit] || hit;
+      }
       dmg.push([m[1].replace(/\s/g, ''), type]);
     }
     if (dmg.length) a.dmg = dmg;
@@ -880,7 +893,8 @@
       }
     }
     let name = '',
-      kind = null;
+      kind = null,
+      pageTitle = () => '';
     if (typeAt >= 0) {
       kind = parseTypeLine(lines[typeAt].t);
       // Nombre: un título justo arriba (más grande que la línea del tipo, en mayúsculas o corto). Si no
@@ -888,6 +902,7 @@
       const tbh = lines[typeAt].bh ?? lines[typeAt].h;
       const titleish = (l, t) => {
         if (t.length < 2 || t.length > 60 || !/[A-Za-zÁÉÍÓÚÑáéíóúñ]{2}/.test(t) || /[.:;,-]$/.test(t)) return false;
+        if (/^[^:]{2,30}:\s/.test(t) && (l.bh ?? l.h) < tbh + 1) return false; // «Duración: 8 horas»
         const letters = t.replace(/[^A-Za-zÁÉÍÓÚÑáéíóúñ]/g, '');
         const caps = letters.replace(/[^A-ZÁÉÍÓÚÑ]/g, '').length >= letters.length * 0.7;
         return (
@@ -901,13 +916,33 @@
         return titleish(lines[i], t) ? t : '';
       };
       for (let i = typeAt - 1; i >= Math.max(0, typeAt - 3) && !name; i--) name = nameOf(i) ? niceName(nameOf(i)) : '';
-      if (!name)
+      pageTitle = () => {
         for (let i = typeAt - 4; i >= Math.max(0, typeAt - 30) && lines[i].page === lines[typeAt].page; i--)
           if ((lines[i].bh ?? lines[i].h) >= tbh + 1.5 && nameOf(i)) {
-            name = niceName(nameOf(i));
+            return niceName(nameOf(i));
+          }
+        return '';
+      };
+    } else issues.push('Sin línea de tamaño y tipo');
+    // Sin título propio y dentro de la descripción de un conjuro («Siervo diminuto»): es la criatura que
+    // crea ese conjuro; se llama como el conjuro.
+    let fromSpell = false;
+    if (!name)
+      for (let i = (typeAt >= 0 ? typeAt : a) - 1; i >= Math.max(0, a - 90); i--) {
+        if (isAnchor(lines[i].t)) break; // otra criatura antes: no es la de un conjuro
+        if (!/^(tiempo de lanzamiento|casting time)/i.test(lines[i].t)) continue;
+        for (let j = i - 1; j >= Math.max(0, i - 3); j--)
+          if (parseSchoolLine(lines[j].t) && j > 0) {
+            const t = lines[j - 1].t.trim();
+            if (t.length >= 3 && t.length <= 60 && !/[.,;:]$/.test(t)) {
+              name = niceName(t);
+              fromSpell = true;
+            }
             break;
           }
-    } else issues.push('Sin línea de tamaño y tipo');
+        break;
+      }
+    if (!name) name = pageTitle();
     if (!name) issues.push('Sin nombre');
     const startY = lines[a];
     // Cuerpo hasta el desafío: etiquetas y continuaciones.
@@ -1197,6 +1232,7 @@
     // Criaturas invocadas o compañeros (Tasha, Xanathar): «Desafío: —» y PG o CA que dependen de tu
     // nivel o del nivel del conjuro. No es un error: se guarda la fórmula para leerla en la mesa.
     const summon =
+      fromSpell ||
       /^\s*[-—–]/.test(f.cr || '') ||
       /(tu nivel|nivel de(l)? conjuro|nivel del? (explorador|art[ií]fice|druida|guerrero|mago|clérigo)|your level|spell'?s? level|\bBC\b|\bPB\b)/i.test(
         (f.hp || '') + ' ' + (f.ac || ''),
