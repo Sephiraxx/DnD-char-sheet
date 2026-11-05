@@ -1,6 +1,6 @@
 const PREFIX = 'darien:' + self.registration.scope + ':';
 // BUILD es un resumen del contenido de FILES: lo escribe `npm run stamp` y los tests fallan si quedó viejo.
-const BUILD = 'a4f77f65baa1';
+const BUILD = 'c482f93a1c4a';
 const CACHE = PREFIX + BUILD;
 const FILES = [
   './',
@@ -8,6 +8,12 @@ const FILES = [
   './style.css',
   './rules.js',
   './class-data.js',
+  './book-content-data.js',
+  './book-content.js',
+  './monsters-data.js',
+  './compendium.html',
+  './compendium.js',
+  './library.css',
   './names-es.js',
   './feat-data.js',
   './feats.js',

@@ -151,8 +151,8 @@ test('QA: all race and background entries produce usable defense and spell refer
   }
 });
 
-test('QA: all 524 spell roll summaries parse at their native level and at level 9', () => {
-  assert.equal(g.Catalog.spells.length, 524);
+test('QA: all 526 spell roll summaries parse at their native level and at level 9', () => {
+  assert.equal(g.Catalog.spells.length, 526);
   g.state = sheet('wizard', 20);
   for (const sp of g.Catalog.spells) {
     for (const level of [sp.level, 9]) {

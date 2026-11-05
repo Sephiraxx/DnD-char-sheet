@@ -1,0 +1,114 @@
+.library-workspace {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.library-page main {
+  padding: clamp(20px, 4vw, 48px);
+}
+.library-intro {
+  max-width: 860px;
+  margin-bottom: 32px;
+}
+.library-intro h1 {
+  font-family: Georgia, serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.12;
+  margin: 12px 0 18px;
+}
+.library-intro > p {
+  line-height: 1.65;
+}
+.library-search {
+  border-top: 3px solid var(--gold);
+}
+.library-query input {
+  font-size: 1.15rem;
+  min-height: 50px;
+}
+.library-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+  margin-top: 16px;
+}
+.library-filters .button {
+  margin-bottom: 0;
+  min-height: 44px;
+}
+.library-filters select {
+  max-width: 100%;
+}
+.library-results {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.library-results .card {
+  margin: 0;
+  min-width: 0;
+}
+.library-result h2 {
+  font-size: 1.2rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.library-result p {
+  line-height: 1.6;
+}
+.library-result .eyebrow {
+  color: var(--teal);
+}
+.library-result .actions {
+  margin-top: 16px;
+}
+.library-help {
+  margin-top: 28px;
+  line-height: 1.7;
+}
+.library-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 48px 24px;
+}
+.library-page dialog {
+  width: min(920px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+}
+.library-reader-body {
+  padding: 0 24px 28px;
+  overflow-wrap: anywhere;
+}
+.library-book-text {
+  white-space: pre-wrap;
+  line-height: 1.7;
+  font-family: Georgia, serif;
+  font-size: 1.1rem;
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+#reader-heading {
+  margin-top: 24px;
+}
+@media (max-width: 760px) {
+  .library-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .library-filters .button {
+    grid-column: 1 / -1;
+  }
+  .library-results {
+    grid-template-columns: 1fr;
+  }
+  .library-page .topbar {
+    padding: 16px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .library-page .top-actions {
+    flex-wrap: wrap;
+  }
+  .library-reader-body {
+    padding: 0 16px 20px;
+  }
+}

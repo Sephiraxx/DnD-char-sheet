@@ -9,7 +9,7 @@ const root = path.join(__dirname, '..');
 // La app abre desde la caché del service worker: lo que no esté en FILES no funciona sin red.
 test('el service worker guarda todos los scripts y estilos de las páginas', () => {
   const cached = new Set(stamp.files());
-  for (const page of ['index.html', 'dm.html', 'board.html']) {
+  for (const page of ['index.html', 'dm.html', 'board.html', 'compendium.html']) {
     assert.ok(cached.has('./' + page), page);
     const html = fs.readFileSync(path.join(root, page), 'utf8');
     for (const [, ref] of html.matchAll(/(?:src|href)="(\.\/[^"#?]+)"/g))

@@ -1,5 +1,8 @@
 /* Aplicación estática. La mesa compartida (cloud.js) es opcional; sin ella todo queda en el dispositivo. */
 'use strict';
+function libraryLink(name) {
+  return `<a href="./compendium.html?q=${encodeURIComponent(name)}" target="_blank" rel="noopener">Consultar en el catálogo</a>`;
+}
 const R = window.Rules,
   KEY = CharacterStorage.activeKey(),
   BACKUP = KEY + '-previous';
@@ -241,7 +244,7 @@ function spellNumbersHtml(sp, slot) {
 }
 function spellCard(s) {
   const extra = state.extras.includes(s.id);
-  return `<details class="spell" id="spell-${esc(s.id)}"><summary><div class="spell-title"><div><h2>${esc(s.name)}</h2><div class="spell-meta">${s.level ? 'Nivel ' + s.level : 'Truco'} · ${esc(s.time)} · ${esc(s.range)}</div></div>${extra ? '<span class="tag">Extra DM</span>' : s.concentration ? '<span class="tag">Conc.</span>' : ''}</div><p class="spell-brief">${esc(s.brief)}</p>${s.level === 0 && R.spellNumbersFor(state, s).length ? `<p class="spell-numbers-inline">${esc(R.spellNumbersFor(state, s)[0])}</p>` : ''}</summary><div class="spell-body"><p>${esc(s.text)}</p>${spellNumbersHtml(s)}${button('Explicación y requisitos', 'spell-help', 'secondary', `data-id="${esc(s.id)}"`)}<p class="small">Componentes: ${esc(s.components)}<br>Duración: ${esc(s.duration)}${s.concentration ? ' · Concentración' : ''}<br>Fuente: ${esc(s.source)}</p><div class="spell-footer">${button(s.level ? 'Lanzar' : 'Usar truco', 'cast', '', `data-id="${esc(s.id)}"`)}${Classes.ritualAllowed(state, s) ? button('Ritual · sin espacio', 'ritual', 'secondary', `data-id="${esc(s.id)}"`) : ''}${button('Editar', 'spell-edit', 'secondary', `data-id="${esc(s.id)}"`)}</div></div></details>`;
+  return `<details class="spell" id="spell-${esc(s.id)}"><summary><div class="spell-title"><div><h2>${esc(s.name)}</h2><div class="spell-meta">${s.level ? 'Nivel ' + s.level : 'Truco'} · ${esc(s.time)} · ${esc(s.range)}</div></div>${extra ? '<span class="tag">Extra DM</span>' : s.concentration ? '<span class="tag">Conc.</span>' : ''}</div><p class="spell-brief">${esc(s.brief)}</p>${s.level === 0 && R.spellNumbersFor(state, s).length ? `<p class="spell-numbers-inline">${esc(R.spellNumbersFor(state, s)[0])}</p>` : ''}</summary><div class="spell-body"><p>${esc(s.text)}</p><p class="small">${libraryLink(s.name)}</p>${spellNumbersHtml(s)}${button('Explicación y requisitos', 'spell-help', 'secondary', `data-id="${esc(s.id)}"`)}<p class="small">Componentes: ${esc(s.components)}<br>Duración: ${esc(s.duration)}${s.concentration ? ' · Concentración' : ''}<br>Fuente: ${esc(s.source)}</p><div class="spell-footer">${button(s.level ? 'Lanzar' : 'Usar truco', 'cast', '', `data-id="${esc(s.id)}"`)}${Classes.ritualAllowed(state, s) ? button('Ritual · sin espacio', 'ritual', 'secondary', `data-id="${esc(s.id)}"`) : ''}${button('Editar', 'spell-edit', 'secondary', `data-id="${esc(s.id)}"`)}</div></div></details>`;
 }
 function gear() {
   const total = state.gold.cp + state.gold.sp * 10 + state.gold.ep * 50 + state.gold.gp * 100 + state.gold.pp * 1000;

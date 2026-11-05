@@ -13,6 +13,8 @@ const LOGIC = [
   'magic-items.js',
   'companions.js',
   'campaign-data.js',
+  'book-content-data.js',
+  'book-content.js',
   'equipment-data.js',
   'equipment.js',
   'class-rules.js',
