@@ -383,6 +383,61 @@ const RollUI = (() => {
     return Boolean(i.attack || i.save || i.dice || (TableUI.link() && isBuff(sp)));
   };
   // Objetivos del conjuro: criaturas del encuentro, aliados y vos.
+  // Cuántas criaturas puede afectar el conjuro: las de un área (radio, cono…) todas; «una criatura» o
+  // «el objetivo», una; «hasta tres criaturas», tres. Con espacio mayor, una más por nivel si el texto lo dice.
+  const NUM = { una: 1, un: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, diez: 10, doce: 12 };
+  // Conjuros que suman un objetivo por cada nivel de espacio superior (el resumen no siempre lo dice).
+  const UPCAST_TARGETS = new Set([
+    'bane',
+    'bless',
+    'command',
+    'charm-person',
+    'charm-monster',
+    'hold',
+    'hold-monster',
+    'heroism',
+    'invisibility',
+    'fly',
+    'banishment',
+  ]);
+  function targetLimit(sp, slot = sp.level) {
+    const t = [sp.range, sp.brief, sp.text]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    if (
+      /\b(radio|cono|cubo|esfera|cilindro|linea|emanacion|cada criatura|todas las criaturas|criaturas en el area)\b/.test(
+        t,
+      )
+    )
+      return Infinity;
+    const m =
+      /hasta (\d+|dos|tres|cuatro|cinco|seis|siete|ocho|diez|doce) (criaturas|objetivos|aliados|humanoides)/.exec(t);
+    let n;
+    if (m) n = Number(m[1]) || NUM[m[1]];
+    else if (
+      /\b(una criatura|un objetivo|el objetivo|la criatura|un humanoide|una bestia|un enemigo|otra criatura)\b/.test(t)
+    )
+      n = 1;
+    else return Infinity;
+    if (
+      slot > sp.level &&
+      (UPCAST_TARGETS.has(sp.id) || /(adicional|mas objetivos|una criatura mas|un objetivo mas)/.test(t))
+    )
+      n += slot - sp.level;
+    return n;
+  }
+  function checkTargets(fd) {
+    const { sp, slot } = spellSession,
+      max = targetLimit(sp, slot),
+      n = chosen(fd).length;
+    if (n > max)
+      throw Error(
+        `${sp.name} afecta a ${max === 1 ? 'un solo objetivo' : 'hasta ' + max + ' objetivos'}: elegiste ${n}.`,
+      );
+  }
   function targetFields(info, sp) {
     const t = TableUI.targets(),
       first = TableUI.preferredTarget(t.monsters),
@@ -398,7 +453,11 @@ const RollUI = (() => {
         ],
         first,
       );
-    // Conjuros de salvación (también de área): criaturas, y aliados o vos si quedan dentro.
+    // Conjuros de salvación de un objetivo (o pocos): una sola lista con el límite.
+    const max = targetLimit(sp, spellSession?.slot ?? sp.level);
+    if (info.save && Number.isFinite(max) && (t.monsters.length || t.allies.length))
+      return `<fieldset class="target-list" data-max="${max}"><legend>${max === 1 ? 'Objetivo (uno solo)' : 'Objetivos (hasta ' + max + ')'}</legend>${t.monsters.map(m => who('mon:' + m.id, m.name + ' · ' + TableUI.statusLabel(m.status), m.id === TableUI.boardContext()?.combatantId)).join('')}${t.allies.map(a => who('pc:' + a.characterId, a.name)).join('')}</fieldset><p class="small muted">El DM tira la salvación de las criaturas; un aliado la tira en su ficha.</p>`;
+    // Conjuros de salvación de área: criaturas, y aliados o vos si quedan dentro.
     if (info.save && (t.monsters.length || t.allies.length))
       return `${t.monsters.length ? `<fieldset class="target-list"><legend>Criaturas (el DM tira sus salvaciones)</legend>${t.monsters.map(m => who('mon:' + m.id, m.name + ' · ' + TableUI.statusLabel(m.status), m.id === TableUI.boardContext()?.combatantId)).join('')}</fieldset>` : ''}<fieldset class="target-list"><legend>También en el área (cada uno tira su salvación)</legend>${who('self', 'Vos (' + state.name + ')')}${t.allies.map(a => who('pc:' + a.characterId, a.name)).join('')}</fieldset>`;
     // Daño automático (Proyectil mágico…): se elige la criatura que lo recibe.
@@ -537,8 +596,9 @@ const RollUI = (() => {
   }
   function spellDamage() {
     const { sp, info } = spellSession,
-      fd = new FormData(document.getElementById('dialog-form')),
-      st = spellStats(sp),
+      fd = new FormData(document.getElementById('dialog-form'));
+    checkTargets(fd);
+    const st = spellStats(sp),
       mod = fd.has('spellMod') ? st.mods[Classes.casting(caster(sp)).ability] : 0;
     const own = fd.get('myDamage'),
       expr = String(fd.get('spellDice') || '').replace(/\s+/g, ''),
@@ -715,6 +775,14 @@ const RollUI = (() => {
     );
   }
   function install() {
+    // Al marcar uno más del límite, se desmarca el que estaba primero (con límite 1 funciona como elegir uno).
+    globalThis.document?.addEventListener('change', e => {
+      const box = e.target.closest?.('fieldset[data-max]');
+      if (!box || e.target.name !== 'who' || !e.target.checked) return;
+      const max = Number(box.dataset.max),
+        on = [...box.querySelectorAll('input[name=who]:checked')].filter(x => x !== e.target);
+      while (on.length >= max) on.shift().checked = false;
+    });
     Object.assign(actions, {
       roll: e => {
         if (

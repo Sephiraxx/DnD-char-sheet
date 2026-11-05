@@ -141,7 +141,9 @@
     } catch (e) {
       return joinForm(e.message);
     }
-    S.isDM = S.party.campaign.dm_id === S.me.id;
+    // Abierto desde la ficha de un jugador (actorId), siempre es la vista del jugador: aunque la cuenta
+    // sea la del DM (probando en un mismo dispositivo), no muestra PG ocultos ni herramientas del DM.
+    S.isDM = S.party.campaign.dm_id === S.me.id && !H.actorId;
     if (TV) S.asPlayer = true;
     try {
       const data = await Cloud.board(S.id);
@@ -2117,6 +2119,12 @@
     onParty: table => S.id && onParty(table),
     refresh: () => mounted && S.id && (dock(), card()),
     context: () => combatContext(),
+    // Abre el panel de acciones si estaba plegado (por ejemplo, llegó algo que el DM tiene que resolver).
+    expand: () => {
+      if (!mounted || !S.dockMin) return;
+      S.dockMin = false;
+      dock();
+    },
     _state: () => S, // para pruebas y depuración
   };
 })();
