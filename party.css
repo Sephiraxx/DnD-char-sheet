@@ -307,3 +307,246 @@
 .difficulty.mediano {
   color: var(--gold);
 }
+
+/* ---------- Bestiario del DM: tarjetas con filtros y bandeja ---------- */
+#modal.bestiary-modal {
+  width: min(1100px, calc(100% - 24px));
+  max-height: 94dvh;
+}
+#modal.bestiary-modal .modal-body {
+  padding-bottom: 0;
+}
+.bestiary-search .field {
+  margin-bottom: 8px;
+}
+.bestiary-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.bestiary-chips .chip,
+.bestiary-recent .chip {
+  min-height: 32px;
+  font-size: 0.8rem;
+}
+.bestiary-sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--line);
+  margin: 0 4px;
+}
+.bestiary-recent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.bestiary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+  margin: 6px 0 12px;
+}
+.bestiary-count-line,
+.bestiary-more,
+.bestiary-grid > .muted {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.bestiary-card {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  transition: border-color 0.15s;
+}
+.bestiary-card:hover {
+  border-color: #3d5a61;
+}
+.bestiary-card.picked {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px var(--gold);
+}
+.bestiary-card.open {
+  grid-column: 1 / -1;
+}
+.bestiary-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: 100%;
+  padding: 10px 40px 10px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 14px;
+}
+.bestiary-main:active {
+  transform: scale(0.99);
+}
+.bestiary-name {
+  font-weight: 650;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+.bestiary-meta {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+.bestiary-cr {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--gold);
+}
+.bestiary-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.bestiary-stats b {
+  color: var(--text);
+}
+.bestiary-tags {
+  letter-spacing: 0.1em;
+}
+.bestiary-info {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--panel2);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+.bestiary-count {
+  position: absolute;
+  top: 40px;
+  right: 8px;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 13px;
+  background: var(--gold);
+  color: #10252a;
+  font-weight: 800;
+  font-size: 0.85rem;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.bestiary-block {
+  border-top: 1px solid var(--line);
+  padding: 10px 12px 12px;
+}
+.bestiary-block .actions {
+  display: none;
+}
+.bestiary-tray {
+  position: sticky;
+  bottom: 0;
+  margin: 0 -25px;
+  padding: 12px 25px max(12px, env(safe-area-inset-bottom));
+  background: #14272e;
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -10px 24px #0006;
+}
+.bestiary-tray > p {
+  margin: 0;
+}
+.bestiary-picked {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.bestiary-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  padding: 2px 4px;
+  font-size: 0.85rem;
+}
+.bestiary-pill .text-btn {
+  min-width: 28px;
+  min-height: 28px;
+  font-size: 1.05rem;
+}
+.bestiary-commit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.bestiary-commit .button:last-child {
+  margin-left: auto;
+}
+.bestiary-hp {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+.bestiary-hp select {
+  min-height: 34px;
+  padding: 2px 8px;
+}
+.difficulty-badge {
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: 1px solid var(--line);
+  color: var(--teal);
+}
+.difficulty-badge.mediano {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+.difficulty-badge.difícil,
+.difficulty-badge.mortal {
+  color: var(--red);
+  border-color: var(--red);
+}
+@media (max-width: 720px) {
+  /* En el celular, cada fila de filtros se desliza de costado en lugar de ocupar media pantalla. */
+  .bestiary-chips,
+  .bestiary-recent {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .bestiary-chips .chip,
+  .bestiary-recent .chip,
+  .bestiary-recent span {
+    flex: 0 0 auto;
+  }
+  .bestiary-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+  .bestiary-tray {
+    margin: 0 -20px;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .bestiary-commit .button:last-child {
+    width: 100%;
+  }
+}
