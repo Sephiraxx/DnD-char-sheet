@@ -638,6 +638,7 @@
     if (root.Companions) root.Companions.validate(o);
     if (root.Equipment) root.Equipment.validate(o);
     if (root.Metamagic) root.Metamagic.validate(o);
+    if (root.Cannon) root.Cannon.validate(o);
     if (o.hpAuto !== undefined && typeof o.hpAuto !== 'boolean') fail();
     if (
       o.forgeBlessing !== undefined &&

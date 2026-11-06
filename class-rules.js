@@ -471,6 +471,15 @@
           Math.ceil(l / 2) +
           ' niveles, ninguno de nivel 6 o superior. Ajustalos después de registrar el uso.',
       );
+    if (c === 'artificer' && s.classSubclass === 'artificer-artillerist' && l >= 3)
+      add(
+        'cannon',
+        'Cañón sobrenatural gratis',
+        1,
+        'long',
+        'Una vez por descanso largo creás el cañón sin gastar espacio; después, solo gastando un espacio de nivel 1 o superior. Crealo desde la tarjeta «Cañón sobrenatural».',
+        'action',
+      );
     if (c === 'artificer' && l >= 7)
       add(
         'flash',
@@ -514,6 +523,8 @@
     s.raging = false;
     // Los espacios creados con Fuente de magia desaparecen con el descanso largo; la Bendición de la forja
     // dura hasta el siguiente descanso largo (al terminarlo se elige de nuevo).
+    // El cañón dura 1 hora: no sobrevive a un descanso.
+    delete s.cannons;
     if (type === 'long') {
       delete s.fontSlots;
       delete s.forgeBlessing;
