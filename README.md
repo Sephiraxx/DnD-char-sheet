@@ -88,6 +88,8 @@ Se distinguen conjuros conocidos, preparados, libro de mago, conjuros siempre pr
 
 El catálogo contiene **526 conjuros**, todos con nombres de referencia y resúmenes de mesa en español. Los resúmenes explican la función del efecto; **no son traducciones íntegras de los libros** y no sustituyen sus tablas, estadísticas de invocaciones, excepciones ni todos los aumentos por espacio. Los nombres ingleses siguen disponibles para buscar. No se incluyen Unearthed Arcana ni las revisiones de 2024. Los 319 textos SRD originales se conservan en los datos como referencia, sin mostrarlos como descripción principal.
 
+La ampliación de libros oficiales de 2014 incorpora textos de reglas para clases, subclases, opciones y dotes, descripciones de conjuros, objetos mágicos para el inventario y bloques de criaturas para los encuentros del DM. Se carga con la aplicación para todos los visitantes de GitHub Pages, sin cuenta ni importaciones personales. **Libros y catálogo** permite buscar también objetos y opciones de clase y consultar la cobertura de cada PDF. Los efectos especiales que no resuelve el motor se consultan en el bloque y se aplican en la mesa. La ampliación excluye homebrew, conversiones de aficionados y las otras ediciones; Tal'Dorei, ya disponible como fuente opcional de terceros, no se amplía. Ver [procedimiento y límites de conversión](docs/official-books.md).
+
 Caballero arcano y Embaucador arcano: las restricciones de escuelas y excepciones de aprendizaje se revisan en mesa. Los conjuros opcionales, reemplazos especiales y elecciones internas de listas de subclase pueden requerir registro manual.
 
 ## Combate y descansos

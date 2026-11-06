@@ -2,6 +2,115 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const L = require('../library-core.js');
 
+test('a missing stat-block title uses the creature heading rather than the chapter footer or a smaller lore heading', () => {
+  const input = page([
+    ['MEENLOCK', 40, 100, 18],
+    ['Los meenlocks acechan entre las sombras del bosque.', 40, 125, 8],
+    ['TORTURA TELEPÁTICA', 40, 150, 13.4],
+    ['Su magia puede atormentar a los enemigos cercanos.', 40, 175, 8],
+    ['CAPÍTULO 2 | BESTIARIO', 40, 770, 8],
+    ['Feérico Pequeño, neutral malvado', 320, 100, 8],
+    ['Clase de Armadura: 15', 320, 115, 8],
+    ['Puntos de golpe: 31 (7d6 + 7)', 320, 130, 8],
+    ['Velocidad: 30 pies', 320, 145, 8],
+    ['FUE DES CON INT SAB CAR', 320, 160, 8],
+    ['7 (-2) 15 (+2) 12 (+1) 11 (+0) 10 (+0) 8 (-1)', 320, 175, 8],
+    ['Desafío: 2 (450 PX)', 320, 190, 8],
+    ['ACCIONES', 320, 205, 8],
+    ['Garra. Ataque con arma cuerpo a cuerpo: +4 a impactar. Impacto: 7 (2d4 + 2) de daño cortante.', 320, 220, 8],
+  ]);
+  assert.equal(L.monsters(L.readLines([input]))[0].name, 'Meenlock');
+});
+
+test('wrapped creature titles and spaced three-digit hit points retain their complete values', () => {
+  const texts = [
+    'ESQUELETO',
+    'DE PRUEBA',
+    'No muerto Grande, neutral malvado',
+    'Clase de Armadura: 1 5',
+    'Puntos de golpe: 1 1 4 (12d12 + 36)',
+    'Velocidad: 9 m',
+    'FUE DES CON INT SAB CAR',
+    '18 (+4) 12 (+1) 16 (+3) 6 (-2) 10 (+0) 8 (-1)',
+    'Desafío: 5 (1 800 PX)',
+    'ACCIONES',
+    'Golpe. Ataque con arma cuerpo a cuerpo: +7 a impactar. Impacto: 11 (2d6 + 4) de daño contundente.',
+  ];
+  const [m] = L.monsters(L.readLines([page(texts.map((s, i) => [s, 40, 100 + i * 12, i < 2 ? 12 : 8]))]));
+  assert.equal(m.name, 'Esqueleto de prueba');
+  assert.equal(m.hp, 114);
+  assert.equal(m.ac, 15);
+  assert.equal(m.xp, 1800);
+});
+
+test('class book references include child sections such as cantrips and preparing spells', () => {
+  const input = page([
+    ['MAGO', 40, 90, 18],
+    ['Lanzamiento de conjuros', 40, 120, 12],
+    ['Tu libro contiene las fórmulas de tu magia arcana.', 40, 140, 8],
+    ['TRUCOS', 40, 160, 10],
+    ['Aprendés tres trucos de la lista de mago al nivel 1.', 40, 180, 8],
+    ['PREPARAR CONJUROS', 40, 200, 10],
+    ['Preparás tantos conjuros como tu nivel más Inteligencia.', 40, 220, 8],
+    ['Recuperación arcana', 40, 250, 12],
+    ['Tras un descanso corto recuperás espacios gastados.', 40, 270, 8],
+  ]);
+  const targets = L.ruleTargets(
+    {
+      classes: {
+        wizard: {
+          id: 'wizard',
+          name: 'Mago',
+          english: 'Wizard',
+          source: 'PHB',
+          features: [
+            {
+              name: 'Lanzamiento de conjuros',
+              english: 'Spellcasting',
+              level: 1,
+              source: 'PHB',
+              children: ['Trucos', 'Preparar conjuros'],
+            },
+            { name: 'Recuperación arcana', english: 'Arcane Recovery', level: 1, source: 'PHB', children: [] },
+          ],
+        },
+      },
+    },
+    {},
+  );
+  const rules = L.rules(L.readLines([input]), targets);
+  const row = rules.find(x => x.key === 'class:wizard:Spellcasting');
+  assert.match(row.data.text, /Aprendés tres trucos/);
+  assert.match(row.data.text, /Preparás tantos conjuros/);
+});
+
+test('metric distances preserve Spanish words and optional variants do not alter base actions', () => {
+  const texts = [
+    'DRACO DE PRUEBA',
+    'Monstruosidad Grande, neutral',
+    'Clase de Armadura: 16',
+    'Puntos de golpe: 30 (4d10 + 8)',
+    'Velocidad: 9 m, volar 18 m',
+    'FUE DES CON INT SAB CAR',
+    '18 (+4) 12 (+1) 14 (+2) 8 (-1) 10 (+0) 12 (+1)',
+    'Desafío: 2 (450 PX)',
+    'ACCIONES',
+    'Ataque múltiple, El draco realiza dos ataques.',
+    'Rugido. Todas las criaturas a 9 m hacen una salvación de Sabiduría CD 150 estarán asustadas. Si fallan por 5 o más, quedan paralizadas.',
+    'VARIANTE: DRACO ARCANISTA',
+    'Lanzamiento de Conjuros. El draco arcanista lanza conjuros de nivel 3.',
+  ];
+  const input = page(texts.map((s, i) => [s, 40, 100 + i * 12, i === 0 ? 12 : 8]));
+  const [m] = L.monsters(L.readLines([input]));
+  assert.equal(m.speed, '30 pies, volar 60 pies');
+  assert.ok(m.actions.some(a => a.n === 'Ataque múltiple'));
+  const roar = m.actions.find(a => a.n === 'Rugido');
+  assert.match(roar.d, /30 pies/);
+  assert.match(roar.d, /5 o más/);
+  assert.match(roar.d, /CD 15 o estarán/);
+  assert.ok(!m.actions.some(a => /Conjuros/.test(a.n)));
+});
+
 // Página de prueba: cada línea es [texto, x, y, tamaño, fuente]; varios tramos de una línea van en un arreglo.
 function page(lines, w = 600, h = 800) {
   const items = [];

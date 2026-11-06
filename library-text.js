@@ -5,12 +5,13 @@
 const LibraryText = (() => {
   'use strict';
   const STORE = 'dnd-library-text-v1';
-  let map = new Map(),
+  const shared = () => new Map(typeof OfficialContent === 'undefined' ? [] : OfficialContent.ruleTexts);
+  let map = shared(),
     loading = null,
     stamp = '';
   try {
     const saved = JSON.parse(localStorage.getItem(STORE) || 'null');
-    if (saved?.rows) map = new Map(saved.rows);
+    if (saved?.rows) for (const [key, row] of saved.rows) if (!map.has(key) || !row.bundled) map.set(key, row);
   } catch {
     /* sin almacenamiento: se carga de la nube */
   }
@@ -23,7 +24,7 @@ const LibraryText = (() => {
       try {
         if (!(await Cloud.currentUser())) return;
         const rows = [...(await Cloud.libraryEntries('feature')), ...(await Cloud.libraryEntries('feat'))];
-        const next = new Map();
+        const next = shared();
         for (const r of rows) {
           const d = r.data || {};
           if (typeof d.text !== 'string' || !d.text) continue;

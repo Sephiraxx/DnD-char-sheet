@@ -27,8 +27,8 @@ test('fresh users receive shared native content without browser storage or a per
   assert.equal(typeof g.LibraryStore, 'undefined');
   assert.equal(g.Catalog.spells.length, 526);
   assert.equal(g.ClassData.subclasses.length, 119);
-  assert.equal(g.BookContentData.monsters.length, 561);
-  assert.equal(g.BookContentData.monsters.filter(m => m.actions.length).length, 315);
+  assert.ok(g.BookContentData.monsters.length > 561);
+  assert.ok(g.BookContentData.monsters.filter(m => m.actions.length).length > 315);
   assert.ok(g.Catalog.spells.some(s => s.id === 'freedom-of-the-waves'));
   assert.ok(g.BookContentData.monsters.some(m => m.name === 'Azotamentes'));
 });

@@ -19,7 +19,7 @@ const Campaign = (() => {
       .map(x => [x.id, x.name + ' · ' + x.sources.join(' / ') + (enabled(s, x) ? '' : ' · selección previa')]);
   }
   function sourceFields(s) {
-    return `<fieldset class="campaign-sources"><legend>Libros habilitados para esta ficha</legend><p class="small">Toda la mesa recibe el mismo catálogo. El DM elige qué libros permite; desmarcar una fuente conserva las elecciones anteriores. Tal'Dorei se habilita por separado.</p><div class="source-grid">${Object.entries(
+    return `<fieldset class="campaign-sources"><legend>Libros habilitados para esta ficha</legend><p class="small">El DM elige qué libros permite; desmarcar una fuente conserva las elecciones anteriores. Tal'Dorei se habilita por separado.</p><div class="source-grid">${Object.entries(
       D.sources,
     )
       .map(

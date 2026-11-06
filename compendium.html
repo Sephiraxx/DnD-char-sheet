@@ -12,9 +12,12 @@
     <script src="./catalog.js" defer></script>
     <script src="./class-data.js" defer></script>
     <script src="./names-es.js" defer></script>
+    <script src="./magic-items.js" defer></script>
     <script src="./campaign-data.js" defer></script>
     <script src="./book-content-data.js" defer></script>
     <script src="./book-content.js" defer></script>
+    <script src="./official-content-data.js" defer></script>
+    <script src="./official-content.js" defer></script>
     <script src="./monsters-data.js" defer></script>
     <script src="./compendium.js" defer></script>
     <script src="./updates.js" defer></script>
@@ -34,12 +37,8 @@
       </header>
       <main id="main" tabindex="-1">
         <section class="library-intro">
-          <span class="eyebrow">EL MISMO CATÁLOGO PARA TODA LA MESA</span>
           <h1>Las opciones de tu próxima aventura</h1>
-          <p>
-            Clases, subclases, conjuros y criaturas incluidos en la aplicación. Todos los que abren este sitio reciben
-            el mismo contenido, sin importar archivos.
-          </p>
+          <p>Clases, subclases, conjuros, objetos y criaturas para tus partidas.</p>
           <p id="compendium-counts" class="small" role="status"></p>
         </section>
         <section class="card library-search" aria-label="Buscar contenido">
@@ -62,6 +61,8 @@
                   <option value="race">Razas y variantes</option>
                   <option value="background">Trasfondos</option>
                   <option value="feat">Dotes</option>
+                  <option value="option">Opciones de clase</option>
+                  <option value="item">Objetos mágicos</option>
                 </select></label
               >
               <label class="field"
@@ -85,9 +86,8 @@
           <p id="compendium-coverage"></p>
           <p>
             «Incluido» indica que una opción está en el selector correspondiente. Los efectos especiales de clases y
-            subclases pueden necesitar recursos, notas o resolución en la mesa. Las criaturas de libros añaden
-            estadísticas básicas y, donde se verificó la extracción, daño base de ataques; no todos sus poderes ni
-            acciones están automatizados.
+            subclases pueden necesitar recursos, notas o resolución en la mesa. Las criaturas incluyen sus bloques de
+            reglas y los ataques compatibles con el combate; los efectos especiales se resuelven en la mesa.
           </p>
           <details>
             <summary>Consultar el estado de cada PDF</summary>
