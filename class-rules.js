@@ -148,6 +148,16 @@
     if (Object.keys(by).length) s.hdSpentByDie = by;
     else delete s.hdSpentByDie;
   }
+  // PG que dan los rasgos por nivel: Dureza enana (por nivel de personaje) y Resistencia dracónica
+  // (por nivel de hechicero). Se suman solos cuando la ficha lo confirma (s.hpAuto).
+  function traitHp(s) {
+    const out = [];
+    const race = root.Campaign?.race(s);
+    if (race?.traits?.includes('Dwarven Toughness')) out.push(['Dureza enana', totalLevel(s)]);
+    const dragon = views(s).find(v => id(v) === 'sorcerer' && v.classSubclass === 'sorcerer-draconic-bloodline');
+    if (dragon) out.push(['Resistencia dracónica', dragon.level]);
+    return { value: out.reduce((a, [, n]) => a + n, 0), sources: out };
+  }
   function stats(s) {
     const c = info(s),
       l = s.level,
@@ -167,7 +177,10 @@
     return {
       prof: p,
       mods: m,
-      maxHP: Math.max(1, s.hpBase + total * (m.con + (root.FeatFX?.hpPerLevel(s) || 0))),
+      maxHP: Math.max(
+        1,
+        s.hpBase + total * (m.con + (root.FeatFX?.hpPerLevel(s) || 0)) + (s.hpAuto ? traitHp(s).value : 0),
+      ),
       ac,
       dc: 8 + p + m[cast.ability] + (mi?.spellDC(s) || 0),
       attack: p + m[cast.ability] + (mi?.spellAttack(s) || 0),
@@ -499,6 +512,12 @@
   }
   function reset(s, type) {
     s.raging = false;
+    // Los espacios creados con Fuente de magia desaparecen con el descanso largo; la Bendición de la forja
+    // dura hasta el siguiente descanso largo (al terminarlo se elige de nuevo).
+    if (type === 'long') {
+      delete s.fontSlots;
+      delete s.forgeBlessing;
+    }
     s.classSpent = s.classSpent || {};
     for (const res of resources(s)) if (type === 'long' || res.reset === 'short') s.classSpent[res.id] = 0;
     if (id(s) === 'warlock' && type === 'short' && !pact(s)) s.slotsSpent = Array(9).fill(0);
@@ -883,6 +902,7 @@
     casting,
     slots,
     stats,
+    traitHp,
     member,
     granted,
     spellGrant,

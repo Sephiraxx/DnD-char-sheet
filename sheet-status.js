@@ -95,8 +95,71 @@ const SheetStatus = (() => {
     }${notes.length ? `<h3>${todo.length ? 'Recordá en la mesa' : 'A cargo tuyo en la mesa'}</h3><ul class="status-list manual">${rows(notes)}</ul>` : todo.length ? '' : '<p class="small">No hay nada pendiente fuera de las elecciones de clase.</p>'}</div></div></section>`;
   }
 
+  // Bendición de la forja: un arma sencilla o marcial, o una armadura, que no sea mágica.
+  function blessable(s) {
+    return (s.inventory || []).filter(x => {
+      const e = EquipmentData.items[x.equipmentId];
+      return x.qty > 0 && !x.magic && e && (e.weapon || (e.armor && e.armor.type !== 'shield'));
+    });
+  }
   function install() {
     Object.assign(actions, {
+      'trait-hp-included': () => {
+        const n = Classes.traitHp(state).value;
+        commit('PG de rasgos: ya incluidos', s => {
+          s.hpAuto = true;
+          s.hpBase -= n;
+        });
+        toast('Listo: tus PG máximos no cambian y el bono sube solo con cada nivel.');
+      },
+      'trait-hp-add': () => {
+        const n = Classes.traitHp(state).value;
+        commit(`PG de rasgos: +${n}`, s => {
+          s.hpAuto = true;
+          if (s.hp !== null) s.hp += n;
+        });
+        toast(`Tus PG máximos suben ${n}.`);
+      },
+      'forge-bless': () => {
+        const list = blessable(state);
+        if (!list.length)
+          throw Error(
+            'Necesitás un arma sencilla o marcial, o una armadura, que no sea mágica, en tu inventario (agregala del catálogo).',
+          );
+        modal(
+          'Bendición de la forja',
+          `<p class="small">Al terminar un descanso largo tocás un arma o una armadura no mágica: hasta tu siguiente descanso largo es +1 (al ataque y al daño, o a la CA mientras la llevás puesta).</p>${select(
+            'Objeto',
+            'row',
+            list.map(x => [x.id, x.name]),
+            state.forgeBlessing || list[0].id,
+          )}`,
+          fd => {
+            const row = list.find(x => x.id === fd.get('row'));
+            if (!row) throw Error('Elegí un objeto.');
+            commit('Bendición de la forja: ' + row.name, s => (s.forgeBlessing = row.id));
+            toast(`${row.name} es +1 hasta tu siguiente descanso largo.`);
+          },
+          'Bendecir',
+        );
+      },
+      'trait-channel': e => {
+        const what = e.dataset.what,
+          dc = Rules.stats(state).dc;
+        const res = Classes.resources(state).find(r => r.id === 'channel');
+        if (!res) throw Error('No tenés Canalizar divinidad.');
+        if (res.max - (Classes.spent(state, res) || 0) <= 0) throw Error('No te quedan usos de Canalizar divinidad.');
+        const name = what === 'turn' ? 'Expulsar muertos vivientes' : 'Bendición del artesano';
+        commit(name + ' (Canalizar divinidad)', s => {
+          if (what === 'turn') Combat.use(s, 'action', name);
+          Classes.spend(s, 'channel', 1);
+        });
+        toast(
+          what === 'turn'
+            ? `Expulsar: cada muerto viviente a 30 pies que te vea u oiga salva SAB contra CD ${dc}.`
+            : 'Bendición del artesano: ritual de 1 hora; creá el objeto metálico y agregalo al inventario.',
+        );
+      },
       'status-race-spells': () => {
         let n = 0;
         commit('Conjuros de raza agregados', s => (n = addRaceSpells(s)));

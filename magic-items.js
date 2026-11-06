@@ -555,6 +555,16 @@
       heal: '8d4+8',
       consumable: true,
     },
+    // Pergamino de conjuro (DMG p. 200): el conjuro se elige al agregarlo.
+    {
+      id: 'spell-scroll',
+      name: 'Pergamino de conjuro',
+      english: 'Spell Scroll',
+      rarity: 'según el nivel',
+      consumable: true,
+      scroll: true,
+      note: 'Si el conjuro está en la lista de tu clase, podés leerlo para lanzarlo sin componentes materiales y sin gastar espacio. Si es de un nivel mayor al que podés lanzar, hacés una prueba con tu característica de lanzamiento (CD 10 + nivel del conjuro). El pergamino se deshace al usarlo.',
+    },
     {
       id: 'potion-of-supreme-healing',
       name: 'Poción de curación suprema',
@@ -579,6 +589,24 @@
     'shield',
   ];
   const byId = id => ITEMS.find(x => x.id === id || x.aliasIds?.includes(id));
+  // Pergamino de conjuro: rareza, CD y bono de ataque según el nivel del conjuro (DMG p. 200).
+  const SCROLL = [
+    ['común', 13, 5],
+    ['común', 13, 5],
+    ['poco común', 13, 5],
+    ['poco común', 15, 7],
+    ['raro', 15, 7],
+    ['raro', 17, 9],
+    ['muy raro', 17, 9],
+    ['muy raro', 18, 10],
+    ['muy raro', 18, 10],
+    ['legendario', 19, 11],
+  ];
+  const scrollSpell = id => root.Catalog?.spells.find(x => x.id === id);
+  function scroll(level) {
+    const [rarity, dc, attack] = SCROLL[Math.max(0, Math.min(9, level))];
+    return { rarity, dc, attack };
+  }
   const rows = s => (s.inventory || []).filter(x => x.magic && x.qty > 0);
   // Activo: en el inventario y, si pide sintonía, sintonizado.
   const active = s => rows(s).filter(x => !x.magic.attune || x.magic.attuned);
@@ -603,6 +631,12 @@
     if (it.consumable) m.consumable = true;
     if (it.note) m.note = it.note;
     if (it.extra) m.extra = it.extra;
+    const sp = it.scroll && scrollSpell(picks.spell);
+    if (sp) {
+      m.spell = sp.id;
+      m.spellLevel = sp.level;
+      m.rarity = scroll(sp.level).rarity;
+    }
     return m;
   }
 
@@ -769,18 +803,21 @@
     return hit?.id || '';
   }
   // La fila que agrega a la ficha. La usan la ficha (Añadir objeto mágico), el botín y lo que entrega el DM.
-  function inventoryRow(id, { base = '', resist = '', qty = 1, uid, notes = '' } = {}) {
+  function inventoryRow(id, { base = '', resist = '', spell = '', qty = 1, uid, notes = '' } = {}) {
     const it = byId(id);
     if (!it) throw Error('Objeto mágico desconocido.');
-    const m = fromCatalog(it.id, { resist: resist || (it.resist === 'choose' ? 'fire' : '') });
+    const m = fromCatalog(it.id, { resist: resist || (it.resist === 'choose' ? 'fire' : ''), spell });
+    if (it.scroll && !m.spell) throw Error('Elegí el conjuro del pergamino.');
     const b = it.base ? root.EquipmentData?.items[base || baseFor(it)] : null;
     const usable = b && BASE_OK[it.base](b) ? b : null;
     const n = it.weapon || it.armor || it.shield;
-    const name = !usable
-      ? it.name
-      : n && /\+\d$/.test(it.name)
-        ? `${usable.name} +${n}`
-        : `${it.name} (${usable.name})`;
+    const name = it.scroll
+      ? `${it.name}: ${scrollSpell(m.spell).name}`
+      : !usable
+        ? it.name
+        : n && /\+\d$/.test(it.name)
+          ? `${usable.name} +${n}`
+          : `${it.name} (${usable.name})`;
     const row = {
       id: uid || 'magic-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       name,
@@ -854,6 +891,10 @@
         `${m.charges.max} cargas${m.charges.regain !== '0' ? ', recupera ' + m.charges.regain + ' al amanecer' : ''}`,
       );
     if (m.heal) out.push('cura ' + m.heal);
+    if (m.spell) {
+      const sc = scroll(m.spellLevel);
+      out.push(`lanza ${scrollSpell(m.spell)?.name || m.spell} · CD ${sc.dc}, ataque +${sc.attack}`);
+    }
     return out;
   }
 
@@ -904,6 +945,7 @@
       }
       for (const k of ['heal', 'note', 'extra']) if (m[k] !== undefined && !txt(m[k], k === 'note' ? 500 : 60)) bad();
       if (m.consumable !== undefined && typeof m.consumable !== 'boolean') bad();
+      if (m.spell !== undefined && (!txt(m.spell, 100) || !int(m.spellLevel, 0, 9))) bad();
     }
     if (attunedCount(s) > 3) throw Error('Solo podés tener 3 objetos sintonizados.');
   }
@@ -916,6 +958,8 @@
     ownText,
     bases,
     baseFor,
+    scroll,
+    scrollSpell,
     inventoryRow,
     rows,
     active,

@@ -481,6 +481,8 @@ const RollUI = (() => {
   // Con multiclase, cada conjuro usa la CD y el ataque de la clase que lo lanza.
   const caster = sp => Classes.spellCaster(state, sp.id);
   const spellStats = sp => R.stats(caster(sp));
+  // Un pergamino lanza con su propia CD y su propio bono de ataque.
+  const withOverride = (st, o) => (o ? { ...st, dc: o.dc, attack: o.attack } : st);
   // Ataques por lanzamiento: Descarga sobrenatural suma rayos por nivel; Rayo abrasador, 3 y uno más por nivel extra.
   function beams(sp, slot) {
     if (sp.srd?.beam || sp.id === 'eldritch-blast') {
@@ -514,21 +516,42 @@ const RollUI = (() => {
         );
     }
   }
-  function spell(sp, slot = sp.level) {
-    const info = spellInfo(sp, slot),
-      st = spellStats(sp),
+  // Metamagia en la tirada: Potenciado (daño) y Rastreador (ataque fallado) se pagan al usarlos.
+  const MM = () => (typeof Metamagic !== 'undefined' ? Metamagic : null);
+  const canMM = (key, cost) => MM()?.knows(state, key) && MM().points(state) >= cost;
+  function mmTypes(info, mm) {
+    if (!mm?.types || !info.types) return info.types;
+    let t = info.types;
+    for (const from of mm.from || []) t = t.replace(new RegExp(from, 'gi'), mm.types);
+    return t;
+  }
+  function spell(sp, slot = sp.level, opts = {}) {
+    const info = { ...spellInfo(sp, slot) },
+      st = withOverride(spellStats(sp), opts.override),
       ability = Classes.casting(caster(sp)).ability,
       mod = st.mods[ability];
-    spellSession = { sp, info, crit: false, hitTarget: null, slot };
+    const mm = opts.mm || {};
+    info.types = mmTypes(info, mm);
+    spellSession = { sp, info, crit: false, hitTarget: null, slot, mm, override: opts.override || null };
+    const mmNotes = [
+      mm.heightened ? 'Conjuro intensificado: un objetivo tiene desventaja en su primera salvación.' : '',
+      mm.careful ? `Conjuro cuidadoso: hasta ${mm.careful} criatura(s) que elijas la superan automáticamente.` : '',
+      mm.twinned ? 'Conjuro duplicado: elegí un segundo objetivo dentro del alcance.' : '',
+      mm.types ? 'Conjuro transmutado: el daño es de ' + mm.types + '.' : '',
+    ].filter(Boolean);
+    const empower =
+      !info.heal && info.dice && canMM('empowered', 1)
+        ? `<label class="check"><input type="checkbox" name="mmEmpowered">Conjuro potenciado · 1 punto: repetí hasta ${Math.max(1, R.stats(state).mods.cha)} dado(s) bajos</label>`
+        : '';
     // Conjuros de toque: ataque cuerpo a cuerpo (cuenta el flanqueo); el resto, a distancia.
     const mods = boardMods(conditionMods(state, 'attack'), { ranged: !/toque|touch/i.test(sp.range || '') });
     modal(
       sp.name + (slot > sp.level ? ' · nivel ' + slot : ''),
-      `${targetFields(info, sp)}${!info.dice && !info.attack && !info.save ? `<p class="small">${esc(sp.brief || '')}</p><div class="actions">${button('Aplicar efecto', 'spell-apply-effect', '')}</div>` : ''}${info.attack ? `<h3>Ataque de conjuro ${sign(st.attack)}</h3>${d20Fields(mods, '', { kind: 'attack' })}<div class="actions">${button('Tirar ataque', 'spell-roll-attack', '')}</div>` : ''}
+      `${mmNotes.length ? `<p class="banner">${esc(mmNotes.join(' '))}</p>` : ''}${targetFields(info, sp)}${!info.dice && !info.attack && !info.save ? `<p class="small">${esc(sp.brief || '')}</p><div class="actions">${button('Aplicar efecto', 'spell-apply-effect', '')}</div>` : ''}${info.attack ? `<h3>Ataque de conjuro ${sign(st.attack)}</h3>${d20Fields(mods, '', { kind: 'attack' })}<div class="actions">${button('Tirar ataque', 'spell-roll-attack', '')}</div>` : ''}
       ${info.save ? `<p class="banner">Cada objetivo tira una salvación de <b>${esc(info.saveName)}</b> contra tu CD <b>${st.dc}</b>.${halfOnSave(sp) ? ' Si la supera, suele recibir la mitad.' : ''}</p>` : ''}
       ${
         info.dice || info.attack || info.save
-          ? `<h3 class="section-space">${info.heal ? 'Curación' : 'Daño'}${info.types ? ' · ' + esc(info.types) : ''}</h3><div class="form-grid">${field('Dados', 'spellDice', info.dice, 'text', 'maxlength="20" placeholder="2d8"')}<label class="check"><input type="checkbox" name="spellMod" ${info.addMod ? 'checked' : ''}>Sumar modificador de lanzamiento (${sign(mod)})</label></div>${info.notes.length ? `<p class="small">${esc(info.notes.join(' '))}</p>` : ''}<details class="physical-dice"><summary>Uso mis propios dados</summary>${field('Suma de mis dados', 'myDamage', '', 'number', 'min="0" max="999" inputmode="numeric"')}</details><div class="actions">${button(info.heal ? 'Tirar curación' : 'Tirar daño', 'spell-roll-damage', info.attack ? 'secondary' : '')}</div>`
+          ? `<h3 class="section-space">${info.heal ? 'Curación' : 'Daño'}${info.types ? ' · ' + esc(info.types) : ''}</h3><div class="form-grid">${field('Dados', 'spellDice', info.dice, 'text', 'maxlength="20" placeholder="2d8"')}<label class="check"><input type="checkbox" name="spellMod" ${info.addMod ? 'checked' : ''}>Sumar modificador de lanzamiento (${sign(mod)})</label></div>${empower}${info.notes.length ? `<p class="small">${esc(info.notes.join(' '))}</p>` : ''}<details class="physical-dice"><summary>Uso mis propios dados</summary>${field('Suma de mis dados', 'myDamage', '', 'number', 'min="0" max="999" inputmode="numeric"')}</details><div class="actions">${button(info.heal ? 'Tirar curación' : 'Tirar daño', 'spell-roll-damage', info.attack ? 'secondary' : '')}</div>`
           : ''
       }
       <div class="attack-log" id="attack-log" aria-live="polite"><p class="small muted">Revisá los dados: salen del texto del conjuro y podés corregirlos.</p></div>`,
@@ -544,12 +567,14 @@ const RollUI = (() => {
   }
   function spellAttack() {
     const { sp } = spellSession,
-      st = spellStats(sp),
+      st = withOverride(spellStats(sp), spellSession.override),
       fd = new FormData(document.getElementById('dialog-form')),
       r = readD20(fd),
       extra = readBonus(fd),
       total = r.kept + st.attack + extra.total;
-    commit('Tirada de ataque: ' + sp.name, s => Combat.takeRoll(s, ...spellKeys().atk));
+    // Conjuro rastreador: la repetición no gasta otra tirada del turno.
+    if (spellSession.seek) spellSession.seek = false;
+    else commit('Tirada de ataque: ' + sp.name, s => Combat.takeRoll(s, ...spellKeys().atk));
     lockSpell();
     spellSession.crit = r.kept === 20;
     const own = document.querySelector('#dialog-form [name=myD20]');
@@ -578,6 +603,9 @@ const RollUI = (() => {
         line += out.hit ? ` → <b>impacta a ${esc(out.name)}</b>` : ` → <b>falla contra ${esc(out.name)}</b>`;
         spellSession.hitTarget = out.hit ? target : null;
       }
+      // Si falló (o no sabemos), Conjuro rastreador ofrece repetir el d20.
+      if (!crit && !(out && out.hit) && canMM('seeking', 2) && !spellSession.sought)
+        line += ` ${button('Conjuro rastreador · 2 puntos: repetir el d20', 'spell-seek', 'secondary')}`;
       logLine(line, crit ? 'crit' : miss || (out && !out.hit) ? 'fumble' : '');
     });
     commit(`${sp.name}: ataque ${diceText(r)} ${sign(st.attack)}${extra.text} = ${total}`, s => {
@@ -598,7 +626,7 @@ const RollUI = (() => {
     const { sp, info } = spellSession,
       fd = new FormData(document.getElementById('dialog-form'));
     checkTargets(fd);
-    const st = spellStats(sp),
+    const st = withOverride(spellStats(sp), spellSession.override),
       mod = fd.has('spellMod') ? st.mods[Classes.casting(caster(sp)).ability] : 0;
     const own = fd.get('myDamage'),
       expr = String(fd.get('spellDice') || '').replace(/\s+/g, ''),
@@ -609,6 +637,7 @@ const RollUI = (() => {
     const flat = Number(/\+(\d+)$/.exec(m || '')?.[1] || 0);
     let rolls = [],
       sum;
+    const empowered = [];
     if (own !== null && own !== '') {
       sum = Number(own);
       if (!Number.isInteger(sum) || sum < 0 || sum > 999) throw Error('Revisá la suma de tus dados.');
@@ -617,14 +646,34 @@ const RollUI = (() => {
       if (!m) throw Error('Escribí los dados como «2d8», «3d4+3» o «2d8+4d6».');
       const k = spellSession.crit ? 2 : 1;
       if (groups.reduce((a, [n]) => a + n * k, 0) > 60) throw Error('Demasiados dados.');
-      rolls = groups.flatMap(([n, sides]) => roll(sides, n * k));
+      rolls = groups.flatMap(([n, sides]) => roll(sides, n * k).map(v => ({ v, sides })));
+      // Conjuro potenciado: se repiten los dados más bajos (los que salieron por debajo del promedio).
+      if (fd.has('mmEmpowered')) {
+        commit('Conjuro potenciado: ' + sp.name, s => Metamagic.pay(s, 1, 'Conjuro potenciado'));
+        document.querySelector('#dialog-form [name=mmEmpowered]')?.closest('label').remove();
+        const n = Math.max(1, R.stats(state).mods.cha);
+        const low = rolls
+          .map((x, i) => ({ ...x, i }))
+          .filter(x => x.v < (x.sides + 1) / 2)
+          .sort((a, b) => a.v / a.sides - b.v / b.sides)
+          .slice(0, n);
+        for (const x of low) {
+          const again = roll(x.sides, 1)[0];
+          empowered.push(`${x.v}→${again}`);
+          rolls[x.i] = { v: again, sides: x.sides };
+        }
+      }
+      rolls = rolls.map(x => x.v);
       sum = rolls.reduce((a, b) => a + b, 0);
     }
     commit('Tirada de ' + (info.heal ? 'curación' : 'daño') + ': ' + sp.name, s =>
       Combat.takeRoll(s, ...spellKeys().dmg),
     );
     lockSpell();
-    const dice = (rolls.length ? rolls.join('+') : 'dados físicos ' + sum) + (flat ? ' + ' + flat : '');
+    const dice =
+      (rolls.length ? rolls.join('+') : 'dados físicos ' + sum) +
+      (flat ? ' + ' + flat : '') +
+      (empowered.length ? ' (potenciado: ' + empowered.join(', ') + ')' : '');
     sum += flat;
     const total = Math.max(0, sum + mod),
       what = info.heal ? 'Curación' : 'Daño';
@@ -655,7 +704,7 @@ const RollUI = (() => {
   // Aplica el resultado del conjuro: curación a aliados, daño a la criatura impactada o salvaciones al DM.
   async function applySpellResult(fd, total) {
     const { sp, info } = spellSession,
-      st = spellStats(sp),
+      st = withOverride(spellStats(sp), spellSession.override),
       who = chosen(fd),
       t = TableUI.targets();
     if (info.heal && who.length) {
@@ -701,7 +750,10 @@ const RollUI = (() => {
       const l = TableUI.link();
       const request = {
         caster: state.name,
-        spell: sp.name,
+        spell:
+          sp.name +
+          (spellSession.mm?.heightened ? ' (intensificado: un objetivo con desventaja)' : '') +
+          (spellSession.mm?.careful ? ` (cuidadoso: ${spellSession.mm.careful} la superan)` : ''),
         ability: info.save,
         abilityName: info.saveName,
         dc: st.dc,
@@ -843,6 +895,14 @@ const RollUI = (() => {
         }),
       'spell-roll': e => spell(spellById(e.dataset.id)),
       'spell-roll-attack': spellAttack,
+      'spell-seek': () => {
+        if (!spellSession || spellSession.sought) return;
+        commit('Conjuro rastreador: ' + spellSession.sp.name, s => Metamagic.pay(s, 2, 'Conjuro rastreador'));
+        spellSession.sought = true;
+        spellSession.seek = true;
+        document.querySelectorAll('#attack-log [data-action=spell-seek]').forEach(b => b.remove());
+        spellAttack();
+      },
       'spell-roll-damage': spellDamage,
       'spell-apply-effect': () => applyEffect().catch(err => toast(err.message)),
     });

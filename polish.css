@@ -1958,3 +1958,30 @@ button.cc-stat {
     margin: 0;
   }
 }
+
+/* Metamagia al lanzar y en los recursos. */
+.metamagic-pick {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px 14px 10px;
+  margin-top: 14px;
+}
+.metamagic-pick legend {
+  padding: 0 6px;
+  color: var(--gold);
+}
+.metamagic-pick .check {
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+.metamagic-pick .check small {
+  flex-basis: 100%;
+  padding-left: 28px;
+  opacity: 0.75;
+}
+.metamagic-pick .check.muted {
+  opacity: 0.55;
+}
+.metamagic-panel ul {
+  padding-left: 18px;
+}

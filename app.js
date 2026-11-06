@@ -244,8 +244,9 @@ function spellNumbersHtml(sp, slot) {
   return lines.length ? `<p class="spell-numbers">${lines.map(esc).join('<br>')}</p>` : '';
 }
 function spellCard(s) {
-  const extra = state.extras.includes(s.id);
-  return `<details class="spell" id="spell-${esc(s.id)}"><summary><div class="spell-title"><div><h2>${esc(s.name)}</h2><div class="spell-meta">${s.level ? 'Nivel ' + s.level : 'Truco'} · ${esc(s.time)} · ${esc(s.range)}</div></div>${extra ? '<span class="tag">Extra DM</span>' : s.concentration ? '<span class="tag">Conc.</span>' : ''}</div><p class="spell-brief">${esc(s.brief)}</p>${s.level === 0 && R.spellNumbersFor(state, s).length ? `<p class="spell-numbers-inline">${esc(R.spellNumbersFor(state, s)[0])}</p>` : ''}</summary><div class="spell-body"><p>${esc(s.text)}</p><p class="small">${libraryLink(s.name)}</p>${typeof OfficialContent !== 'undefined' ? OfficialContent.spellHtml(s.id) : ''}${spellNumbersHtml(s)}${button('Explicación y requisitos', 'spell-help', 'secondary', `data-id="${esc(s.id)}"`)}<p class="small">Componentes: ${esc(s.components)}<br>Duración: ${esc(s.duration)}${s.concentration ? ' · Concentración' : ''}<br>Fuente: ${esc(s.source)}</p><div class="spell-footer">${button(s.level ? 'Lanzar' : 'Usar truco', 'cast', '', `data-id="${esc(s.id)}"`)}${Classes.ritualAllowed(state, s) ? button('Ritual · sin espacio', 'ritual', 'secondary', `data-id="${esc(s.id)}"`) : ''}${button('Editar', 'spell-edit', 'secondary', `data-id="${esc(s.id)}"`)}</div></div></details>`;
+  const race = typeof Campaign !== 'undefined' && Campaign.raceSpells(state).spells.some(x => x.id === s.id),
+    extra = state.extras.includes(s.id) && !race;
+  return `<details class="spell" id="spell-${esc(s.id)}"><summary><div class="spell-title"><div><h2>${esc(s.name)}</h2><div class="spell-meta">${s.level ? 'Nivel ' + s.level : 'Truco'} · ${esc(s.time)} · ${esc(s.range)}</div></div>${race ? '<span class="tag">Raza</span>' : extra ? '<span class="tag">Extra DM</span>' : s.concentration ? '<span class="tag">Conc.</span>' : ''}</div><p class="spell-brief">${esc(s.brief)}</p>${s.level === 0 && R.spellNumbersFor(state, s).length ? `<p class="spell-numbers-inline">${esc(R.spellNumbersFor(state, s)[0])}</p>` : ''}</summary><div class="spell-body"><p>${esc(s.text)}</p><p class="small">${libraryLink(s.name)}</p>${typeof OfficialContent !== 'undefined' ? OfficialContent.spellHtml(s.id) : ''}${spellNumbersHtml(s)}${button('Explicación y requisitos', 'spell-help', 'secondary', `data-id="${esc(s.id)}"`)}<p class="small">Componentes: ${esc(s.components)}<br>Duración: ${esc(s.duration)}${s.concentration ? ' · Concentración' : ''}<br>Fuente: ${esc(s.source)}</p><div class="spell-footer">${button(s.level ? 'Lanzar' : 'Usar truco', 'cast', '', `data-id="${esc(s.id)}"`)}${Classes.ritualAllowed(state, s) ? button('Ritual · sin espacio', 'ritual', 'secondary', `data-id="${esc(s.id)}"`) : ''}${button('Editar', 'spell-edit', 'secondary', `data-id="${esc(s.id)}"`)}</div></div></details>`;
 }
 function gear() {
   const total = state.gold.cp + state.gold.sp * 10 + state.gold.ep * 50 + state.gold.gp * 100 + state.gold.pp * 1000;
@@ -298,6 +299,18 @@ function render() {
     } else $('#path-join')?.remove();
     return;
   }
+  // Los conjuros fijos de tu raza entran solos a la ficha (antes había que tocar «Agregar»).
+  if (typeof SheetStatus !== 'undefined' && !render.raceBusy && SheetStatus.missingRaceSpells(state).length) {
+    render.raceBusy = true;
+    try {
+      commit('Conjuros de tu raza agregados', s => SheetStatus.addRaceSpells(s));
+      return;
+    } catch {
+      /* si no valida, se sigue mostrando el aviso en «Tu ficha al día» */
+    } finally {
+      render.raceBusy = false;
+    }
+  }
   PartyUI.decorate();
   if ($('#save-status').textContent === 'Sin personaje abierto')
     $('#save-status').textContent = 'Guardado en este dispositivo';
@@ -349,7 +362,7 @@ function editResources() {
       const max = number(fd, 'máximo', 1, 2000),
         hp = number(fd, 'PG', 0, max);
       commit('Ajuste de recursos actuales', s => {
-        s.hpBase = max - R.totalLevel(s) * d.mods.con;
+        s.hpBase += max - R.stats(s).maxHP;
         s.hp = hp;
         s.hpConfirmed = true;
         s.temp = number(fd, 'temporales', 0, 9999);
@@ -373,8 +386,16 @@ function editPool(type, index) {
 function cast(id, ritual = false) {
   const sp = spellById(id);
   if (ritual && !sp?.ritual) throw Error('No es ritual.');
+  const MM = typeof Metamagic !== 'undefined' ? Metamagic : null;
   const reason = Combat.spellBlock(state, sp, ritual);
-  if (reason) throw Error(reason);
+  // Con la acción ya usada, un conjuro de 1 acción todavía entra con Conjuro acelerado.
+  const onlyQuick =
+    reason &&
+    !ritual &&
+    MM?.knows(state, 'quickened') &&
+    sp.time === 'Acción' &&
+    !Combat.spellBlock(state, { ...sp, time: 'Adicional' }, ritual);
+  if (reason && !onlyQuick) throw Error(reason);
   const special = Combat.specialCast(state, sp);
   const d = R.stats(state),
     caster = Classes.spellCaster(state, sp.id),
@@ -409,6 +430,9 @@ function cast(id, ritual = false) {
     html +=
       field('Quién recibe la ventaja (opcional)', 'ventaja', '', 'text', 'maxlength="100"') +
       '<p class="small">Otra criatura que veas a 60 pies, incluido vos. El enemigo repite el d20 exitoso y usa el menor: podría seguir teniendo éxito.</p>';
+  if (!ritual && MM) html += MM.castFields(state, sp);
+  if (onlyQuick)
+    html += `<div class="banner"><p>${esc(reason)} Solo podés lanzarlo con <b>Conjuro acelerado</b>.</p></div>`;
   if (!c.active)
     html +=
       '<p class="small">Fuera del seguimiento: se registran espacios, reacción y concentración. Activá «Mi turno» en Combate para controlar acción y adicional.</p>';
@@ -423,13 +447,24 @@ function cast(id, ritual = false) {
             : number(fd, 'espacio', sp.level, 9)
           : 0;
       const castLevel = slot === 'pact' ? d.pact.level : slot || sp.level;
+      // Metamagia: el conjuro de esta vez (acelerado, distante, extendido…) y su coste en puntos.
+      const pick = MM && !ritual ? MM.fromForm(fd) : { picks: [] };
+      const mm =
+        MM && !ritual ? MM.plan(state, sp, pick.picks, { slot: castLevel, damageType: pick.damageType }) : null;
+      if (onlyQuick && !mm?.keys.includes('quickened')) throw Error(reason);
+      if (mm?.cost > MM.points(state))
+        throw Error(`La metamagia elegida cuesta ${mm.cost} punto(s) y te quedan ${MM.points(state)}.`);
+      const now = mm?.sp || sp;
       commit(
         (ritual ? 'Ritual: ' : 'Lanzado: ') +
           sp.name +
-          (slot ? ' · ' + (slot === 'pact' ? 'pacto nivel ' + castLevel : 'espacio ' + slot) : ''),
+          (slot ? ' · ' + (slot === 'pact' ? 'pacto nivel ' + castLevel : 'espacio ' + slot) : '') +
+          (mm?.label || '') +
+          (mm?.cost ? ` (${mm.cost} pt)` : ''),
         s => {
-          Combat.cast(s, sp, slot, ritual);
-          if (!ritual) Effects.fromSpell(s, sp);
+          Combat.cast(s, now, slot, ritual);
+          if (mm?.cost) MM.pay(s, mm.cost);
+          if (!ritual) Effects.fromSpell(s, now);
           const target = String(fd.get('ventaja') || '').trim();
           if (sp.id === 'silvery' && target) {
             const effects = Combat.data(s).effects;
@@ -440,12 +475,14 @@ function cast(id, ritual = false) {
         },
       );
       // Si el conjuro tiene ataque, salvación o dados, se abre su tirada.
-      if (!ritual && RollUI.rollable(sp)) setTimeout(() => RollUI.spell(sp, castLevel));
+      if (!ritual && RollUI.rollable(sp)) setTimeout(() => RollUI.spell(now, castLevel, { mm: mm?.roll }));
       else
         toast(
           ritual
             ? 'Ritual iniciado. Controlá su tiempo en mesa.'
-            : 'Lanzamiento registrado. Resolvé el efecto y las tiradas en mesa.',
+            : 'Lanzamiento registrado' +
+                (mm?.notes.length ? ' con ' + mm.notes.join(', ') : '') +
+                '. Resolvé el efecto y las tiradas en mesa.',
         );
     },
     ritual ? 'Iniciar ritual' : 'Registrar lanzamiento',
@@ -1035,6 +1072,7 @@ MulticlassUI.install();
 RollUI.install();
 SheetStatus.install();
 MagicUI.install();
+if (typeof Metamagic !== 'undefined') Metamagic.install(actions);
 CompanionsUI.install();
 PrintSheet.install();
 document.addEventListener('click', e => {

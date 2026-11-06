@@ -116,6 +116,8 @@
       cfg.magic = 0;
       cfg.extra = '';
     }
+    // Bendición de la forja: el arma no mágica bendecida es +1 hasta el siguiente descanso largo.
+    if (s.forgeBlessing && s.forgeBlessing === item.id && !item.magic && !cfg.magic) cfg.magic = 1;
     const mods = st.mods,
       ma = martialArtsDie(s);
     let ability = cfg.ability;

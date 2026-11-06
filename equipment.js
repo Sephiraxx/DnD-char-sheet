@@ -301,6 +301,9 @@ const Equipment = (() => {
         .includes('defense-PHB')
     )
       bonuses.push({ label: 'Estilo Defensa', value: 1 });
+    // Bendición de la forja (clérigo de la Forja): la armadura bendecida da +1 mientras la llevás puesta.
+    if (worn && s.forgeBlessing && s.forgeBlessing === cfg.armorId && !armorRow?.magic)
+      bonuses.push({ label: 'Bendición de la forja', value: 1 });
     if (cfg.bonus) bonuses.push({ label: 'Otros bonos confirmados', value: Number(cfg.bonus) });
     if ((worn && !proficient(s, worn.type)) || (shield && !proficient(s, 'shield')))
       warnings.push(
