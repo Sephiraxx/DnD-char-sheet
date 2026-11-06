@@ -143,14 +143,14 @@ html {
   }
 }
 
-/* ---------- Navegación móvil: entran las 7 secciones ---------- */
+/* ---------- Navegación móvil: entran las 8 secciones ---------- */
 @media (max-width: 720px) {
   .sidebar {
     height: calc(64px + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
   }
   .sidebar nav {
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-columns: repeat(8, minmax(0, 1fr));
   }
   .nav-link {
     font-size: 0.6rem;

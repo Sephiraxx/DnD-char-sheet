@@ -400,7 +400,8 @@ const PartyUI = (() => {
       header(
         esc(state.name),
         `${esc(state.race || 'Linaje por registrar')} · ${MulticlassUI.label(state, true)}`,
-        button('Características y armadura', 'stats') +
+        '<a class="button secondary" href="#traits">Ver rasgos</a>' +
+          button('Características y armadura', 'stats') +
           button('Competencias', 'class-config') +
           button('Imprimir / PDF', 'print-sheet') +
           button('Subir de nivel', 'levelup', '') +

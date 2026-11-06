@@ -799,6 +799,17 @@ const RollUI = (() => {
           ability: e.dataset.ability || '',
         });
       },
+      'stonecunning-roll': () => {
+        const bonus = Campaign.stonecunning(state);
+        if (bonus === null) throw Error('Tu linaje seleccionado no concede Afinidad con la piedra.');
+        d20({
+          title: 'Afinidad con la piedra',
+          label: 'Historia: origen de trabajos en piedra',
+          bonus,
+          kind: 'check',
+          skill: 'history',
+        });
+      },
       'skill-roll': e => {
         const id = e.dataset.id,
           name = R.skills.find(x => x[0] === id)[1];

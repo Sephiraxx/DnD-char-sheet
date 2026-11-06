@@ -743,3 +743,17 @@
   font-size: 0.85rem;
   color: var(--muted, #666);
 }
+.character-traits-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr));
+  gap: 20px;
+  margin-top: 16px;
+}
+.character-traits-grid .feature {
+  min-width: 0;
+  margin: 0;
+}
+.trait-note {
+  border-left: 2px solid var(--gold);
+  padding-left: 10px;
+}

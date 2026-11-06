@@ -42,6 +42,7 @@ const navs = [
   ['spells', '✦', 'Conjuros'],
   ['gear', '▣', 'Equipo'],
   ['character', '◇', 'Personaje'],
+  ['traits', '❖', 'Rasgos'],
   ['class', '✧', 'Clase'],
   ['journal', '≡', 'Diario'],
   ['table', '⚑', 'Mesa'],
@@ -318,6 +319,10 @@ function render() {
         spells: spellPage,
         gear,
         character,
+        traits: () =>
+          header('Tus rasgos.', Classes.label(state, true)) +
+          Campaign.traitsCard(state) +
+          `<section class="card section-space"><h2>Recursos de tus rasgos</h2>${PartyUI.resourceCards() || '<p>No tenés recursos de clase con usos limitados a este nivel.</p>'}</section>`,
         journal,
         class: () => PartyUI.classPage() + MulticlassUI.section(),
         table: TableUI.page,
