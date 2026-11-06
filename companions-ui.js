@@ -5,7 +5,16 @@ const CompanionsUI = (() => {
   let loading = null;
   // El bestiario pesa: se carga solo al elegir una criatura.
   function loadMonsters() {
-    if (window.MonsterData) return Promise.resolve();
+    const attach = () => {
+      if (window.BookContentData) {
+        const ids = new Set(window.MonsterData.map(m => m.id));
+        window.MonsterData.push(...window.BookContentData.monsters.filter(m => !ids.has(m.id)));
+      }
+    };
+    if (window.MonsterData) {
+      attach();
+      return Promise.resolve();
+    }
     return (loading ||= new Promise((ok, fail) => {
       const s = document.createElement('script');
       s.src = './monsters-data.js';
@@ -15,7 +24,7 @@ const CompanionsUI = (() => {
         fail(Error('No se pudo cargar el bestiario. Revisá tu conexión.'));
       };
       document.head.append(s);
-    }));
+    })).then(attach);
   }
   const crText = cr => (cr === 0.125 ? '1/8' : cr === 0.25 ? '1/4' : cr === 0.5 ? '1/2' : String(cr));
 
@@ -75,7 +84,8 @@ const CompanionsUI = (() => {
     await loadMonsters();
     const wild = mode === 'wild',
       lim = wild ? K.limits(state) : null;
-    const list = MonsterData.filter(m => (wild ? !K.canBecome(state, m) : true)).sort(
+    const rows = MonsterData.filter(m => (wild ? !K.canBecome(state, m) : true));
+    const list = (typeof ContentIndex === 'undefined' ? rows : ContentIndex.list('creature', rows)).sort(
       (a, b) => a.cr - b.cr || a.name.localeCompare(b.name),
     );
     modal(

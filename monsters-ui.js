@@ -260,13 +260,16 @@ const MonsterUI = (() => {
   function filtered() {
     const q = query.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-    return MonsterData.filter(
+    const rows = MonsterData.filter(
       m =>
         (!q || norm(m.name + ' ' + (m.english || '') + ' ' + m.type).includes(q)) &&
         (!pick.type || baseType(m) === pick.type) &&
         (!pick.book || (pick.book === 'srd' ? !m.book : m.book === pick.book)) &&
         crIn(m, pick.cr) &&
         [...pick.tags].every(k => has[k](m)),
+    );
+    return (
+      typeof ContentIndex === 'undefined' ? rows : ContentIndex.list('creature', rows, [...pick.tray.keys()])
     ).sort((a, b) => a.cr - b.cr || a.name.localeCompare(b.name, 'es'));
   }
   function card(m) {

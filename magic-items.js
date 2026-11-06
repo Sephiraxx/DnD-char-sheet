@@ -692,6 +692,7 @@
     for (const x of s.inventory || []) {
       const m = x.magic;
       if (m === undefined) continue;
+      if (m && typeof m === 'object' && root.ContentIndex) m.id = root.ContentIndex.inventoryId(m.id, x.name);
       if (!m || typeof m !== 'object' || Array.isArray(m)) bad();
       if (m.id !== undefined && !txt(m.id, 100)) bad();
       if (!txt(m.rarity || '', 40)) bad();

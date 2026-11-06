@@ -287,7 +287,9 @@ const LevelUp = (() => {
               .join(', '),
           )}</span></button>`,
       )
-      .join('')}</div>`;
+      .join(
+        '',
+      )}</div>${typeof OfficialContent === 'undefined' ? '' : OfficialContent.entryHtml('subclass', d.subclass)}`;
   }
 
   // 4. Mejora o dote
