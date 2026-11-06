@@ -82,9 +82,7 @@ const sign = n => (n >= 0 ? '+' : '') + n;
 
 // ---------- Ajustes de la mesa ----------
 function settingsFields(st = Cloud.cleanSettings({})) {
-  return `<fieldset class="campaign-sources"><legend>Libros habilitados para crear y subir personajes</legend><div class="source-grid">${Object.entries(
-    CampaignData.sources,
-  )
+  return `<fieldset class="campaign-sources"><legend>Libros habilitados para crear y subir personajes</legend><div class="source-grid">${Campaign.availableSources()
     .map(
       ([id, n]) =>
         `<label class="check"><input type="checkbox" name="source" value="${id}" ${st.sources.includes(id) ? 'checked' : ''} ${id === 'PHB' ? 'disabled' : ''}>${esc(n)}</label>`,

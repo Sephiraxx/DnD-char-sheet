@@ -54,6 +54,7 @@
   const params = new URLSearchParams(location.search);
   $('compendium-q').value = (params.get('q') || '').slice(0, 200);
   $('compendium-source').innerHTML += Object.entries(sources)
+    .filter(([key]) => OfficialContent.selectableSource(key))
     .map(([key, label]) => `<option value="${esc(key)}">${esc(label)}</option>`)
     .join('');
   const requestedSource = bookSources.get(params.get('book')) || params.get('book');
@@ -70,9 +71,10 @@
     })
     .join('');
   let shown = [];
+  const crText = cr => (cr === 0.125 ? '1/8' : cr === 0.25 ? '1/4' : cr === 0.5 ? '1/2' : String(cr));
   const summary = x =>
     x.kind === 'creature'
-      ? `VD ${x.cr} · CA ${x.ac} · ${x.hp} PG`
+      ? `${x.unrated ? 'Sin VD' : 'VD ' + crText(x.cr)} · CA ${x.acNote ? 'variable' : x.ac} · ${x.hpNote ? 'PG variables' : x.hp + ' PG'}`
       : x.kind === 'spell'
         ? `${x.level ? 'Nivel ' + x.level : 'Truco'} · ${x.time} · ${x.range}`
         : x.kind === 'subclass'
@@ -91,9 +93,15 @@
         (!kind || x.kind === kind) &&
         (!source || rowSources(x).includes(source)) &&
         (!query ||
-          canon(x.name + ' ' + (x.english || '') + ' ' + (x.features || []).map(f => f.name).join(' ')).includes(
-            query,
-          )),
+          canon(
+            x.name +
+              ' ' +
+              (x.english || '') +
+              ' ' +
+              (x.searchNames || []).join(' ') +
+              ' ' +
+              (x.features || []).map(f => f.name).join(' '),
+          ).includes(query)),
     );
     shown = filtered.sort((a, b) => a.name.localeCompare(b.name, 'es')).slice(0, 80);
     $('compendium-status').textContent =
@@ -125,14 +133,16 @@
       .join('');
     const creature =
       x.kind === 'creature'
-        ? `<p><b>CA ${x.ac} · PG ${x.hp} (${esc(x.hd)}) · VD ${x.cr}</b></p><p>${esc(x.size)} · ${esc(x.type)} · ${esc(x.align)}</p><p>${esc(x.speed)}</p><p>FUE ${x.ab[0]} · DES ${x.ab[1]} · CON ${x.ab[2]} · INT ${x.ab[3]} · SAB ${x.ab[4]} · CAR ${x.ab[5]}</p>${[
+        ? `<p><b>CA ${esc(x.acNote || x.ac)} · PG ${esc(x.hpNote || x.hp + ' (' + x.hd + ')')} · ${x.unrated ? 'Sin VD' : 'VD ' + crText(x.cr)}</b></p>${x.variantNote ? '<p>' + esc(x.variantNote) + '</p>' : ''}<p>${esc(x.size)} · ${esc(x.type)} · ${esc(x.align)}</p><p>${esc(x.speed)}</p><p>FUE ${x.ab[0]} · DES ${x.ab[1]} · CON ${x.ab[2]} · INT ${x.ab[3]} · SAB ${x.ab[4]} · CAR ${x.ab[5]}</p>${[
             ['Salvaciones', x.saves],
+            ['Armadura', x.acDetails],
             ['Habilidades', x.skills],
             ['Resistencias', x.res],
             ['Inmunidades', x.imm],
             ['Inmunidades a estados', x.cimm],
             ['Sentidos', x.senses],
             ['Idiomas', x.lang],
+            ['Acciones legendarias', x.legendaryNote],
           ]
             .filter(([, v]) => v)
             .map(([k, v]) => `<p><b>${k}:</b> ${esc(v)}</p>`)
@@ -140,8 +150,10 @@
               '',
             )}${(x.traits || []).map(([n, d]) => `<div class="feature"><h3>${esc(n)}</h3><p>${esc(d)}</p></div>`).join('')}${[
             ['Acciones', x.actions],
+            ['Acciones adicionales', x.bonus],
             ['Reacciones', x.reactions],
             ['Acciones legendarias', x.legendary],
+            ['Acciones míticas', x.mythic],
           ]
             .filter(([, v]) => v?.length)
             .map(

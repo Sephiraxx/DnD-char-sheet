@@ -3,6 +3,10 @@ const Campaign = (() => {
   'use strict';
   const D = CampaignData;
   const selected = s => s?.campaignSources || D.defaults;
+  const availableSources = () =>
+    Object.entries(D.sources).filter(
+      ([id]) => typeof OfficialContent === 'undefined' || OfficialContent.selectableSource(id),
+    );
   const enabled = (s, x) =>
     (!x.sourceKey && !x.sources && !Catalog.sources.some(([id]) => id === x.source)) ||
     x.sourceKey === 'DM' ||
@@ -19,9 +23,7 @@ const Campaign = (() => {
       .map(x => [x.id, x.name + ' · ' + x.sources.join(' / ') + (enabled(s, x) ? '' : ' · selección previa')]);
   }
   function sourceFields(s) {
-    return `<fieldset class="campaign-sources"><legend>Libros habilitados para esta ficha</legend><p class="small">El DM elige qué libros permite; desmarcar una fuente conserva las elecciones anteriores. Tal'Dorei se habilita por separado.</p><div class="source-grid">${Object.entries(
-      D.sources,
-    )
+    return `<fieldset class="campaign-sources"><legend>Libros habilitados para esta ficha</legend><p class="small">El DM elige qué libros permite; desmarcar una fuente conserva las elecciones anteriores. Tal'Dorei se habilita por separado.</p><div class="source-grid">${availableSources()
       .map(
         ([id, n]) =>
           `<label class="check"><input type="checkbox" name="campaignSource" value="${id}" ${selected(s).includes(id) ? 'checked' : ''}>${esc(n)}</label>`,
@@ -428,6 +430,7 @@ const Campaign = (() => {
   }
   return {
     selected,
+    availableSources,
     enabled,
     race,
     raceSpells,

@@ -1,0 +1,1030 @@
+{
+  "monsters": {
+    "book-68087507bf448aff-ala-de-dragon": {
+      "reference": "HotDQ:Dragonwing"
+    },
+    "book-e9682e11f112ff2f-mary-greymalkin": {
+      "reference": "LLK:Mary Greymalkin",
+      "overrides": {
+        "ac": 14
+      },
+      "evidence": "PDF p. 44 prints AC 14 including both magic items."
+    },
+    "book-1afbf0a7c61664c7-calavera-voladora": {
+      "reference": "SLW:Skull Flier"
+    },
+    "book-1afbf0a7c61664c7-estatua-de-talos": {
+      "reference": "SLW:Statue of Talos"
+    },
+    "book-415b8e2bcdff9cbc-hadrosaurio": {
+      "reference": "VGM:Hadrosaurus"
+    },
+    "book-19ae44ca570d040b-dragon-feerico": {
+      "reference": "MM:Faerie Dragon (Yellow)",
+      "coreOnly": true,
+      "english": "Faerie Dragon",
+      "variantNote": "El desafío y los conjuros cambian con el color y la edad: VD 1 para rojo, naranja o amarillo; VD 2 para verde, azul, índigo o violeta."
+    },
+    "book-19ae44ca570d040b-naga-osea": {
+      "reference": "MM:Bone Naga (Guardian)",
+      "coreOnly": true,
+      "english": "Bone Naga",
+      "variantNote": "Elegí la variante guardiana o espiritual y su lista de conjuros; ambas comparten las estadísticas básicas."
+    },
+    "book-19ae44ca570d040b-sucuboancubo": {
+      "reference": "MM:Succubus",
+      "name": "Súcubo / íncubo",
+      "english": "Succubus / Incubus"
+    },
+    "book-19ae44ca570d040b-corrupto-yuan-ti": {
+      "reference": "MM:Yuan-ti Malison (Type 1)",
+      "coreOnly": true,
+      "english": "Yuan-ti Malison",
+      "variantNote": "Elegí uno de los tres tipos del libro; cambian su forma, armas y ataques."
+    },
+    "book-94dc34045c87d2d0-draco-guardian": {
+      "reference": "HotDQ:Guard Drake",
+      "coreOnly": true,
+      "english": "Guard Drake",
+      "variantNote": "Las variantes de color cambian sus resistencias y modos de movimiento."
+    },
+    "book-94dc34045c87d2d0-vaca": {
+      "reference": "VGM:Ox",
+      "coreOnly": true,
+      "english": "Cow"
+    },
+    "book-17182bc795d5ced5-vaca": {
+      "reference": "VGM:Ox",
+      "coreOnly": true,
+      "english": "Cow"
+    },
+    "book-e21538c8ec892876-bruma-vampirica": {
+      "reference": "MTF:Vampiric Mist",
+      "overrides": {
+        "hp": 45,
+        "hd": "6d8+18"
+      },
+      "evidence": "PDF p. 232 uses the earlier 45 HP stat block; do not replace it with the later 30 HP version."
+    },
+    "book-e21538c8ec892876-lr-ansmutador": {
+      "reference": "VGM:Transmuter",
+      "name": "Transmutador"
+    },
+    "book-e9682e11f112ff2f-martial-arts-adept": {
+      "reference": "VGM:Martial Arts Adept"
+    },
+    "book-1afbf0a7c61664c7-experto": {
+      "reference": "SLW:Expert"
+    },
+    "book-1afbf0a7c61664c7-lanzador-de-conjuros-sacerdote": {
+      "reference": "SLW:Spellcaster (Healer)"
+    },
+    "book-1afbf0a7c61664c7-lanzador-de-conjuros-mago": {
+      "reference": "SLW:Spellcaster (Mage)"
+    },
+    "book-1afbf0a7c61664c7-guerrero": {
+      "reference": "SLW:Warrior"
+    },
+    "book-0626352b0c2f5e28-hombre-cuervo": {
+      "reference": "CoS:Urwin Martikov",
+      "coreOnly": true,
+      "english": "Wereraven"
+    },
+    "book-67feb3483ef571d8-arbol-marchito": {
+      "reference": "CoS:Tree Blight",
+      "overrides": {
+        "hp": 138,
+        "hd": "12d12+60"
+      },
+      "evidence": "Witchlight PDF p. 85 has a separate 138 HP reprint.",
+      "coreOnly": true
+    },
+    "book-eb72ac69f14e9565-armadura-3": {
+      "reference": "MM:Animated Armor",
+      "name": "Armadura animada"
+    },
+    "book-eb72ac69f14e9565-sombras": {
+      "needsPDF": true,
+      "reference": "MM:Shadow Demon",
+      "overrides": {},
+      "evidence": "Printed stat block, PDF p. 172.",
+      "name": "Demonio de las sombras"
+    },
+    "book-d4275553fd38d09b-sron": {
+      "reference": "QftIS:Sion",
+      "name": "Sion"
+    },
+    "book-00dd4bae0b3b1e5d-nrcnr-scawrn": {
+      "reference": "BAM:Night Scavver",
+      "name": "Night Scavver"
+    },
+    "book-8c0aabc073ec4950-campeon": {
+      "reference": "VGM:Champion"
+    },
+    "book-8c0aabc073ec4950-ulitharid": {
+      "reference": "VGM:Ulitharid"
+    },
+    "book-014cf07b953a5056-gran-sierpe-cromatica": {
+      "reference": "FTD:Black Greatwyrm",
+      "coreOnly": true,
+      "english": "Chromatic Greatwyrm",
+      "variantNote": "Elegí el color cromático para determinar el tipo de daño y las inmunidades."
+    },
+    "book-014cf07b953a5056-gran-sierpe-gema": {
+      "reference": "FTD:Amethyst Greatwyrm",
+      "coreOnly": true,
+      "english": "Gem Greatwyrm",
+      "variantNote": "Elegí la gema para determinar el tipo de daño y las inmunidades."
+    },
+    "book-014cf07b953a5056-gran-sierpe-metalica": {
+      "reference": "FTD:Brass Greatwyrm",
+      "coreOnly": true,
+      "english": "Metallic Greatwyrm",
+      "variantNote": "Elegí el metal para determinar el tipo de daño y las inmunidades."
+    },
+    "book-19ae44ca570d040b-rey-reina-lagarto": {
+      "reference": "MM:Lizard King",
+      "coreOnly": true,
+      "english": "Lizard King / Queen"
+    },
+    "book-7c68f9475cbd778d-goblin-gang-member": {
+      "needsPDF": true,
+      "reference": "MM:Goblin",
+      "overrides": {
+        "name": "Goblin Gang Member",
+        "ac": 14,
+        "hp": 10,
+        "hd": "3d6",
+        "ab": [8, 16, 10, 10, 10, 8],
+        "skills": "Stealth +5",
+        "senses": "darkvision 60 ft., passive Perception 10"
+      },
+      "evidence": "Printed stat block, PDF p. 168.",
+      "coreOnly": true,
+      "english": "Goblin Gang Member",
+      "name": "Goblin Gang Member"
+    },
+    "book-7c68f9475cbd778d-rakdos-performer": {
+      "reference": "GGR:Rakdos Performer, Fire Eater",
+      "coreOnly": true,
+      "english": "Rakdos Performer",
+      "variantNote": "Elegí la variante tragafuegos o malabarista de cuchillas para sus ataques."
+    },
+    "book-15739a452ebd9a5b-astral-elf-star-priest": {
+      "reference": "BAM:Astral Elf Star Priest"
+    },
+    "book-644d5e63cd8fd7de-aprendiz": {
+      "pdf": true,
+      "evidence": "Van Richten survivor stat block, PDF p. 202; no challenge rating.",
+      "overrides": {
+        "ab": [8, 10, 9, 13, 11, 12],
+        "hp": 7,
+        "ac": 10,
+        "hd": "2d8-2",
+        "unrated": true
+      },
+      "english": "Apprentice"
+    },
+    "book-644d5e63cd8fd7de-discipulo": {
+      "pdf": true,
+      "evidence": "Van Richten survivor stat block, PDF p. 202; no challenge rating.",
+      "overrides": {
+        "ab": [12, 9, 10, 11, 13, 9],
+        "hp": 9,
+        "ac": 11,
+        "hd": "2d8",
+        "unrated": true
+      },
+      "english": "Disciple"
+    },
+    "book-644d5e63cd8fd7de-pillo": {
+      "pdf": true,
+      "evidence": "Van Richten survivor stat block, PDF p. 202; no challenge rating.",
+      "overrides": {
+        "ab": [8, 13, 12, 11, 12, 9],
+        "hp": 9,
+        "ac": 13,
+        "hd": "2d6+2",
+        "unrated": true
+      },
+      "english": "Sneak"
+    },
+    "book-415b8e2bcdff9cbc-espinoso": {
+      "reference": "VGM:Thorny",
+      "overrides": {},
+      "evidence": "Printed stat block, PDF p. 221."
+    },
+    "book-415b8e2bcdff9cbc-palma-triflor": {
+      "reference": "ToA:Tri-flower Frond",
+      "overrides": {
+        "ab": [1, 10, 12, 1, 10, 1]
+      },
+      "evidence": "Printed stat block, PDF p. 229."
+    },
+    "book-415b8e2bcdff9cbc-mole-de-piedra": {
+      "reference": "ToA:Stone Juggernaut",
+      "overrides": {
+        "ab": [22, 1, 21, 2, 11, 3]
+      },
+      "evidence": "Printed stat block, PDF p. 227."
+    },
+    "book-070b4cff1b7b2fae-brain-in-a-jar": {
+      "reference": "LLK:Brain in a Jar",
+      "overrides": {
+        "ac": 11
+      },
+      "evidence": "Printed stat block, PDF p. 63."
+    },
+    "book-00dd4bae0b3b1e5d-cauresn": {
+      "reference": "VEoR:Camlash",
+      "overrides": {
+        "cr": 22,
+        "xp": 41000
+      },
+      "evidence": "PDF p. 182 prints CR 22, 41,000 XP and proficiency +7; the index inherits CR 19 from the balor."
+    },
+    "book-0baa04104f38babe-experto-en-artes": {
+      "reference": "VGM:Martial Arts Adept",
+      "overrides": {},
+      "evidence": "Printed stat block, PDF p. 202.",
+      "name": "Experto en artes marciales"
+    },
+    "book-19ae44ca570d040b-orco-ojo-de-gruumsh": {
+      "reference": "MM:Orc Eye of Gruumsh",
+      "overrides": {
+        "ab": [16, 12, 16, 9, 13, 12]
+      },
+      "evidence": "Printed stat block, PDF p. 257."
+    },
+    "book-17ed9c5777e883b3-garrudo": {
+      "reference": "ERLW:Clawfoot",
+      "overrides": {
+        "ab": [12, 16, 14, 4, 12, 6]
+      },
+      "evidence": "Printed stat block, PDF p. 305."
+    },
+    "book-7c68f9475cbd778d-krenko": {
+      "reference": "MM:Goblin Boss",
+      "overrides": {
+        "ab": [10, 14, 10, 10, 8, 14],
+        "skills": "Deception +4, Persuasion +4, Stealth +6"
+      },
+      "evidence": "Printed stat block, PDF p. 169.",
+      "coreOnly": true,
+      "name": "Krenko",
+      "english": "Krenko"
+    },
+    "book-f4a36a6e25e208fc-sirviente-homunculo": {
+      "reference": "TCE:Homunculus Servant",
+      "overrides": {},
+      "evidence": "Printed stat block, PDF p. 24."
+    },
+    "book-415b8e2bcdff9cbc-brontosaurio": {
+      "reference": "VGM:Brontosaurus"
+    },
+    "book-415b8e2bcdff9cbc-girallon": {
+      "reference": "VGM:Girallon"
+    },
+    "book-415b8e2bcdff9cbc-inventor-kobold": {
+      "reference": "VGM:Kobold Inventor"
+    },
+    "book-c2960b82d1efe861-merregon": {
+      "reference": "MTF:Merregon"
+    },
+    "book-94dc34045c87d2d0-enjambre-de-larvas-podridas": {
+      "reference": "VGM:Swarm of Rot Grubs"
+    },
+    "book-4b9e741c5309eebe-bardo": {
+      "reference": "VGM:Bard"
+    },
+    "book-4b9e741c5309eebe-enjambre-de-larvas-putrefactas": {
+      "reference": "VGM:Swarm of Rot Grubs"
+    },
+    "book-4b9e741c5309eebe-enjambre-esqueletico": {
+      "reference": "GoS:Skeletal Swarm"
+    },
+    "book-1afbf0a7c61664c7-diente-y-garra": {
+      "reference": "SLW:Tooth-N-Claw"
+    },
+    "book-67feb3483ef571d8-caracol-gigante": {
+      "reference": "WBtW:Giant Snail"
+    },
+    "book-070b4cff1b7b2fae-girallon": {
+      "reference": "VGM:Girallon"
+    },
+    "book-070b4cff1b7b2fae-greater-zombie": {
+      "reference": "TftYP:Greater Zombie"
+    },
+    "book-070b4cff1b7b2fae-skeletal-swarm": {
+      "reference": "GoS:Skeletal Swarm"
+    },
+    "book-7c68f9475cbd778d-mind-m-age": {
+      "reference": "GGR:Mind Mage"
+    },
+    "book-00ba2764b562f4da-aprendiz-de-quandrix": {
+      "reference": "SCC:Quandrix Apprentice"
+    },
+    "book-00ba2764b562f4da-aprendiz-de-flosmarcitus": {
+      "reference": "SCC:Witherbloom Apprentice"
+    },
+    "book-5abc59bf448b79b2-enjambre-de-larvas-podridas": {
+      "reference": "MPMM:Swarm of Rot Grubs"
+    },
+    "book-5abc59bf448b79b2-mago-conjurador": {
+      "reference": "MPMM:Conjurer Wizard"
+    },
+    "book-5abc59bf448b79b2-mirmidon-elemental-de-aire": {
+      "reference": "MPMM:Air Elemental Myrmidon"
+    },
+    "book-415b8e2bcdff9cbc-estegosaurio": {
+      "reference": "VGM:Stegosaurus"
+    },
+    "book-415b8e2bcdff9cbc-campeon": {
+      "reference": "VGM:Champion"
+    },
+    "book-415b8e2bcdff9cbc-guerrero-de-elite-grung": {
+      "reference": "VGM:Grung Elite Warrior"
+    },
+    "book-415b8e2bcdff9cbc-vegepigmeo": {
+      "reference": "VGM:Vegepygmy"
+    },
+    "book-415b8e2bcdff9cbc-cuentapesadillas-yuan-ti": {
+      "reference": "VGM:Yuan-ti Nightmare Speaker"
+    },
+    "book-070b4cff1b7b2fae-warlock-of-the-great-old-one": {
+      "reference": "VGM:Warlock of the Great Old One"
+    },
+    "book-8c0aabc073ec4950-archidruida": {
+      "reference": "VGM:Archdruid"
+    }
+  },
+  "items": {
+    "official-2a479a659f9e606a:medal-of-muscle-medal-of-the-conch": {
+      "remove": true,
+      "evidence": "Duplicate printable medal card; main entry already exists."
+    },
+    "official-2a479a659f9e606a:medal-of-wit-using-the-ards": {
+      "remove": true,
+      "evidence": "Duplicate printable medal card; main entry already exists."
+    },
+    "official-2a479a659f9e606a:horizonback": {
+      "remove": true,
+      "evidence": "Duplicate printable medal card; main entry already exists."
+    },
+    "official-2a479a659f9e606a:wetlands": {
+      "remove": true,
+      "evidence": "Duplicate printable medal card; main entry already exists."
+    },
+    "official-2a479a659f9e606a:medal-of-the-maze-medal-of-the-meat-pm": {
+      "name": "Medal of the Maze",
+      "evidence": "Printed item header, PDF p. 218.",
+      "reference": "CRCotN:Medal of the Maze"
+    },
+    "official-e21538c8ec892876:controlar-la-mente-monstruo-muy-rara": {
+      "name": "Silbato del águila",
+      "evidence": "Printed item header, PDF p. 230.",
+      "reference": "TftYP:Eagle Whistle"
+    },
+    "official-e21538c8ec892876:v-a-rita-de-enmaranar": {
+      "name": "Varita de enmarañar",
+      "evidence": "Printed item header, PDF p. 230."
+    },
+    "official-e21538c8ec892876:w-ayt-h-e": {
+      "name": "Waythe",
+      "evidence": "Printed item header, PDF p. 230."
+    },
+    "official-9c8ca1a7f3a002b1:el-bote-de-quilla-rastrera-de-tasha": {
+      "name": "Bote de quilla rastrera de Tasha",
+      "evidence": "Printed item header, PDF p. 22."
+    },
+    "official-cf1706a6ddfd9239:beneficio-basado-en-su-forma": {
+      "remove": true,
+      "evidence": "A transferred rune property within the preceding item, not a separate magic item."
+    },
+    "official-cf1706a6ddfd9239:obtendra-un-beneficio-basado-en-su-forma": {
+      "remove": true,
+      "evidence": "A transferred rune property within the preceding item, not a separate magic item."
+    },
+    "official-cf1706a6ddfd9239:urbe-de-navegacion": {
+      "name": "Orbe de navegación",
+      "evidence": "Printed item header, PDF p. 235."
+    },
+    "official-cf1706a6ddfd9239:pocion-detalla-gigante": {
+      "name": "Poción de talla gigante",
+      "evidence": "Printed item header, PDF p. 236."
+    },
+    "official-415b8e2bcdff9cbc:pocion-comun-80-po": {
+      "remove": true,
+      "evidence": "Price-list row, not a magic-item rules entry."
+    },
+    "official-67feb3483ef571d8:continuacion": {
+      "name": "Reloj de Brujaluz",
+      "evidence": "Printed item header, PDF p. 26."
+    },
+    "official-67feb3483ef571d8:de-ventaja": {
+      "name": "Poción de ventaja",
+      "evidence": "Printed item header, PDF p. 213."
+    },
+    "official-67feb3483ef571d8:una-criatura-cuya-sombra-se-haya-separado-estara": {
+      "name": "Varita de pirotecnia",
+      "evidence": "Printed item header, PDF p. 215."
+    },
+    "official-eb72ac69f14e9565:anillo-de-evasion-guantes-de-ladron": {
+      "name": "Anillo de evasión",
+      "evidence": "Printed item header, PDF p. 194."
+    },
+    "official-eb72ac69f14e9565:que-cae-una-hoja-enrollada-de-pergamino-recoge-el": {
+      "remove": true,
+      "evidence": "Adventure narrative, not a magic item."
+    },
+    "official-eb72ac69f14e9565:diamante": {
+      "name": "Gema del portal (diamante)",
+      "evidence": "Printed item header, PDF p. 292."
+    },
+    "official-eb72ac69f14e9565:elementales-de-fuego": {
+      "name": "Brasero de controlar elementales de fuego",
+      "evidence": "Printed item header, PDF p. 326."
+    },
+    "official-d4275553fd38d09b:sranr-of-rultng": {
+      "name": "Staff of Ruling",
+      "evidence": "Printed item header, PDF p. 192."
+    },
+    "official-662db056823dd69d:plate-mail-of-vulnerability": {
+      "name": "Plate Mail of Vulnerability",
+      "evidence": "Printed item header, PDF p. 72.",
+      "overrides": {
+        "attunement": true
+      }
+    },
+    "official-662db056823dd69d:staff-of-evocation": {
+      "name": "Staff of Evocation",
+      "evidence": "Printed item header, PDF p. 72.",
+      "overrides": {
+        "attunement": true
+      }
+    },
+    "official-4d8e49dae407209a:bracersof-celerity": {
+      "name": "Bracers of Celerity",
+      "evidence": "Printed item header, PDF p. 217."
+    },
+    "official-4d8e49dae407209a:luminouswarpick": {
+      "name": "Luminous War Pick",
+      "evidence": "Printed item header, PDF p. 217."
+    },
+    "official-4d8e49dae407209a:mindguardcrown": {
+      "name": "Mindguard Crown",
+      "evidence": "Printed item header, PDF p. 218."
+    },
+    "official-f94062ac0ffc3832:el-caballero-vigilante-en-el-pasado-este-horror-con": {
+      "remove": true,
+      "evidence": "Adventure narrative, not a magic item."
+    },
+    "official-c2960b82d1efe861:pocion-comun-o-infrecuente-1-moneda-de-alma": {
+      "remove": true,
+      "evidence": "Price-list row, not an item rules block."
+    },
+    "official-c2960b82d1efe861:de-dragon-de-silex-negro": {
+      "name": "Armadura de placas de dragón de sílex negro",
+      "evidence": "Printed item header, PDF p. 226."
+    },
+    "official-070b4cff1b7b2fae:extra-life-2019-infernal-machine-rebuild": {
+      "name": "Claws of the Umber Hulk",
+      "evidence": "Printed item header, PDF p. 95."
+    },
+    "official-070b4cff1b7b2fae:extra-life-2019-infernal-machine-rebuild-2": {
+      "name": "The Infernal Machine of Lum the Mad",
+      "evidence": "Printed item header, PDF p. 97."
+    },
+    "official-11f68997e5eb49fc:del-oso-llamada-svilbrekhild-forennal-una-gladiador-humana-c": {
+      "remove": true,
+      "evidence": "Adventure narrative, not a magic item."
+    },
+    "official-00dd4bae0b3b1e5d:six-rod-pieces-or-those-pieces-remained-in-sigil-the": {
+      "remove": true,
+      "evidence": "Adventure narrative, not an item rules block."
+    },
+    "official-8c0aabc073ec4950:las-tallas-relatan-el-nacimiento-de-melair-un-enano": {
+      "remove": true,
+      "evidence": "Adventure narrative, not a magic item."
+    },
+    "official-8c0aabc073ec4950:real-caiga-del-cuadro-al-suelo-donde-se-puede-recoger-este": {
+      "name": "Anillo con cuernos",
+      "evidence": "Printed item header, PDF p. 301.",
+      "overrides": {
+        "rarity": "muy raro",
+        "attunement": true
+      }
+    },
+    "official-014cf07b953a5056:aniquilador-de-topacio-o": {
+      "name": "Aniquilador de topacio",
+      "evidence": "Printed item header, PDF p. 23."
+    },
+    "official-014cf07b953a5056:de-canario-de-oro": {
+      "name": "Figurilla de poder maravilloso (canario de oro)",
+      "evidence": "Printed item header, PDF p. 24."
+    },
+    "official-014cf07b953a5056:mangual-de-tiamat-as": {
+      "name": "Mangual de Tiamat",
+      "evidence": "Printed item header, PDF p. 25."
+    },
+    "official-014cf07b953a5056:de-majestad-del-dragon": {
+      "name": "Poción de majestad del dragón",
+      "evidence": "Printed item header, PDF p. 25."
+    },
+    "official-014cf07b953a5056:arma-de-la-ira-del": {
+      "name": "Arma de la ira del dragón",
+      "evidence": "Printed item header, PDF p. 27.",
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-5c72ae78a4070b66:y-localizacion": {
+      "name": "Amuleto de protección contra detección y localización",
+      "evidence": "Printed item header, PDF p. 151."
+    },
+    "official-5c72ae78a4070b66:anillo-de-estrellas-fugac-es": {
+      "name": "Anillo de estrellas fugaces",
+      "evidence": "Printed item header, PDF p. 153."
+    },
+    "official-5c72ae78a4070b66:anillo-de-natacio-n": {
+      "name": "Anillo de natación",
+      "evidence": "Printed item header, PDF p. 154."
+    },
+    "official-5c72ae78a4070b66:anteojos-de-vista-de-aguila-pa": {
+      "name": "Anteojos de vista de águila",
+      "evidence": "Printed item header, PDF p. 156."
+    },
+    "official-5c72ae78a4070b66:pll-c-is-enllnll": {
+      "name": "Armadura de placas de etereidad",
+      "evidence": "Printed item header, PDF p. 158."
+    },
+    "official-5c72ae78a4070b66:curacion": {
+      "name": "Bastón de la pitón",
+      "evidence": "Printed item header, PDF p. 164.",
+      "reference": "DMG:Staff of the Python"
+    },
+    "official-5c72ae78a4070b66:21-a-30-pies-4-veces-el-numero-de-cargas-del-baston": {
+      "name": "Bastón de marchitamiento",
+      "evidence": "Printed item header, PDF p. 166.",
+      "reference": "DMG:Staff of Withering"
+    },
+    "official-5c72ae78a4070b66:bolsa-de-j-udias": {
+      "name": "Bolsa de judías",
+      "evidence": "Printed item header, PDF p. 167."
+    },
+    "official-5c72ae78a4070b66:botas-de-zancadas-y-bri-ncos": {
+      "name": "Botas de zancadas y brincos",
+      "evidence": "Printed item header, PDF p. 169."
+    },
+    "official-5c72ae78a4070b66:elementales-de-fuego": {
+      "name": "Brasero de controlar elementales de fuego",
+      "evidence": "Printed item header, PDF p. 170."
+    },
+    "official-5c72ae78a4070b66:carcaj-de-e-h-lo-nna": {
+      "name": "Carcaj de Ehlonna",
+      "evidence": "Printed item header, PDF p. 172."
+    },
+    "official-5c72ae78a4070b66:c-i-nturon-enano": {
+      "name": "Cinturón enano",
+      "evidence": "Printed item header, PDF p. 175."
+    },
+    "official-5c72ae78a4070b66:c-olgante-de-inmunidad-al-veneno": {
+      "name": "Colgante de inmunidad al veneno",
+      "evidence": "Printed item header, PDF p. 175."
+    },
+    "official-5c72ae78a4070b66:c-ollar-de-adaptacion": {
+      "name": "Collar de adaptación",
+      "evidence": "Printed item header, PDF p. 175."
+    },
+    "official-5c72ae78a4070b66:cubo-de-fuerza-tos-de-conjuros": {
+      "name": "Cubo de fuerza",
+      "evidence": "Printed item header, PDF p. 176."
+    },
+    "official-5c72ae78a4070b66:cuerda-de-escala-da": {
+      "name": "Cuerda de escalada",
+      "evidence": "Printed item header, PDF p. 177."
+    },
+    "official-014cf07b953a5056:cinturon-de-cuero-de-dragon": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-014cf07b953a5056:adorno-escamoso": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-014cf07b953a5056:canalizador-tocado-por-dragones": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-014cf07b953a5056:recipiente-del-dragon": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-5c72ae78a4070b66:arma-l-2-o-3": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-5c72ae78a4070b66:armadura-l-2-o-3": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-5c72ae78a4070b66:bola-de-cristal": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-5c72ae78a4070b66:cinturon-de-fuerza-de-gigante": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-5c72ae78a4070b66:cuerno-del-valhalla": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-0626352b0c2f5e28:lan1-a-de-sangre": {
+      "name": "Símbolo Sagrado de los Cuervos",
+      "evidence": "Printed item header, PDF p. 224.",
+      "reference": "CoS:Holy Symbol of Ravenkind"
+    },
+    "official-5c72ae78a4070b66:10-pies-y-luz-tenue-10-pies-mas-alla-pronunciar-la-palabra-d": {
+      "name": "Espada de la respuesta",
+      "evidence": "Printed item header, PDF p. 181.",
+      "reference": "DMG:Sword of Answering"
+    },
+    "official-5c72ae78a4070b66:gema-del-resplan-dor": {
+      "name": "Gema del resplandor",
+      "evidence": "Printed item header, PDF p. 187."
+    },
+    "official-5c72ae78a4070b66:capitulo-7-tesoro": {
+      "name": "Gema elemental",
+      "evidence": "Printed item header, PDF p. 188."
+    },
+    "official-5c72ae78a4070b66:elementales-de-aire": {
+      "name": "Incensario de controlar elementales de aire",
+      "evidence": "Printed item header, PDF p. 190."
+    },
+    "official-5c72ae78a4070b66:ollamh-tormenta-de-fuego": {
+      "name": "Jabalina del relámpago",
+      "evidence": "Printed item header, PDF p. 191."
+    },
+    "official-5c72ae78a4070b66:malla-de-lfrit": {
+      "name": "Malla de ifrit",
+      "evidence": "Printed item header, PDF p. 191."
+    },
+    "official-5c72ae78a4070b66:capitulo-7-tesoro-2": {
+      "name": "Manto de resistencia a conjuros",
+      "evidence": "Printed item header, PDF p. 192."
+    },
+    "official-5c72ae78a4070b66:193": {
+      "name": "Matadragones",
+      "evidence": "Printed item header, PDF p. 194."
+    },
+    "official-5c72ae78a4070b66:pegam-ento-so-bera-no": {
+      "name": "Morral práctico de Heward",
+      "evidence": "Printed item header, PDF p. 195.",
+      "reference": "DMG:Heward's Handy Haversack"
+    },
+    "official-5c72ae78a4070b66:piedra-i-oun": {
+      "name": "Piedra Ioun",
+      "evidence": "Printed item header, PDF p. 196.",
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-5c72ae78a4070b66:elementales-de-tierra": {
+      "name": "Piedra de controlar elementales de tierra",
+      "evidence": "Printed item header, PDF p. 197."
+    },
+    "official-5c72ae78a4070b66:pozo-de-los-muchos-mundos": {
+      "name": "Pozo de los muchos mundos",
+      "evidence": "Printed item header, PDF p. 200."
+    },
+    "official-5c72ae78a4070b66:capitulo-7-tesoro-3": {
+      "name": "Tomo de entendimiento",
+      "evidence": "Printed item header, PDF p. 202."
+    },
+    "official-5c72ae78a4070b66:tunica-de-las-estrellas-las": {
+      "name": "Túnica de las estrellas",
+      "evidence": "Printed item header, PDF p. 203."
+    },
+    "official-5c72ae78a4070b66:capitulo-7-tesoro-4": {
+      "name": "Túnica del archimago",
+      "evidence": "Printed item header, PDF p. 204."
+    },
+    "official-5c72ae78a4070b66:vara-de-la-alert-a": {
+      "name": "Vara de la alerta",
+      "evidence": "Printed item header, PDF p. 204."
+    },
+    "official-5c72ae78a4070b66:capitulo-7-te-soro": {
+      "name": "Varita de detección mágica",
+      "evidence": "Printed item header, PDF p. 206."
+    },
+    "official-5c72ae78a4070b66:va-rita-de-detectar-enemigos": {
+      "name": "Varita de detectar enemigos",
+      "evidence": "Printed item header, PDF p. 206."
+    },
+    "official-5c72ae78a4070b66:capitulo-7-tesoro-5": {
+      "name": "Varita de parálisis",
+      "evidence": "Printed item header, PDF p. 208."
+    },
+    "official-5c72ae78a4070b66:escudo-1-2-o-3": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-5c72ae78a4070b66:instrumento-de-los-bardos": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-5c72ae78a4070b66:municion-l-2-o-3": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-5c72ae78a4070b66:pocion-de-curacion": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-5c72ae78a4070b66:pocion-de-fuerza-de-gigante": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-5c72ae78a4070b66:vara-del-pacto": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-5c72ae78a4070b66:yelmo-de-entender-idiomas": {
+      "name": "Yelmo de entender idiomas",
+      "evidence": "Printed item header, PDF p. 212."
+    },
+    "official-5c72ae78a4070b66:espada-oe": {
+      "name": "Espada de Kas",
+      "evidence": "Printed item header, PDF p. 221."
+    },
+    "official-5c72ae78a4070b66:libro-de-las-ubras-elevadas": {
+      "name": "Libro de las obras elevadas",
+      "evidence": "Printed item header, PDF p. 224.",
+      "overrides": {
+        "rarity": "artefacto"
+      }
+    },
+    "official-5c72ae78a4070b66:ujo-y-mano-de-vecna": {
+      "name": "Ojo y mano de Vecna",
+      "evidence": "Printed item header, PDF p. 224."
+    },
+    "official-5c72ae78a4070b66:urbe-de-los-dragones": {
+      "name": "Orbe de los dragones",
+      "evidence": "Printed item header, PDF p. 226."
+    },
+    "official-5c72ae78a4070b66:varita-de-urcus": {
+      "name": "Varita de Orcus",
+      "evidence": "Printed item header, PDF p. 226."
+    },
+    "official-8c28a59c1db731cb:c-h-apter-6-i-wildemou-nt-treasures": {
+      "name": "Breathing Bubble",
+      "evidence": "Printed item header, PDF p. 267."
+    },
+    "official-8c28a59c1db731cb:corn-of-delving": {
+      "name": "Coin of Delving",
+      "evidence": "Printed item header, PDF p. 267."
+    },
+    "official-8c28a59c1db731cb:ron-of-retribution": {
+      "name": "Rod of Retribution",
+      "evidence": "Printed item header, PDF p. 270."
+    },
+    "official-8c28a59c1db731cb:grimoire-lnfinitus": {
+      "name": "Grimoire Infinitus",
+      "evidence": "Printed item header, PDF p. 272."
+    },
+    "official-17ed9c5777e883b3:hilo": {
+      "name": "Hilo ilusorio",
+      "evidence": "Printed item header, PDF p. 283.",
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-17ed9c5777e883b3:orbe-de-escuudo": {
+      "name": "Orbe de escudo",
+      "evidence": "Printed item header, PDF p. 284."
+    },
+    "official-7c68f9475cbd778d:mizzium-apparatus-4": {
+      "name": "Mizzium Apparatus",
+      "evidence": "Printed item header, PDF p. 180."
+    },
+    "official-7c68f9475cbd778d:mooomark-pa-nt": {
+      "name": "Peregrine Mask",
+      "evidence": "Printed item header, PDF p. 181."
+    },
+    "official-7c68f9475cbd778d:pyroconvercer": {
+      "name": "Pyroconverger",
+      "evidence": "Printed item header, PDF p. 181."
+    },
+    "official-7c68f9475cbd778d:sword-of-the-pa-runs": {
+      "name": "Sword of the Paruns",
+      "evidence": "Printed item header, PDF p. 182."
+    },
+    "official-00ba2764b562f4da:objeto-rareza-precio": {
+      "remove": true,
+      "evidence": "Price-table heading, not an item."
+    },
+    "official-00ba2764b562f4da:manual-de-flosmarcitus-infrecuente-300-gp": {
+      "remove": true,
+      "evidence": "Price-table row; the complete primer entry is present on the next page."
+    },
+    "official-187aa9c8e2a9ab6a:apze-of-annam": {
+      "name": "Adze of Annam",
+      "evidence": "Printed item header, PDF p. 111."
+    },
+    "official-187aa9c8e2a9ab6a:aoze-or-annam": {
+      "name": "Armor of Safeguarding",
+      "evidence": "Printed item header, PDF p. 112."
+    },
+    "official-187aa9c8e2a9ab6a:harpp-of-gilded-plenty": {
+      "name": "Harp of Gilded Plenty",
+      "evidence": "Printed item header, PDF p. 113."
+    },
+    "official-187aa9c8e2a9ab6a:war-horn-of-valor": {
+      "name": "War Horn of Valor",
+      "evidence": "Printed item header, PDF p. 118."
+    },
+    "official-187aa9c8e2a9ab6a:cibney-isabel": {
+      "name": "Wayfarer's Boots",
+      "evidence": "Printed item header, PDF p. 118."
+    },
+    "official-5abc59bf448b79b2:ubjeto-magico-arreos-infernales": {
+      "name": "Arreos infernales",
+      "evidence": "Printed item header, PDF p. 204."
+    },
+    "official-f4a36a6e25e208fc:cartilla-de-thjecorazones": {
+      "name": "Cartilla de Tejecorazones",
+      "evidence": "Printed item header, PDF p. 122."
+    },
+    "official-f4a36a6e25e208fc:codice-del-lnvocaplanos": {
+      "name": "Códice del Invocaplanos",
+      "evidence": "Printed item header, PDF p. 123."
+    },
+    "official-f4a36a6e25e208fc:demonomicon-de-lggwilv": {
+      "name": "Demonomicón de Iggwilv",
+      "evidence": "Printed item header, PDF p. 124."
+    },
+    "official-f4a36a6e25e208fc:grimorio-arcano-3": {
+      "name": "Grimorio arcano",
+      "evidence": "Printed item header, PDF p. 130.",
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-f4a36a6e25e208fc:hoz-de-luna": {
+      "name": "Hoz de luna",
+      "evidence": "Printed item header, PDF p. 130.",
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-f4a36a6e25e208fc:poderoso-siervo-de-leuk-0": {
+      "name": "Poderoso siervo de Leuk-o",
+      "evidence": "Printed item header, PDF p. 132."
+    },
+    "official-f4a36a6e25e208fc:tatuaje-del-pozo-de-vida": {
+      "name": "Tatuaje del pozo de vida",
+      "evidence": "Printed item header, PDF p. 138."
+    },
+    "official-f4a36a6e25e208fc:tratado-de-almas-y-carne": {
+      "name": "Tratado de almas y carne",
+      "evidence": "Printed item header, PDF p. 138.",
+      "reference": "TCE:Libram of Souls and Flesh"
+    },
+    "official-f4a36a6e25e208fc:vial-del-pozo-sangriento": {
+      "name": "Vial del pozo sangriento",
+      "evidence": "Printed item header, PDF p. 139.",
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-7636510b1649d507:jarra-de-sobriedad": {
+      "name": "Jarra de sobriedad",
+      "evidence": "Printed item header, PDF p. 139."
+    },
+    "official-7636510b1649d507:ujo-de-imitacion": {
+      "name": "Ojo de imitación",
+      "evidence": "Printed item header, PDF p. 139."
+    },
+    "official-7636510b1649d507:urbe-de-la-direccion": {
+      "name": "Orbe de la dirección",
+      "evidence": "Printed item header, PDF p. 139."
+    },
+    "official-7636510b1649d507:urbe-del-tiempo": {
+      "name": "Orbe del tiempo",
+      "evidence": "Printed item header, PDF p. 140."
+    },
+    "official-d36decce0700ed32:capitulo-4-gith-y-su-guerra-sin-fin": {
+      "name": "Espadón plateado",
+      "evidence": "Printed item header, PDF p. 90.",
+      "reference": "MTF:Silver Sword"
+    },
+    "official-f4a36a6e25e208fc:amuleto-de-devocion": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-f4a36a6e25e208fc:herramienta-multiusos": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-f4a36a6e25e208fc:tambor-ritmico": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-f4a36a6e25e208fc:tatuaje-de-barrera": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    },
+    "official-f4a36a6e25e208fc:tatuaje-hechizado": {
+      "overrides": {
+        "rarity": "variable"
+      }
+    }
+  },
+  "referenceOverrides": {
+    "ToA:Tri-flower Frond": {
+      "str": 1,
+      "dex": 10,
+      "con": 12,
+      "int": 1,
+      "wis": 10,
+      "cha": 1
+    },
+    "ToA:Stone Juggernaut": {
+      "str": 22,
+      "dex": 1,
+      "con": 21,
+      "int": 2,
+      "wis": 11,
+      "cha": 3
+    },
+    "MM:Orc Eye of Gruumsh": {
+      "con": 16
+    }
+  },
+  "itemHeaderReview": {
+    "count": 717,
+    "books": [
+      "2a479a659f9e606a",
+      "e21538c8ec892876",
+      "9c8ca1a7f3a002b1",
+      "c98d97aa76db7229",
+      "0aff6c2b51aab6bf",
+      "68087507bf448aff",
+      "17182bc795d5ced5",
+      "e9682e11f112ff2f",
+      "cf1706a6ddfd9239",
+      "4b9e741c5309eebe",
+      "0626352b0c2f5e28",
+      "415b8e2bcdff9cbc",
+      "67feb3483ef571d8",
+      "eb72ac69f14e9565",
+      "d4275553fd38d09b",
+      "662db056823dd69d",
+      "4d8e49dae407209a",
+      "f94062ac0ffc3832",
+      "c2960b82d1efe861",
+      "070b4cff1b7b2fae",
+      "78eda0089459b2bc",
+      "11f68997e5eb49fc",
+      "00dd4bae0b3b1e5d",
+      "0baa04104f38babe",
+      "8c0aabc073ec4950",
+      "014cf07b953a5056",
+      "5c72ae78a4070b66",
+      "8c28a59c1db731cb",
+      "17ed9c5777e883b3",
+      "7c68f9475cbd778d",
+      "00ba2764b562f4da",
+      "187aa9c8e2a9ab6a",
+      "d8058811115763dd",
+      "94dc34045c87d2d0",
+      "5abc59bf448b79b2",
+      "f4a36a6e25e208fc",
+      "7636510b1649d507",
+      "66afacbec6114879",
+      "644d5e63cd8fd7de",
+      "d36decce0700ed32"
+    ],
+    "method": "All 717 printed headers reviewed in PDF contact sheets, including rarity and attunement; card layouts reparsed separately."
+  }
+}
