@@ -1142,6 +1142,37 @@ body.enc-stomp .workspace {
   align-items: center;
   gap: 8px;
 }
+/* Plegados: el nombre abre y cierra; cerrado se ve el resumen (criaturas y dificultad). */
+summary.prepared-head {
+  cursor: pointer;
+  list-style: none;
+  padding: 4px 0;
+}
+summary.prepared-head::-webkit-details-marker {
+  display: none;
+}
+summary.prepared-head::before {
+  content: '▸';
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+.prepared[open] > summary.prepared-head::before {
+  transform: rotate(90deg);
+}
+.prepared-title {
+  flex: 1;
+  min-width: 0;
+}
+.prepared-sum {
+  display: block;
+  margin-top: 2px;
+}
+.prepared-sum.difficulty {
+  margin-bottom: 0;
+}
+.prepared-body {
+  padding-top: 4px;
+}
 .prepared .actions {
   margin-top: 8px;
 }
