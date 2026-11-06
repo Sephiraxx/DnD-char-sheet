@@ -2,7 +2,14 @@
 const Campaign = (() => {
   'use strict';
   const D = CampaignData;
-  const selected = s => s?.campaignSources || D.defaults;
+  const selected = s => [
+    ...new Set(
+      (s?.campaignSources || D.defaults).flatMap(id => [
+        id,
+        typeof ContentIndex === 'undefined' ? id : ContentIndex.canonicalSource(id),
+      ]),
+    ),
+  ];
   const availableSources = () =>
     Object.entries(D.sources).filter(
       ([id]) => typeof OfficialContent === 'undefined' || OfficialContent.selectableSource(id),
@@ -10,15 +17,21 @@ const Campaign = (() => {
   const enabled = (s, x) =>
     (!x.sourceKey && !x.sources && !Catalog.sources.some(([id]) => id === x.source)) ||
     x.sourceKey === 'DM' ||
-    (x.sources || [x.sourceKey || x.source]).some(k => selected(s).includes(k));
+    (typeof ContentIndex === 'undefined' ? x.sources || [x.sourceKey || x.source] : ContentIndex.sources(x)).some(k =>
+      selected(s).includes(k),
+    );
   const race = s => D.races.find(x => x.id === s.raceId),
     background = s => D.backgrounds.find(x => x.id === s.backgroundId);
   function expanded(s) {
     return [...new Set([...(race(s)?.expanded || []), ...(background(s)?.expanded || [])])];
   }
   function options(kind, s, id = '') {
-    return D[kind]
-      .filter(x => enabled(s, x) || x.id === id)
+    const rows = D[kind].filter(x => enabled(s, x) || x.id === id);
+    return (
+      typeof ContentIndex === 'undefined'
+        ? rows
+        : ContentIndex.list(kind === 'races' ? 'race' : 'background', rows, [id])
+    )
       .sort((a, b) => a.name.localeCompare(b.name, 'es'))
       .map(x => [x.id, x.name + ' · ' + x.sources.join(' / ') + (enabled(s, x) ? '' : ' · selección previa')]);
   }
@@ -268,6 +281,7 @@ const Campaign = (() => {
         '</details><p><b>Magia de linaje:</b> este linaje concede magia propia. Elegí los conjuros y registralos como extras según su rasgo; revisá nivel, característica de lanzamiento y usos por descanso. La lista ampliada es un beneficio distinto.</p>';
     out +=
       '<p class="small">Al crear una ficha, las habilidades fijas se agregan automáticamente y las que requieren elección se completan aparte. En fichas existentes, revisá las competencias desde Personaje. El creador agrega el equipo físico del paquete elegido. Los aumentos, competencias con herramientas, idiomas, otros rasgos y dotes se registran por separado. Las puntuaciones que ingresás ya deben ser las finales.</p>';
+    if (typeof OfficialContent !== 'undefined') out += OfficialContent.entryHtml(kind, x.id);
     return out;
   }
   function identity() {

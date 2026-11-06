@@ -506,6 +506,7 @@ const Creator = (() => {
               .join('')}</div>`
           : ''
       }</section>`;
+      detail += `<section class="card creator-detail">${OfficialContent.entryHtml('class', c.id)}${d.subclass ? OfficialContent.entryHtml('subclass', d.subclass) : ''}</section>`;
     }
     return (
       searchBar(
@@ -555,7 +556,13 @@ const Creator = (() => {
   // ---------- 3. Raza (agrupada por familia) ----------
   function families() {
     const map = new Map();
-    for (const r of CampaignData.races) {
+    for (const r of typeof ContentIndex === 'undefined'
+      ? CampaignData.races
+      : ContentIndex.unique(
+          'race',
+          CampaignData.races.filter(r => Campaign.enabled(d, r) || r.id === d.raceId),
+          [d.raceId],
+        )) {
       if (!Campaign.enabled(d, r) && r.id !== d.raceId) continue;
       const [fam, ...rest] = r.name.split(' · ');
       if (!map.has(fam)) map.set(fam, []);

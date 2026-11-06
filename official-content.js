@@ -10,7 +10,8 @@
       .trim();
   const ruleTexts = new Map(),
     spellTexts = new Map(),
-    itemTexts = new Map();
+    itemTexts = new Map(),
+    entryTexts = new Map();
   let applied = false;
   const adventureSources = new Set(),
     adventureTitles = new Set();
@@ -40,6 +41,13 @@
     const data = target.OfficialContentData;
     if (!data || applied) return;
     applied = true;
+    for (const fix of target.SharedReferenceData?.itemIds || []) {
+      const row = data.items.find(r => r.bookId === fix.bookId && r.name === fix.name && r.catalogId === fix.oldId);
+      if (row) {
+        row.catalogId = fix.id;
+        row.aliasCatalogIds = (row.aliasCatalogIds || []).filter(id => id !== fix.oldId);
+      }
+    }
     // This 8th-level replacement is Tasha's optional 2014 rule, including on older domains.
     for (const sub of target.ClassData.subclasses.filter(s => s.classId === 'cleric'))
       for (const feature of sub.features.filter(f => f.english === 'Blessed Strikes')) {
@@ -117,6 +125,9 @@
       const spell = target.Catalog.spells.find(s => s.id === id);
       if (spell && book.spellDetails) spell.ritual = Boolean(book.spellDetails.ritual);
     }
+    for (const row of target.SharedReferenceData?.entries || []) entryTexts.set(row.key, reference(row));
+    for (const row of target.SharedReferenceData?.features || [])
+      if (!ruleTexts.has(row.key)) ruleTexts.set(row.key, reference(row));
     const existing = new Map(
       (target.MagicItems?.ITEMS || []).flatMap(it =>
         [it.name, it.english].filter(Boolean).map(n => [normalize(n), it]),
@@ -165,6 +176,8 @@
       if (!previous || rank(row) > rank(previous))
         itemTexts.set(item.id, { ...reference(row), language: row.language });
     }
+    for (const row of target.SharedReferenceData?.entries || [])
+      if (row.key.startsWith('item:')) itemTexts.set(row.key.slice(5), reference(row));
     target.BookContentData.official = {
       ...data.audit,
       rules: ruleTexts.size,
@@ -196,11 +209,14 @@
     ruleTexts,
     spellTexts,
     itemTexts,
+    entryTexts,
     adventureSources,
-    selectableSource: source => !adventureSources.has(source),
+    selectableSource: source =>
+      !adventureSources.has(source) && (!root.ContentIndex || root.ContentIndex.canonicalSource(source) === source),
     selectableBook: title => !adventureTitles.has(title),
     html,
     spellHtml: id => html(spellTexts.get(id)),
+    entryHtml: (kind, id) => html(entryTexts.get(kind + ':' + id)),
     itemHtml: id =>
       (root.MagicItems?.byId(id)?.manualEffects
         ? '<p class="small">Aplicá los efectos especiales y la recuperación de cargas según las reglas del libro.</p>'

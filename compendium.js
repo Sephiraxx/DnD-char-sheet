@@ -46,11 +46,16 @@
     ...ClassData.options.map(x => ({ ...x, kind: 'option' })),
     ...MagicItems.ITEMS.map(x => ({ ...x, sourceKey: x.sourceKey || 'DMG', kind: 'item' })),
   ];
-  const rowSources = x => x.sources || [x.sourceKey || x.source];
+  const rowSources = x => ContentIndex.sources(x);
+  const dedupe = items =>
+    [...new Set(items.map(x => x.kind))].flatMap(kind =>
+      ContentIndex.list(
+        kind,
+        items.filter(x => x.kind === kind),
+      ),
+    );
   const sourceLabel = x =>
-    rowSources(x)
-      .map(s => sources[s] || s)
-      .join(' / ');
+    [...new Set(rowSources(x).map(ContentIndex.canonicalSource))].map(s => sources[s] || s).join(' / ');
   const params = new URLSearchParams(location.search);
   $('compendium-q').value = (params.get('q') || '').slice(0, 200);
   $('compendium-source').innerHTML += Object.entries(sources)
@@ -60,8 +65,9 @@
   const requestedSource = bookSources.get(params.get('book')) || params.get('book');
   if (sources[requestedSource]) $('compendium-source').value = requestedSource;
   if (labels[params.get('kind')]) $('compendium-kind').value = params.get('kind');
+  const counts = dedupe(rows).reduce((a, x) => ((a[x.kind] = (a[x.kind] || 0) + 1), a), {});
   $('compendium-counts').textContent =
-    `${Object.keys(ClassData.classes).length} clases · ${ClassData.subclasses.length} subclases · ${Catalog.spells.length} conjuros · ${MagicItems.ITEMS.length} objetos mágicos · ${MonsterData.length + bundled.length} entradas de criaturas`;
+    `${counts.class} clases · ${counts.subclass} subclases · ${counts.spell} conjuros · ${counts.item} objetos mágicos · ${counts.creature} entradas únicas de criaturas`;
   $('compendium-coverage').textContent =
     `Esta ampliación revisó ${OfficialContentData.books.length} libros oficiales de las reglas de 2014, incluidos los PDFs escaneados. Añade ${BookContentData.official.rules} textos de rasgos, dotes y opciones de clase, ${BookContentData.official.spellDescriptions} descripciones de conjuros, ${BookContentData.official.itemDescriptions} descripciones de objetos y ${OfficialContentData.monsters.length} bloques de criaturas. Se excluyen homebrew y las demás ediciones. Los bloques que no superaron la validación no se publican como criaturas nuevas.`;
   $('compendium-books').innerHTML = OfficialContentData.books
@@ -88,20 +94,22 @@
     const query = canon($('compendium-q').value.trim());
     const source = $('compendium-source').value;
     const kind = $('compendium-kind').value;
-    const filtered = rows.filter(
-      x =>
-        (!kind || x.kind === kind) &&
-        (!source || rowSources(x).includes(source)) &&
-        (!query ||
-          canon(
-            x.name +
-              ' ' +
-              (x.english || '') +
-              ' ' +
-              (x.searchNames || []).join(' ') +
-              ' ' +
-              (x.features || []).map(f => f.name).join(' '),
-          ).includes(query)),
+    const filtered = dedupe(
+      rows.filter(
+        x =>
+          (!kind || x.kind === kind) &&
+          (!source || rowSources(x).includes(source)) &&
+          (!query ||
+            canon(
+              x.name +
+                ' ' +
+                (x.english || '') +
+                ' ' +
+                (x.searchNames || []).join(' ') +
+                ' ' +
+                (x.features || []).map(f => f.name).join(' '),
+            ).includes(query)),
+      ),
     );
     shown = filtered.sort((a, b) => a.name.localeCompare(b.name, 'es')).slice(0, 80);
     $('compendium-status').textContent =
@@ -125,7 +133,10 @@
     if (!button) return;
     const x = shown[Number(button.dataset.detail)];
     $('compendium-detail-title').textContent = x.name;
-    const features = (x.features || [])
+    const fullEntry = ['race', 'background', 'class', 'subclass'].includes(x.kind)
+      ? OfficialContent.entryHtml(x.kind, x.id)
+      : '';
+    const features = (fullEntry ? [] : x.features || [])
       .map(
         f =>
           `<div class="feature"><h3>Nivel ${f.level} · ${esc(f.name)}</h3><p>${esc(f.es || f.text || '')}</p>${OfficialContent.html(OfficialContent.ruleTexts.get(`${x.kind === 'class' ? 'class' : 'sub'}:${x.id}:${f.english || f.name}`))}</div>`,
@@ -177,7 +188,7 @@
         ? `<p>${esc(x.note || '')}</p>${OfficialContent.itemHtml(x.id)}<p class="small">Disponible en Equipo → Objetos mágicos. Los efectos especiales se aplican en la mesa.</p>`
         : '';
     $('compendium-detail-body').innerHTML =
-      `<p class="small muted">${esc(sourceLabel(x))}${x.page || x.pdfPage ? ' · PDF p. ' + (x.page || x.pdfPage) : ''}</p>${spell}${creature}${features}${rule}${item}${!spell && !creature && !features && !rule && !item ? '<p>Esta opción está incluida en el creador al habilitar su fuente.</p>' : ''}`;
+      `<p class="small muted">${esc(sourceLabel(x))}${x.page || x.pdfPage ? (x.pdfPage || ['creature', 'item'].includes(x.kind) ? ' · PDF p. ' : ' · ed. inglesa p. ') + (x.pdfPage || x.page) : ''}</p>${spell}${creature}${features}${fullEntry}${rule}${item}${!spell && !creature && !features && !fullEntry && !rule && !item ? '<p>Esta opción está incluida en el creador al habilitar su fuente.</p>' : ''}`;
     $('compendium-detail').showModal();
   });
   $('compendium-close').addEventListener('click', () => $('compendium-detail').close());
