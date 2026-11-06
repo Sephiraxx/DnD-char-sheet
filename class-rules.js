@@ -194,19 +194,21 @@
       songDie: id(s) === 'bard' && l >= 2 ? R().song(l) : 0,
     };
   }
-  function member(sp, s) {
-    if (root.Campaign?.expanded(s).includes(sp.id) && casting(s).type !== 'none') return true;
-    if (sp.level === 0 && (s.classChoices?.['Pact Boon'] || []).includes('pact-of-the-tome-PHB')) return true;
-    const lists = sp.classes || D.spellClasses[sp.id] || [];
-    if (id(s) === 'bard') return sp.bard && (!sp.optionalBard || s.progression.expanded);
-    if (['fighter', 'rogue'].includes(id(s)) && casting(s).caster) return lists.includes('wizard');
-    return lists.includes(id(s));
-  }
   const spellToken = t =>
     String(t)
       .split(/[|#]/)[0]
       .toLowerCase()
       .replace(/[^a-z0-9]/g, '');
+  // Saved spell IDs predate the class-list slugs (for example faeriefire / faerie-fire).
+  const spellClassesByToken = new Map(Object.entries(D.spellClasses).map(([key, lists]) => [spellToken(key), lists]));
+  function member(sp, s) {
+    if (root.Campaign?.expanded(s).includes(sp.id) && casting(s).type !== 'none') return true;
+    if (sp.level === 0 && (s.classChoices?.['Pact Boon'] || []).includes('pact-of-the-tome-PHB')) return true;
+    const lists = sp.classes || D.spellClasses[sp.id] || spellClassesByToken.get(spellToken(sp.id)) || [];
+    if (id(s) === 'bard') return sp.bard && (!sp.optionalBard || s.progression.expanded);
+    if (['fighter', 'rogue'].includes(id(s)) && casting(s).caster) return lists.includes('wizard');
+    return lists.includes(id(s));
+  }
   function lookupSpell(s, t) {
     const key = spellToken(t);
     return R()
