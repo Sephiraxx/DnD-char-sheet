@@ -1,0 +1,505 @@
+{
+  "snapshot": "3a16c3ae035b286e693c19e2dd98e5264289c9cc",
+  "source": "https://5e.tools/encountergen.html",
+  "groups": 39,
+  "tables": 82,
+  "rows": 2139,
+  "sources": ["XGE", "DMG", "BGG", "BAM", "MPP", "SatO", "GoS"],
+  "excludedSources": ["EFA", "FRAiF", "AATM"],
+  "unresolvedCreatures": [
+    {
+      "name": "Adult Solar Dragon",
+      "source": "BAM"
+    },
+    {
+      "name": "cloud giant destiny gambler",
+      "source": "BGG"
+    },
+    {
+      "name": "death giant reaper",
+      "source": "BGG"
+    },
+    {
+      "name": "aerosaur",
+      "source": "BGG"
+    },
+    {
+      "name": "Mist Hulk",
+      "source": "BGG"
+    },
+    {
+      "name": "stone giant of Evil Earth",
+      "source": "BGG"
+    },
+    {
+      "name": "Cinder Hulk",
+      "source": "BGG"
+    },
+    {
+      "name": "fire giant of Evil Fire",
+      "source": "BGG"
+    },
+    {
+      "name": "stalker of Baphomet",
+      "source": "BGG"
+    },
+    {
+      "name": "firegaunt",
+      "source": "BGG"
+    },
+    {
+      "name": "faerie dragon (green)",
+      "source": "MM"
+    },
+    {
+      "name": "faerie dragon (red)",
+      "source": "MM"
+    },
+    {
+      "name": "frostmourn",
+      "source": "BGG"
+    },
+    {
+      "name": "frost giant ice shaper",
+      "source": "BGG"
+    },
+    {
+      "name": "troll amalgam",
+      "source": "BGG"
+    },
+    {
+      "name": "runic colossus",
+      "source": "BGG"
+    },
+    {
+      "name": "flesh colossus",
+      "source": "BGG"
+    },
+    {
+      "name": "Fensir Skirmisher",
+      "source": "BGG"
+    },
+    {
+      "name": "barrowghast",
+      "source": "BGG"
+    },
+    {
+      "name": "gigant",
+      "source": "BGG"
+    },
+    {
+      "name": "shator demodand",
+      "source": "MPP"
+    },
+    {
+      "name": "warden archon",
+      "source": "MPP"
+    },
+    {
+      "name": "nonaton modron",
+      "source": "MPP"
+    },
+    {
+      "name": "eater of knowledge",
+      "source": "MPP"
+    },
+    {
+      "name": "kolyarut",
+      "source": "MPP"
+    },
+    {
+      "name": "giff warlord",
+      "source": "BAM"
+    },
+    {
+      "name": "Giff Shipmate",
+      "source": "BAM"
+    },
+    {
+      "name": "Vampirate",
+      "source": "BAM"
+    },
+    {
+      "name": "yuan-ti malison (type 2)",
+      "source": "MM"
+    },
+    {
+      "name": "yuan-ti malison (type 3)",
+      "source": "MM"
+    },
+    {
+      "name": "Faerie Dragon (Orange)",
+      "source": "MM"
+    },
+    {
+      "name": "Faerie Dragon (Blue)",
+      "source": "MM"
+    },
+    {
+      "name": "cave bear",
+      "source": "MM"
+    },
+    {
+      "name": "kuo-toa monitor",
+      "source": "MM"
+    },
+    {
+      "name": "quaggoth thonot",
+      "source": "MM"
+    },
+    {
+      "name": "vampire spellcaster",
+      "source": "MM"
+    },
+    {
+      "name": "vampire warrior",
+      "source": "MM"
+    },
+    {
+      "name": "space guppy",
+      "source": "BAM"
+    },
+    {
+      "name": "esthetic",
+      "source": "BAM"
+    },
+    {
+      "name": "Jammer Leech",
+      "source": "BAM"
+    },
+    {
+      "name": "Ancient Lunar Dragon",
+      "source": "BAM"
+    }
+  ],
+  "hashes": [
+    {
+      "id": "XGE-arctic-0",
+      "sha256": "21b4a0c1521d7183191ce5052541161db2fbfde58f4631b5c7912f27ad8ac1b8"
+    },
+    {
+      "id": "XGE-arctic-1",
+      "sha256": "7037f5c8a86deefa9c2b4aba21a10a70fecb3a757eaba7cdb8df79792c8deda1"
+    },
+    {
+      "id": "XGE-arctic-2",
+      "sha256": "2fb6bb6659c8ebfd8804b0d6dac85bb6926d62f5f51c815ee83847bd49811466"
+    },
+    {
+      "id": "XGE-arctic-3",
+      "sha256": "7fb59a7b508c80cdc7975d1199cca7d5856bcbc6ad27e74362c75c343ea7edfd"
+    },
+    {
+      "id": "BAM-astralseaencounters-0",
+      "sha256": "2bf485ce8682697a7f611c84a822dc5046b91fb03bd8ed22aa21e35e26183514"
+    },
+    {
+      "id": "DMG-atsea-0",
+      "sha256": "a6a6d54c88b1014fca8dce1ab48091158b065d125e8e87f8ab8b7fc31ec0ee6f"
+    },
+    {
+      "id": "BGG-cloudgiant-0",
+      "sha256": "d3fcf80df3676d4887977979d9745dac0460cf63e03032f7e5cc28e56b44da01"
+    },
+    {
+      "id": "XGE-coastal-0",
+      "sha256": "b29474ea06ae51cba4e46dd62e571ddd631d195940709f3f01712813fdc09167"
+    },
+    {
+      "id": "XGE-coastal-1",
+      "sha256": "0efbe31ba9bd55dc6097ec8fe61afec3ae2aa51622490f33ace960673b973416"
+    },
+    {
+      "id": "XGE-coastal-2",
+      "sha256": "87d8428117cc5364ee4ef40cd1f4843deea660661996d1746c1caf7f9df4a242"
+    },
+    {
+      "id": "XGE-coastal-3",
+      "sha256": "00a24d5592a2096d81602c972dc9b2a4eaa33c185ed752ae2471e779dc066511"
+    },
+    {
+      "id": "BGG-deathgiant-0",
+      "sha256": "1dee2a86b23370b13ab11cdc327fd226723a8fb91a20f196d9bb5f24ebbf0b74"
+    },
+    {
+      "id": "XGE-desert-0",
+      "sha256": "ce86ff6770e3be486d1c74a58384c4b3bcba77ff11942ec2b5a26127133830e0"
+    },
+    {
+      "id": "XGE-desert-1",
+      "sha256": "30ffb95b0493a2d5b40f9a9dd53936dfae77d782534efd70b4792f494295e17d"
+    },
+    {
+      "id": "XGE-desert-2",
+      "sha256": "dcf58a657df9967791de5fc03956d7dcb5f4b87c4372bf0d41fab74467b64981"
+    },
+    {
+      "id": "XGE-desert-3",
+      "sha256": "1835fbf6376c9ebe98663869e21310c71e6ad9a4f717df88fb8afb7179893252"
+    },
+    {
+      "id": "BGG-dinosaurworld-0",
+      "sha256": "0e0365aa218808342f6ea1eb106bd1563070e35e593bd34d7a7fe63c1768530e"
+    },
+    {
+      "id": "BGG-elementalair-0",
+      "sha256": "17f1677ab71d3e7ab8785f8933ad06026db986026ff89838a86ee11826a7d5e0"
+    },
+    {
+      "id": "BGG-elementalearth-0",
+      "sha256": "896b8073600759656aa6d7c829e080224cacce26dc3fb344829212b8a65599bb"
+    },
+    {
+      "id": "BGG-elementalfire-0",
+      "sha256": "99b0af89cfb41c935bc0e368eb7659b68da2420f3282ae69a9b5d1f6c9711609"
+    },
+    {
+      "id": "BGG-elementalwater-0",
+      "sha256": "3ac31be76e1b8cc42d289f60a7f8e1567b96e37fbaf0e5bc848857199695e984"
+    },
+    {
+      "id": "BGG-fiendishincursion-0",
+      "sha256": "c490fb9e5855eb1e7088dfef7408fd939d4d87b14ad932775c0ddc4c8da6dbe5"
+    },
+    {
+      "id": "BGG-firegiant-0",
+      "sha256": "70955594b28ef3a702c0184f32c5439f670972c8d6ff294df7bbc24162fbbc90"
+    },
+    {
+      "id": "BGG-fomorian-0",
+      "sha256": "d76a3f86116fc039f46f1c11961e091a5b8f2c765cb448a7a19a7db38e72639e"
+    },
+    {
+      "id": "XGE-forest-0",
+      "sha256": "d8aefd7769d548bb83257e7f01dc247742b1b33e415c5560d924fed3ab77a884"
+    },
+    {
+      "id": "XGE-forest-1",
+      "sha256": "70d0ed42a76dc9330c16bddb95d8e5bf9a45301c4e011a1083e2dd266ce93182"
+    },
+    {
+      "id": "XGE-forest-2",
+      "sha256": "59e2a6c759edd93d01e05e741a62dfb617d8c38f48421175c30d3f07b88c0a4b"
+    },
+    {
+      "id": "XGE-forest-3",
+      "sha256": "3d6d2e5c07661c2ed6a2491a5c434ac33200b8c34d9f1bbd968fa98ae91f3c50"
+    },
+    {
+      "id": "BGG-frostgiant-0",
+      "sha256": "faa46c65606d187a213fcaacb14239fc2f1743d2433b159cfb83b08ee8488699"
+    },
+    {
+      "id": "BGG-giantconstruct-0",
+      "sha256": "080d50b67f007a2abb980edb4ed3f2d76761c7068015809d2177bb3231d86407"
+    },
+    {
+      "id": "BGG-giantkin-0",
+      "sha256": "250c2eff90ea571834244edfd1ab0a8252bfdfcd6373fa6d7c67213053522a32"
+    },
+    {
+      "id": "BGG-giantnecropolis-0",
+      "sha256": "f7dbeae303193498f1a1c49d0dc68928ed75f8b2249113df213514a97aebced0"
+    },
+    {
+      "id": "XGE-grassland-0",
+      "sha256": "79e2efbed3cf4151916a8e98f735b0f24100d20a36cc9968f4629a22404eedb6"
+    },
+    {
+      "id": "XGE-grassland-1",
+      "sha256": "75c1c769a02e7e11d96607e79ba39056d6e3b6b1bbb058d23893190971299e67"
+    },
+    {
+      "id": "XGE-grassland-2",
+      "sha256": "324462795cd12489a1a14476925af9c660b1e71328963624c9e0d9bdc8fb6a0b"
+    },
+    {
+      "id": "XGE-grassland-3",
+      "sha256": "ad46438849b9c63905b9e80f5a42933e75cf61ec00124e0409d646b863246457"
+    },
+    {
+      "id": "XGE-hill-0",
+      "sha256": "806e32114fea8221f1215a7ce0f6f9ae463801dff06c455dd9171e577589d755"
+    },
+    {
+      "id": "XGE-hill-1",
+      "sha256": "797de601060dd53d0f21da407d2f36d808bcb5ef7e698224ea2c7b0b61885a5a"
+    },
+    {
+      "id": "XGE-hill-2",
+      "sha256": "9bbc3855b2774fc02fbf034516663f7151d63b99bd0fd309e73dedae9cceeb28"
+    },
+    {
+      "id": "XGE-hill-3",
+      "sha256": "683be14d836b98aa9c38ea8acedd4aa564729624d8b1d8936591802a243a5e21"
+    },
+    {
+      "id": "BGG-hillgiant-0",
+      "sha256": "bb8f68fe3d6c13d63da9e07e1ba8cc1bb38e8cce96b11f56db8f6941784bb7d1"
+    },
+    {
+      "id": "BGG-megafaunaworld-0",
+      "sha256": "79868c057dfba7927473f2ea7a5eca39179cc23f2e9c6f57d7dc53c812edf230"
+    },
+    {
+      "id": "XGE-mountain-0",
+      "sha256": "451883375d58fa82e02be3c75bb2e5089056d26e4bb51333671c6ad4078d6bca"
+    },
+    {
+      "id": "XGE-mountain-1",
+      "sha256": "60f2bb5f7110973ed6b9d7232ef5200515b37868cfba432f2cdde90ca0ff1696"
+    },
+    {
+      "id": "XGE-mountain-2",
+      "sha256": "b2c894b81423100c39c03d53d3d9c572b63746f9bba39c1e93dc4023f10f9b9c"
+    },
+    {
+      "id": "XGE-mountain-3",
+      "sha256": "6e0351b3119306426ab8b898d2e786cd5950c3303b2b00faf7ce05d8536c74e7"
+    },
+    {
+      "id": "GoS-openwater-0",
+      "sha256": "ab7579d57e710f84a51ebed8defed019d92e1cf13859f9c6e271bf781de9b06a"
+    },
+    {
+      "id": "GoS-openwater-1",
+      "sha256": "43f767b96f2cae41312edc85f115dbe172029c8f1dd02cae2f71566211ed2637"
+    },
+    {
+      "id": "GoS-openwater-2",
+      "sha256": "8d6bc1ef6971e02ac65513dd257d956725f7c8478ec58856d5a6b5fc74487346"
+    },
+    {
+      "id": "MPP-planarencounters-0",
+      "sha256": "39222906febf37cca7fd698fd86c053d6490b6bd3e959d5aad3cfcf3929981dc"
+    },
+    {
+      "id": "MPP-planarencounters-1",
+      "sha256": "e6b7e841bc31eab89f09ab11c7da2b110d570fef60038588bbff42fc6f887fa0"
+    },
+    {
+      "id": "MPP-planarencounters-2",
+      "sha256": "0f1c12a0286aebd61ba2afccf91a7ea89635ce49c24ce74bf9af35f257a6334f"
+    },
+    {
+      "id": "MPP-planarencounters-3",
+      "sha256": "9a105069b1b31bd60a4e447648af0e8ba3035d61ea31d121710abd6a599e5a52"
+    },
+    {
+      "id": "MPP-planarencounters-4",
+      "sha256": "9f3b575009d560b0c3ca5281dd053c22170b7a0c1e86da031ee31f667b2bf5d3"
+    },
+    {
+      "id": "BAM-ship-0",
+      "sha256": "72cc5c732596346aea185199c8fe54dc19178aa98774fd65858b49d1472a05f5"
+    },
+    {
+      "id": "SatO-sigil-0",
+      "sha256": "83bfd5f56bab62880249e4bdd92d335cec06e9f2ebe85ba6c828d8ccdf253ff6"
+    },
+    {
+      "id": "SatO-sigil-1",
+      "sha256": "2874d6ea69c1ff26fda9c6ff95e9f3ebe3b66eb45093b4054e8e92c0a9d401df"
+    },
+    {
+      "id": "SatO-sigil-2",
+      "sha256": "b835ef9a5d215ae18bb96879d614340aa4300b12933b336cc6b4b28fb6851019"
+    },
+    {
+      "id": "SatO-sigil-3",
+      "sha256": "a5495086e2c28c45fa89606f149b490d4122f26a06470f272815ced707889072"
+    },
+    {
+      "id": "SatO-sigil-4",
+      "sha256": "a4f3a1e39c8b266927ec28fad019f522c35a9ac48b1b9c39ad9e16f524fed4b1"
+    },
+    {
+      "id": "SatO-sigil-5",
+      "sha256": "6937d6ad6566e98b9dd564968f9edca0e4173b566b6f488f40a3d9a1ef1610c3"
+    },
+    {
+      "id": "SatO-sigil-6",
+      "sha256": "bda1e1761a3104c49b193b6d64040f14e48dbf8a63d55c06a566d3b8a21d6918"
+    },
+    {
+      "id": "BGG-stonegiant-0",
+      "sha256": "0b68184d428a952d4c6b506a8b6911c68bae01f32cf720819582385418f0f097"
+    },
+    {
+      "id": "BGG-stormgiant-0",
+      "sha256": "4e96870e923974d796e1c5cb70efb73af5823d8ccd5f5f3c1a29ced8f54bcbe6"
+    },
+    {
+      "id": "XGE-swamp-0",
+      "sha256": "09eb27bee34968f1db6e1c32d9405405753bed6c930d4203ee1cf0c0e57e1104"
+    },
+    {
+      "id": "XGE-swamp-1",
+      "sha256": "8e6a10fa76b1c126a06a99523641a06c95d913a8b760801750bec51944d5d1e5"
+    },
+    {
+      "id": "XGE-swamp-2",
+      "sha256": "d3c32279df8a96a8613dad4be5af4dbd4903ac762406ca671e6c5adb500304bc"
+    },
+    {
+      "id": "DMG-sylvanforest-0",
+      "sha256": "7062ade5a246b96361462bceb658fa496835534807afe8fbe6be797c332009d7"
+    },
+    {
+      "id": "XGE-underdark-0",
+      "sha256": "eaed7c45dbfc46010fa7349f35d400a0a9209afa4f4f53fe71eac4d86d8d8bf4"
+    },
+    {
+      "id": "XGE-underdark-1",
+      "sha256": "4023f571d835b484b8f4941ef14942852b6a1d2b8276123fe770aa9ace93387e"
+    },
+    {
+      "id": "XGE-underdark-2",
+      "sha256": "ff9651d77b8960da89a3f050d59aed91defde4a2b380375bec140f6a66c53564"
+    },
+    {
+      "id": "XGE-underdark-3",
+      "sha256": "ba40d255ef8c8f8d5ceb05fddaf8502f7fd19ba6da02c76f7b056fe4e52ce702"
+    },
+    {
+      "id": "DMG-undersea-0",
+      "sha256": "8318b38449f10cd7d846120b73b7f4d06817257016e0ca246e6d8b89afe7ddd3"
+    },
+    {
+      "id": "XGE-underwater-0",
+      "sha256": "e861c044a4bf2776677596e22d01a20521a846f33ff80abaf01a56c981657b18"
+    },
+    {
+      "id": "XGE-underwater-1",
+      "sha256": "082833bf805e5ff520c1edb6031d86e2db888528d8543c46c803f00ab44f2fb5"
+    },
+    {
+      "id": "XGE-underwater-2",
+      "sha256": "7955a260a10f42eb6115c60eaa8269bea227f4566476201d13ef8b8e11e67c83"
+    },
+    {
+      "id": "DMG-urban-0",
+      "sha256": "e86fba93611f3f536f632049548b692a6c3604d689e963f9e9e1d46b7a902e89"
+    },
+    {
+      "id": "XGE-urban-0",
+      "sha256": "c68fcdbbe20a9ba32bae10a82325632ddcc286fdde8925b634b3fd40544ef5bd"
+    },
+    {
+      "id": "XGE-urban-1",
+      "sha256": "88cda48a3177969da3fd3a8a51a39d3e38f3be446a9ce3cf993db96ab06501b7"
+    },
+    {
+      "id": "XGE-urban-2",
+      "sha256": "df61f67b466edfd815ec6ab52a580973ad749a31e16d98472af8ddc9dfc64a71"
+    },
+    {
+      "id": "XGE-urban-3",
+      "sha256": "0117e15df846c2b3a95c4d7ac3e2a887e76807d988fb5749ef198be87c309e2d"
+    },
+    {
+      "id": "BAM-wildspaceencounters-0",
+      "sha256": "636a193e6c6410e81538ad219db271bdf5f4015f8d6ded2e74e7192d95112e0b"
+    }
+  ]
+}

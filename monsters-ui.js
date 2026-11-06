@@ -18,13 +18,13 @@ const MonsterUI = (() => {
     panel = null; // ataque abierto: { entryId, action, last }
 
   // Bestiario del SRD y, si hay, las criaturas importadas de la biblioteca del DM.
-  function load() {
+  function load({ sharedOnly = false } = {}) {
     const lib = () => {
       if (window.BookContentData) {
         const ids = new Set(window.MonsterData.map(m => m.id));
         window.MonsterData.push(...window.BookContentData.monsters.filter(m => !ids.has(m.id)));
       }
-      return typeof LibraryUI !== 'undefined' ? LibraryUI.attach() : null;
+      return !sharedOnly && typeof LibraryUI !== 'undefined' ? LibraryUI.attach() : null;
     };
     if (window.MonsterData) return Promise.resolve(lib());
     return (loading ||= new Promise((ok, fail) => {
@@ -205,7 +205,7 @@ const MonsterUI = (() => {
     pick.shown = 48;
     modal(
       prepId ? 'Agregar a «' + (Encounters.get(prepId)?.name || 'encuentro') + '»' : 'Agregar criaturas',
-      `<div class="bestiary-search">${field('Buscar', 'q', query, 'search', 'id="monster-q" placeholder="goblin, dragón, zombi, lobo…" autocomplete="off"')}</div><div id="bestiary-filters"></div><div id="monster-results" class="bestiary-grid"></div><div id="bestiary-tray" class="bestiary-tray"></div>`,
+      `${typeof EncounterGeneratorUI !== 'undefined' ? `<div class="actions">${button('Generar desde tablas', 'encgen-open', 'secondary', prepId ? `data-id="${esc(prepId)}"` : '')}</div>` : ''}<div class="bestiary-search">${field('Buscar', 'q', query, 'search', 'id="monster-q" placeholder="goblin, dragón, zombi, lobo…" autocomplete="off"')}</div><div id="bestiary-filters"></div><div id="monster-results" class="bestiary-grid"></div><div id="bestiary-tray" class="bestiary-tray"></div>`,
       null,
     );
     const d = document.getElementById('modal');
@@ -329,18 +329,7 @@ const MonsterUI = (() => {
       const m = byId(id),
         saves = saveBonuses(m);
       total += n;
-      if (target)
-        Encounters.addMonsters(
-          target,
-          Array.from({ length: n }, () => ({
-            name: m.name,
-            monsterId: m.id,
-            hp: hpOf(m),
-            ac: m.ac,
-            saves,
-            initMod: mod(m.ab[1]),
-          })),
-        );
+      if (target) Encounters.addMonsters(target, preparedRows([[id, n]], pick.hp));
       else {
         const names = await claimNames(m.name, n);
         for (let i = 0; i < n; i++) {
@@ -372,6 +361,21 @@ const MonsterUI = (() => {
       `${total} criatura${total === 1 ? '' : 's'} ${target ? 'en «' + (Encounters.get(target)?.name || 'el encuentro') + '»' : 'en la iniciativa' + (pick.hidden ? ' (ocultas)' : '')}.`,
     );
     pick.tray = new Map();
+  }
+
+  function preparedRows(items, hpMode = 'avg') {
+    return items.flatMap(([id, n]) => {
+      const m = byId(id);
+      if (!m || !Number.isInteger(n) || n < 1 || n > 20) throw Error('Revisá las criaturas y sus cantidades.');
+      return Array.from({ length: n }, () => ({
+        name: m.name,
+        monsterId: m.id,
+        hp: hpMode === 'roll' ? Math.max(1, rollDice(m.hd).total) : m.hp,
+        ac: m.ac,
+        saves: saveBonuses(m),
+        initMod: mod(m.ab[1]),
+      }));
+    });
   }
 
   // Numeración continua: si ya hay «Goblin», pasa a «Goblin 1» y los nuevos siguen desde ahí.
@@ -814,6 +818,7 @@ const MonsterUI = (() => {
     difficultyLine,
     crText,
     picker,
+    preparedRows,
     claimNames,
     themeOf,
     encounterTheme,
