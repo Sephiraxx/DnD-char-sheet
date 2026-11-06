@@ -69,7 +69,7 @@ test('official creatures retain complete traits, saves and attack mechanics for 
   assert.equal(m.ac, 15);
   assert.equal(m.cr, 7);
   assert.equal(m.ab.join(','), '11,12,12,19,17,17');
-  assert.ok(m.traits.some(([name]) => /Resistencia Mágica/.test(name)));
+  assert.ok(m.traits.some(([name]) => /Resistencia Mágica/i.test(name)));
   assert.ok(m.actions.some(a => a.atk === 7 && a.dmg?.some(([dice]) => dice === '2d10+4')));
   assert.ok(
     !m.actions.some(a => a.n === 'Lanzamiento de Conjuros'),

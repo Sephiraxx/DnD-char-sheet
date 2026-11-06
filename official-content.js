@@ -12,6 +12,8 @@
     spellTexts = new Map(),
     itemTexts = new Map();
   let applied = false;
+  const adventureSources = new Set(),
+    adventureTitles = new Set();
   const rank = row => (row.language === 'es' ? 10000 : 0) + Math.min(8000, (row.text || row.data?.text || '').length);
   const reference = row => ({
     name: row.name,
@@ -21,11 +23,22 @@
     bookId: row.bookId,
     language: row.language,
     bundled: true,
+    variantNote: row.variantNote,
+    variants: row.variants,
+    attunementRequirement: row.attunementRequirement,
   });
   function apply(target = root) {
     const data = target.OfficialContentData;
     if (!data || applied) return;
     applied = true;
+    for (const book of data.books.filter(b => b.kind === 'adventure')) {
+      adventureSources.add(book.sourceKey);
+      for (const source of book.referenceSources || []) adventureSources.add(source);
+      adventureTitles.add(book.title);
+    }
+    // Locathah Rising is an existing adventure source outside the PDF expansion.
+    adventureSources.add('LR');
+    if (target.CampaignData.sources.LR) adventureTitles.add(target.CampaignData.sources.LR);
     for (const book of data.books) {
       if (book.edition !== '2014') continue;
       target.CampaignData.sources[book.sourceKey] ||= book.title;
@@ -33,7 +46,10 @@
         target.Catalog.sources.push([book.sourceKey, book.title]);
     }
     const monsters = new Map(
-      target.BookContentData.monsters.filter(m => m.bookId !== 'eb3e374f79f75889').map(m => [m.id, m]),
+      (data.completeMonsterReplacement
+        ? []
+        : target.BookContentData.monsters.filter(m => m.bookId !== 'eb3e374f79f75889')
+      ).map(m => [m.id, m]),
     );
     for (const monster of data.monsters) monsters.set(monster.id, monster);
     target.BookContentData.monsters = [...monsters.values()];
@@ -54,15 +70,18 @@
       ),
     );
     for (const row of data.items) {
-      let item = row.canonicalId ? target.MagicItems?.byId(row.canonicalId) : existing.get(normalize(row.name));
+      let item = row.canonicalId
+        ? target.MagicItems?.byId(row.canonicalId)
+        : existing.get(normalize(row.name)) || existing.get(normalize(row.english));
       if (!item && target.MagicItems) {
         const name = row.name.trim();
         if (name.length < 3 || name.length > 100) continue;
-        const id = ('official-' + row.bookId + '-' + normalize(name).replace(/ /g, '-')).slice(0, 100);
+        const id = row.catalogId || ('official-' + row.bookId + '-' + normalize(name).replace(/ /g, '-')).slice(0, 100);
         item = {
           id,
           name,
-          english: row.language === 'en' ? name : '',
+          english: row.english || (row.language === 'en' ? name : ''),
+          aliasIds: row.aliasCatalogIds || [],
           rarity: row.rarity,
           attune: Boolean(row.attunement),
           sourceKey: row.sourceKey,
@@ -77,7 +96,18 @@
         existing.set(normalize(name), item);
       }
       if (!item) continue;
-      if (item.id.startsWith('official-') && row.attunement) item.attune = true;
+      if (row.english) existing.set(normalize(row.english), item);
+      item.aliasIds = [
+        ...new Set([
+          ...(item.aliasIds || []),
+          ...(row.aliasCatalogIds || []),
+          ...(row.catalogId && row.catalogId !== item.id ? [row.catalogId] : []),
+        ]),
+      ];
+      if (item.id.startsWith('official-')) {
+        item.attune = Boolean(row.attunement);
+        item.rarity = row.rarity;
+      }
       const previous = itemTexts.get(item.id);
       if (!previous || rank(row) > rank(previous))
         itemTexts.set(item.id, { ...reference(row), language: row.language });
@@ -98,13 +128,16 @@
     );
   function html(row) {
     if (!row) return '';
-    return `<details class="library-feature"><summary>Reglas del libro · ${esc(row.book)} · PDF p. ${row.page}</summary><p class="small library-text">${esc(row.text)}${row.higher ? '\n\nA niveles superiores: ' + esc(row.higher) : ''}</p></details>`;
+    return `<details class="library-feature"><summary>Reglas del libro · ${esc(row.book)} · PDF p. ${row.page}</summary>${row.variantNote ? '<p class="small">' + esc(row.variantNote) + '</p>' : ''}${row.variants ? '<p class="small">' + row.variants.map(v => esc(v.name) + ' · ' + esc(v.rarity)).join('<br>') + '</p>' : ''}${row.attunementRequirement ? '<p class="small">Sintonización: ' + esc(row.attunementRequirement) + '</p>' : ''}<p class="small library-text">${esc(row.text)}${row.higher ? '\n\nA niveles superiores: ' + esc(row.higher) : ''}</p></details>`;
   }
   root.OfficialContent = {
     apply,
     ruleTexts,
     spellTexts,
     itemTexts,
+    adventureSources,
+    selectableSource: source => !adventureSources.has(source),
+    selectableBook: title => !adventureTitles.has(title),
     html,
     spellHtml: id => html(spellTexts.get(id)),
     itemHtml: id =>

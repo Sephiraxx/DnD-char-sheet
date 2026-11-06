@@ -1365,6 +1365,7 @@
       reactions: acts(lists.reactions),
       legendary: acts(lists.legendary),
       page: lines[a].page + 1,
+      ...(opts.positions ? { pdfPosition: { x: lines[a].x, y: lines[a].y, h: lines[a].h } } : {}),
     };
     if (english) m.lang_book = 'en';
     if (summon) {
@@ -1656,6 +1657,17 @@
       const v = opts.vocab;
       out.push({
         name: fixName(niceName(nameLine.t), v),
+        ...(opts.positions
+          ? {
+              pdfPosition: {
+                x: lines[a].x,
+                y: Math.min(nameLine.y, lines[a].y - lines[a].h),
+                h: nameLine.h,
+                bottom: lines[a].y + lines[a].h * 4,
+                c: lines[a].c,
+              },
+            }
+          : {}),
         kind: m[1].toLowerCase(),
         detail: head.trim(),
         rarity: RARITY.find(([re]) => re.test(m[3]))?.[1] || '',

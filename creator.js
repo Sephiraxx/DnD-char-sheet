@@ -437,7 +437,7 @@ const Creator = (() => {
       mine = cloud && typeof KEY !== 'undefined' && KEY ? window.Cloud.link(KEY) : null;
     if (t)
       return `<section class="card creator-table"><div class="card-header"><h2>Mesa «${esc(t.name)}»</h2>${btn('Crear sin mesa', 'leave-table', 'secondary')}</div><p class="small">Al terminar, la ficha se suma a esta mesa. Libros del DM: ${t.settings.sources.length >= Object.keys(CampaignData.sources).length ? 'todos' : t.settings.sources.length > 8 ? t.settings.sources.length + ' libros' : esc(t.settings.sources.join(', '))} · nivel inicial ${t.settings.startLevel}.${t.settings.rules ? ' Reglas de la casa: ' + esc(t.settings.rules) : ''}</p></section>`;
-    const books = Object.entries(CampaignData.sources)
+    const books = Campaign.availableSources()
       .map(
         ([id, n]) =>
           `<label class="check"><input type="checkbox" name="source" value="${id}" ${d.campaignSources.includes(id) ? 'checked' : ''} ${id === 'PHB' ? 'disabled' : ''}>${esc(n)}</label>`,
@@ -447,7 +447,7 @@ const Creator = (() => {
       cloud
         ? `<h2>¿Es para una mesa?</h2><p class="small">Con el código del DM, el personaje usa sus libros, su nivel inicial y sus reglas de características, y al terminar queda en la mesa.</p><div class="creator-join">${field('Código de la mesa', 'tableCode', ui.code || '', 'text', 'maxlength="6" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.2em"')}${field('Tu nombre (jugador)', 'tableDisplay', ui.display || '', 'text', 'maxlength="100" placeholder="Opcional"')}${btn('Unirme', 'join')}</div>${mine?.code ? `<div class="actions">${btn('Usar la mesa de ' + esc(state?.name || 'tu personaje') + ': «' + esc(mine.campaignName || mine.code) + '»', 'join-current', 'secondary')}</div>` : ''}`
         : ''
-    }<details class="creator-books" ${!cloud || ui.booksOpen ? 'open' : ''}><summary>Libros habilitados: ${d.campaignSources.length} de ${Object.keys(CampaignData.sources).length}${cloud ? ' (sin mesa)' : ''}</summary><p class="small">Marcá los que permite tu DM. Filtran las clases, razas, trasfondos y conjuros que ves.</p><div class="source-grid">${books}</div></details></section>`;
+    }<details class="creator-books" ${!cloud || ui.booksOpen ? 'open' : ''}><summary>Libros habilitados: ${Campaign.availableSources().filter(([id]) => d.campaignSources.includes(id)).length} de ${Campaign.availableSources().length}${cloud ? ' (sin mesa)' : ''}</summary><p class="small">Marcá los que permite tu DM. Filtran las clases, razas, trasfondos y conjuros que ves.</p><div class="source-grid">${books}</div></details></section>`;
   }
   async function join(code) {
     const err = host.querySelector('#creator-error');

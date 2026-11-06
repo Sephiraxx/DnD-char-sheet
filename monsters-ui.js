@@ -38,7 +38,7 @@ const MonsterUI = (() => {
       document.head.append(s);
     })).then(lib);
   }
-  const byId = id => window.MonsterData?.find(m => m.id === id);
+  const byId = id => window.MonsterData?.find(m => m.id === id || m.aliasIds?.includes(id));
   function rollDice(expr) {
     const m = /^(\d+)d(\d+)([+-]\d+)?$/.exec(String(expr).replace(/\s/g, ''));
     if (!m) return { rolls: [], total: Number(expr) || 0, mod: 0 };
@@ -228,9 +228,13 @@ const MonsterUI = (() => {
     const used = new Set(MonsterData.map(baseType));
     const rec = recent();
     // Libros: el SRD y los de la biblioteca del DM (si importó alguno).
-    const bookList = [...new Set(MonsterData.map(m => m.book).filter(Boolean))].sort((a, b) =>
-      a.localeCompare(b, 'es'),
-    );
+    const bookList = [
+      ...new Set(
+        MonsterData.map(m => m.book).filter(
+          b => b && (typeof OfficialContent === 'undefined' || OfficialContent.selectableBook(b)),
+        ),
+      ),
+    ].sort((a, b) => a.localeCompare(b, 'es'));
     const booksRow = bookList.length
       ? `<div class="chips bestiary-chips" role="group" aria-label="Libro">${chip('bes-book', '', 'Todos los libros', !pick.book)}${chip('bes-book', 'srd', 'SRD', pick.book === 'srd')}${bookList.map(b => chip('bes-book', b, esc(b), pick.book === b)).join('')}</div>`
       : '';
@@ -269,7 +273,7 @@ const MonsterUI = (() => {
     const n = pick.tray.get(m.id) || 0,
       tags = TAGS.filter(([k]) => has[k](m)).map(([, l]) => l.split(' ')[0]);
     const open = pick.open === m.id;
-    return `<article class="bestiary-card ${n ? 'picked' : ''} ${open ? 'open' : ''}"><button type="button" class="bestiary-main" data-action="bes-add" data-id="${m.id}" title="Agregar uno"><span class="bestiary-cr">VD ${crText(m.cr)}</span><span class="bestiary-name">${esc(m.name)}</span><span class="bestiary-meta">${esc(cap(m.type.split(' (')[0]))} · ${esc(m.size)}${m.english && m.english !== m.name ? ' · ' + esc(m.english) : ''}${m.book ? ' · ' + esc(m.book.length > 30 ? m.book.slice(0, 28) + '…' : m.book) : ''}${m.issues ? ' · ⚠' : ''}</span><span class="bestiary-stats"><span>CA <b>${m.ac}</b></span><span>PG <b>${m.hp}</b></span><span>${m.xp} XP</span>${tags.length ? `<span class="bestiary-tags">${tags.join(' ')}</span>` : ''}</span></button>${n ? `<span class="bestiary-count">${n}</span>` : ''}<button type="button" class="bestiary-info" data-action="bes-info" data-id="${m.id}" aria-expanded="${open}" aria-label="Ver estadísticas de ${esc(m.name)}" title="Ver estadísticas">${open ? '×' : 'ⓘ'}</button>${open ? `<div class="bestiary-block">${statBlock(m)}</div>` : ''}</article>`;
+    return `<article class="bestiary-card ${n ? 'picked' : ''} ${open ? 'open' : ''}"><button type="button" class="bestiary-main" data-action="bes-add" data-id="${m.id}" title="Agregar uno"><span class="bestiary-cr">VD ${m.unrated ? '—' : crText(m.cr)}</span><span class="bestiary-name">${esc(m.name)}</span><span class="bestiary-meta">${esc(cap(m.type.split(' (')[0]))} · ${esc(m.size)}${m.english && m.english !== m.name ? ' · ' + esc(m.english) : ''}${m.book ? ' · ' + esc(m.book.length > 30 ? m.book.slice(0, 28) + '…' : m.book) : ''}${m.issues ? ' · ⚠' : ''}</span><span class="bestiary-stats"><span>CA <b>${m.acNote ? 'variable' : m.ac}</b></span><span>PG <b>${m.hpNote ? 'variables' : m.hp}</b></span><span>${m.xp} XP</span>${tags.length ? `<span class="bestiary-tags">${tags.join(' ')}</span>` : ''}</span></button>${n ? `<span class="bestiary-count">${n}</span>` : ''}<button type="button" class="bestiary-info" data-action="bes-info" data-id="${m.id}" aria-expanded="${open}" aria-label="Ver estadísticas de ${esc(m.name)}" title="Ver estadísticas">${open ? '×' : 'ⓘ'}</button>${open ? `<div class="bestiary-block">${statBlock(m)}</div>` : ''}</article>`;
   }
   function drawResults() {
     const box = document.getElementById('monster-results');
@@ -416,15 +420,19 @@ const MonsterUI = (() => {
           ? `<div class="actions">${a.atk !== undefined ? button('Atacar', 'monster-attack', '', `data-entry="${entry.id}" data-kind="${kind}" data-name="${esc(a.n)}"`) : ''}${a.dc ? button('Pedir salvación', 'monster-save', 'secondary', `data-entry="${entry.id}" data-kind="${kind}" data-name="${esc(a.n)}"`) : ''}${a.atk === undefined && a.dmg ? button('Tirar daño', 'monster-attack', 'secondary', `data-entry="${entry.id}" data-kind="${kind}" data-name="${esc(a.n)}" data-noattack="1"`) : ''}</div>`
           : ''
       }</div>`;
-    return `<p class="small muted">${esc(cap(m.type))} ${esc(m.size.toLowerCase())}, ${esc(m.align)} · VD ${crText(m.cr)} (${m.xp} XP)</p>
-      <p><b>CA</b> ${m.ac} · <b>PG</b> ${entry ? (entry.hp ?? '—') + ' / ' + entry.max : m.hp + ' (' + esc(m.hd) + ')'} · <b>Velocidad</b> ${esc(m.speed)}</p>
+    return `<p class="small muted">${esc(cap(m.type))} ${esc(m.size.toLowerCase())}, ${esc(m.align)} · ${m.unrated ? 'Sin VD' : 'VD ' + crText(m.cr)} (${m.xp} XP)</p>
+      <p><b>CA</b> ${entry ? (entry.ac ?? m.ac) : esc(m.acNote || m.ac)} · <b>PG</b> ${entry ? (entry.hp ?? '—') + ' / ' + entry.max : esc(m.hpNote || m.hp + ' (' + m.hd + ')')} · <b>Velocidad</b> ${esc(m.speed)}</p>
+      ${line('Armadura', m.acDetails)}${line('Acciones legendarias', m.legendaryNote)}
       <dl class="party-stats monster-abilities">${ABIL.map((a, i) => `<div><dt>${SHORT_ES[a]}</dt><dd>${m.ab[i]} (${sign(mod(m.ab[i]))})</dd></div>`).join('')}</dl>
       ${line('Salvaciones', m.saves)}${line('Habilidades', m.skills)}${line('Vulnerable a', m.vuln)}${line('Resistencias', m.res)}${line('Inmunidades', m.imm)}${line('Inmune a estados', m.cimm)}${line('Sentidos', m.senses)}${line('Idiomas', m.lang)}
       ${m.traits.map(([n, d]) => `<div class="feature"><p class="monster-feature-text"><b>${esc(n)}.</b> ${esc(d)}</p></div>`).join('')}
       ${m.actions.length ? '<h3 class="section-space">Acciones</h3>' + m.actions.map(a => act(a, 'actions')).join('') : ''}
+      ${m.bonus?.length ? '<h3 class="section-space">Acciones adicionales</h3>' + m.bonus.map(a => act(a, 'bonus')).join('') : ''}
+      ${m.mythic?.length ? '<h3 class="section-space">Acciones míticas</h3>' + m.mythic.map(a => act(a, 'mythic')).join('') : ''}
       ${m.reactions.length ? '<h3 class="section-space">Reacciones</h3>' + m.reactions.map(a => act(a, 'reactions')).join('') : ''}
       ${m.legendary.length ? '<h3 class="section-space">Acciones legendarias</h3>' + m.legendary.map(a => act(a, 'legendary')).join('') : ''}
       ${m.summon ? `<p class="small section-space"><b>Criatura invocada o compañero:</b> sin desafío propio.${m.acNote ? ' CA: ' + esc(m.acNote) + '.' : ''}${m.hpNote ? ' PG: ' + esc(m.hpNote) + '.' : ''} Ajustá la CA y los PG al agregarla.</p>` : ''}
+      ${m.variantNote ? `<p class="small">${esc(m.variantNote)}</p>` : ''}
       <p class="small muted section-space">${m.bundled ? `Catálogo compartido: ${esc(m.source)}, PDF p. ${m.page}. Estadísticas básicas y daño base; otros poderes, alcances y efectos requieren consultar la fuente.` : m.book ? `De tu biblioteca: ${esc(m.book)}${m.page ? ', pág. ' + m.page : ''}.${m.issues ? ' Datos incompletos: ' + esc(m.issues.join(', ')) + '.' : ''}` : 'Basado en el SRD 5.1 (CC-BY-4.0), traducido al español.'}</p>`;
   }
   async function view(id) {

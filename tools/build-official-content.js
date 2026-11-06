@@ -184,7 +184,10 @@ function aggregate(results) {
     '(function(r){r.OfficialContentData=' +
     JSON.stringify(data) +
     ';})(typeof window!=="undefined"?window:globalThis);\n';
-  fs.writeFileSync(path.join(root, 'official-content-data.js'), output);
+  // Extraction is a review input. It must never replace the audited live catalogue.
+  const staging = path.join(root, '.tmp-test', 'unreviewed-official-content-data.js');
+  fs.mkdirSync(path.dirname(staging), { recursive: true });
+  fs.writeFileSync(staging, output);
   return {
     books: data.books.length,
     monsters: data.monsters.length,

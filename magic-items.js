@@ -578,7 +578,7 @@
     'armor',
     'shield',
   ];
-  const byId = id => ITEMS.find(x => x.id === id);
+  const byId = id => ITEMS.find(x => x.id === id || x.aliasIds?.includes(id));
   const rows = s => (s.inventory || []).filter(x => x.magic && x.qty > 0);
   // Activo: en el inventario y, si pide sintonía, sintonizado.
   const active = s => rows(s).filter(x => !x.magic.attune || x.magic.attuned);
