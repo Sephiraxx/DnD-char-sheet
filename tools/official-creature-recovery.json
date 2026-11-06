@@ -1,0 +1,4714 @@
+{
+  "edition": "2014",
+  "referenceUrl": "https://5e.tools/bestiary.html",
+  "snapshot": {
+    "commit": "3a16c3ae035b286e693c19e2dd98e5264289c9cc",
+    "report": [
+      {
+        "source": "CRCotN",
+        "file": "bestiary-crcotn.json",
+        "sha256": "8f5ea0f5a49d8ee76b6ea928466f6eea0488b969e902972e16b7975f83175ef1"
+      },
+      {
+        "source": "TftYP",
+        "file": "bestiary-tftyp.json",
+        "sha256": "8330dfe9ffca0f7789397648e87a99fdc33923a70f6978008fa4339b92e9337f"
+      },
+      {
+        "source": "DSotDQ",
+        "file": "bestiary-dsotdq.json",
+        "sha256": "ebf90d43145593967a96eb0a5870cf9baf63f0df75036d8bc626468eee353f6d"
+      },
+      {
+        "source": "SKT",
+        "file": "bestiary-skt.json",
+        "sha256": "3bf9738fafee9d9c1602b6ee78dc6881415d5cf24bb7bfa4c33c02acda137d04"
+      },
+      {
+        "source": "LMoP",
+        "file": "bestiary-lmop.json",
+        "sha256": "ec471da3ea05e8c1d525b6df2424419a26532dd72d5672bda8eebf977252efe1"
+      },
+      {
+        "source": "KftGV",
+        "file": "bestiary-kftgv.json",
+        "sha256": "773e3819cdc2e285bf21fe291bc052cca0ab1f577921d1cd1c7e971f9263ba4b"
+      },
+      {
+        "source": "WBtW",
+        "file": "bestiary-wbtw.json",
+        "sha256": "08a31a8ef77c775cf2d6743a0f48f3c01f3580fdb347d9ec5052b3e0526293b1"
+      },
+      {
+        "source": "GoS",
+        "file": "bestiary-gos.json",
+        "sha256": "5d2c662d4fa4050b4e7eca18f000a4e4f5b65345ba04c097072dbd592123b57c"
+      },
+      {
+        "source": "MPP",
+        "file": "bestiary-mpp.json",
+        "sha256": "02deed7453b129b2461fad442037da98ae2163c662faaa29e9b9d0f1862cabe0"
+      },
+      {
+        "source": "QftIS",
+        "file": "bestiary-qftis.json",
+        "sha256": "f6cd5ad50f3bf63dde5eca64f8d1095bd5abbed471f9d374cd27a17fe5913bee"
+      },
+      {
+        "source": "PaBTSO",
+        "file": "bestiary-pabtso.json",
+        "sha256": "abd26f2ecfa5ccf4ecde5fd71e8054e1e46c4f0114cd9281f4b04d8fcaec0a35"
+      },
+      {
+        "source": "MPMM",
+        "file": "bestiary-mpmm.json",
+        "sha256": "98120fe788bde02b16d9db7f80e7111ddc1254b757e26217afd12a7d4ef228d7"
+      },
+      {
+        "source": "VEoR",
+        "file": "bestiary-veor.json",
+        "sha256": "9c8a82266d704104876f6776a62f1c484a84a8c8293536b7e9bbc091882d4e99"
+      },
+      {
+        "source": "IDRotF",
+        "file": "bestiary-idrotf.json",
+        "sha256": "7cd637457cc81899669f2b59415e76b52b8ec34503c1597a7c8a4f8f400d7a13"
+      },
+      {
+        "source": "WDH",
+        "file": "bestiary-wdh.json",
+        "sha256": "7c209d1eb53582f5d4407f746106973117cab91a48b7542045b58b2115b49292"
+      },
+      {
+        "source": "WDMM",
+        "file": "bestiary-wdmm.json",
+        "sha256": "d711fda9c1ef2209781dad63f8eec9e3c8efdbede0a77892ac7f57767620c6a9"
+      },
+      {
+        "source": "EGW",
+        "file": "bestiary-egw.json",
+        "sha256": "fd835bcfff17daf9dffe0c3335d0c436190d78fbd0fb56e9be04f4acf4308b8a"
+      },
+      {
+        "source": "DMG",
+        "file": "bestiary-dmg.json",
+        "sha256": "a9123613f5f214cbd36f215bef11d0eeb7b5620ee65409830c68a8b9897c85ac"
+      },
+      {
+        "source": "MM",
+        "file": "bestiary-mm.json",
+        "sha256": "f028359974ad59b8b198b10847831e5a8458f12c277b19c5fcbe76391f82bbb0"
+      },
+      {
+        "source": "FTD",
+        "file": "bestiary-ftd.json",
+        "sha256": "e5cdafdd58a14847e7317c0e721742827ce1678e188eca417ee1a82534f64080"
+      },
+      {
+        "source": "ERLW",
+        "file": "bestiary-erlw.json",
+        "sha256": "246edf1e77ea5d476f9c44602dd5de96ba32c15fe7db35b68ec3aa37b2494d1f"
+      },
+      {
+        "source": "MCV2DC",
+        "file": "bestiary-mcv2dc.json",
+        "sha256": "0c6f1ad1c75cd1fb9f6d1b29e9b8dab9baabeb1c1eecd48bbc24b2071fe53858"
+      },
+      {
+        "source": "BGG",
+        "file": "bestiary-bgg.json",
+        "sha256": "591fd3a3b3206ffcdc3b64b41b5445cb29a6606953682c2f98590198eafc6f32"
+      },
+      {
+        "source": "GGR",
+        "file": "bestiary-ggr.json",
+        "sha256": "ab02e617600f811306364a2bd53302ee525ec08320689a175aa52b4986e03a06"
+      },
+      {
+        "source": "VRGR",
+        "file": "bestiary-vrgr.json",
+        "sha256": "7f2a090866b49e25d4774546dc03fd5bb27626181c6ca646b0dfa6c26285922f"
+      },
+      {
+        "source": "BAM",
+        "file": "bestiary-bam.json",
+        "sha256": "c759e4e6ebfd3076aa743320b17a893df172cd7a73a5571a099d15eb8cfe9015"
+      }
+    ],
+    "repository": "https://github.com/5etools-mirror-3/5etools-src"
+  },
+  "entries": [
+    {
+      "reference": "CRCotN:Dermot Wurder (Tier 1)",
+      "bookId": "2a479a659f9e606a",
+      "page": 189,
+      "locations": [
+        {
+          "bookId": "2a479a659f9e606a",
+          "page": 189
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "2c8e5e73a7071fd82d9021a09b0af171103555855b8e1f5d8bcf7316db7549db"
+    },
+    {
+      "reference": "CRCotN:Light Devourer",
+      "bookId": "2a479a659f9e606a",
+      "page": 201,
+      "locations": [
+        {
+          "bookId": "2a479a659f9e606a",
+          "page": 201
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "b0f00dc716ebce8080463ee44ec49047acedd1e99b9a92a0fbb815c70dfa0047"
+    },
+    {
+      "reference": "CRCotN:Slithering Bloodfin",
+      "bookId": "2a479a659f9e606a",
+      "page": 210,
+      "locations": [
+        {
+          "bookId": "2a479a659f9e606a",
+          "page": 210
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "b71d2890bd37df26ca9ee46303e7eeb33ced7ea16bd704388ef600b22def64f8"
+    },
+    {
+      "reference": "TftYP:Kelpie",
+      "bookId": "e21538c8ec892876",
+      "page": 240,
+      "locations": [
+        {
+          "bookId": "e21538c8ec892876",
+          "page": 240
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "ec923011fb9e3cf79f19a52f60a32b56d06236115a5b86e636ba1074f377dbbc"
+    },
+    {
+      "reference": "DSotDQ:Lesser Death Dragon",
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 196,
+      "locations": [
+        {
+          "bookId": "0aff6c2b51aab6bf",
+          "page": 196
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "a92337d89bb5375c226d280d32b8587b089e8829b5c7ae5c7d1cc449614ba69a"
+    },
+    {
+      "reference": "DSotDQ:Baaz Draconian",
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 198,
+      "locations": [
+        {
+          "bookId": "0aff6c2b51aab6bf",
+          "page": 198
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "03f1b688320ffba520727309001d0854abe68fd10d11b152227e5daa55479fea"
+    },
+    {
+      "reference": "DSotDQ:Bozak Draconian",
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 199,
+      "locations": [
+        {
+          "bookId": "0aff6c2b51aab6bf",
+          "page": 199
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "2714c7beaf5851cac798c35949b3d7c6af9eec238f17d2d9027e0192bd220e6d"
+    },
+    {
+      "reference": "DSotDQ:Kapak Draconian",
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 199,
+      "locations": [
+        {
+          "bookId": "0aff6c2b51aab6bf",
+          "page": 199
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "2048e7be03260cc5f331dddb1fb345da84b4c53a5a484886f3c8e5b6181f4366"
+    },
+    {
+      "reference": "DSotDQ:Wasteland Dragonnel",
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 202,
+      "locations": [
+        {
+          "bookId": "0aff6c2b51aab6bf",
+          "page": 202
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "ec4610dc149939fd82470746a6f36992afe154fd2337f06f51c85878093090a4"
+    },
+    {
+      "reference": "DSotDQ:Lohezet",
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 206,
+      "locations": [
+        {
+          "bookId": "0aff6c2b51aab6bf",
+          "page": 206
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "7dd3a81f96fcb981b7ee1c1435fefcccda4d991bca9b8a421ed4bfa970e64ee5"
+    },
+    {
+      "reference": "DSotDQ:Red Ruin",
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 209,
+      "locations": [
+        {
+          "bookId": "0aff6c2b51aab6bf",
+          "page": 209
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "bc6fe2e2fe24b0b2d08e9b138c89f34bd555642a190bc0d7cd458e95ace51c63"
+    },
+    {
+      "reference": "DSotDQ:Wersten Kern",
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 210,
+      "locations": [
+        {
+          "bookId": "0aff6c2b51aab6bf",
+          "page": 210
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "9948f258a8496ad8b59cb64a25d88e38351cc349ece2040818f52ffc752ccf1a"
+    },
+    {
+      "reference": "DSotDQ:Andir Valmakos",
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 211,
+      "locations": [
+        {
+          "bookId": "0aff6c2b51aab6bf",
+          "page": 211
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "Include the sidekick advancement table, including any continuation on the next page.",
+      "sourceHash": "0776e87616e432b27adeaefd6ae9008984d378215e646acb974c71053c7f7e74"
+    },
+    {
+      "reference": "DSotDQ:Ayik Ur",
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 212,
+      "locations": [
+        {
+          "bookId": "0aff6c2b51aab6bf",
+          "page": 212
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "Include the sidekick advancement table, including any continuation on the next page.",
+      "sourceHash": "2087ca02e95417da22c0c43dfaa78d11a7512677b369d595522ed14f704d979d"
+    },
+    {
+      "reference": "DSotDQ:Hrigg Roundrook",
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 212,
+      "locations": [
+        {
+          "bookId": "0aff6c2b51aab6bf",
+          "page": 212
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "Include the sidekick advancement table, including any continuation on the next page.",
+      "sourceHash": "261576feeae667d6b861b228558d4ca5a0360d0966485d54b07c040c8e4eecdb"
+    },
+    {
+      "reference": "DSotDQ:Iriad",
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 213,
+      "locations": [
+        {
+          "bookId": "0aff6c2b51aab6bf",
+          "page": 213
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "Include the sidekick advancement table, including any continuation on the next page.",
+      "sourceHash": "26a692925491a1b97f034cecff913d963bec0272f6e39ddef6253c5fe39605ba"
+    },
+    {
+      "reference": "DSotDQ:Levna Drakehorn",
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 214,
+      "locations": [
+        {
+          "bookId": "0aff6c2b51aab6bf",
+          "page": 214
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "Include the sidekick advancement table, including any continuation on the next page.",
+      "sourceHash": "5d4182025b14fbd27e07497b5eb0081e7e1441a9e6a4c4a2d72213d291d191b9"
+    },
+    {
+      "reference": "DSotDQ:Tem Temble",
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 214,
+      "locations": [
+        {
+          "bookId": "0aff6c2b51aab6bf",
+          "page": 214
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "Include the sidekick advancement table, including any continuation on the next page.",
+      "sourceHash": "c460cf6c0720c8a8842e4fa0bc96938699a310a05b8f14a726c45c840bb93481"
+    },
+    {
+      "reference": "SKT:Augrek Brighthelm",
+      "bookId": "cf1706a6ddfd9239",
+      "page": 246,
+      "locations": [
+        {
+          "bookId": "cf1706a6ddfd9239",
+          "page": 246
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "340a1b20ecde9a890400432fabd75b9b22daaab396a945fdb246d1e45b25cf77"
+    },
+    {
+      "reference": "SKT:Sirac of Suzail",
+      "bookId": "cf1706a6ddfd9239",
+      "page": 246,
+      "locations": [
+        {
+          "bookId": "cf1706a6ddfd9239",
+          "page": 246
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "94b6ca9c6568a2a04d1cc32655efc254e182343502b887a636351ce633d5c7e6"
+    },
+    {
+      "reference": "SKT:Duvessa Shane",
+      "bookId": "cf1706a6ddfd9239",
+      "page": 247,
+      "locations": [
+        {
+          "bookId": "cf1706a6ddfd9239",
+          "page": 247
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "77e087fb20031d2fc46ddbef8a0b96c60e6a167c96ffd239b2a5bea9c50f65ee"
+    },
+    {
+      "reference": "SKT:Markham Southwell",
+      "bookId": "cf1706a6ddfd9239",
+      "page": 247,
+      "locations": [
+        {
+          "bookId": "cf1706a6ddfd9239",
+          "page": 247
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "8168645ddc3b6e060d007c0f4f0ba8a8ae7c859cbbf10fbfd6f25ea76f35c639"
+    },
+    {
+      "reference": "SKT:Beldora",
+      "bookId": "cf1706a6ddfd9239",
+      "page": 248,
+      "locations": [
+        {
+          "bookId": "cf1706a6ddfd9239",
+          "page": 248
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "6002e1401a3482ad6e40f3b7b7077de62613a77e8958288092d675acb413b582"
+    },
+    {
+      "reference": "SKT:Sir Baric Nylef",
+      "bookId": "cf1706a6ddfd9239",
+      "page": 248,
+      "locations": [
+        {
+          "bookId": "cf1706a6ddfd9239",
+          "page": 248
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "f136d1ad93e0534e9233dbdf2fbfd4739bbef16422b31374f38dc01837ceca69"
+    },
+    {
+      "reference": "SKT:Shalvus Martholio",
+      "bookId": "cf1706a6ddfd9239",
+      "page": 249,
+      "locations": [
+        {
+          "bookId": "cf1706a6ddfd9239",
+          "page": 249
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "26d262f2d8a35e8812348219d71eb02d199348435e2fec013c8e80fa5bf2d35e"
+    },
+    {
+      "reference": "SKT:Lifferlas",
+      "bookId": "cf1706a6ddfd9239",
+      "page": 249,
+      "locations": [
+        {
+          "bookId": "cf1706a6ddfd9239",
+          "page": 249
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "90e56ee8772149f83eaa8e9fc2b9dff12eeffc6fa455e41fafab7ebc87070d1e"
+    },
+    {
+      "reference": "SKT:Zi Liang",
+      "bookId": "cf1706a6ddfd9239",
+      "page": 250,
+      "locations": [
+        {
+          "bookId": "cf1706a6ddfd9239",
+          "page": 250
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "69dc99517f2fee4d6dadfce080ce732cfdb24a51ba7e96aeedb7a9293b7cd1a4"
+    },
+    {
+      "reference": "SKT:Miros Xelbrin",
+      "bookId": "cf1706a6ddfd9239",
+      "page": 250,
+      "locations": [
+        {
+          "bookId": "cf1706a6ddfd9239",
+          "page": 250
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "3522651ae076b9adff23048febbb8939059ddc7ac39375774c5985affbec371c"
+    },
+    {
+      "reference": "SKT:Naxene Drathkala",
+      "bookId": "cf1706a6ddfd9239",
+      "page": 251,
+      "locations": [
+        {
+          "bookId": "cf1706a6ddfd9239",
+          "page": 251
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "d720c8eeb148fe1fa3b574f393c36ff4e36f7b1ac2f844cd80338d6a7cc42d2f"
+    },
+    {
+      "reference": "SKT:Oren Yogilvy",
+      "bookId": "cf1706a6ddfd9239",
+      "page": 251,
+      "locations": [
+        {
+          "bookId": "cf1706a6ddfd9239",
+          "page": 251
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "5c816bbf8d6296ad53bd94dec151208d983c44117b5e4caf58515df8f7a4f3c0"
+    },
+    {
+      "reference": "SKT:Darathra Shendrel",
+      "bookId": "cf1706a6ddfd9239",
+      "page": 252,
+      "locations": [
+        {
+          "bookId": "cf1706a6ddfd9239",
+          "page": 252
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "9c2bba9f0e3ba0eeba8ddf5b1363ddb0cb68bbb9e2d99ede1a42961b5e8e7a52"
+    },
+    {
+      "reference": "SKT:Darz Helgar",
+      "bookId": "cf1706a6ddfd9239",
+      "page": 252,
+      "locations": [
+        {
+          "bookId": "cf1706a6ddfd9239",
+          "page": 252
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "ac810f9c16ac96126d1536c567a172147a8e4d7476d278dcc851d4a0fbe061f9"
+    },
+    {
+      "reference": "SKT:Narth Tezrin",
+      "bookId": "cf1706a6ddfd9239",
+      "page": 253,
+      "locations": [
+        {
+          "bookId": "cf1706a6ddfd9239",
+          "page": 253
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "93657276b3bf218f572165e1c9dc5fb2c02947a6a719d743d83414b0a5fdca29"
+    },
+    {
+      "reference": "SKT:Urgala Meltimer",
+      "bookId": "cf1706a6ddfd9239",
+      "page": 253,
+      "locations": [
+        {
+          "bookId": "cf1706a6ddfd9239",
+          "page": 253
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "52e7cb97432c02fc860052d4a721545c18a5bf011c2cc473665b5e3d39a901c0"
+    },
+    {
+      "reference": "SKT:Othovir",
+      "bookId": "cf1706a6ddfd9239",
+      "page": 254,
+      "locations": [
+        {
+          "bookId": "cf1706a6ddfd9239",
+          "page": 254
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "95857fb88e3e1bfec1cddc9ebcd0ecffbae9072a6bceecc710b808df87637d27"
+    },
+    {
+      "reference": "SKT:Ghelryn Foehammer",
+      "bookId": "cf1706a6ddfd9239",
+      "page": 254,
+      "locations": [
+        {
+          "bookId": "cf1706a6ddfd9239",
+          "page": 254
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "a68eee274c1d32987cea43287dc7d9dc3ac84e919ed1944941533a8c88dc2ba0"
+    },
+    {
+      "reference": "GoS:Rip Tide Priest",
+      "bookId": "4b9e741c5309eebe",
+      "page": 251,
+      "locations": [
+        {
+          "bookId": "4b9e741c5309eebe",
+          "page": 251
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "8dec529d25074224baefd5261257f9ceded96d072efafdb8ca917bf68db90c0f"
+    },
+    {
+      "reference": "LMoP:Evil Mage",
+      "bookId": "db4aae13ce263203",
+      "page": 58,
+      "locations": [
+        {
+          "bookId": "db4aae13ce263203",
+          "page": 58
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "d83a5dd76e6c4b1adb83bce8cbc02d35df96ebc1da31609a32e35687807c298f"
+    },
+    {
+      "reference": "LMoP:Redbrand Ruffian",
+      "bookId": "db4aae13ce263203",
+      "page": 61,
+      "locations": [
+        {
+          "bookId": "db4aae13ce263203",
+          "page": 61
+        }
+      ],
+      "category": "Book-specific version",
+      "note": "",
+      "sourceHash": "26699691e42252c655e6cd1a118b4e12ef984c4d7dede2cb132431492a67d63f"
+    },
+    {
+      "reference": "WBtW:Agdon Longscarf",
+      "bookId": "67feb3483ef571d8",
+      "page": 74,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 74
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "a26c4d24a7de0a210d52c637a725aadc1910d8a3ad44e2360cea9c8b58ee42bf"
+    },
+    {
+      "reference": "WBtW:Clapperclaw the Scarecrow",
+      "bookId": "67feb3483ef571d8",
+      "page": 79,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 79
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "ba2760874cc1ef59db3635dc54d2eef89ccc3756add4432a2d1727a4cde6b246"
+    },
+    {
+      "reference": "WBtW:Flying Rocking Horse",
+      "bookId": "67feb3483ef571d8",
+      "page": 122,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 122
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "702acdddae69e0ab92e9369958a287af5ad8d6ef598e54222563b369ed49b955"
+    },
+    {
+      "reference": "WBtW:Pollenella the Honeybee",
+      "bookId": "67feb3483ef571d8",
+      "page": 136,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 136
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "b79473d644732c75c18f1a5e682ee88bca5adc4b54889c60c2fdccd95a95d369"
+    },
+    {
+      "reference": "WBtW:Glasswork Golem",
+      "bookId": "67feb3483ef571d8",
+      "page": 194,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 194
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "c04c881b67b0108ae008311d8f302fd2cccc9dd382c4c9b427087746903cf861"
+    },
+    {
+      "reference": "WBtW:Endelyn Moongrave",
+      "bookId": "67feb3483ef571d8",
+      "page": 218,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 218
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "08730bfd9464609d44be78a4724186f04ffb93828e76eeacae6c158b7aa5d16a"
+    },
+    {
+      "reference": "WBtW:Skabatha Nightshade",
+      "bookId": "67feb3483ef571d8",
+      "page": 219,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 219
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "5a36e27af2abaa277d21887fc2cf0ce01985d8271cf6f5527d6830a15094bd8e"
+    },
+    {
+      "reference": "WBtW:Warduke",
+      "bookId": "67feb3483ef571d8",
+      "page": 220,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 220
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "55ea227468e6ea63acae6d138c382d54b07076d6277ace6b4cfe2175851070a6"
+    },
+    {
+      "reference": "WBtW:Skylla",
+      "bookId": "67feb3483ef571d8",
+      "page": 222,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 222
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "9a7720982d3bdd361dcbc13e1e17dc46cbcbc122c4b258835fd7ce9132613c39"
+    },
+    {
+      "reference": "WBtW:Zargash",
+      "bookId": "67feb3483ef571d8",
+      "page": 224,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 224
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "d4767e18d6e768dcdaf2cfab8135bb48f1e2d42877b4a08ed3d9d85f5a274b54"
+    },
+    {
+      "reference": "WBtW:Strongheart",
+      "bookId": "67feb3483ef571d8",
+      "page": 226,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 226
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "60efdf3f3a8be9f67d599e39d0a67dd21dafc2c5b30e583c4322ba773426746b"
+    },
+    {
+      "reference": "WBtW:Bullywug Knight",
+      "bookId": "67feb3483ef571d8",
+      "page": 232,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 232
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "b5a2aea2724ede1450cd914c7ee1166a736eebc5e148b7c6a7927782a2c5807e"
+    },
+    {
+      "reference": "WBtW:Campestri",
+      "bookId": "67feb3483ef571d8",
+      "page": 233,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 233
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "500c6ec5513b19dd227b59b83a57b42a60494220c7969177b59cc884fdcee4de"
+    },
+    {
+      "reference": "WBtW:Swarm of Campestris",
+      "bookId": "67feb3483ef571d8",
+      "page": 233,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 233
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "e638879f465e65528aafd734c687aa555c19dce68f757129533af288d95b30e4"
+    },
+    {
+      "reference": "WBtW:Selenelion Twin",
+      "bookId": "67feb3483ef571d8",
+      "page": 235,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 235
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "Shared block for Gleam and Glister (Destello and Fulgor in this PDF); include both rays.",
+      "sourceHash": "adccea482c452d3eabd6a24ad8ba463ec3a7af4eaa0eff8905e4c7d2206d3f7f"
+    },
+    {
+      "reference": "WBtW:Jabberwock",
+      "bookId": "67feb3483ef571d8",
+      "page": 237,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 237
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "8347d1ad6380af3d061c044f1fbaba3f5b38b0c645c79db78d12c0d616a53c75"
+    },
+    {
+      "reference": "WBtW:Giant Dragonfly",
+      "bookId": "67feb3483ef571d8",
+      "page": 238,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 238
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "6867700543e9018baec3f33cd0d16d86aa94c6e00bcc6f44ba79f08edd2921b5"
+    },
+    {
+      "reference": "WBtW:Harengon Brigand",
+      "bookId": "67feb3483ef571d8",
+      "page": 239,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 239
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "a5b9108438eb7f57c3137d5c3b3694554b32fa1ca036870a3c1094f38ed73381"
+    },
+    {
+      "reference": "WBtW:Living Doll",
+      "bookId": "67feb3483ef571d8",
+      "page": 240,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 240
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "d599b1c04a161c2cc83bc7b38d750fb125693cf4ba809ebeb371c72c6884ebd5"
+    },
+    {
+      "reference": "KftGV:Fragment of Krokulmar",
+      "bookId": "eb72ac69f14e9565",
+      "page": 73,
+      "locations": [
+        {
+          "bookId": "eb72ac69f14e9565",
+          "page": 73
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "45348f199f3f84efe67726090cad39e8893657c360298b0a53029b3c93443c7b"
+    },
+    {
+      "reference": "KftGV:Clockwork Observer",
+      "bookId": "eb72ac69f14e9565",
+      "page": 125,
+      "locations": [
+        {
+          "bookId": "eb72ac69f14e9565",
+          "page": 125
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "59fed6bff492478463e56c0f18d701797a4c36fc4095a815053976afce7b1bb1"
+    },
+    {
+      "reference": "QftIS:Android",
+      "bookId": "d4275553fd38d09b",
+      "page": 195,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 195
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "48a926aa573d81b9386160133894c1954117ec506e54ccd260d5a2717dedaeb8"
+    },
+    {
+      "reference": "QftIS:Derro Apprentice",
+      "bookId": "d4275553fd38d09b",
+      "page": 197,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 197
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "6c1a4d6beaacedfe13c2c2a89fa41041a140656684ccc7388b3d56a944661325"
+    },
+    {
+      "reference": "QftIS:Derro Raider",
+      "bookId": "d4275553fd38d09b",
+      "page": 197,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 197
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "8ae70ff2d915e22dc95cb340a21fdb4dfed71701028a3e995ef5afe3a716da67"
+    },
+    {
+      "reference": "QftIS:Froghemoth Elder",
+      "bookId": "d4275553fd38d09b",
+      "page": 199,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 199
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "fe10e3ea29c628615c21a6e1067e32d6d357c4b8c16adb489243bf44ce752fcb"
+    },
+    {
+      "reference": "QftIS:Gibberling",
+      "bookId": "d4275553fd38d09b",
+      "page": 203,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 203
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "0158df368823705b0ffe558bc6cde716049a26532fd5dcebe063b1b07f26df6e"
+    },
+    {
+      "reference": "QftIS:Swarm of Gibberlings",
+      "bookId": "d4275553fd38d09b",
+      "page": 203,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 203
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "4d777ba518070afffa46e619b37636109d0e77d7e0f7c1bacc15843b47aaad8f"
+    },
+    {
+      "reference": "QftIS:Horrid Plant",
+      "bookId": "d4275553fd38d09b",
+      "page": 205,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 205
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "Include all three plant varieties and their different actions.",
+      "sourceHash": "eea683bc3082cbf85bfa3457470fe521f22f80e206981559ec706003fafd115e"
+    },
+    {
+      "reference": "QftIS:Leprechaun",
+      "bookId": "d4275553fd38d09b",
+      "page": 206,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 206
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "62d5572925227d4d6e007ab8a92024d47a93c8af46c3173a4b087e96bb2dafea"
+    },
+    {
+      "reference": "QftIS:Champion of Usamigaras",
+      "bookId": "d4275553fd38d09b",
+      "page": 207,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 207
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "53941f38e773ba022ecc81470d6c70c61bc5f579f36855b1f5802781366eeb6d"
+    },
+    {
+      "reference": "QftIS:Maschin-i-Bozorg",
+      "bookId": "d4275553fd38d09b",
+      "page": 208,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 208
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "d5d3814ee4fdff4052a4f80a2eda551dcf461433d7d76f5636a981a99689f450"
+    },
+    {
+      "reference": "QftIS:Memory Web",
+      "bookId": "d4275553fd38d09b",
+      "page": 209,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 209
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "8a3bb30974a5418d30a98b204ea83a105ef5b72af5b2969a7d3f4bdde8790812"
+    },
+    {
+      "reference": "QftIS:Nafas",
+      "bookId": "d4275553fd38d09b",
+      "page": 211,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 211
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "8c9031a0ad1aefa35d182a633e40c1c61f44e1bbf9d88452531e731f0b952c5b"
+    },
+    {
+      "reference": "QftIS:Worker Robot",
+      "bookId": "d4275553fd38d09b",
+      "page": 216,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 216
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "a17e781bba39cc8c3ab31e54f7f778e86499140eb985b7e3e1c21b14bc0fbaf9"
+    },
+    {
+      "reference": "QftIS:Tower Hand",
+      "bookId": "d4275553fd38d09b",
+      "page": 218,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 218
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "2206265f79c475c71261cf79c831515c4270ca47b4fcc43eb95d6378f5cdec06"
+    },
+    {
+      "reference": "QftIS:Tower Sage",
+      "bookId": "d4275553fd38d09b",
+      "page": 218,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 218
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "ab6a3ea90af531a4f008bfcf80f6aa88b5ef47476fcfdfcabaf036f5e41e3504"
+    },
+    {
+      "reference": "QftIS:Vegepygmy Moldmaker",
+      "bookId": "d4275553fd38d09b",
+      "page": 219,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 219
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "4788b97ac1616f39dd0f79aa5917fe7907084f852fdde1269eb2d9c8cfaa5400"
+    },
+    {
+      "reference": "QftIS:Vegepygmy Scavenger",
+      "bookId": "d4275553fd38d09b",
+      "page": 219,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 219
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "be2351a6a4bad9c1addb2bb1e7b67e61fc1f74d6c5c750522ddeefeeed7066fd"
+    },
+    {
+      "reference": "QftIS:Vegepygmy Thorny Hunter",
+      "bookId": "d4275553fd38d09b",
+      "page": 220,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 220
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "ff0da851122b69dfcc3df33c1246f14d4a4347e5a6a5c7bb021aae0c75bd46b0"
+    },
+    {
+      "reference": "QftIS:Warrior of Madarua",
+      "bookId": "d4275553fd38d09b",
+      "page": 221,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 221
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "c47acc81a91969da9fc0c033df76d2ab1abebc8bae805b0e4a02185908180ac9"
+    },
+    {
+      "reference": "QftIS:Wolf-in-Sheep's-Clothing",
+      "bookId": "d4275553fd38d09b",
+      "page": 222,
+      "locations": [
+        {
+          "bookId": "d4275553fd38d09b",
+          "page": 222
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "8a2bc21dcddfb2495c86bc83607cb7614e671a2e0ff7f8163561706e9dc4eb45"
+    },
+    {
+      "reference": "PaBTSO:Grell Psychic",
+      "bookId": "4d8e49dae407209a",
+      "page": 145,
+      "locations": [
+        {
+          "bookId": "4d8e49dae407209a",
+          "page": 145
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "ab54114651df4e32f5aecee6ffa271b28aaa2e7828b572ff26a257a2c3f108c3"
+    },
+    {
+      "reference": "PaBTSO:Encephalon Cluster",
+      "bookId": "4d8e49dae407209a",
+      "page": 205,
+      "locations": [
+        {
+          "bookId": "4d8e49dae407209a",
+          "page": 205
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "e6aa9167cf8707e01a37c4f1be2e31b92c9c59d5bf0c35cef012a3c32b1ad86b"
+    },
+    {
+      "reference": "PaBTSO:Encephalon Gemmule",
+      "bookId": "4d8e49dae407209a",
+      "page": 206,
+      "locations": [
+        {
+          "bookId": "4d8e49dae407209a",
+          "page": 206
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "244a8a2a8373c8f0c269d95151d34a389f0902ee4788a304b7b185d773ead280"
+    },
+    {
+      "reference": "PaBTSO:Flesh Meld",
+      "bookId": "4d8e49dae407209a",
+      "page": 207,
+      "locations": [
+        {
+          "bookId": "4d8e49dae407209a",
+          "page": 207
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "c6d4586c83cbe9f3f9a89704b063f904b620540fdee55540ac9e7c916bf8fdd5"
+    },
+    {
+      "reference": "PaBTSO:Mind Flayer Prophet",
+      "bookId": "4d8e49dae407209a",
+      "page": 210,
+      "locations": [
+        {
+          "bookId": "4d8e49dae407209a",
+          "page": 210
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "5941d72452c340d39b57d82be5c0b31eabd7140b68a728f71e48baf1d87ee534"
+    },
+    {
+      "reference": "PaBTSO:Oculorb",
+      "bookId": "4d8e49dae407209a",
+      "page": 214,
+      "locations": [
+        {
+          "bookId": "4d8e49dae407209a",
+          "page": 214
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "4feb5963334ba76aea3841cc7754a6b8cd50d66b59f495307d3fc3d0a9331998"
+    },
+    {
+      "reference": "PaBTSO:Goblin Psi Brawler",
+      "bookId": "4d8e49dae407209a",
+      "page": 215,
+      "locations": [
+        {
+          "bookId": "4d8e49dae407209a",
+          "page": 215
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "277441dc107133d159a01229c1d04d5e879aa43052c53fc2319d9a17911f8cd3"
+    },
+    {
+      "reference": "PaBTSO:Goblin Psi Commander",
+      "bookId": "4d8e49dae407209a",
+      "page": 216,
+      "locations": [
+        {
+          "bookId": "4d8e49dae407209a",
+          "page": 216
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "f819a1e526871e6e62f3c766428c419b52bf651e2d42e8237e700f272365d80e"
+    },
+    {
+      "reference": "MPP:Hound Archon",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 17,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 17
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "039a55b82d7ed8cb405493eaa598037ddbfc3b8aa687e5ea7faf0e10361ffe69"
+    },
+    {
+      "reference": "MPP:Baernaloth",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 21,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 21
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "3ad017478a7a9f1c648f88be4510812b8d82a3c975b6bfe0db6e38646237312e"
+    },
+    {
+      "reference": "MPP:Cranium Rat Squeaker",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 23,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 23
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "92c86a307ec74b93cd0d0310afb33f8b3b63391368bb60ae7d2618968d4db7c6"
+    },
+    {
+      "reference": "MPP:Cranium Rat Squeaker Swarm",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 23,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 23
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "ee25efac9a3a7ba895db3a8dfcfd0c2fb861ec646fcb76c0b3a5da036677a943"
+    },
+    {
+      "reference": "MPP:Dabus",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 24,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 24
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "89f6510ef1be674d0716cac45071bc0f0eadca4b653d32017d3ebe8745a65b5c"
+    },
+    {
+      "reference": "MPP:Darkweaver",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 26,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 26
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "4f0c921a64cfe3fd27a11e1aef19abb67a2d61abd0e4f4f8e588ee0fd1243492"
+    },
+    {
+      "reference": "MPP:Kelubar Demodand",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 28,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 28
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "aec4293fcd7d9a24298376d959706252438f059188ac6779055d8adabf5459d1"
+    },
+    {
+      "reference": "MPP:Githzerai Futurist",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 31,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 31
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "856e69be862989001999d328bdc9b555e639fc851a6c93498b07d325d3d51922"
+    },
+    {
+      "reference": "MPP:Githzerai Traveler",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 32,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 32
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "b64f316fb73194e4501b1e14e4985fc9349cbbb170214e7af06657aeba84736c"
+    },
+    {
+      "reference": "MPP:Githzerai Uniter",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 32,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 32
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "f20c3758e49fec4c974220afcd15bd79e2b69ec0e996169c5ef432556b269bfb"
+    },
+    {
+      "reference": "MPP:Musteval Guardinal",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 34,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 34
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "711a24ddd556599711e6bd736af687dd907aab041653ec3371c5c058c8154a77"
+    },
+    {
+      "reference": "MPP:Maelephant",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 36,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 36
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "564cea5a9b599b264d8dc9e3befad6cba6d563c1f363af68b369599a10a1582c"
+    },
+    {
+      "reference": "MPP:Decaton Modron",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 37,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 37
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "d8a6c482fce33c104f38418fb3f396008930b57198d9eb91d04143c3e1f0e337"
+    },
+    {
+      "reference": "MPP:Octon Modron",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 41,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 41
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "a6cfaab3a2c51878959d43445d7c4d4ab054c0e19b8f1e83e4b884cba9c90a26"
+    },
+    {
+      "reference": "MPP:Razorvine Blight",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 43,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 43
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "4561d95e5ca018ecee7cdc84376163a1f89c8c4e267c4a7a71ee9cb6e95a8d0d"
+    },
+    {
+      "reference": "MPP:Cuprilach Rilmani",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 45,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 45
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "067796c2aabc3457b99ae0f5e816a0d12668bd1105a1c4db99a888dc93788b18"
+    },
+    {
+      "reference": "MPP:Ferrumach Rilmani",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 45,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 45
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "affc2260ff1b722d9190b7c732f90977ee98dea09964eb724936a15ac45d7a73"
+    },
+    {
+      "reference": "MPP:Shemeshka",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 47,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 47
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "e88cd3bd0d5e9ed7a4e735b37b3e12bc0ffd649ef7fdf7cc1614091d75760917"
+    },
+    {
+      "reference": "MPP:Sunfly",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 48,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 48
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "95533548446ab385cb57ecc22e7839a9533b82298dc65c6608b7111e752415c5"
+    },
+    {
+      "reference": "MPP:Ancient Time Dragon",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 49,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 49
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "4d96b5d345ecddb4090d1f1172f53ff0bd61e6627916f46f9fb95425d811f632"
+    },
+    {
+      "reference": "MPP:Adult Time Dragon",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 51,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 51
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "6f13f439aa7e069d691883376694124e8c03c510a43971cd552c0f7ae84ef36b"
+    },
+    {
+      "reference": "MPP:Vargouille Reflection",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 53,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 53
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "28e058505f9101c7ed6132f7e518ee57e12717a3f69f7105540c192a197245f8"
+    },
+    {
+      "reference": "MPP:Athar Null",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 54,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 54
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "3987675a618d49907fe7d1d805f1070059bf0faecd32529fc0e488ddfa4927e7"
+    },
+    {
+      "reference": "MPP:Doomguard Doom Lord",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 55,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 55
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "86f9168ef76ae9f3057b18f3c30030a162529d9f1af24f17994360b23cef9e2a"
+    },
+    {
+      "reference": "MPP:Fraternity of Order Law Bender",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 58,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 58
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "925bfab5091c8ead2a1635b05ae8bfe7eab4d5aeb2b6def43412822e61456a45"
+    },
+    {
+      "reference": "MPP:Hands of Havoc Fire Starter",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 59,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 59
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "854435ce666c71639ad7d8a0e567f1409364daf5921b41753595a3a9e93a15f4"
+    },
+    {
+      "reference": "MPP:Harmonium Captain",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 59,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 59
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "fe1552ebed5e4d94bdb72020c9149c99b8e90c35a8dddadcce6c26f70b295141"
+    },
+    {
+      "reference": "MPP:Harmonium Peacekeeper",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 60,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 60
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "a6135496743277d30b58ebfb1fefaa2b5decdfc0195d81edc3bdd7ba8eb91e7e"
+    },
+    {
+      "reference": "MPP:Mind's Eye Matter Smith",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 61,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 61
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "72b37c7ac94b489ced3c9710751833593942cf415513f28c9fc7f6ba27e9b90a"
+    },
+    {
+      "reference": "MPP:Transcendent Order Conduit",
+      "bookId": "0538e5f70b8f2a88",
+      "page": 63,
+      "locations": [
+        {
+          "bookId": "0538e5f70b8f2a88",
+          "page": 63
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "349acc91f2ed9a22bd8215747d5a76a2f4bc89be88877805c9d016c6cb32c530"
+    },
+    {
+      "reference": "MPMM:Sacred Statue",
+      "bookId": "5abc59bf448b79b2",
+      "page": 115,
+      "locations": [
+        {
+          "bookId": "5abc59bf448b79b2",
+          "page": 115
+        },
+        {
+          "bookId": "070b4cff1b7b2fae",
+          "page": 80
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "Also appears in Infernal Machine Rebuild; send one complete block with its source.",
+      "sourceHash": "821928ec135dfc1a4daf6293850114728eeb9ba9e1b43772fa25912399de321e"
+    },
+    {
+      "reference": "IDRotF:Chardalyn Berserker",
+      "bookId": "11f68997e5eb49fc",
+      "page": 281,
+      "locations": [
+        {
+          "bookId": "11f68997e5eb49fc",
+          "page": 281
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "4069dea7a2659219c875070913eba96c27596545f40c6931981633fd35c232c4"
+    },
+    {
+      "reference": "IDRotF:Fox",
+      "bookId": "11f68997e5eb49fc",
+      "page": 289,
+      "locations": [
+        {
+          "bookId": "11f68997e5eb49fc",
+          "page": 289
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "b2b0f0d069a03a6b0235ed76b2e3a7cd00e401592e03c280d847c8190ba66a56"
+    },
+    {
+      "reference": "IDRotF:Icewind Kobold Zombie",
+      "bookId": "11f68997e5eb49fc",
+      "page": 298,
+      "locations": [
+        {
+          "bookId": "11f68997e5eb49fc",
+          "page": 298
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "80a3da6eeb2495240faec6f3e44d57fa157168dd4d7b09f77713f7beba46bd91"
+    },
+    {
+      "reference": "IDRotF:Goliath Werebear",
+      "bookId": "11f68997e5eb49fc",
+      "page": 298,
+      "locations": [
+        {
+          "bookId": "11f68997e5eb49fc",
+          "page": 298
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "24c72dc6d8300e76aae8949b4b2342ab8575a0fdc58605441f3c95d219fb6bff"
+    },
+    {
+      "reference": "IDRotF:Sperm Whale",
+      "bookId": "11f68997e5eb49fc",
+      "page": 310,
+      "locations": [
+        {
+          "bookId": "11f68997e5eb49fc",
+          "page": 310
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "a077a981b4fd944c2bbaced981b6b126b46a2420447356b33fcf86a367c3208d"
+    },
+    {
+      "reference": "VEoR:Blade Lieutenant",
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 210,
+      "locations": [
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 210
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "b614d9faa876633d8d170c563101b5931ad7923b374149eabe4ef9f7a09b93a6"
+    },
+    {
+      "reference": "VEoR:Blade Scout",
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 210,
+      "locations": [
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 210
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "251feae269cc7059b49a58abce4b2cf4fd69402a2bd29f1bd9a9543bd78983a6"
+    },
+    {
+      "reference": "VEoR:Borthak",
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 213,
+      "locations": [
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 213
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "48f609129ae3bdca802f7bbe1f87cafb36a0f1384c3b0988fdd799e4ecd08438"
+    },
+    {
+      "reference": "MPMM:Cadaver Collector",
+      "bookId": "5abc59bf448b79b2",
+      "page": 228,
+      "locations": [
+        {
+          "bookId": "5abc59bf448b79b2",
+          "page": 228
+        },
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 214
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "2e8f5c18f058d83645cd6d25c1ae25ac154e17771bafa66333242b421f63d049"
+    },
+    {
+      "reference": "VEoR:Deadbark Dryad",
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 217,
+      "locations": [
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 217
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "8fb6a5e1eb22b476538f1cdcf2f4b78131daccbd9f5d9fa3ed51df9ed8c1a84d"
+    },
+    {
+      "reference": "VEoR:Deathwolf",
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 218,
+      "locations": [
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 218
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "112e67c2314068e391b1d3ea80e13449edf54884845dce8922313a2c48ebd357"
+    },
+    {
+      "reference": "VEoR:Degloth",
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 219,
+      "locations": [
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 219
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "61b1436db4cb9d93ec709bae552e0ea19fe480aecfe39a70a519bee7cb66e6d1"
+    },
+    {
+      "reference": "VEoR:Granite Juggernaut",
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 222,
+      "locations": [
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 222
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "9c000bf71bab7ce31cb1134e8466f43821dfea0d1b88ddacfdd42b8d43c3b50d"
+    },
+    {
+      "reference": "VEoR:Hertilod",
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 224,
+      "locations": [
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 224
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "fe3d53747f6499f1ab98ac7dacaf4a31434dbeae496ed99fc4931a9e694b1d0c"
+    },
+    {
+      "reference": "VEoR:Mirror Shade",
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 227,
+      "locations": [
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 227
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "d694156741a7266324cae528439b3d442ffddb354de1d3a2becd0551d70412a0"
+    },
+    {
+      "reference": "VEoR:Moonlight Guardian",
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 228,
+      "locations": [
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 228
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "03fd1110eb1780ecd9e9e7236da4070a9b379b660ac668da3484d55c2c5d5923"
+    },
+    {
+      "reference": "VEoR:Spiderdragon",
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 234,
+      "locations": [
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 234
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "1ffd022feb9f61056f11929e7ba437df8988d423b60556a2c85a0b2a2f69c3d7"
+    },
+    {
+      "reference": "VEoR:Kakkuu Spyder-Fiend",
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 235,
+      "locations": [
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 235
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "4f28ac04df85be9f40e6f036fc70ca9e3bae1dd3b3a797d7385703a59f0598be"
+    },
+    {
+      "reference": "VEoR:Phisarazu Spyder-Fiend",
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 236,
+      "locations": [
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 236
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "e6024c9232d1fe51e98f867cb27ddb4609e8ca3abba5eb8b305fb07bcabe7542"
+    },
+    {
+      "reference": "VEoR:Quavilithku Spyder-Fiend",
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 237,
+      "locations": [
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 237
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "f8885c3b6d764831417413cc5fb361f9be94a0426a9d6833a1f756f5fb53cb46"
+    },
+    {
+      "reference": "VEoR:Raklupis Spyder-Fiend",
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 237,
+      "locations": [
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 237
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "698677797e3162bab42257e9b783625714308b05428391ed4f95cdfb4e726bef"
+    },
+    {
+      "reference": "VEoR:Vlazok",
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 239,
+      "locations": [
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 239
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "4d9ecc99700c1703f8a13094589ab8557c05864d3cb163f3714c654f9b099777"
+    },
+    {
+      "reference": "VEoR:Warforged Warrior",
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 239,
+      "locations": [
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 239
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "943920de126bee9a8dfee72b896ea4616e5d4012258b38b4afd2931d599dfe7f"
+    },
+    {
+      "reference": "VEoR:Alustriel Silverhand",
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 243,
+      "locations": [
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 243
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "def9e0163afda4170426c9e503d8c2e5095710ef508aa0061d481bf5e8bbf949"
+    },
+    {
+      "reference": "VEoR:Tasha the Witch",
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 253,
+      "locations": [
+        {
+          "bookId": "00dd4bae0b3b1e5d",
+          "page": 253
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "bc9f89350b1127157b6b2dd57ecfde87a950c1d262ca36abb0e49a6902dbbba8"
+    },
+    {
+      "reference": "WDH:Jalester Silvermane",
+      "bookId": "0baa04104f38babe",
+      "page": 205,
+      "locations": [
+        {
+          "bookId": "0baa04104f38babe",
+          "page": 205
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "88db9c7f656fb737694da21673a30c89c33bdf870bd7e640b3da911d328b9ca6"
+    },
+    {
+      "reference": "WDH:Drow Gunslinger",
+      "bookId": "0baa04104f38babe",
+      "page": 214,
+      "locations": [
+        {
+          "bookId": "0baa04104f38babe",
+          "page": 214
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "89f7d380f6c8cb0a4f2c133bb87cf824be9d8551168e41adc700612832e62334"
+    },
+    {
+      "reference": "WDMM:Lava Child",
+      "bookId": "8c0aabc073ec4950",
+      "page": 316,
+      "locations": [
+        {
+          "bookId": "8c0aabc073ec4950",
+          "page": 316
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "d781496e91e167ca62d03cd576025ee381697334eba4d6a1592b8d1de5fea30b"
+    },
+    {
+      "reference": "FTD:Dragonborn of Sardior",
+      "bookId": "014cf07b953a5056",
+      "page": 167,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 167
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "cf3f6b8b1a3bcf4d854c2304e68c5698ff79a8eb6fad43ef46c64f84a029927f"
+    },
+    {
+      "reference": "FTD:Egg Hunter Adult",
+      "bookId": "014cf07b953a5056",
+      "page": 168,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 168
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "f63aaa39d6f19be7e0d755927fa5f8444072b93db397f9fa0de0fef90b945568"
+    },
+    {
+      "reference": "FTD:Metallic Peacekeeper",
+      "bookId": "014cf07b953a5056",
+      "page": 169,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 169
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "0137bf7b8ec4f3de448a05b42813630c7de820ba776ae57c3578fff53dfbb8ef"
+    },
+    {
+      "reference": "FTD:Metallic Warbler",
+      "bookId": "014cf07b953a5056",
+      "page": 169,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 169
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "41771d5ec9078a76230aef9a637a3783749272b4cd94e1c33ce017cb12ec7918"
+    },
+    {
+      "reference": "FTD:Dracohydra",
+      "bookId": "014cf07b953a5056",
+      "page": 171,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 171
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "93cf5e8214df8b2ea22bbb559c57ae2b70cb48b2a7f652d4e52b7de4a8af3ec4"
+    },
+    {
+      "reference": "FTD:Draconian Mastermind",
+      "bookId": "014cf07b953a5056",
+      "page": 174,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 174
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "115b3255f13bfd86dc2b40aa6f764d35ba60e6f582a7089b7cc1d169695ced28"
+    },
+    {
+      "reference": "FTD:Draconian Infiltrator",
+      "bookId": "014cf07b953a5056",
+      "page": 175,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 175
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "b6a70550ff07fe3b60f8d1b0d1e71fb7fe889b1c2b3c1fce47d10a7ce09c646a"
+    },
+    {
+      "reference": "FTD:Draconian Foot Soldier",
+      "bookId": "014cf07b953a5056",
+      "page": 176,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 176
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "3746d1bbbceb7e74129329970b0bb66872cf7fb07b82f7190e05ff2ec9c54555"
+    },
+    {
+      "reference": "FTD:Adult Amethyst Dragon",
+      "bookId": "014cf07b953a5056",
+      "page": 180,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 180
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "b2fd416a2cb01f09ce4089ad6b862eeff46e291b5791df3da6f0de1c9b831e1c"
+    },
+    {
+      "reference": "FTD:Young Amethyst Dragon",
+      "bookId": "014cf07b953a5056",
+      "page": 180,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 180
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "ba7ad957f1e10ef5ef57ab1a8dc0dd5b539ce826ea45154751a7c9423faa6ac9"
+    },
+    {
+      "reference": "FTD:Young Crystal Dragon",
+      "bookId": "014cf07b953a5056",
+      "page": 185,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 185
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "b4ca010f55005aad2f4511c828672a2d9978fff383ec5b7ad14ee643c09213ef"
+    },
+    {
+      "reference": "FTD:Young Emerald Dragon",
+      "bookId": "014cf07b953a5056",
+      "page": 188,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 188
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "c6e081f9b609d1ac351905ce8ae71d8e64011ea4661b2f3c8aac18a0e5f0b8c6"
+    },
+    {
+      "reference": "FTD:Young Deep Dragon",
+      "bookId": "014cf07b953a5056",
+      "page": 192,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 192
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "59fa854d04b19d7f1159333c80eab0b756eaf0b41eb22c51210a11b11112c053"
+    },
+    {
+      "reference": "FTD:Deep Dragon Wyrmling",
+      "bookId": "014cf07b953a5056",
+      "page": 192,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 192
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "0269bed3216277389d6799302709f0641bcaa28c8bd91f34ec11facff6044395"
+    },
+    {
+      "reference": "FTD:Ancient Moonstone Dragon",
+      "bookId": "014cf07b953a5056",
+      "page": 193,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 193
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "e36ed172446c70b1bd79ded4e3da6abaf498957c9e7734d6f2b66db5311e1f3f"
+    },
+    {
+      "reference": "FTD:Young Topaz Dragon",
+      "bookId": "014cf07b953a5056",
+      "page": 199,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 199
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "f5e68ba5595d33ca4d8902174e848330cdec173743c21866417e43809e2819c1"
+    },
+    {
+      "reference": "FTD:Ghost Dragon",
+      "bookId": "014cf07b953a5056",
+      "page": 208,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 208
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "14df025c9c4dc686c0db53edb6a020ea21d97244508843ad3b80ca602765de92"
+    },
+    {
+      "reference": "FTD:Hollow Dragon",
+      "bookId": "014cf07b953a5056",
+      "page": 209,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 209
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "c1257482bf2904967089750be7e5c77f4b9c265799da19b5b4a869095d256ae4"
+    },
+    {
+      "reference": "FTD:Swarm of Hoard Scarabs",
+      "bookId": "014cf07b953a5056",
+      "page": 210,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 210
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "433d00034e96dcf7d12915c2a02850cdbd8bc4be45c5373a9591b8e0e79cf4ba"
+    },
+    {
+      "reference": "FTD:Dragon Speaker",
+      "bookId": "014cf07b953a5056",
+      "page": 222,
+      "locations": [
+        {
+          "bookId": "014cf07b953a5056",
+          "page": 222
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "6cb9e140349f1e282495ccade6ba2a8486d84befd97b0bbf7b96b3b51601e42e"
+    },
+    {
+      "reference": "DMG:Larva",
+      "bookId": "5c72ae78a4070b66",
+      "page": 63,
+      "locations": [
+        {
+          "bookId": "5c72ae78a4070b66",
+          "page": 63
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "0df1fcfd37bc398ea7b271f056f5813993ecb544a4228a806b478d4dfb081787"
+    },
+    {
+      "reference": "DMG:Avatar of Death",
+      "bookId": "5c72ae78a4070b66",
+      "page": 162,
+      "locations": [
+        {
+          "bookId": "5c72ae78a4070b66",
+          "page": 162
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "0bcc9d6707deb76bd1e594cb28af4c325a9286c34d32c87ac1b01f09dbcc891d"
+    },
+    {
+      "reference": "DMG:Giant Fly",
+      "bookId": "5c72ae78a4070b66",
+      "page": 184,
+      "locations": [
+        {
+          "bookId": "5c72ae78a4070b66",
+          "page": 184
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "01ab22559e57ae2412102a08cb202cc3a54508579e81da1ac71ecfacda6bd453"
+    },
+    {
+      "reference": "MM:Ankylosaurus",
+      "bookId": "19ae44ca570d040b",
+      "page": 84,
+      "locations": [
+        {
+          "bookId": "19ae44ca570d040b",
+          "page": 84
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "e00d26411bddca7ab599dac9c70bcb691c2c1d179600e361b43f05e53aa08678"
+    },
+    {
+      "reference": "EGW:Kobold Underling",
+      "bookId": "8c28a59c1db731cb",
+      "page": 222,
+      "locations": [
+        {
+          "bookId": "8c28a59c1db731cb",
+          "page": 222
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "c54fc70eb153f5d65c7e19f94bfa03c3fda721032b38bc38562247eb819b8006"
+    },
+    {
+      "reference": "ERLW:Undying Soldier",
+      "bookId": "17ed9c5777e883b3",
+      "page": 309,
+      "locations": [
+        {
+          "bookId": "17ed9c5777e883b3",
+          "page": 309
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "feb6e4e61e453530f4925aad04cb97311180bf1ed2abce264307548d4786c865"
+    },
+    {
+      "reference": "ERLW:The Lord of Blades",
+      "bookId": "17ed9c5777e883b3",
+      "page": 319,
+      "locations": [
+        {
+          "bookId": "17ed9c5777e883b3",
+          "page": 319
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "c1b8649a5a0c4a11580125e2b82785fbaa3c5af1270e6fbcfcc0ba44dfacf34c"
+    },
+    {
+      "reference": "GGR:Deathpact Angel",
+      "bookId": "7c68f9475cbd778d",
+      "page": 192,
+      "locations": [
+        {
+          "bookId": "7c68f9475cbd778d",
+          "page": 192
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "cf5e02c4f7c509f2aadd11f88fe5db34fa5bf6ef929cb431fc9da990ae1abadc"
+    },
+    {
+      "reference": "GGR:Sire of Insanity",
+      "bookId": "7c68f9475cbd778d",
+      "page": 198,
+      "locations": [
+        {
+          "bookId": "7c68f9475cbd778d",
+          "page": 198
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "9e7561ecc9442ea9ac78acb58d25c0df4293f8dc79de859a1dfb81298353a434"
+    },
+    {
+      "reference": "GGR:Orzhov Giant",
+      "bookId": "7c68f9475cbd778d",
+      "page": 203,
+      "locations": [
+        {
+          "bookId": "7c68f9475cbd778d",
+          "page": 203
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "440b4a5df398dfef269b969efdf6e1e6292f3081451627e52046e8fa3b32e151"
+    },
+    {
+      "reference": "GGR:Sunder Shaman",
+      "bookId": "7c68f9475cbd778d",
+      "page": 203,
+      "locations": [
+        {
+          "bookId": "7c68f9475cbd778d",
+          "page": 203
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "0ac9c335cfe8680369c0bc918d148eb5b28e3ad93d944a37284a8d704b95af3f"
+    },
+    {
+      "reference": "GGR:Shadow Horror",
+      "bookId": "7c68f9475cbd778d",
+      "page": 206,
+      "locations": [
+        {
+          "bookId": "7c68f9475cbd778d",
+          "page": 206
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "41f6f0b0226f7dab6859fb8254f7a2bd9c9d7fc2bb61a0ab1346f3f98f3f9448"
+    },
+    {
+      "reference": "GGR:Skittering Horror",
+      "bookId": "7c68f9475cbd778d",
+      "page": 206,
+      "locations": [
+        {
+          "bookId": "7c68f9475cbd778d",
+          "page": 206
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "99049cca062298c935e071d0d4f97cfee1c2e3407932ba5bb9eff187ba2b595b"
+    },
+    {
+      "reference": "GGR:Blistercoil Weird",
+      "bookId": "7c68f9475cbd778d",
+      "page": 208,
+      "locations": [
+        {
+          "bookId": "7c68f9475cbd778d",
+          "page": 208
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "5c5129d1195103c96393f1dc9aa306103d3d6e64e5bdc328c42d835baedd350d"
+    },
+    {
+      "reference": "GGR:Fluxcharger",
+      "bookId": "7c68f9475cbd778d",
+      "page": 209,
+      "locations": [
+        {
+          "bookId": "7c68f9475cbd778d",
+          "page": 209
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "393c3da8f608c29ea3e827879d6077cb108c39142933d12d8e39c632efc4a5dd"
+    },
+    {
+      "reference": "GGR:Kraul Warrior",
+      "bookId": "7c68f9475cbd778d",
+      "page": 214,
+      "locations": [
+        {
+          "bookId": "7c68f9475cbd778d",
+          "page": 214
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "764cdbca1b986025d287548d38c72abc614007e33002c7babd0d2faa6dfa08ae"
+    },
+    {
+      "reference": "GGR:Nightveil Specter",
+      "bookId": "7c68f9475cbd778d",
+      "page": 216,
+      "locations": [
+        {
+          "bookId": "7c68f9475cbd778d",
+          "page": 216
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "e9bf6376e62931adad4e2aca4c0e3041deb2deaa3407262feb6cca6922f2308e"
+    },
+    {
+      "reference": "GGR:Nivix Cyclops",
+      "bookId": "7c68f9475cbd778d",
+      "page": 217,
+      "locations": [
+        {
+          "bookId": "7c68f9475cbd778d",
+          "page": 217
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "eaf7d3ac2ec5cabf767a1cc5177c02fd80e793338eb81e5874def7b71faa9331"
+    },
+    {
+      "reference": "GGR:Skyjek Roc",
+      "bookId": "7c68f9475cbd778d",
+      "page": 220,
+      "locations": [
+        {
+          "bookId": "7c68f9475cbd778d",
+          "page": 220
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "fb662a0ecb64098d01bbe3292c638db99543e3544f3f9ff7042ebfa9b679b2fa"
+    },
+    {
+      "reference": "GGR:Jarad Vod Savo",
+      "bookId": "7c68f9475cbd778d",
+      "page": 236,
+      "locations": [
+        {
+          "bookId": "7c68f9475cbd778d",
+          "page": 236
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "faa24fddf3c601b1a8a5bd82c5117782b8b017b53608acb0004f58a5e891700d"
+    },
+    {
+      "reference": "GGR:Borborygmos",
+      "bookId": "7c68f9475cbd778d",
+      "page": 239,
+      "locations": [
+        {
+          "bookId": "7c68f9475cbd778d",
+          "page": 239
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "3827b4b5cf7e841ba608a4996782dbb35051921fbf6c7741d07b94b3cc67f003"
+    },
+    {
+      "reference": "GGR:Niv-Mizzet",
+      "bookId": "7c68f9475cbd778d",
+      "page": 242,
+      "locations": [
+        {
+          "bookId": "7c68f9475cbd778d",
+          "page": 242
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "e9134a16843c8f52bdbc6b432853613fbb72046d53d1dc885891ce29ea36573f"
+    },
+    {
+      "reference": "GGR:Galvanic Blastseeker",
+      "bookId": "7c68f9475cbd778d",
+      "page": 244,
+      "locations": [
+        {
+          "bookId": "7c68f9475cbd778d",
+          "page": 244
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "c02e95c6c1bc8d3d5bc781a1a7a58e870ee1ac467f0cb4872a194c49b8546c9e"
+    },
+    {
+      "reference": "GGR:Scorchbringer Guard",
+      "bookId": "7c68f9475cbd778d",
+      "page": 244,
+      "locations": [
+        {
+          "bookId": "7c68f9475cbd778d",
+          "page": 244
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "6d7140ba39e22269b68226a84da5397bfa04eb861c299897e3d4bf06f3afeefb"
+    },
+    {
+      "reference": "GGR:Obzedat Ghost",
+      "bookId": "7c68f9475cbd778d",
+      "page": 246,
+      "locations": [
+        {
+          "bookId": "7c68f9475cbd778d",
+          "page": 246
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "a18151497612c16eab1f2eb8d24368a02d8a9a9ab42823ecd7417c66e53ef2ed"
+    },
+    {
+      "reference": "BGG:Altisaur",
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 130,
+      "locations": [
+        {
+          "bookId": "187aa9c8e2a9ab6a",
+          "page": 130
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "26037269218190476580d4bdbff4feab8ac67e5720f5a0a95c1b58d0f2f1b89e"
+    },
+    {
+      "reference": "BGG:Ceratops",
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 130,
+      "locations": [
+        {
+          "bookId": "187aa9c8e2a9ab6a",
+          "page": 130
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "a914dc43ec885699dcc96458074ada621f4ce2a5b470a69dbe23fd3fd5dbcc87"
+    },
+    {
+      "reference": "BGG:Regisaur",
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 131,
+      "locations": [
+        {
+          "bookId": "187aa9c8e2a9ab6a",
+          "page": 131
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "e253ea4c86627314764f6ec262b5692ffb54a57516c997b7cc37e74ff5cb18eb"
+    },
+    {
+      "reference": "BGG:Echo of Demogorgon",
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 133,
+      "locations": [
+        {
+          "bookId": "187aa9c8e2a9ab6a",
+          "page": 133
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "6898df7965838d100ccc1aaca319c49909f534db0cde17f87de588e6190b0652"
+    },
+    {
+      "reference": "BGG:Fomorian Deep Crawler",
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 143,
+      "locations": [
+        {
+          "bookId": "187aa9c8e2a9ab6a",
+          "page": 143
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "050313d40762299695272e35b368e11b407dbe01572e3bf5c093dc596fb01e44"
+    },
+    {
+      "reference": "BGG:Giant Goose",
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 151,
+      "locations": [
+        {
+          "bookId": "187aa9c8e2a9ab6a",
+          "page": 151
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "304df5f9016e52522c667cd22aaac1fff469fe3df2fc66c69226ecbe37bd1079"
+    },
+    {
+      "reference": "BGG:Giant Ram",
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 154,
+      "locations": [
+        {
+          "bookId": "187aa9c8e2a9ab6a",
+          "page": 154
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "d9c339bc673b2f95d48319e90d3dc8c80b44d464b5bd4baf8d1a0916b0d4a5f3"
+    },
+    {
+      "reference": "BGG:Giant Tick",
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 154,
+      "locations": [
+        {
+          "bookId": "187aa9c8e2a9ab6a",
+          "page": 154
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "507391610adb2340f07e2663ece92e99791c12ab6348949d6c903403bf096c3c"
+    },
+    {
+      "reference": "BGG:Lightning Hulk",
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 159,
+      "locations": [
+        {
+          "bookId": "187aa9c8e2a9ab6a",
+          "page": 159
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "0d7a4041b19827894f69882247cc150c13eed860522b9a8ff2dbf5ccc98e28a2"
+    },
+    {
+      "reference": "BGG:Maw of Yeenoghu",
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 160,
+      "locations": [
+        {
+          "bookId": "187aa9c8e2a9ab6a",
+          "page": 160
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "4c9cb731405d8c1594aa071bace0795305a9c1a441b6194b3e29245ec599795b"
+    },
+    {
+      "reference": "BGG:Scion of Grolantor",
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 166,
+      "locations": [
+        {
+          "bookId": "187aa9c8e2a9ab6a",
+          "page": 166
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "bac8d70711a2649cc3c58730f31e251e8696bfcd297190aab220d152fdac1ee8"
+    },
+    {
+      "reference": "BGG:Cradle of the Stone Scion",
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 169,
+      "locations": [
+        {
+          "bookId": "187aa9c8e2a9ab6a",
+          "page": 169
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "8d580de3adc6bb312b3e578b3885972bae2da7f1588d79a946409ab351abf90d"
+    },
+    {
+      "reference": "BGG:Spectral Cloud",
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 177,
+      "locations": [
+        {
+          "bookId": "187aa9c8e2a9ab6a",
+          "page": 177
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "8efb0602592f835e65d69f33e53dc00fbddad536f578bdf8a93dbc760ce4ab3c"
+    },
+    {
+      "reference": "BGG:Spotted Lion",
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 178,
+      "locations": [
+        {
+          "bookId": "187aa9c8e2a9ab6a",
+          "page": 178
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "fea9d216e1c7d478be8cb076af65c9a8513cd62e68f50d317ae293c6db2a5e81"
+    },
+    {
+      "reference": "BGG:Stone Giant Rockspeaker",
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 181,
+      "locations": [
+        {
+          "bookId": "187aa9c8e2a9ab6a",
+          "page": 181
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "beda6cf40ba6be03559098672d3ee1ac26a696900dd0b4e96ac8fffa35531647"
+    },
+    {
+      "reference": "MCV2DC:Ember",
+      "bookId": "d8058811115763dd",
+      "page": 3,
+      "locations": [
+        {
+          "bookId": "d8058811115763dd",
+          "page": 3
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "2e295aad9d2f1acd2386967c9a82bb6c965979d8663e3582b98aeb442b48a978"
+    },
+    {
+      "reference": "MCV2DC:Irda Seeker",
+      "bookId": "d8058811115763dd",
+      "page": 8,
+      "locations": [
+        {
+          "bookId": "d8058811115763dd",
+          "page": 8
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "06aa486266940e1fc9f17887f7d9caaae1f30a6c495d4bdd5d92fb1e64a2c4f1"
+    },
+    {
+      "reference": "BAM:Astral Elf Commander",
+      "bookId": "15739a452ebd9a5b",
+      "page": 12,
+      "locations": [
+        {
+          "bookId": "15739a452ebd9a5b",
+          "page": 12
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "f3d4f5986dfb36fe5bdbdaa60f4da125a804662e454bc70635849f2047d1fb2d"
+    },
+    {
+      "reference": "BAM:Cosmic Horror",
+      "bookId": "15739a452ebd9a5b",
+      "page": 18,
+      "locations": [
+        {
+          "bookId": "15739a452ebd9a5b",
+          "page": 18
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "5d26905144000b22e8a1969935daab08a4f11606a3424bdbb19ea939046a011a"
+    },
+    {
+      "reference": "BAM:Githyanki Star Seer",
+      "bookId": "15739a452ebd9a5b",
+      "page": 27,
+      "locations": [
+        {
+          "bookId": "15739a452ebd9a5b",
+          "page": 27
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "be3d2a0f6e6bcbfc7e0ef6e0514eb109fc3ea49e8a3bc62e17de929e4e2b5379"
+    },
+    {
+      "reference": "BAM:Githyanki Xenomancer",
+      "bookId": "15739a452ebd9a5b",
+      "page": 27,
+      "locations": [
+        {
+          "bookId": "15739a452ebd9a5b",
+          "page": 27
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "669c7fbf0759fd8967d313ab714e0e2770b9ee43a71307604091bfa7e5b7b28a"
+    },
+    {
+      "reference": "BAM:Adult Lunar Dragon",
+      "bookId": "15739a452ebd9a5b",
+      "page": 34,
+      "locations": [
+        {
+          "bookId": "15739a452ebd9a5b",
+          "page": 34
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "43272cf24e4d3289295e2ef36a7a619a6c207d6d98a7f03a9fa60c083ab6c7b1"
+    },
+    {
+      "reference": "BAM:Young Lunar Dragon",
+      "bookId": "15739a452ebd9a5b",
+      "page": 35,
+      "locations": [
+        {
+          "bookId": "15739a452ebd9a5b",
+          "page": 35
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "b083cba056a291e2574d4b5ed82ac77afa0b91cb2ebe31d0f35e9099c022dd36"
+    },
+    {
+      "reference": "BAM:Neh-thalggu",
+      "bookId": "15739a452ebd9a5b",
+      "page": 39,
+      "locations": [
+        {
+          "bookId": "15739a452ebd9a5b",
+          "page": 39
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "cd551056f0c97a65ba66263abefd1c10cd8cdc1753ddb4b5823f03a0f1383ba8"
+    },
+    {
+      "reference": "BAM:Neogi Void Hunter",
+      "bookId": "15739a452ebd9a5b",
+      "page": 41,
+      "locations": [
+        {
+          "bookId": "15739a452ebd9a5b",
+          "page": 41
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "09751525bf2f093f77d04e1a3688825b76091e94380a12f2568b634df32c2e2b"
+    },
+    {
+      "reference": "BAM:Reigar",
+      "bookId": "15739a452ebd9a5b",
+      "page": 47,
+      "locations": [
+        {
+          "bookId": "15739a452ebd9a5b",
+          "page": 47
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "c0be6ac9f9a8250aede6bc05cba2bb2e10a8253ef65d604a357ff2c480e65150"
+    },
+    {
+      "reference": "BAM:Brown Scavver",
+      "bookId": "15739a452ebd9a5b",
+      "page": 49,
+      "locations": [
+        {
+          "bookId": "15739a452ebd9a5b",
+          "page": 49
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "d3e5562f965c460b3b70a1ea9c73bc83a58a9bda1d22419a7184a8d6575f4468"
+    },
+    {
+      "reference": "BAM:Void Scavver",
+      "bookId": "15739a452ebd9a5b",
+      "page": 49,
+      "locations": [
+        {
+          "bookId": "15739a452ebd9a5b",
+          "page": 49
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "26a085bf5bb211ff789f4634ec91b6f2c4a43990f0ccf403671b7f47911ebba5"
+    },
+    {
+      "reference": "BAM:Solar Dragon Wyrmling",
+      "bookId": "15739a452ebd9a5b",
+      "page": 53,
+      "locations": [
+        {
+          "bookId": "15739a452ebd9a5b",
+          "page": 53
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "f409c5ecf3e4132ad219bca9bea670a8bcceae970b4fd5a785619bbdc47c6029"
+    },
+    {
+      "reference": "BAM:Space Swine",
+      "bookId": "15739a452ebd9a5b",
+      "page": 57,
+      "locations": [
+        {
+          "bookId": "15739a452ebd9a5b",
+          "page": 57
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "de7185370f151f4516894a726762eaa054cbc59073071e677fe0abb7f0f67a17"
+    },
+    {
+      "reference": "MPMM:Bard",
+      "bookId": "5abc59bf448b79b2",
+      "page": 63,
+      "locations": [
+        {
+          "bookId": "5abc59bf448b79b2",
+          "page": 63
+        }
+      ],
+      "category": "Book-specific version",
+      "note": "",
+      "sourceHash": "0f301361f36e3ea2a6b753486eb9f6f943dde58ecc8da96fe35b849f91442150"
+    },
+    {
+      "reference": "MPMM:Drow Matron Mother",
+      "bookId": "5abc59bf448b79b2",
+      "page": 106,
+      "locations": [
+        {
+          "bookId": "5abc59bf448b79b2",
+          "page": 106
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "a4cdbf78741477241c32841e36c9389cf79fb34f2ca6338025d9449ed681ce92"
+    },
+    {
+      "reference": "MPMM:Spawn of Kyuss",
+      "bookId": "5abc59bf448b79b2",
+      "page": 119,
+      "locations": [
+        {
+          "bookId": "5abc59bf448b79b2",
+          "page": 119
+        }
+      ],
+      "category": "Book-specific version",
+      "note": "",
+      "sourceHash": "6230154c0374067d22f94e4194f7f312f3eeee7165100384d71bd6956405eec8"
+    },
+    {
+      "reference": "MPMM:Gnoll Hunter",
+      "bookId": "5abc59bf448b79b2",
+      "page": 148,
+      "locations": [
+        {
+          "bookId": "5abc59bf448b79b2",
+          "page": 148
+        }
+      ],
+      "category": "Book-specific version",
+      "note": "",
+      "sourceHash": "509b7416a1c9d2ee515143cb6c5d8a9e734782f95517fe6cbfe98849a0a35f47"
+    },
+    {
+      "reference": "MPMM:Gnoll Witherling",
+      "bookId": "5abc59bf448b79b2",
+      "page": 149,
+      "locations": [
+        {
+          "bookId": "5abc59bf448b79b2",
+          "page": 149
+        }
+      ],
+      "category": "Book-specific version",
+      "note": "",
+      "sourceHash": "be5b397669cabd8851ee05dd074d6da7106c22158cec6b79ffaf4d1da2009b19"
+    },
+    {
+      "reference": "MPMM:Grung Elite Warrior",
+      "bookId": "5abc59bf448b79b2",
+      "page": 154,
+      "locations": [
+        {
+          "bookId": "5abc59bf448b79b2",
+          "page": 154
+        }
+      ],
+      "category": "Book-specific version",
+      "note": "",
+      "sourceHash": "3bd6ed54d6285d707c6951ac35950c50056c909aa1d0a164b594aed2b6d2feff"
+    },
+    {
+      "reference": "MPMM:Blackguard",
+      "bookId": "5abc59bf448b79b2",
+      "page": 155,
+      "locations": [
+        {
+          "bookId": "5abc59bf448b79b2",
+          "page": 155
+        }
+      ],
+      "category": "Book-specific version",
+      "note": "",
+      "sourceHash": "a554dfcefb9ea878cd0dad02281d2e50dab6e4669819d8b66fc39b14b521a48c"
+    },
+    {
+      "reference": "MPMM:Diviner Wizard",
+      "bookId": "5abc59bf448b79b2",
+      "page": 178,
+      "locations": [
+        {
+          "bookId": "5abc59bf448b79b2",
+          "page": 178
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "16ca066b92a4fb00948d9fbd5a02ae6cf21a098d19f6400844faadea24dcf588"
+    },
+    {
+      "reference": "MPMM:Enchanter Wizard",
+      "bookId": "5abc59bf448b79b2",
+      "page": 178,
+      "locations": [
+        {
+          "bookId": "5abc59bf448b79b2",
+          "page": 178
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "931a88dd88a92037e38ded7f001709cdfbcee83695c6ad5307c0dcc6f53e9476"
+    },
+    {
+      "reference": "MPMM:Molydeus",
+      "bookId": "5abc59bf448b79b2",
+      "page": 196,
+      "locations": [
+        {
+          "bookId": "5abc59bf448b79b2",
+          "page": 196
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "a008371cb334c0a8c4bee498dae0d78820c2ab11f8b0fb5f53bd014a21a486b7"
+    },
+    {
+      "reference": "MPMM:War Priest",
+      "bookId": "5abc59bf448b79b2",
+      "page": 234,
+      "locations": [
+        {
+          "bookId": "5abc59bf448b79b2",
+          "page": 234
+        }
+      ],
+      "category": "Book-specific version",
+      "note": "",
+      "sourceHash": "eb86635ac8bfcb05b7d43768f58562e6f2849655338286123b96491b97c70d1e"
+    },
+    {
+      "reference": "MPMM:Tanarukk",
+      "bookId": "5abc59bf448b79b2",
+      "page": 252,
+      "locations": [
+        {
+          "bookId": "5abc59bf448b79b2",
+          "page": 252
+        }
+      ],
+      "category": "Book-specific version",
+      "note": "",
+      "sourceHash": "9305a9a6dd7be6de109e8977e739e0ec2a927c3fda390fd21c685c05d33e5683"
+    },
+    {
+      "reference": "MPMM:Titivilus",
+      "bookId": "5abc59bf448b79b2",
+      "page": 256,
+      "locations": [
+        {
+          "bookId": "5abc59bf448b79b2",
+          "page": 256
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "e4872bf1485613fdf5f89495adaefb2093a941240db9a398d93479dbf109e396"
+    },
+    {
+      "reference": "MPMM:Yagnoloth",
+      "bookId": "5abc59bf448b79b2",
+      "page": 270,
+      "locations": [
+        {
+          "bookId": "5abc59bf448b79b2",
+          "page": 270
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "15c378425e1d88b754f9e65f3bdfa7adecd3e9f807665e1d442d1f89a4688b0f"
+    },
+    {
+      "reference": "VRGR:Carrionette",
+      "bookId": "644d5e63cd8fd7de",
+      "page": 232,
+      "locations": [
+        {
+          "bookId": "644d5e63cd8fd7de",
+          "page": 232
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "",
+      "sourceHash": "174a46cef650118eeff257ced78ec49c357ac85c1c4068a8b4626810f5544d5b"
+    },
+    {
+      "reference": "WBtW:Witchlight Hand (Medium)",
+      "bookId": "67feb3483ef571d8",
+      "page": 28,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 28
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "One printed block covers Medium and Small versions; include both hit-point/dice options.",
+      "sourceHash": "e06adf82ecf0dc81313dadd12174f32b2ca45ab6e2499b5808123ced5fc9e9c7"
+    },
+    {
+      "reference": "WBtW:Witchlight Hand (Small)",
+      "bookId": "67feb3483ef571d8",
+      "page": 28,
+      "locations": [
+        {
+          "bookId": "67feb3483ef571d8",
+          "page": 28
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "One printed block covers Medium and Small versions; include both hit-point/dice options.",
+      "sourceHash": "3f029336ac9a98f749669ad88d09bb06220552db09befeba1aa3016c35a50ddc"
+    },
+    {
+      "reference": "GGR:Loading Rig",
+      "bookId": "7c68f9475cbd778d",
+      "page": 171,
+      "locations": [
+        {
+          "bookId": "7c68f9475cbd778d",
+          "page": 171
+        }
+      ],
+      "category": "Missing creature / NPC",
+      "note": "Construct stat block with piloting instructions; include the adjacent control/repair text.",
+      "sourceHash": "7ce02e7b2c145d15c42b66ba0099ac2c5a6c8289d5111aac97c7906f3a015135"
+    }
+  ],
+  "reviewedPages": [
+    {
+      "bookId": "2a479a659f9e606a",
+      "page": 189
+    },
+    {
+      "bookId": "2a479a659f9e606a",
+      "page": 201
+    },
+    {
+      "bookId": "2a479a659f9e606a",
+      "page": 210
+    },
+    {
+      "bookId": "e21538c8ec892876",
+      "page": 233
+    },
+    {
+      "bookId": "e21538c8ec892876",
+      "page": 240
+    },
+    {
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 196
+    },
+    {
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 198
+    },
+    {
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 199
+    },
+    {
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 202
+    },
+    {
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 206
+    },
+    {
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 209
+    },
+    {
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 210
+    },
+    {
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 211
+    },
+    {
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 212
+    },
+    {
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 213
+    },
+    {
+      "bookId": "0aff6c2b51aab6bf",
+      "page": 214
+    },
+    {
+      "bookId": "cf1706a6ddfd9239",
+      "page": 246
+    },
+    {
+      "bookId": "cf1706a6ddfd9239",
+      "page": 247
+    },
+    {
+      "bookId": "cf1706a6ddfd9239",
+      "page": 248
+    },
+    {
+      "bookId": "cf1706a6ddfd9239",
+      "page": 249
+    },
+    {
+      "bookId": "cf1706a6ddfd9239",
+      "page": 250
+    },
+    {
+      "bookId": "cf1706a6ddfd9239",
+      "page": 251
+    },
+    {
+      "bookId": "cf1706a6ddfd9239",
+      "page": 252
+    },
+    {
+      "bookId": "cf1706a6ddfd9239",
+      "page": 253
+    },
+    {
+      "bookId": "cf1706a6ddfd9239",
+      "page": 254
+    },
+    {
+      "bookId": "cf1706a6ddfd9239",
+      "page": 255
+    },
+    {
+      "bookId": "4b9e741c5309eebe",
+      "page": 251
+    },
+    {
+      "bookId": "db4aae13ce263203",
+      "page": 54
+    },
+    {
+      "bookId": "db4aae13ce263203",
+      "page": 55
+    },
+    {
+      "bookId": "db4aae13ce263203",
+      "page": 56
+    },
+    {
+      "bookId": "db4aae13ce263203",
+      "page": 57
+    },
+    {
+      "bookId": "db4aae13ce263203",
+      "page": 58
+    },
+    {
+      "bookId": "db4aae13ce263203",
+      "page": 60
+    },
+    {
+      "bookId": "db4aae13ce263203",
+      "page": 61
+    },
+    {
+      "bookId": "db4aae13ce263203",
+      "page": 62
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 28
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 74
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 79
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 111
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 122
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 136
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 194
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 218
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 219
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 220
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 221
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 222
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 223
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 224
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 225
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 226
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 227
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 230
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 232
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 233
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 235
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 237
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 238
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 239
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 240
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 241
+    },
+    {
+      "bookId": "67feb3483ef571d8",
+      "page": 242
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 27
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 31
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 48
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 68
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 70
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 72
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 73
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 94
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 96
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 116
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 119
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 121
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 122
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 123
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 125
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 126
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 145
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 146
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 148
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 150
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 152
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 173
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 174
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 176
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 178
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 195
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 218
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 220
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 235
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 240
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 241
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 243
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 266
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 268
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 270
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 271
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 272
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 302
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 304
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 305
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 307
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 335
+    },
+    {
+      "bookId": "eb72ac69f14e9565",
+      "page": 337
+    },
+    {
+      "bookId": "d4275553fd38d09b",
+      "page": 195
+    },
+    {
+      "bookId": "d4275553fd38d09b",
+      "page": 197
+    },
+    {
+      "bookId": "d4275553fd38d09b",
+      "page": 199
+    },
+    {
+      "bookId": "d4275553fd38d09b",
+      "page": 203
+    },
+    {
+      "bookId": "d4275553fd38d09b",
+      "page": 205
+    },
+    {
+      "bookId": "d4275553fd38d09b",
+      "page": 206
+    },
+    {
+      "bookId": "d4275553fd38d09b",
+      "page": 207
+    },
+    {
+      "bookId": "d4275553fd38d09b",
+      "page": 208
+    },
+    {
+      "bookId": "d4275553fd38d09b",
+      "page": 209
+    },
+    {
+      "bookId": "d4275553fd38d09b",
+      "page": 211
+    },
+    {
+      "bookId": "d4275553fd38d09b",
+      "page": 216
+    },
+    {
+      "bookId": "d4275553fd38d09b",
+      "page": 218
+    },
+    {
+      "bookId": "d4275553fd38d09b",
+      "page": 219
+    },
+    {
+      "bookId": "d4275553fd38d09b",
+      "page": 220
+    },
+    {
+      "bookId": "d4275553fd38d09b",
+      "page": 221
+    },
+    {
+      "bookId": "d4275553fd38d09b",
+      "page": 222
+    },
+    {
+      "bookId": "4d8e49dae407209a",
+      "page": 145
+    },
+    {
+      "bookId": "4d8e49dae407209a",
+      "page": 205
+    },
+    {
+      "bookId": "4d8e49dae407209a",
+      "page": 206
+    },
+    {
+      "bookId": "4d8e49dae407209a",
+      "page": 207
+    },
+    {
+      "bookId": "4d8e49dae407209a",
+      "page": 210
+    },
+    {
+      "bookId": "4d8e49dae407209a",
+      "page": 214
+    },
+    {
+      "bookId": "4d8e49dae407209a",
+      "page": 215
+    },
+    {
+      "bookId": "4d8e49dae407209a",
+      "page": 216
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 17
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 21
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 23
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 24
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 26
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 28
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 31
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 32
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 34
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 36
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 37
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 41
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 43
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 45
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 47
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 48
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 49
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 51
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 53
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 54
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 55
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 58
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 59
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 60
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 61
+    },
+    {
+      "bookId": "0538e5f70b8f2a88",
+      "page": 63
+    },
+    {
+      "bookId": "c2960b82d1efe861",
+      "page": 222
+    },
+    {
+      "bookId": "c2960b82d1efe861",
+      "page": 246
+    },
+    {
+      "bookId": "070b4cff1b7b2fae",
+      "page": 80
+    },
+    {
+      "bookId": "78eda0089459b2bc",
+      "page": 184
+    },
+    {
+      "bookId": "11f68997e5eb49fc",
+      "page": 281
+    },
+    {
+      "bookId": "11f68997e5eb49fc",
+      "page": 289
+    },
+    {
+      "bookId": "11f68997e5eb49fc",
+      "page": 298
+    },
+    {
+      "bookId": "11f68997e5eb49fc",
+      "page": 310
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 207
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 210
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 213
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 214
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 217
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 218
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 219
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 220
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 222
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 224
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 225
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 227
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 228
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 229
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 231
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 234
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 235
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 236
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 237
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 239
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 243
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 247
+    },
+    {
+      "bookId": "00dd4bae0b3b1e5d",
+      "page": 253
+    },
+    {
+      "bookId": "0baa04104f38babe",
+      "page": 205
+    },
+    {
+      "bookId": "0baa04104f38babe",
+      "page": 212
+    },
+    {
+      "bookId": "0baa04104f38babe",
+      "page": 214
+    },
+    {
+      "bookId": "0baa04104f38babe",
+      "page": 218
+    },
+    {
+      "bookId": "0baa04104f38babe",
+      "page": 221
+    },
+    {
+      "bookId": "8c0aabc073ec4950",
+      "page": 316
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 14
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 24
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 167
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 168
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 169
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 171
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 174
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 175
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 176
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 180
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 185
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 188
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 192
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 193
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 197
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 199
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 208
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 209
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 210
+    },
+    {
+      "bookId": "014cf07b953a5056",
+      "page": 222
+    },
+    {
+      "bookId": "5c72ae78a4070b66",
+      "page": 63
+    },
+    {
+      "bookId": "5c72ae78a4070b66",
+      "page": 162
+    },
+    {
+      "bookId": "5c72ae78a4070b66",
+      "page": 184
+    },
+    {
+      "bookId": "19ae44ca570d040b",
+      "page": 84
+    },
+    {
+      "bookId": "19ae44ca570d040b",
+      "page": 102
+    },
+    {
+      "bookId": "8c28a59c1db731cb",
+      "page": 222
+    },
+    {
+      "bookId": "8c28a59c1db731cb",
+      "page": 236
+    },
+    {
+      "bookId": "17ed9c5777e883b3",
+      "page": 64
+    },
+    {
+      "bookId": "17ed9c5777e883b3",
+      "page": 66
+    },
+    {
+      "bookId": "17ed9c5777e883b3",
+      "page": 309
+    },
+    {
+      "bookId": "17ed9c5777e883b3",
+      "page": 319
+    },
+    {
+      "bookId": "7c68f9475cbd778d",
+      "page": 171
+    },
+    {
+      "bookId": "7c68f9475cbd778d",
+      "page": 192
+    },
+    {
+      "bookId": "7c68f9475cbd778d",
+      "page": 198
+    },
+    {
+      "bookId": "7c68f9475cbd778d",
+      "page": 203
+    },
+    {
+      "bookId": "7c68f9475cbd778d",
+      "page": 206
+    },
+    {
+      "bookId": "7c68f9475cbd778d",
+      "page": 208
+    },
+    {
+      "bookId": "7c68f9475cbd778d",
+      "page": 209
+    },
+    {
+      "bookId": "7c68f9475cbd778d",
+      "page": 214
+    },
+    {
+      "bookId": "7c68f9475cbd778d",
+      "page": 216
+    },
+    {
+      "bookId": "7c68f9475cbd778d",
+      "page": 217
+    },
+    {
+      "bookId": "7c68f9475cbd778d",
+      "page": 220
+    },
+    {
+      "bookId": "7c68f9475cbd778d",
+      "page": 236
+    },
+    {
+      "bookId": "7c68f9475cbd778d",
+      "page": 239
+    },
+    {
+      "bookId": "7c68f9475cbd778d",
+      "page": 242
+    },
+    {
+      "bookId": "7c68f9475cbd778d",
+      "page": 244
+    },
+    {
+      "bookId": "7c68f9475cbd778d",
+      "page": 246
+    },
+    {
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 130
+    },
+    {
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 131
+    },
+    {
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 133
+    },
+    {
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 137
+    },
+    {
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 143
+    },
+    {
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 144
+    },
+    {
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 147
+    },
+    {
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 151
+    },
+    {
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 154
+    },
+    {
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 157
+    },
+    {
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 159
+    },
+    {
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 160
+    },
+    {
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 165
+    },
+    {
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 166
+    },
+    {
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 169
+    },
+    {
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 177
+    },
+    {
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 178
+    },
+    {
+      "bookId": "187aa9c8e2a9ab6a",
+      "page": 181
+    },
+    {
+      "bookId": "d8058811115763dd",
+      "page": 3
+    },
+    {
+      "bookId": "d8058811115763dd",
+      "page": 6
+    },
+    {
+      "bookId": "d8058811115763dd",
+      "page": 8
+    },
+    {
+      "bookId": "15739a452ebd9a5b",
+      "page": 12
+    },
+    {
+      "bookId": "15739a452ebd9a5b",
+      "page": 14
+    },
+    {
+      "bookId": "15739a452ebd9a5b",
+      "page": 17
+    },
+    {
+      "bookId": "15739a452ebd9a5b",
+      "page": 18
+    },
+    {
+      "bookId": "15739a452ebd9a5b",
+      "page": 19
+    },
+    {
+      "bookId": "15739a452ebd9a5b",
+      "page": 27
+    },
+    {
+      "bookId": "15739a452ebd9a5b",
+      "page": 28
+    },
+    {
+      "bookId": "15739a452ebd9a5b",
+      "page": 31
+    },
+    {
+      "bookId": "15739a452ebd9a5b",
+      "page": 34
+    },
+    {
+      "bookId": "15739a452ebd9a5b",
+      "page": 35
+    },
+    {
+      "bookId": "15739a452ebd9a5b",
+      "page": 39
+    },
+    {
+      "bookId": "15739a452ebd9a5b",
+      "page": 40
+    },
+    {
+      "bookId": "15739a452ebd9a5b",
+      "page": 41
+    },
+    {
+      "bookId": "15739a452ebd9a5b",
+      "page": 47
+    },
+    {
+      "bookId": "15739a452ebd9a5b",
+      "page": 49
+    },
+    {
+      "bookId": "15739a452ebd9a5b",
+      "page": 50
+    },
+    {
+      "bookId": "15739a452ebd9a5b",
+      "page": 53
+    },
+    {
+      "bookId": "15739a452ebd9a5b",
+      "page": 54
+    },
+    {
+      "bookId": "15739a452ebd9a5b",
+      "page": 57
+    },
+    {
+      "bookId": "5abc59bf448b79b2",
+      "page": 63
+    },
+    {
+      "bookId": "5abc59bf448b79b2",
+      "page": 106
+    },
+    {
+      "bookId": "5abc59bf448b79b2",
+      "page": 115
+    },
+    {
+      "bookId": "5abc59bf448b79b2",
+      "page": 119
+    },
+    {
+      "bookId": "5abc59bf448b79b2",
+      "page": 148
+    },
+    {
+      "bookId": "5abc59bf448b79b2",
+      "page": 149
+    },
+    {
+      "bookId": "5abc59bf448b79b2",
+      "page": 154
+    },
+    {
+      "bookId": "5abc59bf448b79b2",
+      "page": 155
+    },
+    {
+      "bookId": "5abc59bf448b79b2",
+      "page": 175
+    },
+    {
+      "bookId": "5abc59bf448b79b2",
+      "page": 178
+    },
+    {
+      "bookId": "5abc59bf448b79b2",
+      "page": 196
+    },
+    {
+      "bookId": "5abc59bf448b79b2",
+      "page": 228
+    },
+    {
+      "bookId": "5abc59bf448b79b2",
+      "page": 234
+    },
+    {
+      "bookId": "5abc59bf448b79b2",
+      "page": 252
+    },
+    {
+      "bookId": "5abc59bf448b79b2",
+      "page": 256
+    },
+    {
+      "bookId": "5abc59bf448b79b2",
+      "page": 270
+    },
+    {
+      "bookId": "644d5e63cd8fd7de",
+      "page": 232
+    }
+  ],
+  "excludedBooks": [
+    {
+      "bookId": "662db056823dd69d",
+      "reason": "D&D Next playtest, explicitly identified in PDF page 2; not final 2014 creature rules."
+    }
+  ],
+  "unsupportedPages": [
+    {
+      "bookId": "c2960b82d1efe861",
+      "page": 222,
+      "reason": "Vehicles: Scavenger and Demon Grinder"
+    },
+    {
+      "bookId": "8c28a59c1db731cb",
+      "page": 236,
+      "reason": "Vehicle: Stahlmaster"
+    }
+  ]
+}

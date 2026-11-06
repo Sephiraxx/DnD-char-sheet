@@ -16,6 +16,16 @@ const COLOR = {
   Copper: 'de cobre',
   Gold: 'de oro',
   Silver: 'de plata',
+  Amethyst: 'de amatista',
+  Crystal: 'de cristal',
+  Deep: 'de las profundidades',
+  Emerald: 'de esmeralda',
+  Moonstone: 'de piedra lunar',
+  Sapphire: 'de zafiro',
+  Topaz: 'de topacio',
+  Lunar: 'lunar',
+  Solar: 'solar',
+  Time: 'del tiempo',
 };
 const AGE = { Adult: 'adulto', Ancient: 'anciano', Young: 'joven' };
 // Animales y criaturas que también aparecen como «gigante» o en «enjambre».
@@ -82,6 +92,10 @@ const FORM = {
   'Mist Form': 'forma de niebla',
 };
 const NAMES = {
+  'Witchlight Hand (Medium)': 'Peón de Brujaluz (Mediano)',
+  'Witchlight Hand (Small)': 'Peón de Brujaluz (Pequeño)',
+  'Selenelion Twin': 'Gemela del selenelion',
+  'Loading Rig': 'Armazón de carga',
   Aboleth: 'Aboleth',
   Acolyte: 'Acólito',
   'Air Elemental': 'Elemental de aire',
@@ -304,8 +318,8 @@ const NAMES = {
 function name(n) {
   if (NAMES[n]) return NAMES[n];
   let m = /^(Adult|Ancient|Young) (\w+) Dragon$/.exec(n);
-  if (m) return `Dragón ${COLOR[m[2]]} ${AGE[m[1]]}`;
-  if ((m = /^(\w+) Dragon Wyrmling$/.exec(n))) return `Cría de dragón ${COLOR[m[1]]}`;
+  if (m && COLOR[m[2]]) return `Dragón ${COLOR[m[2]]} ${AGE[m[1]]}`;
+  if ((m = /^(\w+) Dragon Wyrmling$/.exec(n)) && COLOR[m[1]]) return `Cría de dragón ${COLOR[m[1]]}`;
   if ((m = /^Giant (.+)$/.exec(n)) && BASE[m[1]]) {
     const b = BASE[m[1]];
     return /\(/.test(b) ? b.replace(' (', ' gigante (') : b + ' gigante';

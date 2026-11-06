@@ -67,7 +67,7 @@
   $('compendium-books').innerHTML = OfficialContentData.books
     .map(b => {
       const c = b.counts;
-      return `<div class="feature"><b>${esc(b.title)}</b><p class="small">${c.monsters} criaturas · ${c.spells} conjuros · ${c.items} objetos · ${c.rules} textos de personaje${c.rejected ? ` · ${c.rejected} bloques pendientes de revisión` : ''}${b.ocrPages ? ` · ${b.ocrPages} páginas con reconocimiento de texto` : ''}</p></div>`;
+      return `<div class="feature"><b>${esc(b.title)}</b><p class="small">${c.monsters} criaturas · ${c.spells} conjuros · ${c.items} objetos · ${c.rules} textos de personaje${c.rejected ? ` · ${c.rejected} bloques pendientes de revisión` : ''}${b.ocrPages ? ` · ${b.ocrPages} páginas con reconocimiento de texto` : ''}</p>${b.coverageNote ? '<p class="small">' + esc(b.coverageNote) + '</p>' : ''}</div>`;
     })
     .join('');
   let shown = [];
@@ -148,7 +148,7 @@
             .map(([k, v]) => `<p><b>${k}:</b> ${esc(v)}</p>`)
             .join(
               '',
-            )}${(x.traits || []).map(([n, d]) => `<div class="feature"><h3>${esc(n)}</h3><p>${esc(d)}</p></div>`).join('')}${[
+            )}${(x.traits || []).map(([n, d]) => `<div class="feature"><h3>${esc(n)}</h3><p class="library-text">${esc(d)}</p></div>`).join('')}${[
             ['Acciones', x.actions],
             ['Acciones adicionales', x.bonus],
             ['Reacciones', x.reactions],
@@ -158,11 +158,11 @@
             .filter(([, v]) => v?.length)
             .map(
               ([k, v]) =>
-                `<h3>${k}</h3>${v.map(a => `<div class="feature"><h3>${esc(a.n)}</h3><p>${esc(a.d)}</p></div>`).join('')}`,
+                `<h3>${k}</h3>${v.map(a => `<div class="feature"><h3>${esc(a.n)}</h3><p class="library-text">${esc(a.d)}</p></div>`).join('')}`,
             )
             .join(
               '',
-            )}<p class="small">Disponible en Agregar criaturas del DM. ${x.referenceOnlyActions ? 'Esta entrada anterior incluye estadísticas básicas; los efectos adicionales requieren consultar el libro.' : 'Los dados y ataques compatibles se resuelven en combate; los demás efectos se consultan en el bloque.'}</p>`
+            )}${x.rulesLanguage === 'en' ? '<p class="small">Las reglas especiales conservan su texto de referencia en inglés.</p>' : ''}<p class="small">Disponible en Agregar criaturas del DM. ${x.referenceOnlyActions ? 'Esta entrada anterior incluye estadísticas básicas; los efectos adicionales requieren consultar el libro.' : 'Los dados y ataques compatibles se resuelven en combate; los demás efectos se consultan en el bloque.'}</p>`
         : '';
     const spell =
       x.kind === 'spell'
