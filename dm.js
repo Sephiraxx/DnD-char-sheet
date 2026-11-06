@@ -247,7 +247,7 @@ function draw() {
   document.title = (party ? party.campaign.name + ' · ' : '') + 'Pantalla del DM';
   if (!Cloud.enabled) {
     $('#main').innerHTML =
-      `<section class="card"><h1>Mesa compartida no configurada</h1><p>Para usar la pantalla del DM, quien publica la aplicación tiene que completar <code>config.js</code> con un proyecto de Supabase. Los pasos están en el README, sección «Mesa compartida».</p></section>`;
+      `<section class="card"><h1>Mesa compartida no configurada</h1><p>Para usar la pantalla del DM, quien publica la aplicación tiene que completar <code>config.js</code> con un proyecto de Supabase. Los pasos están en el README, sección «Mesa compartida».</p></section>${typeof EncounterGeneratorUI !== 'undefined' ? EncounterGeneratorUI.card() : ''}`;
     return;
   }
   if (!current) return drawHome();
@@ -302,6 +302,7 @@ function drawHome() {
   $('#main').innerHTML =
     `<div class="heading"><div><p class="eyebrow">PANTALLA DEL DM</p><h1>Tus mesas.</h1><p>Creá una mesa, compartí el código con la party y seguí sus fichas en vivo.</p></div></div>
   ${list}
+  ${typeof EncounterGeneratorUI !== 'undefined' ? EncounterGeneratorUI.card() : ''}
   <section class="card section-space dm-new"><h2>Nueva mesa</h2><form id="create-form" class="stack"><div class="form-grid">${field('Nombre de la campaña', 'name', '', 'text', 'required maxlength="100" placeholder="La maldición de Strahd"')}${field('Tu nombre', 'display', 'DM', 'text', 'maxlength="100"')}</div><details class="battle-rule"><summary>Libros, nivel inicial y reglas de la casa (opcional)</summary><div class="section-space">${settingsFields()}</div></details><div class="actions"><button class="button" type="submit">Crear mesa</button></div><p class="form-error" id="create-error" role="alert">${esc(error)}</p></form></section>
   ${typeof LibraryUI !== 'undefined' ? `<div class="section-space">${LibraryUI.card()}</div>` : ''}
   <p class="small muted section-space">Tu acceso de DM y tu biblioteca quedan guardados en este navegador. Guardalos con tu email para usarlos desde otro dispositivo.</p>${AccountUI.card('account')}`;
@@ -916,4 +917,4 @@ const start = hashId || localStorage.getItem('dnd-dm-last');
 if (Cloud.enabled && start) open(start);
 else draw();
 // Si la mesa cargó antes que encuentros y sesiones (scripts posteriores), se redibuja con sus tarjetas.
-document.addEventListener('DOMContentLoaded', () => party && draw());
+document.addEventListener('DOMContentLoaded', () => draw());

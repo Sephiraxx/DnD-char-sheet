@@ -70,10 +70,36 @@ const Encounters = (() => {
   function addMonsters(id, rows) {
     update(id, enc => enc.monsters.push(...rows.map(m => ({ ...m, uid: m.uid || uid() }))));
   }
+  function addGenerated(campaignId, target, draft) {
+    if (!current || !party || campaignId !== current) throw Error('Abrí la mesa donde querés guardar el encuentro.');
+    const notes = String(draft.notes || '').trim(),
+      name = String(draft.name || '').trim();
+    if (
+      !name ||
+      name.length > 80 ||
+      notes.length > 16000 ||
+      !Array.isArray(draft.monsters) ||
+      draft.monsters.length > 100
+    )
+      throw Error('Revisá el nombre, las notas y la cantidad de criaturas.');
+    const monsters = draft.monsters.map(m => ({ ...m, uid: uid() }));
+    if (target) {
+      update(target, enc => {
+        if ([enc.notes, notes].filter(Boolean).join('\n\n').length > 16000)
+          throw Error('Las notas del encuentro admiten hasta 16000 caracteres.');
+        enc.monsters.push(...monsters);
+        enc.notes = [enc.notes, notes].filter(Boolean).join('\n\n');
+      });
+      return target;
+    }
+    const id = 'enc-' + uid();
+    save([...list(), { id, name, notes, style: 'battle', cry: '', theme: '', monsters, launched: false }]);
+    return id;
+  }
 
   function card() {
     const items = list();
-    return `<section class="card prepared-card"><div class="card-header"><h2>Encuentros preparados</h2>${button('Preparar encuentro', 'prep-new')}</div><p class="small muted">Armalos antes de la sesión: se guardan en este dispositivo y los jugadores no ven nada hasta que tocás «¡Lanzar!».</p>${
+    return `<section class="card prepared-card"><div class="card-header"><h2>Encuentros preparados</h2><div class="actions">${button('Preparar encuentro', 'prep-new')}${typeof EncounterGeneratorUI !== 'undefined' ? button('Generar encuentro', 'encgen-open') : ''}</div></div><p class="small muted">Armalos antes de la sesión: se guardan en este dispositivo y los jugadores no ven nada hasta que tocás «¡Lanzar!».</p>${
       items.length
         ? items
             .map(enc => {
@@ -89,7 +115,7 @@ const Encounters = (() => {
                 typeof MonsterUI !== 'undefined'
                   ? MonsterUI.difficultyLine({ entries: enc.monsters.map(m => ({ monsterId: m.monsterId })) })
                   : '';
-              return `<article class="prepared"><div class="prepared-head"><div><b>${esc(enc.name)}</b> <span class="tag">${esc(STYLES[enc.style]?.[1] || '')}</span>${enc.launched ? ' <span class="tag">Ya lanzado</span>' : ''}</div>${button('Editar', 'prep-edit', 'text-btn', `data-id="${enc.id}"`)}</div>${rows || '<p class="small muted">Sin criaturas todavía.</p>'}${diff}<div class="actions">${button('Monstruo del SRD', 'prep-srd', 'secondary', `data-id="${enc.id}"`)}${button('Criatura propia', 'prep-custom', 'secondary', `data-id="${enc.id}"`)}${button('Ver animación', 'prep-preview', 'secondary', `data-id="${enc.id}"`)}${button('Eliminar', 'prep-delete', 'secondary', `data-id="${enc.id}"`)}${button(enc.launched ? 'Lanzar otra vez' : '¡Lanzar!', 'prep-launch', '', `data-id="${enc.id}" ${enc.monsters.length ? '' : 'disabled'}`)}</div></article>`;
+              return `<article class="prepared"><div class="prepared-head"><div><b>${esc(enc.name)}</b> <span class="tag">${esc(STYLES[enc.style]?.[1] || '')}</span>${enc.launched ? ' <span class="tag">Ya lanzado</span>' : ''}</div>${button('Editar', 'prep-edit', 'text-btn', `data-id="${enc.id}"`)}</div>${rows || '<p class="small muted">Sin criaturas todavía.</p>'}${enc.notes ? `<details class="section-space"><summary>Notas privadas del encuentro</summary><p class="encounter-notes">${esc(enc.notes)}</p></details>` : ''}${diff}<div class="actions">${button('Criatura del catálogo', 'prep-srd', 'secondary', `data-id="${enc.id}"`)}${typeof EncounterGeneratorUI !== 'undefined' ? button('Generar desde tablas', 'encgen-open', 'secondary', `data-id="${enc.id}"`) : ''}${button('Criatura propia', 'prep-custom', 'secondary', `data-id="${enc.id}"`)}${button('Ver animación', 'prep-preview', 'secondary', `data-id="${enc.id}"`)}${button('Eliminar', 'prep-delete', 'secondary', `data-id="${enc.id}"`)}${button(enc.launched ? 'Lanzar otra vez' : '¡Lanzar!', 'prep-launch', '', `data-id="${enc.id}" ${enc.monsters.length ? '' : 'disabled'}`)}</div></article>`;
             })
             .join('')
         : '<p class="muted">Todavía no preparaste encuentros.</p>'
@@ -104,13 +130,14 @@ const Encounters = (() => {
         .filter(([k]) => k !== 'reinforce')
         .map(([k, v]) => [k, v[1] + ' · «' + v[0] + '»']),
       enc.style || 'battle',
-    )}${field('Texto que ven los jugadores (opcional)', 'cry', enc.cry || '', 'text', 'maxlength="40" placeholder="Usa el del tipo: ¡Emboscada!"')}${select('Animación', 'theme', [['', 'Automática (según la criatura más peligrosa)'], ...THEMES], enc.theme || '')}`;
+    )}${field('Texto que ven los jugadores (opcional)', 'cry', enc.cry || '', 'text', 'maxlength="40" placeholder="Usa el del tipo: ¡Emboscada!"')}${select('Animación', 'theme', [['', 'Automática (según la criatura más peligrosa)'], ...THEMES], enc.theme || '')}<label class="field">Notas privadas del encuentro<textarea name="notes" maxlength="16000">${esc(enc.notes || '')}</textarea></label>`;
   }
   const read = fd => ({
     name: String(fd.get('name')).trim(),
     style: STYLES[fd.get('style')] ? String(fd.get('style')) : 'battle',
     cry: String(fd.get('cry') || '').trim(),
     theme: THEMES.some(([k]) => k === fd.get('theme')) ? String(fd.get('theme')) : '',
+    notes: String(fd.get('notes') || '').trim(),
   });
   // Tema de la animación: el elegido por el DM o el de la criatura más peligrosa.
   async function themeFor(enc) {
@@ -271,5 +298,5 @@ const Encounters = (() => {
     });
   }
   install();
-  return { card, get, addMonsters, STYLES };
+  return { card, get, addMonsters, addGenerated, STYLES };
 })();

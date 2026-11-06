@@ -308,6 +308,99 @@
   color: var(--gold);
 }
 
+/* ---------- Generador de encuentros del DM ---------- */
+#modal.encgen-modal {
+  width: min(960px, calc(100% - 24px));
+  max-height: 94dvh;
+}
+.encgen-roll {
+  align-items: end;
+}
+.encgen-roll .field {
+  flex: 1 1 140px;
+  max-width: 240px;
+  margin: 0;
+}
+.encgen-table {
+  margin: 16px 0;
+}
+.encgen-table-scroll {
+  max-height: 360px;
+  overflow: auto;
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.encgen-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.encgen-table caption {
+  text-align: left;
+  padding: 10px;
+}
+.encgen-table td,
+.encgen-table th {
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line);
+}
+.encgen-table thead {
+  position: sticky;
+  top: 0;
+  background: var(--panel2);
+}
+.encgen-table th:first-child {
+  white-space: nowrap;
+}
+.encgen-result-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+.encounter-notes {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.encgen-reference {
+  padding: 16px;
+  border-left: 3px solid var(--gold);
+  background: var(--panel2);
+}
+.encgen-creature {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 8px 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.encgen-creature .field {
+  margin: 0;
+}
+.encgen-creature a,
+.encgen-creature > p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.encgen-creature .small {
+  display: block;
+}
+@media (max-width: 540px) {
+  .encgen-creature {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .encgen-creature .field {
+    max-width: 170px;
+  }
+  .encgen-table td,
+  .encgen-table th {
+    padding: 8px 6px;
+  }
+}
+
 /* ---------- Bestiario del DM: tarjetas con filtros y bandeja ---------- */
 #modal.bestiary-modal {
   width: min(1100px, calc(100% - 24px));
