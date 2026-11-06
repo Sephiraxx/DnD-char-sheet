@@ -35,7 +35,7 @@ const MagicUI = (() => {
             `<button class="pip ${i < c.spent ? 'spent' : ''}" data-action="magic-pip" data-id="${esc(x.id)}" data-pip="${i}" aria-label="${i < c.spent ? 'Recuperar una carga' : 'Gastar una carga'}">${i < c.spent ? '−' : '✦'}</button>`,
         ).join('')}</div></div>`
       : '';
-    return `<article class="magic-item ${on ? '' : 'inactive'} ${x.qty ? '' : 'empty'}"><div class="magic-head"><div><h3>${esc(x.name)}${x.qty > 1 ? ' ×' + x.qty : ''}</h3><p class="eyebrow">${esc(m.rarity || 'mágico')}${m.attune ? ' · requiere sintonía' + (typeof m.attune === 'string' ? ' (' + esc(m.attune) + ')' : '') : ''}</p></div><div class="actions">${attune}${m.heal && x.qty ? button('Tomar', 'magic-drink', '', `data-id="${esc(x.id)}"`) : m.consumable && x.qty ? button('Usar', 'magic-use', '', `data-id="${esc(x.id)}"`) : ''}${button('Editar', 'item-edit', 'secondary', `data-id="${esc(x.id)}"`)}</div></div>${fx.length ? `<p class="small">${on ? '✓ ' : 'Sin sintonizar: '}${esc(fx.join(' · '))}</p>` : ''}${m.note ? `<p class="small muted">${esc(m.note)}</p>` : ''}${typeof OfficialContent !== 'undefined' ? OfficialContent.itemHtml(m.id) : ''}${charges}</article>`;
+    return `<article class="magic-item ${on ? '' : 'inactive'} ${x.qty ? '' : 'empty'}"><div class="magic-head"><div><h3>${esc(x.name)}${x.qty > 1 ? ' ×' + x.qty : ''}</h3><p class="eyebrow">${esc(m.rarity || 'mágico')}${m.attune ? ' · requiere sintonía' + (typeof m.attune === 'string' ? ' (' + esc(m.attune) + ')' : '') : ''}</p></div><div class="actions">${attune}${m.heal && x.qty ? button('Tomar', 'magic-drink', '', `data-id="${esc(x.id)}"`) : m.spell && x.qty ? button('Leer', 'magic-scroll', '', `data-id="${esc(x.id)}"`) : m.consumable && x.qty ? button('Usar', 'magic-use', '', `data-id="${esc(x.id)}"`) : ''}${button('Editar', 'item-edit', 'secondary', `data-id="${esc(x.id)}"`)}</div></div>${fx.length ? `<p class="small">${on ? '✓ ' : 'Sin sintonizar: '}${esc(fx.join(' · '))}</p>` : ''}${m.note ? `<p class="small muted">${esc(m.note)}</p>` : ''}${typeof OfficialContent !== 'undefined' ? OfficialContent.itemHtml(m.id) : ''}${charges}</article>`;
   }
 
   // Selector del catálogo.
@@ -75,12 +75,13 @@ const MagicUI = (() => {
         : '';
     modal(
       it.name,
-      `<p class="small">${esc(M.effects(M.fromCatalog(it.id, { resist: 'fire' })).join(' · '))}</p>${it.note ? `<p class="small muted">${esc(it.note)}</p>` : ''}<div class="form-grid">${base}${resist}${field('Cantidad', 'qty', 1, 'number', 'min="1" max="99" required')}</div>${typeof OfficialContent !== 'undefined' ? OfficialContent.itemHtml(it.id) : ''}`,
+      `<p class="small">${esc(M.effects(M.fromCatalog(it.id, { resist: 'fire' })).join(' · '))}</p>${it.note ? `<p class="small muted">${esc(it.note)}</p>` : ''}${it.scroll ? ItemRef.scrollSelect('spell') : ''}<div class="form-grid">${base}${resist}${field('Cantidad', 'qty', 1, 'number', 'min="1" max="99" required')}</div>${typeof OfficialContent !== 'undefined' ? OfficialContent.itemHtml(it.id) : ''}`,
       fd => {
         if (it.resist === 'choose' && !fd.get('resist')) throw Error('Elegí el tipo de daño de la resistencia.');
         const rowData = M.inventoryRow(id, {
           base: fd.get('base') || '',
           resist: fd.get('resist') || '',
+          spell: fd.get('spell') || '',
           qty: fd.get('qty'),
           uid: uid(),
         });
@@ -208,6 +209,63 @@ const MagicUI = (() => {
     );
   }
 
+  // Pergamino de conjuro (DMG p. 200): se lee si el conjuro es de la lista de tu clase; si es de un nivel
+  // que todavía no lanzás, prueba de tu característica de lanzamiento contra CD 10 + nivel. Usa la CD y el
+  // ataque del pergamino, no gasta espacio y se deshace al usarlo (también si falla la prueba).
+  function scroll(id) {
+    const x = find(id),
+      m = x.magic,
+      sp = Rules.allSpells(state).find(s => s.id === m.spell) || M.scrollSpell(m.spell);
+    if (!sp) throw Error('No se encuentra el conjuro de este pergamino.');
+    if (!x.qty) throw Error('No te quedan.');
+    const views = Classes.views(state);
+    const thief = views.some(v => Classes.id(v) === 'rogue' && v.classSubclass === 'rogue-thief' && v.level >= 13);
+    const caster = views.find(v => Classes.casting(v).type !== 'none' && Classes.member(sp, v));
+    if (!caster && !thief)
+      throw Error(`${sp.name} no está en la lista de conjuros de tu clase: no podés leer este pergamino.`);
+    const d = Rules.stats(state),
+      top = Math.max(0, ...d.slots.map((n, i) => (n ? i + 1 : 0)), d.pact?.level || 0),
+      sc = M.scroll(sp.level),
+      who = caster || views[0],
+      ability = caster ? Classes.casting(caster).ability : 'int',
+      mod = Rules.stats(who).mods[ability],
+      check = sp.level > top || (!caster && thief),
+      k = Combat.kind(sp);
+    const reason = Combat.blocked(state, k === 'special' ? 'action' : k);
+    if (reason && k !== 'special') throw Error(reason);
+    modal(
+      'Leer ' + x.name,
+      `<p>${esc(sp.brief || sp.text || '')}</p><p class="small">${sp.level ? 'Nivel ' + sp.level : 'Truco'} · ${esc(sp.time)} · ${esc(sp.range)} · ${esc(sp.duration)}${sp.concentration ? ' · Concentración' : ''}</p><p class="banner">Con el pergamino: CD <b>${sc.dc}</b> · ataque <b>+${sc.attack}</b>. No gasta espacio ni componentes materiales.</p>${
+        check
+          ? `<p class="banner">${thief && !caster ? 'Usar objeto mágico: hacés una prueba de Inteligencia' : `Es de un nivel que todavía no lanzás: prueba de ${Rules.attrs[ability]}`} (CD ${10 + sp.level}). Si fallás, el pergamino se deshace sin efecto.</p>`
+          : ''
+      }${sp.concentration && state.concentration ? `<p class="small">Al lanzarlo termina tu concentración en ${esc(Rules.allSpells(state).find(s => s.id === state.concentration)?.name || 'otro conjuro')}.</p>` : ''}`,
+      () => {
+        const rolled = check ? window.roll(20, 1)[0] : null,
+          ok = !check || rolled + mod >= 10 + sp.level;
+        commit(`${x.name}: ${ok ? 'leído' : 'falló la prueba'}`, s => {
+          const r = s.inventory.find(y => y.id === id);
+          r.qty = Math.max(0, r.qty - 1);
+          if (!ok) return;
+          if (k !== 'special') Combat.use(s, k, sp.name);
+          if (sp.concentration) {
+            s.concentration = sp.id;
+            Combat.data(s).checks = [];
+          }
+          Effects.fromSpell(s, sp);
+        });
+        if (check)
+          toast(
+            `Prueba: ${rolled} ${mod >= 0 ? '+' : ''}${mod} = ${rolled + mod} contra CD ${10 + sp.level}. ${ok ? 'Lo lográs.' : 'Falla: el pergamino se deshace.'}`,
+          );
+        if (ok && RollUI.rollable(sp))
+          setTimeout(() => RollUI.spell(sp, sp.level, { override: { dc: sc.dc, attack: sc.attack } }), check ? 900 : 0);
+        else if (ok && !check) toast(`Leíste ${sp.name}. Resolvé su efecto en la mesa.`);
+      },
+      'Leer',
+    );
+  }
+
   // Cargas como fichas en la vista compacta de combate.
   function pills() {
     return M.active(state)
@@ -229,6 +287,7 @@ const MagicUI = (() => {
       'magic-charges': e => charges(e.dataset.id),
       'magic-drink': e => drink(e.dataset.id),
       'magic-use': e => use(e.dataset.id),
+      'magic-scroll': e => scroll(e.dataset.id),
     });
     document.addEventListener('input', e => {
       if (e.target.id !== 'magic-search') return;

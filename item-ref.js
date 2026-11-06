@@ -66,14 +66,33 @@
         out.base = ref.base;
       if (it.resist === 'choose' && typeof ref.resist === 'string' && /^[a-z]{3,20}$/.test(ref.resist))
         out.resist = ref.resist;
+      if (it.scroll) {
+        if (typeof ref.spell !== 'string' || !M().scrollSpell(ref.spell)) return ref.loose ? out : null;
+        out.spell = ref.spell;
+      }
       return out;
     }
     if (ref.kind === 'gear' && gear(id)) return { kind: 'gear', id };
     return null;
   }
+  // Del buscador: el pergamino todavía no tiene conjuro elegido.
   function parse(value) {
     const [kind, ...rest] = String(value || '').split(':');
-    return clean({ kind, id: rest.join(':') });
+    return clean({ kind, id: rest.join(':'), loose: true });
+  }
+  // Lista de conjuros para un pergamino, por nivel.
+  function scrollSelect(name = 'refSpell', value = '') {
+    const all = (root.Catalog?.spells || [])
+      .slice()
+      .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name, 'es'));
+    const groups = Array.from({ length: 10 }, (_, l) => all.filter(x => x.level === l));
+    return `<label class="field">Conjuro del pergamino<select name="${name}" required><option value="">Elegí un conjuro</option>${groups
+      .map((g, l) =>
+        g.length
+          ? `<optgroup label="${l ? 'Nivel ' + l : 'Trucos'} · CD ${M().scroll(l).dc}">${g.map(x => `<option value="${esc(x.id)}" ${x.id === value ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</optgroup>`
+          : '',
+      )
+      .join('')}</select></label>`;
   }
 
   // Qué es y qué hace, en una línea (para el DM y para la tarjeta del botín).
@@ -85,15 +104,17 @@
       return [x.category, x.notes].filter(Boolean).join(' · ');
     }
     const it = M().byId(r.id);
-    const fx = M().effects(M().fromCatalog(it.id, { resist: r.resist || 'fire' }));
+    const m = M().fromCatalog(it.id, { resist: r.resist || 'fire', spell: r.spell });
+    const fx = M().effects(m);
     const base = it.base ? gear(r.base || M().baseFor(it))?.name : '';
-    return [it.rarity, it.attune ? 'requiere sintonía' : '', base, ...fx.slice(0, 3)].filter(Boolean).join(' · ');
+    return [m.rarity, it.attune ? 'requiere sintonía' : '', base, ...fx.slice(0, 3)].filter(Boolean).join(' · ');
   }
   function name(ref, fallback = '') {
     const r = clean(ref);
     if (!r) return fallback;
     if (r.kind === 'gear') return gear(r.id).name;
-    return M().inventoryRow(r.id, { base: r.base, resist: r.resist }).name;
+    if (M().byId(r.id).scroll && !r.spell) return M().byId(r.id).name;
+    return M().inventoryRow(r.id, { base: r.base, resist: r.resist, spell: r.spell }).name;
   }
 
   // Filas para el inventario. Los paquetes se abren en sus objetos, como en «Añadir del catálogo».
@@ -106,7 +127,16 @@
       const out = [];
       // El inventario mágico admite hasta 99 por fila.
       for (let left = n; left > 0; left -= 99)
-        out.push(M().inventoryRow(r.id, { base: r.base, resist: r.resist, qty: Math.min(99, left), uid: id(), notes }));
+        out.push(
+          M().inventoryRow(r.id, {
+            base: r.base,
+            resist: r.resist,
+            spell: r.spell,
+            qty: Math.min(99, left),
+            uid: id(),
+            notes,
+          }),
+        );
       return out;
     }
     const out = [];
@@ -151,6 +181,7 @@
           .map(x => [x.id, x.name]),
         M().baseFor(it),
       );
+    if (it.scroll) html += scrollSelect('refSpell');
     if (it.resist === 'choose' && root.Defenses)
       html += sel(
         'Resistencia a',
@@ -177,6 +208,10 @@
       const it = M().byId(r.id);
       if (it.base && fd.get('refBase')) r.base = String(fd.get('refBase'));
       if (it.resist === 'choose') r.resist = String(fd.get('refResist') || 'fire');
+      if (it.scroll) {
+        r.spell = String(fd.get('refSpell') || '');
+        if (!M().scrollSpell(r.spell)) throw Error('Elegí el conjuro del pergamino.');
+      }
     }
     return clean(r);
   }
@@ -199,6 +234,6 @@
     });
   }
 
-  root.ItemRef = { search, clean, parse, describe, name, rows, picker, fromForm, install };
+  root.ItemRef = { search, clean, parse, describe, name, rows, picker, fromForm, install, scrollSelect };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.ItemRef;
 })(typeof window !== 'undefined' ? window : globalThis);

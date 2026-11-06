@@ -47,8 +47,13 @@ test('hill dwarf Forge cleric has visible class, race and mercenary traits with 
   assert.match(rows.find(r => r.name === 'Vida de mercenaria').text, /estilo de vida cómodo/);
   assert.match(rows.find(r => r.name === 'Bendición de la forja').origin, /XGE/);
   assert.match(rows.find(r => r.name === 'Dureza enana').text, /\+3 PG/);
-  assert.match(rows.find(r => r.name === 'Dureza enana').note, /no se suma automáticamente/);
-  assert.match(rows.find(r => r.name === 'Bendición de la forja').note, /se registran a mano/);
+  // Ficha vieja: pregunta una vez si los PG ya incluían la Dureza enana.
+  assert.match(rows.find(r => r.name === 'Dureza enana').note, /ya incluyen este bono/);
+  assert.deepEqual(
+    [...rows.find(r => r.name === 'Dureza enana').actions.map(a => a[1])],
+    ['trait-hp-included', 'trait-hp-add'],
+  );
+  assert.match(rows.find(r => r.name === 'Bendición de la forja').note, /Sin bendecir/);
   assert.match(rows.find(r => r.name.includes('bendición del artesano')).text, /100 po/);
   assert.equal(JSON.stringify(s), before, 'reading traits must preserve saved HP, AC and choices');
   assert.ok(!rows.some(r => ['Alma de la forja', 'Golpe divino', 'Golpes benditos'].includes(r.name)));

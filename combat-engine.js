@@ -16,11 +16,14 @@
   // Las dos reservas pueden pagar conjuros de cualquiera de las clases.
   function availableSlots(s, sp) {
     const d = root.Rules.stats(s);
-    const out = d.slots.flatMap((max, i) =>
-      i + 1 >= sp.level && s.slotsSpent[i] !== null && s.slotsSpent[i] < max
-        ? [{ value: i + 1, level: i + 1, left: max - s.slotsSpent[i] }]
-        : [],
-    );
+    // Espacios creados con Fuente de magia (por encima del máximo hasta el descanso largo).
+    const font = Array.isArray(s.fontSlots) ? s.fontSlots : [];
+    const out = Array.from({ length: 9 }, (_, i) => {
+      const max = d.slots[i] || 0,
+        normal = s.slotsSpent[i] !== null && s.slotsSpent[i] < max ? max - s.slotsSpent[i] : 0,
+        left = normal + (font[i] || 0);
+      return i + 1 >= sp.level && left > 0 ? [{ value: i + 1, level: i + 1, left }] : [];
+    }).flat();
     const used = s.pactSpent === undefined ? 0 : s.pactSpent;
     if (d.pact && d.pact.level >= sp.level && used !== null && used < d.pact.max)
       out.push({ value: 'pact', level: d.pact.level, left: d.pact.max - used });
@@ -98,7 +101,10 @@
       if (special?.startsWith('arcanum')) root.Classes.spend(s, special, 1);
       else if (!special) {
         if (slot === 'pact') s.pactSpent = (s.pactSpent ?? 0) + 1;
-        else s.slotsSpent[slot - 1]++;
+        else if (Array.isArray(s.fontSlots) && s.fontSlots[slot - 1] > 0) {
+          s.fontSlots = s.fontSlots.slice();
+          s.fontSlots[slot - 1]--;
+        } else s.slotsSpent[slot - 1]++;
       }
     }
     if (c.active && c.onTurn && !ritual) c.spells.push({ kind: k, level: sp.level });

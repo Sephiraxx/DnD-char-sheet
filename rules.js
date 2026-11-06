@@ -637,6 +637,13 @@
     if (root.MagicItems) root.MagicItems.validate(o);
     if (root.Companions) root.Companions.validate(o);
     if (root.Equipment) root.Equipment.validate(o);
+    if (root.Metamagic) root.Metamagic.validate(o);
+    if (o.hpAuto !== undefined && typeof o.hpAuto !== 'boolean') fail();
+    if (
+      o.forgeBlessing !== undefined &&
+      (!txt(o.forgeBlessing, 100) || !o.inventory?.some(x => x.id === o.forgeBlessing))
+    )
+      delete o.forgeBlessing;
     if (!['eloquence', 'manual'].includes(o.subclass)) fail();
     for (let k in attrs) if (!int(o.abilities?.[k], 1, 30)) fail();
     for (let k of ['proficiencies', 'expertise'])

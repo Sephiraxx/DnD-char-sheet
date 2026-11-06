@@ -345,6 +345,34 @@ const Campaign = (() => {
     if (!race(s)?.traits?.includes('Stonecunning')) return null;
     return Rules.mod(Rules.scores(s).int) + 2 * Rules.stats(s).prof + (globalThis.MagicItems?.check(s) || 0);
   }
+  // PG de rasgos: con s.hpAuto ya están en el máximo; si no, la ficha pregunta una vez si ya los incluías.
+  function hpTrait(s, n) {
+    if (s.hpAuto)
+      return { note: `Ya está sumado a tus PG máximos (+${n} a tu nivel actual) y sube solo con cada nivel.` };
+    return {
+      note: '¿Tus PG máximos ya incluyen este bono? Elegí una opción y desde ahí la ficha lo suma sola, también al subir de nivel.',
+      actions: [
+        ['Ya estaba incluido', 'trait-hp-included'],
+        [`Sumar +${Classes.traitHp(s).value} ahora`, 'trait-hp-add'],
+      ],
+    };
+  }
+  function blessing(s) {
+    const row = (s.inventory || []).find(x => x.id === s.forgeBlessing);
+    const kind =
+      row && EquipmentData.items[row.equipmentId]?.armor
+        ? 'armadura: +1 a la CA mientras la llevás'
+        : 'arma: +1 al ataque y al daño';
+    return row
+      ? {
+          note: `Bendecida: ${row.name} (${kind}). Dura hasta tu siguiente descanso largo.`,
+          actions: [['Cambiar', 'forge-bless']],
+        }
+      : {
+          note: 'Sin bendecir desde tu último descanso largo.',
+          actions: [['Bendecir arma o armadura', 'forge-bless']],
+        };
+  }
   function characterTraits(s) {
     const rows = [],
       add = (key, name, text, origin, book, extra = {}) => rows.push({ key, name, text, origin, book, ...extra }),
@@ -387,11 +415,7 @@ const Campaign = (() => {
             'Al terminar un descanso largo, tocás una armadura o un arma sencilla o marcial no mágica. Hasta terminar tu siguiente descanso largo o hasta que mueras, se vuelve mágica: +1 a la CA si es armadura, o +1 a las tiradas de ataque y daño si es arma. Una vez usada, requiere otro descanso largo.',
             origin,
             book,
-            {
-              note: 'El objetivo y su bono se registran a mano. Para una armadura, revisá «Otros bonos confirmados» en Equipar / calcular CA; con CA manual, usá el campo de bonos. Si ya está incluido, no lo sumes otra vez. Revisá la bendición al terminar cada descanso largo.',
-              action: s.equipmentDefense ? 'equipment-defense' : 'stats',
-              actionLabel: 'Revisar CA',
-            },
+            blessing(s),
           );
           continue;
         }
@@ -412,9 +436,12 @@ const Campaign = (() => {
             'Acción: presentás tu símbolo sagrado. Cada muerto viviente que pueda verte u oírte a 30 pies hace una salvación de Sabiduría contra tu CD de conjuros. Si falla, queda expulsado durante 1 minuto o hasta recibir daño: debe alejarse de vos y no puede usar reacciones. Consultá las restricciones completas en las reglas del libro.',
             origin,
             book,
+            { actions: [['Expulsar (gasta Canalizar divinidad)', 'trait-channel', 'data-what="turn"']] },
           );
         }
+        let extra = {};
         if (owner === 'cleric-forge-domain' && en === "Channel Divinity: Artisan's Blessing") {
+          extra = { actions: [['Usar (gasta Canalizar divinidad)', 'trait-channel', 'data-what="artisan"']] };
           text =
             'Gastás un uso de Canalizar divinidad en un ritual de 1 hora para crear un objeto no mágico que incluya metal y valga como máximo 100 po: un arma sencilla o marcial, una armadura, diez municiones, herramientas u otro objeto metálico. Consumís metal o monedas de igual valor; también se forman las partes no metálicas. Aparece al terminar, en una superficie desocupada a 5 pies. Podés copiar un objeto no mágico que contenga metal, como una llave, si tenés el original durante el ritual.';
           language = 'es';
@@ -433,7 +460,13 @@ const Campaign = (() => {
             : 'Elegí tu dominio en Competencias para ver sus rasgos y conjuros.';
           language = 'es';
         }
-        add(key, f.name, text || 'Consultá las reglas completas de este rasgo.', origin, book, { language });
+        if (owner === 'sorcerer-draconic-bloodline' && en === 'Draconic Resilience') {
+          const lvl = view.level;
+          text = `Tus PG máximos aumentan en 1 por cada nivel de hechicero (+${lvl}). Sin armadura, tu CA es 13 + tu modificador de Destreza (la ficha la elige si te conviene).`;
+          language = 'es';
+          extra = hpTrait(s, lvl);
+        }
+        add(key, f.name, text || 'Consultá las reglas completas de este rasgo.', origin, book, { language, ...extra });
       }
     }
     const r = race(s);
@@ -496,11 +529,7 @@ const Campaign = (() => {
             ...(name === 'Stonecunning'
               ? { action: 'stonecunning-roll', actionLabel: 'Tirar Historia de trabajos en piedra' }
               : {}),
-            ...(name === 'Dwarven Toughness'
-              ? {
-                  note: 'Este bono no se suma automáticamente al máximo registrado. Comprobá que esté incluido en tus PG máximos; si ya lo incluiste, no lo sumes otra vez.',
-                }
-              : {}),
+            ...(name === 'Dwarven Toughness' ? hpTrait(s, Rules.totalLevel(s)) : {}),
           },
         );
       }
@@ -535,7 +564,7 @@ const Campaign = (() => {
   function traitsCard(s) {
     const rows = characterTraits(s);
     if (!rows.length) return '';
-    return `<section class="card section-space" id="character-traits"><h2>Rasgos de tu personaje</h2><p class="small muted">Según tu clase, subclase, nivel, raza y trasfondo seleccionados. Las notas indican los efectos que debés registrar.</p><div class="character-traits-grid">${rows.map(row => `<article class="feature" data-trait="${esc(row.key)}"><h3>${esc(row.name)}</h3><p class="eyebrow">${esc(row.origin)}${row.language === 'en' ? ' · texto en inglés' : ''}</p><p class="library-text">${esc(row.text)}</p>${row.note ? `<p class="small trait-note">${esc(row.note)}</p>` : ''}${row.action ? button(row.actionLabel, row.action, 'secondary') : ''}${row.book ? OfficialContent.html(row.book) : ''}</article>`).join('')}</div></section>`;
+    return `<section class="card section-space" id="character-traits"><h2>Rasgos de tu personaje</h2><p class="small muted">Según tu clase, subclase, nivel, raza y trasfondo seleccionados. Las notas indican los efectos que debés registrar.</p><div class="character-traits-grid">${rows.map(row => `<article class="feature" data-trait="${esc(row.key)}"><h3>${esc(row.name)}</h3><p class="eyebrow">${esc(row.origin)}${row.language === 'en' ? ' · texto en inglés' : ''}</p><p class="library-text">${esc(row.text)}</p>${row.note ? `<p class="small trait-note">${esc(row.note)}</p>` : ''}${row.action ? button(row.actionLabel, row.action, 'secondary') : ''}${row.actions ? `<div class="actions">${row.actions.map(([l, a, data = '']) => button(l, a, 'secondary', data)).join('')}</div>` : ''}${row.book ? OfficialContent.html(row.book) : ''}</article>`).join('')}</div></section>`;
   }
   // Origen e identidad: raza, trasfondo, idiomas, competencias y velocidad en una sola tarjeta.
   function sheetOrigins() {

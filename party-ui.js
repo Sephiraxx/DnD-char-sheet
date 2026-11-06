@@ -196,6 +196,9 @@ const PartyUI = (() => {
     s.creationConfirmed = true;
     s.classResourcesConfirmed = d.full;
     EquipmentUI.initialState(d, s);
+    // Los PG de rasgos (Dureza enana, Resistencia dracónica) se suman solos; los PG sugeridos no los incluyen.
+    s.hpAuto = true;
+    if (d.full) s.hp = R.stats(s).maxHP;
     return R.validate(s);
   }
   function classPage() {
@@ -779,12 +782,15 @@ const PartyUI = (() => {
     R.validate(s);
   }
   function resourceCards() {
-    return C.resources(state)
-      .map(r => {
-        const used = C.spent(state, r);
-        return `<div class="pool-row"><div class="pool-head"><b>${esc(r.name)}</b><span>${used === null ? '—' : r.max === 999 ? '∞' : Math.max(0, r.max - used) + ' / ' + r.max}</span></div><p class="small">${esc(r.text)}</p><div class="actions">${button('Usar', 'class-resource', '', `data-id="${r.id}"`)}${button('Ajustar', 'class-resource-edit', 'secondary', `data-id="${r.id}"`)}</div><p class="small">Recuperación: descanso ${r.reset === 'short' ? 'corto o largo' : 'largo'}.</p>${r.id === 'rage' && state.raging ? button('Terminar rabia', 'class-rage-end') : ''}</div>`;
-      })
-      .join('');
+    const mm = typeof Metamagic !== 'undefined' ? Metamagic.panel(state) : '';
+    return (
+      C.resources(state)
+        .map(r => {
+          const used = C.spent(state, r);
+          return `<div class="pool-row"><div class="pool-head"><b>${esc(r.name)}</b><span>${used === null ? '—' : r.max === 999 ? '∞' : Math.max(0, r.max - used) + ' / ' + r.max}</span></div><p class="small">${esc(r.text)}</p><div class="actions">${button('Usar', 'class-resource', '', `data-id="${r.id}"`)}${button('Ajustar', 'class-resource-edit', 'secondary', `data-id="${r.id}"`)}</div><p class="small">Recuperación: descanso ${r.reset === 'short' ? 'corto o largo' : 'largo'}.</p>${r.id === 'rage' && state.raging ? button('Terminar rabia', 'class-rage-end') : ''}</div>`;
+        })
+        .join('') + mm
+    );
   }
   function useResource(id, adjust = false) {
     const r = C.resources(state).find(x => x.id === id);
@@ -975,7 +981,7 @@ const PartyUI = (() => {
       fd =>
         commit('Recursos actuales confirmados', s => {
           const max = number(fd, 'max', 1, 2000);
-          s.hpBase = max - R.totalLevel(s) * d.mods.con;
+          s.hpBase += max - R.stats(s).maxHP;
           s.hp = number(fd, 'hp', 0, max);
           s.hpConfirmed = true;
           s.temp = number(fd, 'temp', 0, 9999);

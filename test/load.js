@@ -11,6 +11,7 @@ const LOGIC = [
   'feat-data.js',
   'feats.js',
   'magic-items.js',
+  'metamagic.js',
   'companions.js',
   'campaign-data.js',
   'book-content-data.js',
