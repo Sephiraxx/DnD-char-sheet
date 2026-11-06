@@ -606,6 +606,197 @@
     return m;
   }
 
+  // ---------- Efectos leídos del texto de un objeto oficial ----------
+  // Los objetos de los libros traen solo su texto: de ahí salen los bonos que la ficha sabe aplicar
+  // (+N de armas y armaduras, CA, salvaciones, conjuros, puntuaciones fijas, resistencias, curación de
+  // pociones y cargas). Lo demás se sigue leyendo en el texto del objeto.
+  const ABIL_RE = [
+    ['str', 'fuerza|strength'],
+    ['dex', 'destreza|dexterity'],
+    ['con', 'constituci[oó]n|constitution'],
+    ['int', 'inteligencia|intelligence'],
+    ['wis', 'sabidur[ií]a|wisdom'],
+    ['cha', 'carisma|charisma'],
+  ];
+  const DMG_WORDS = [
+    ['acid', '[aá]cido|acid'],
+    ['bludgeoning', 'contundente|bludgeoning'],
+    ['cold', 'fr[ií]o|cold'],
+    ['fire', 'fuego|fire'],
+    ['force', 'fuerza|force'],
+    ['lightning', 'rel[aá]mpago|rayo|el[eé]ctrico|lightning'],
+    ['necrotic', 'necr[oó]tico|necrotic'],
+    ['piercing', 'perforante|piercing'],
+    ['poison', 'veneno|poison'],
+    ['psychic', 'ps[ií]quico|psychic'],
+    ['radiant', 'radiante|radiant'],
+    ['slashing', 'cortante|slashing'],
+    ['thunder', 'trueno|thunder'],
+  ];
+  // El texto leído a veces sigue con el objeto siguiente («ESPEJO DEL PASADO Objeto maravilloso…»).
+  function ownText(text) {
+    const t = String(text || '').replace(/\s+/g, ' ');
+    const next =
+      /\b[A-ZÁÉÍÓÚÑ]{2,}(?:\s+[A-ZÁÉÍÓÚÑ]{2,})+\s+(?:Objeto|Arma|Armadura|Anillo|Varita|Bast[oó]n|Vara|Poci[oó]n|Pergamino|Wondrous|Weapon|Armor|Ring|Wand|Staff|Rod|Potion|Scroll)\b/.exec(
+        t.slice(40),
+      );
+    return next ? t.slice(0, 40 + next.index).trim() : t;
+  }
+  function derive(it, row = {}) {
+    let t = ownText(row.text);
+    // Las piedras Ioun traen en un mismo texto todas sus variantes.
+    if (/\bioun\b/i.test(it.name || '')) t = '';
+    const d = String((row.detail || '') + ' ' + (row.kind || '')).toLowerCase();
+    const out = {};
+    const plus = /\+\s?(\d)\b/.exec(it.name || '')?.[1];
+    const num = re => {
+      const m = re.exec(t);
+      return m ? Number(m[1]) : 0;
+    };
+    const hint = (/\(([^)]{2,60})\)/.exec(row.detail || '')?.[1] || '').trim();
+    if (/^\s*(arma|weapon)\b/.test(d)) {
+      const n = Number(plus) || num(/\+\s?(\d)[^.]{0,30}?(?:tiradas de ataque|attack(?: and damage)? rolls)/i);
+      if (n) out.weapon = n;
+      out.base = 'weapon';
+      if (hint) out.baseHint = hint;
+    } else if (/escudo|shield/.test(d) && /^\s*(armadura|armor|escudo|shield)\b/.test(d)) {
+      const n = Number(plus) || num(/\+\s?(\d)[^.]{0,40}?\b(?:CA|AC|clase de armadura|armor class)\b/i);
+      if (n) out.shield = n;
+      out.base = 'shield';
+    } else if (/^\s*(armadura|armor)\b/.test(d)) {
+      const n = Number(plus) || num(/\+\s?(\d)[^.]{0,40}?\b(?:CA|AC|clase de armadura|armor class)\b/i);
+      if (n) out.armor = n;
+      out.base = 'armor';
+      if (hint) out.baseHint = hint;
+    } else {
+      const ac = num(
+        /\+\s?(\d)\s*(?:de bonificador\s*)?(?:a\s?la|bonus to(?: your)?)\s*(?:CA|AC|clase de armadura|armor class)\b/i,
+      );
+      if (ac) out.ac = ac;
+      // Salvaciones en general (no «de Destreza»).
+      const sv =
+        /\+\s?(\d)[^.]{0,40}?(?:tiradas de salvaci[oó]n|saving throws)(?! de (?:fuerza|destreza|constituci|inteligencia|sabidur|carisma))/i.exec(
+          t,
+        );
+      if (sv && !/(strength|dexterity|constitution|intelligence|wisdom|charisma) saving throws/i.test(sv[0]))
+        out.save = Number(sv[1]);
+      const sa = /\+\s?(\d)[^.]{0,60}?(?:tiradas de ataque (?:de|con) conjuros?|spell attack rolls)[^.]*/i.exec(t);
+      if (sa) {
+        out.spellAttack = Number(sa[1]);
+        if (/CD de (?:salvaci[oó]n de )?(?:tus )?conjuros|spell save DC/i.test(sa[0])) out.spellDC = Number(sa[1]);
+      }
+    }
+    for (const [k, words] of ABIL_RE) {
+      const m = new RegExp(
+        `(?:puntuaci[oó]n de|your)\\s+(?:${words})\\s+(?:score\\s+)?(?:pasa a ser|cambia a|es de|es|is|becomes|changes to)\\s+(\\d{2})`,
+        'i',
+      ).exec(t);
+      if (m && Number(m[1]) >= 10 && Number(m[1]) <= 30) (out.set ||= {})[k] = Number(m[1]);
+    }
+    const res = new Set();
+    for (const m of t.matchAll(
+      /(?<!ignora(?:s|n)? la )resistencia (?:al|a los|contra el|contra) daño ((?:de |por )?[a-záéíóúñ]+(?:(?:, | y | o )(?:de |por )?[a-záéíóúñ]+)*)/gi,
+    ))
+      for (const [k, words] of DMG_WORDS) if (new RegExp(`\\b(${words})\\b`, 'i').test(m[1])) res.add(k);
+    for (const m of t.matchAll(/(?<!ignores? )resistance to ((?:[a-z]+(?:, | and | or ))*[a-z]+) damage/gi))
+      for (const [k, words] of DMG_WORDS) if (new RegExp(`\\b(${words})\\b`, 'i').test(m[1])) res.add(k);
+    // «Elegí un tipo» o una lista larga: se deja para el texto.
+    if (res.size && res.size <= 3 && !/a tu elecci[oó]n|of your choice|elige|choose/i.test(t.slice(0, 400)))
+      out.resist = [...res];
+    const heal = /(?:recuperas?|regain)\s+(\d+)d(\d+)\s*\+\s*(\d+)\s+(?:puntos de golpe|hit points)/i.exec(t);
+    if (heal) out.heal = `${heal[1]}d${heal[2]}+${heal[3]}`;
+    if (/poci[oó]n|potion|pergamino|scroll|aceite|oil|elixir/.test(d + ' ' + (it.name || '').toLowerCase())) {
+      // Lo que da una poción dura un rato: no se suma a la ficha como si fuera un anillo.
+      out.consumable = true;
+      for (const k of ['ac', 'save', 'spellAttack', 'spellDC', 'set', 'resist']) delete out[k];
+    }
+    if (!it.charges) {
+      const c = /(?:tiene|has|contiene|dispone de)\s+(\d{1,2})\s+(?:cargas|charges)\b/i.exec(t);
+      if (c && Number(c[1]) > 0) it.charges = { max: Number(c[1]), regain: '0' };
+    }
+    if (it.charges && it.charges.regain === '0') {
+      const r =
+        /(?:recupera|regains)\s+(?:\w+\s){0,3}?(\d+d\d+(?:\s*\+\s*\d+)?|\d+)\s+(?:de (?:sus|las) )?(?:cargas|expended charges|charges)/i.exec(
+          t,
+        );
+      if (r) out.charges = { ...it.charges, regain: r[1].replace(/\s/g, '') };
+      else if (/(?:recupera|regains) (?:todas|all)/i.test(t))
+        out.charges = { ...it.charges, regain: String(it.charges.max) };
+    }
+    return out;
+  }
+
+  // ---------- Filas del inventario ----------
+  const fold = s =>
+    String(s || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+  const BASE_OK = {
+    weapon: x => x.weapon,
+    armor: x => x.armor && x.armor.type !== 'shield',
+    shield: x => x.armor?.type === 'shield',
+  };
+  function bases(kind) {
+    const all = Object.values(root.EquipmentData?.items || {});
+    return all.filter(BASE_OK[kind] || (() => false)).sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  }
+  // Otros nombres que usan las traducciones de los libros.
+  const BASE_ALIAS = {
+    'hacha de guerra': 'battleaxe',
+    mangual: 'flail',
+    flagelo: 'flail',
+    'espada grande': 'greatsword',
+    'hacha a dos manos': 'greataxe',
+    'maza a dos manos': 'maul',
+    'camisa de malla': 'chain-shirt',
+    'lanza de caballeria': 'lance',
+    momingstar: 'morningstar',
+  };
+  // El arma o armadura que nombra el libro («Arma (espada larga)»), si hay una sola.
+  function baseFor(it) {
+    if (!it?.base) return '';
+    const list = bases(it.base);
+    if (it.base === 'shield') return list[0]?.id || '';
+    const h = fold(it.baseHint);
+    if (!h || /\b(cualquier|any|cualquiera|ligera|light|medium|heavy|pesada)\b/.test(h)) return '';
+    const slug = (BASE_ALIAS[h] || h).replace(/ /g, '-');
+    const hit =
+      list.find(x => fold(x.name) === h || x.id === slug || x.id === slug + '-armor') ||
+      (h.length > 3 && list.find(x => fold(x.name).startsWith(h)));
+    return hit?.id || '';
+  }
+  // La fila que agrega a la ficha. La usan la ficha (Añadir objeto mágico), el botín y lo que entrega el DM.
+  function inventoryRow(id, { base = '', resist = '', qty = 1, uid, notes = '' } = {}) {
+    const it = byId(id);
+    if (!it) throw Error('Objeto mágico desconocido.');
+    const m = fromCatalog(it.id, { resist: resist || (it.resist === 'choose' ? 'fire' : '') });
+    const b = it.base ? root.EquipmentData?.items[base || baseFor(it)] : null;
+    const usable = b && BASE_OK[it.base](b) ? b : null;
+    const n = it.weapon || it.armor || it.shield;
+    const name = !usable
+      ? it.name
+      : n && /\+\d$/.test(it.name)
+        ? `${usable.name} +${n}`
+        : `${it.name} (${usable.name})`;
+    const row = {
+      id: uid || 'magic-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name,
+      qty: Math.max(1, Math.min(99, Math.trunc(Number(qty)) || 1)),
+      category: usable ? usable.category : it.consumable || it.heal ? 'Consumibles' : 'Tesoro',
+      notes: String(notes || '').slice(0, 2000),
+      location: 'Encima',
+      weight: usable ? usable.weight : null,
+      magic: m,
+    };
+    if (usable) row.equipmentId = usable.id;
+    if (it.base === 'weapon')
+      row.attack = { ability: 'auto', proficient: 'auto', magic: m.weapon || 0, extra: m.extra || '' };
+    return row;
+  }
+
   // ---------- Efectos en la ficha ----------
   function setScores(s) {
     const out = {};
@@ -721,6 +912,11 @@
     ITEMS,
     byId,
     fromCatalog,
+    derive,
+    ownText,
+    bases,
+    baseFor,
+    inventoryRow,
     rows,
     active,
     attunedCount,

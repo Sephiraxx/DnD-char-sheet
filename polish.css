@@ -1574,6 +1574,35 @@ button.cc-stat {
 .magic-pick[hidden] {
   display: none;
 }
+/* Buscador de objetos para el botín y lo que entrega el DM. */
+.item-ref-results {
+  display: grid;
+  gap: 6px;
+  max-height: 40vh;
+  overflow: auto;
+}
+.item-ref-results:not(:empty) {
+  margin: 4px 0 10px;
+}
+.item-ref-pick {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.item-ref-pick:hover,
+.item-ref-pick:focus-visible {
+  border-color: var(--gold);
+}
+.item-ref-chosen {
+  color: var(--gold);
+}
 
 /* ---------- Compañeros y forma salvaje ---------- */
 .cmp-list {

@@ -57,4 +57,4 @@ function load(files = LOGIC) {
 
 const fixture = name => JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', name), 'utf8'));
 
-module.exports = { load, fixture };
+module.exports = { load, fixture, LOGIC };

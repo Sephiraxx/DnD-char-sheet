@@ -151,11 +151,13 @@
           sourceKey: row.sourceKey,
           source: row.book,
           bookId: row.bookId,
-          note: row.text.slice(0, 480),
+          note: (target.MagicItems.ownText ? target.MagicItems.ownText(row.text) : row.text).slice(0, 480),
           manualEffects: true,
         };
         const count = /(?:tiene|has|contiene|dispone de)\s+(\d{1,2})\s+(?:cargas|charges)\b/i.exec(row.text);
         if (count && Number(count[1]) > 0) item.charges = { max: Number(count[1]), regain: '0' };
+        // Bonos que la ficha sabe aplicar, leídos del texto (+N, CA, salvaciones, resistencias, curación…).
+        if (target.MagicItems.derive) Object.assign(item, target.MagicItems.derive(item, row));
         target.MagicItems.ITEMS.push(item);
         existing.set(normalize(name), item);
       }

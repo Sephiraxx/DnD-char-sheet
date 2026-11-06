@@ -13,6 +13,12 @@ const TableExtras = (() => {
   const TIMES = ['Acción', 'Adicional', 'Reacción', 'Especial'];
   const SAVES = ['', 'Fuerza', 'Destreza', 'Constitución', 'Inteligencia', 'Sabiduría', 'Carisma'];
   let ctx = { party: null, campaignId: '', refresh: () => {} };
+  const ref = x => (typeof ItemRef !== 'undefined' ? ItemRef.clean(x.data?.ref) : null);
+  const about = x => {
+    const r = ref(x);
+    return r ? ItemRef.describe(r) : '';
+  };
+  const charName = id => ctx.party?.characters?.find(c => c.id === id)?.name || 'otra ficha';
 
   // ---------- Jugador ----------
   function playerHtml(party, characterId) {
@@ -27,10 +33,10 @@ const TableExtras = (() => {
       ? `<section class="card section-space"><h2>Botín de la party</h2>${
           free.length
             ? `<div class="party-list">${free
-                .map(
-                  x =>
-                    `<div class="list-row"><div><b>${x.qty > 1 ? x.qty + ' × ' : ''}${esc(x.name)}</b>${x.notes ? `<p class="small muted">${esc(x.notes)}</p>` : ''}</div>${button('Tomar', 'loot-claim', '', `data-id="${esc(x.id)}"`)}</div>`,
-                )
+                .map(x => {
+                  const mine = !x.data?.for || x.data.for === characterId;
+                  return `<div class="list-row"><div><b>${x.qty > 1 ? x.qty + ' × ' : ''}${esc(x.name)}</b>${about(x) ? `<p class="small">${esc(about(x))}</p>` : ''}${x.notes ? `<p class="small muted">${esc(x.notes)}</p>` : ''}</div>${mine ? button('Tomar', 'loot-claim', '', `data-id="${esc(x.id)}"`) : `<span class="tag">Para ${esc(charName(x.data.for))}</span>`}</div>`;
+                })
                 .join('')}</div>`
             : '<p class="muted">No queda nada por repartir.</p>'
         }${taken.length ? `<p class="small section-space">${taken.map(x => `${esc(x.claimed_name || 'Alguien')} tomó ${esc(x.name)}`).join(' · ')}</p>` : ''}</section>`
@@ -63,19 +69,26 @@ const TableExtras = (() => {
   function claim(id, characterId) {
     const item = ctx.party?.loot.find(x => x.id === id);
     if (!item) throw Error('Ese objeto ya no está.');
+    if (item.data?.for && item.data.for !== characterId)
+      throw Error('El DM lo reservó para ' + charName(item.data.for) + '.');
+    // Del catálogo: llega con sus efectos y se puede equipar o sintonizar.
+    const made = ref(item) ? ItemRef.rows(ref(item), { qty: item.qty, notes: item.notes || '', uid }) : null;
     return Cloud.claimLoot(id, characterId, state.name).then(() => {
-      commit('Botín: ' + item.name, s =>
-        s.inventory.push({
-          id: uid(),
-          name: item.name,
-          qty: item.qty,
-          category: 'Equipo',
-          weight: null,
-          location: 'Con el personaje',
-          notes: item.notes || 'Botín de la party',
-        }),
-      );
-      toast('Tomaste ' + item.name + '.');
+      commit('Botín: ' + item.name, s => {
+        if (made?.length) for (const r of made) s.inventory.push(r);
+        else
+          s.inventory.push({
+            id: uid(),
+            name: item.name,
+            qty: item.qty,
+            category: 'Equipo',
+            weight: null,
+            location: 'Con el personaje',
+            notes: item.notes || 'Botín de la party',
+          });
+      });
+      if (made?.[0]?.magic?.attune) toast('Tomaste ' + item.name + '. Sintonizalo en Equipo para que funcione.');
+      else toast('Tomaste ' + item.name + '.');
       ctx.refresh();
     });
   }
@@ -131,7 +144,7 @@ const TableExtras = (() => {
         ? `<div class="party-list">${loot
             .map(
               x =>
-                `<div class="list-row"><div><b>${x.qty > 1 ? x.qty + ' × ' : ''}${esc(x.name)}</b><p class="small muted">${x.claimed_character ? 'Lo tomó ' + esc(x.claimed_name || 'alguien') : 'Sin reclamar'}</p></div>${button('×', 'loot-remove', 'text-btn', `data-id="${esc(x.id)}" aria-label="Quitar ${esc(x.name)}"`)}</div>`,
+                `<div class="list-row"><div><b>${x.qty > 1 ? x.qty + ' × ' : ''}${esc(x.name)}</b>${about(x) ? `<p class="small">${esc(about(x))}</p>` : ''}<p class="small muted">${x.claimed_character ? 'Lo tomó ' + esc(x.claimed_name || 'alguien') : x.data?.for ? 'Reservado para ' + esc(charName(x.data.for)) : 'Sin reclamar'}</p></div>${button('×', 'loot-remove', 'text-btn', `data-id="${esc(x.id)}" aria-label="Quitar ${esc(x.name)}"`)}</div>`,
             )
             .join('')}</div>`
         : '<p class="small muted">Los objetos que agregues aparecen en la Mesa de cada jugador para que los tomen.</p>'
@@ -155,15 +168,30 @@ const TableExtras = (() => {
     return v;
   };
   function lootAdd() {
+    const chars = ctx.party?.characters || [];
     modal(
       'Agregar al botín',
-      `${field('Objeto', 'name', '', 'text', 'required maxlength="150" placeholder="Anillo de protección"')}<div class="form-grid">${field('Cantidad', 'qty', 1, 'number', 'min="1" max="9999" required')}</div><label class="field">Notas<textarea name="notes" maxlength="2000"></textarea></label>`,
+      `${ItemRef.picker('name')}<div class="form-grid">${field('Cantidad', 'qty', 1, 'number', 'min="1" max="9999" required')}${select(
+        'Para',
+        'for',
+        [['', 'Cualquiera de la party'], ...chars.map(c => [c.id, c.name])],
+        '',
+      )}</div><label class="field">Notas<textarea name="notes" maxlength="2000"></textarea></label>`,
       async fd => {
-        await Cloud.addLoot(ctx.campaignId, {
-          name: String(fd.get('name')).trim(),
+        const r = ItemRef.fromForm(fd),
+          who = String(fd.get('for') || '');
+        if (who && !chars.some(c => c.id === who)) throw Error('Elegí una ficha de la mesa.');
+        const data = { ...(r ? { ref: r } : {}), ...(who ? { for: who } : {}) };
+        const row = await Cloud.addLoot(ctx.campaignId, {
+          name: (r ? ItemRef.name(r, String(fd.get('name'))) : String(fd.get('name'))).trim().slice(0, 150),
           qty: n(fd, 'qty', 1, 9999, 1),
           notes: String(fd.get('notes')).trim(),
+          ...(Object.keys(data).length ? { data } : {}),
         });
+        if (row?.legacy)
+          toast(
+            'Agregado como texto: falta correr la migración 013 en Supabase para que el botín lleve sus efectos y la reserva.',
+          );
         ctx.refresh();
       },
       'Agregar',
@@ -259,6 +287,7 @@ const TableExtras = (() => {
   // Ambas páginas llaman a install con su forma de refrescar y la mesa actual.
   function install({ refresh, campaignId, characterId }) {
     ctx.refresh = refresh;
+    if (typeof ItemRef !== 'undefined') ItemRef.install(actions);
     Object.assign(actions, {
       'loot-claim': e => claim(e.dataset.id, characterId()).catch(err => toast(err.message)),
       'homebrew-take': e => take(e.dataset.id),

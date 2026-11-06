@@ -729,15 +729,19 @@
 
   // ---------- Botín de la party ----------
   async function addLoot(campaignId, item) {
-    return check(
-      await (
-        await api()
-      )
+    const insert = async row =>
+      (await api())
         .from('loot')
-        .insert({ campaign_id: campaignId, ...item })
+        .insert({ campaign_id: campaignId, ...row })
         .select()
-        .single(),
-    );
+        .single();
+    const res = await insert(item);
+    // Sin la migración 013 no existe la columna data: se agrega como texto y se avisa.
+    if (res.error && item.data && /\bdata\b/.test(res.error.message || '')) {
+      const { data, ...plain } = item;
+      return { ...check(await insert(plain)), legacy: true };
+    }
+    return check(res);
   }
   async function removeLoot(id) {
     check(await (await api()).from('loot').delete().eq('id', id));

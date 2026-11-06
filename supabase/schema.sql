@@ -199,6 +199,7 @@ create table if not exists public.loot (
   name text not null check (char_length(name) between 1 and 150),
   qty int not null default 1 check (qty between 1 and 9999),
   notes text not null default '' check (char_length(notes) <= 2000),
+  data jsonb not null default '{}'::jsonb constraint loot_data_size check (octet_length(data::text) <= 2000),
   claimed_character uuid references public.characters on delete set null,
   claimed_name text check (claimed_name is null or char_length(claimed_name) <= 100),
   created_at timestamptz not null default now()
@@ -238,7 +239,13 @@ begin
     new.name := old.name;
     new.qty := old.qty;
     new.notes := old.notes;
+    new.data := old.data;
     new.created_at := old.created_at;
+    -- Reservado por el DM para una ficha: nadie más lo puede reclamar.
+    if new.claimed_character is not null and coalesce(old.data->>'for', '') <> ''
+       and old.data->>'for' <> new.claimed_character::text then
+      raise exception 'Ese objeto está reservado para otra ficha.';
+    end if;
   end if;
   return new;
 end $$;
