@@ -1,0 +1,506 @@
+[
+  {
+    "id": "ca21aad9310b8163",
+    "title": "Aventura Lego - Cuento de un Dragon Rojo (Ingles)",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Aventura Lego - Cuento de un Dragon Rojo (Ingles).pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 20
+  },
+  {
+    "id": "b66eb19e3fd90c38",
+    "title": "Contención Divina",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Contención Divina.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 83
+  },
+  {
+    "id": "2a479a659f9e606a",
+    "title": "Critical Role - La Llamada de Netherdeep (Ingles)",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Critical Role - La Llamada de Netherdeep (Ingles).pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 226
+  },
+  {
+    "id": "e21538c8ec892876",
+    "title": "Cuentos del Portal Bostezante",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Cuentos del Portal Bostezante.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 250
+  },
+  {
+    "id": "9c8ca1a7f3a002b1",
+    "title": "Descenso a Las Cavernas Perdidas de Tsojcanth",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Descenso a Las Cavernas Perdidas de Tsojcanth.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 27
+  },
+  {
+    "id": "c98d97aa76db7229",
+    "title": "Desde el Abismo",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Desde el Abismo.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 252
+  },
+  {
+    "id": "0aff6c2b51aab6bf",
+    "title": "Dragonlance - Sombra de la Reina Dragon",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Dragonlance - Sombra de la Reina Dragon.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 226
+  },
+  {
+    "id": "68087507bf448aff",
+    "title": "El Auge de Tiamat",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/El Auge de Tiamat.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 91
+  },
+  {
+    "id": "2230ea5330374cd8",
+    "title": "El despertar del dragón durmiente",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/El despertar del dragón durmiente.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 71
+  },
+  {
+    "id": "17182bc795d5ced5",
+    "title": "El Dragón del Pico Helado",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/El Dragón del Pico Helado.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 97
+  },
+  {
+    "id": "e9682e11f112ff2f",
+    "title": "El Laboratorio Perdido de Kwalish (Ingles)",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/El Laboratorio Perdido de Kwalish (Ingles).pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 62
+  },
+  {
+    "id": "1c075cc5056ce61f",
+    "title": "El Legado de la Piedra de Cristal Aventura",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/El Legado de la Piedra de Cristal Aventura.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 34
+  },
+  {
+    "id": "cf1706a6ddfd9239",
+    "title": "El Trueno Del Rey Tormenta",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/El Trueno Del Rey Tormenta.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 257
+  },
+  {
+    "id": "4b9e741c5309eebe",
+    "title": "Fantasmas de Saltmarsh",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Fantasmas de Saltmarsh.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 259
+  },
+  {
+    "id": "8edd41e6da8d138e",
+    "title": "Guarida del Ojo Arcano",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Guarida del Ojo Arcano.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 16
+  },
+  {
+    "id": "f9f5064fe790ccb0",
+    "title": "La Ira del Señor de la Tormenta (versión corta)",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/La Ira del Señor de la Tormenta (versión corta).pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 80
+  },
+  {
+    "id": "1afbf0a7c61664c7",
+    "title": "La Ira del Señor de la Tormenta",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/La Ira del Señor de la Tormenta.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 69
+  },
+  {
+    "id": "0626352b0c2f5e28",
+    "title": "La Maldición de Strahd",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/La Maldición de Strahd.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 261
+  },
+  {
+    "id": "db4aae13ce263203",
+    "title": "La Mina Perdida de Phandelver",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/La Mina Perdida de Phandelver.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 62
+  },
+  {
+    "id": "415b8e2bcdff9cbc",
+    "title": "La Tumba de la Aniquilación",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/La Tumba de la Aniquilación.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 259
+  },
+  {
+    "id": "67feb3483ef571d8",
+    "title": "Las Tierras Más Allá de Brujaluz - Una Aventura en los Parajes Feericos",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Las Tierras Más Allá de Brujaluz - Una Aventura en los Parajes Feericos.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 256
+  },
+  {
+    "id": "eb72ac69f14e9565",
+    "title": "Llaves de la Bóveda Dorada",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Llaves de la Bóveda Dorada.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 341
+  },
+  {
+    "id": "0d49c558508dd626",
+    "title": "Luz de Xaryxis (Ingles)",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Luz de Xaryxis (Ingles).pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 66
+  },
+  {
+    "id": "d4275553fd38d09b",
+    "title": "Misiones de la Escalera Infinita (Ingles)",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Misiones de la Escalera Infinita (Ingles).pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 226
+  },
+  {
+    "id": "662db056823dd69d",
+    "title": "Muerte en Thay (Ingles)",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Muerte en Thay (Ingles).pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 107
+  },
+  {
+    "id": "4d8e49dae407209a",
+    "title": "Phandelver y más Abajo (Ingles)",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Phandelver y más Abajo (Ingles).pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 225
+  },
+  {
+    "id": "0538e5f70b8f2a88",
+    "title": "Planescape - Morte's Planar Parade",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Planescape - Morte's Planar Parade.pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 66
+  },
+  {
+    "id": "bbff3f1535c14aa2",
+    "title": "Planescape - Sigil and The Outlands",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Planescape - Sigil and The Outlands.pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 98
+  },
+  {
+    "id": "17cb5db84418e40c",
+    "title": "Planescape - Turn of Fortune's Wheel",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Planescape - Turn of Fortune's Wheel.pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 98
+  },
+  {
+    "id": "f94062ac0ffc3832",
+    "title": "Principes del Apocalipsis",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Principes del Apocalipsis.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 253
+  },
+  {
+    "id": "c2960b82d1efe861",
+    "title": "Puerta de Baldur - Descenso a Averno",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Puerta de Baldur - Descenso a Averno.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 259
+  },
+  {
+    "id": "070b4cff1b7b2fae",
+    "title": "Reconstrucción de la Máquina Infernal (Ingles)",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Reconstrucción de la Máquina Infernal (Ingles).pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 111
+  },
+  {
+    "id": "d82779e0632b6361",
+    "title": "Reglamento Caja de Inicio-La Isla de los Dragones de las Tempestades",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Reglamento Caja de Inicio-La Isla de los Dragones de las Tempestades.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 32
+  },
+  {
+    "id": "78eda0089459b2bc",
+    "title": "Tiranía de Dragones - Edición Aniversario (Ingles)",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Tiranía de Dragones - Edición Aniversario (Ingles).pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 226
+  },
+  {
+    "id": "11f68997e5eb49fc",
+    "title": "Valle del Viento Helado - La Rima de la Doncella de la Escarcha",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Valle del Viento Helado - La Rima de la Doncella de la Escarcha.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 323
+  },
+  {
+    "id": "00dd4bae0b3b1e5d",
+    "title": "Vecna - Vispera de la Ruina (Ingles)",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Vecna - Vispera de la Ruina (Ingles).pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 258
+  },
+  {
+    "id": "2534c2a11943fe01",
+    "title": "Viajes a través de la Ciudadela Radiante (Ingles)",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Viajes a través de la Ciudadela Radiante (Ingles).pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 226
+  },
+  {
+    "id": "0baa04104f38babe",
+    "title": "Waterdeep - El Golpe de los Dragones",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Waterdeep - El Golpe de los Dragones.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 226
+  },
+  {
+    "id": "8c0aabc073ec4950",
+    "title": "Waterdeep - La Mazmorra del Mago Loco",
+    "relativePath": "5ta Edicion/Aventuras/Oficiales/Waterdeep - La Mazmorra del Mago Loco.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 323
+  },
+  {
+    "id": "014cf07b953a5056",
+    "title": "El Tesoro de los Dragones de Fizban",
+    "relativePath": "5ta Edicion/El Tesoro de los Dragones de Fizban.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 226
+  },
+  {
+    "id": "5c72ae78a4070b66",
+    "title": "Guía del Dungeon Master",
+    "relativePath": "5ta Edicion/Esenciales/Guía del Dungeon Master.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 323
+  },
+  {
+    "id": "19ae44ca570d040b",
+    "title": "Manual de Monstruos",
+    "relativePath": "5ta Edicion/Esenciales/Manual de Monstruos.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 354
+  },
+  {
+    "id": "c0c7b906cb4dbb43",
+    "title": "Manual del Jugador",
+    "relativePath": "5ta Edicion/Esenciales/Manual del Jugador.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 324
+  },
+  {
+    "id": "8c28a59c1db731cb",
+    "title": "Guía del Explorador de Wildemount (Ingles)",
+    "relativePath": "5ta Edicion/Settings/Critical Role/Guía del Explorador de Wildemount (Ingles).pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 307
+  },
+  {
+    "id": "17ed9c5777e883b3",
+    "title": "Eberron - Surgiendo de la Ultima Guerra",
+    "relativePath": "5ta Edicion/Settings/Eberron/Eberron - Surgiendo de la Ultima Guerra.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 331
+  },
+  {
+    "id": "7c68f9475cbd778d",
+    "title": "Maestros del Gremio - Guia de Ravnica",
+    "relativePath": "5ta Edicion/Settings/Ravnica/Maestros del Gremio - Guia de Ravnica.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 258
+  },
+  {
+    "id": "0e4dafe3dfefe19b",
+    "title": "Guía del Aventurero de la Costa de la Espada",
+    "relativePath": "5ta Edicion/Settings/Reinos Olvidados/Guía del Aventurero de la Costa de la Espada.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 162
+  },
+  {
+    "id": "00ba2764b562f4da",
+    "title": "Strixhaven - Un plan de estudios caótico",
+    "relativePath": "5ta Edicion/Settings/Strixhaven/Strixhaven - Un plan de estudios caótico.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 229
+  },
+  {
+    "id": "187aa9c8e2a9ab6a",
+    "title": "Bigby Presenta - Gloria de Gigantes (Ingles)",
+    "relativePath": "5ta Edicion/Suplementos/Bestiarios/Oficiales/Bigby Presenta - Gloria de Gigantes (Ingles).pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 197
+  },
+  {
+    "id": "03a14b51fb12204b",
+    "title": "Compendio Monstruoso Vol 1 - Criaturas de Spelljammer (Ingles)",
+    "relativePath": "5ta Edicion/Suplementos/Bestiarios/Oficiales/Compendio Monstruoso Vol 1 - Criaturas de Spelljammer (Ingles).pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 14
+  },
+  {
+    "id": "d8058811115763dd",
+    "title": "Compendio Monstruoso Vol 2 - Criaturas de Dragonlance (Ingles)",
+    "relativePath": "5ta Edicion/Suplementos/Bestiarios/Oficiales/Compendio Monstruoso Vol 2 - Criaturas de Dragonlance (Ingles).pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 17
+  },
+  {
+    "id": "708dd014a92095a2",
+    "title": "El Dossier de Vecna (D&D Beyond)",
+    "relativePath": "5ta Edicion/Suplementos/Bestiarios/Oficiales/El Dossier de Vecna (D&D Beyond).pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 4
+  },
+  {
+    "id": "10ccfe9a4b86989b",
+    "title": "Folio Diabólico de Mordenkainen Volumen 1 - Monstruos Malévolos y Benignos",
+    "relativePath": "5ta Edicion/Suplementos/Bestiarios/Oficiales/Folio Diabólico de Mordenkainen Volumen 1 - Monstruos Malévolos y Benignos.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 22
+  },
+  {
+    "id": "94dc34045c87d2d0",
+    "title": "Guia de Volo de los Monstruos",
+    "relativePath": "5ta Edicion/Suplementos/Bestiarios/Oficiales/Guia de Volo de los Monstruos.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 225
+  },
+  {
+    "id": "15739a452ebd9a5b",
+    "title": "La Colección Astral de Boo (Ingles)",
+    "relativePath": "5ta Edicion/Suplementos/Bestiarios/Oficiales/La Colección Astral de Boo (Ingles).pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 66
+  },
+  {
+    "id": "5abc59bf448b79b2",
+    "title": "Mordenkainen presenta - Monstruos del Multiverso",
+    "relativePath": "5ta Edicion/Suplementos/Bestiarios/Oficiales/Mordenkainen presenta - Monstruos del Multiverso.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 291
+  },
+  {
+    "id": "f4a36a6e25e208fc",
+    "title": "Caldero de Tasha para Todo",
+    "relativePath": "5ta Edicion/Suplementos/Expansión de Reglas/Oficiales/Caldero de Tasha para Todo.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 195
+  },
+  {
+    "id": "4965a9cc8e18a5ab",
+    "title": "Dominios del Encanto (Ingles)",
+    "relativePath": "5ta Edicion/Suplementos/Expansión de Reglas/Oficiales/Dominios del Encanto (Ingles).PDF",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 36
+  },
+  {
+    "id": "ff0d40f6d9d6ee87",
+    "title": "El Paquete Tortuga (Ingles)",
+    "relativePath": "5ta Edicion/Suplementos/Expansión de Reglas/Oficiales/El Paquete Tortuga (Ingles).pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 28
+  },
+  {
+    "id": "7636510b1649d507",
+    "title": "Guia de Xanathar Para Todo",
+    "relativePath": "5ta Edicion/Suplementos/Expansión de Reglas/Oficiales/Guia de Xanathar Para Todo.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 193
+  },
+  {
+    "id": "66afacbec6114879",
+    "title": "Guia del Aventurero Astral (Ingles)",
+    "relativePath": "5ta Edicion/Suplementos/Expansión de Reglas/Oficiales/Guia del Aventurero Astral (Ingles).pdf",
+    "edition": "2014",
+    "lang": "eng",
+    "pageCount": 66
+  },
+  {
+    "id": "644d5e63cd8fd7de",
+    "title": "Guía de Van Richten para Ravenloft_unlocked",
+    "relativePath": "5ta Edicion/Suplementos/Expansión de Reglas/Oficiales/Guía de Van Richten para Ravenloft_unlocked.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 259
+  },
+  {
+    "id": "d36decce0700ed32",
+    "title": "Tomo de Enemigos de Mordenkainen (Sin Monstruos)_unlocked",
+    "relativePath": "5ta Edicion/Suplementos/Expansión de Reglas/Oficiales/Tomo de Enemigos de Mordenkainen (Sin Monstruos)_unlocked.pdf",
+    "edition": "2014",
+    "lang": "spa",
+    "pageCount": 117
+  }
+]

@@ -593,12 +593,31 @@
       );
   // Seis puntuaciones «12 (+1)» a partir de la línea con FUE/DES/CON (o STR/DEX/CON).
   function parseAbilities(texts, strict = false) {
-    const all = fixDigits(texts.join(' '));
+    const all = fixDigits(texts.join(' ')).replace(/(\d{1,2})[.,:]\s*(?=\()/g, '$1 ');
     const out = [];
     const re = /(\d{1,2})\s*\(\s*([+\-]?\s*\d{1,2})(?!\d|\s*d\s*\d)\s*\)?/g;
     let m;
     while ((m = re.exec(all)) && out.length < 6) out.push(Number(m[1]));
     if (out.length === 6) return out;
+    // En tablas escaneadas «14 (+2)» puede quedar «14.42)». Solo se acepta la
+    // fila completa si las seis puntuaciones concuerdan con sus modificadores.
+    const cells = [...all.matchAll(/(?<!\d)(\d{1,2})\s*[.($]\s*([+\-\dIlOSo .:*~]{1,7})\)/g)];
+    if (
+      cells.length === 6 &&
+      cells.every(([, score, raw]) => {
+        const n = Number(score),
+          mod = Math.floor((n - 10) / 2),
+          digits = raw.replace(/[Il]/g, '1').replace(/[Oo]/g, '0').replace(/S/g, '5').replace(/\D/g, '');
+        return (
+          n >= 1 &&
+          n <= 30 &&
+          digits.endsWith(String(Math.abs(mod))) &&
+          !(raw.includes('+') && mod < 0) &&
+          !(raw.includes('-') && mod > 0)
+        );
+      })
+    )
+      return cells.map(c => Number(c[1]));
     if (strict) return null;
     const fm = fromMods(texts);
     if (fm && !fm.approx) return fm;
@@ -901,6 +920,7 @@
       // está ahí (otra columna), el título grande más cercano en la página.
       const tbh = lines[typeAt].bh ?? lines[typeAt].h;
       const titleish = (l, t) => {
+        if (/cap[ií]tulo|chapter|\btypically\b|por lo general/i.test(t)) return false;
         if (t.length < 2 || t.length > 60 || !/[A-Za-zÁÉÍÓÚÑáéíóúñ]{2}/.test(t) || /[.:;,-]$/.test(t)) return false;
         if (/^[^:]{2,30}:\s/.test(t) && (l.bh ?? l.h) < tbh + 1) return false; // «Duración: 8 horas»
         const letters = t.replace(/[^A-Za-zÁÉÍÓÚÑáéíóúñ]/g, '');
@@ -915,12 +935,41 @@
         if (/^(\S ){3,}\S$/.test(t)) t = spaced(t.replace(/ /g, ''), opts.bookWords);
         return titleish(lines[i], t) ? t : '';
       };
-      for (let i = typeAt - 1; i >= Math.max(0, typeAt - 3) && !name; i--) name = nameOf(i) ? niceName(nameOf(i)) : '';
+      for (let i = typeAt - 1; i >= Math.max(0, typeAt - 3) && !name; i--) {
+        if (lines[i].c !== lines[typeAt].c && lines[i].c !== 'full') continue;
+        if (!nameOf(i)) continue;
+        name = niceName(nameOf(i));
+        const previous = lines[i - 1];
+        if (
+          previous &&
+          previous.page === lines[i].page &&
+          previous.c === lines[i].c &&
+          Math.abs((previous.bh ?? previous.h) - (lines[i].bh ?? lines[i].h)) < 0.6 &&
+          lines[i].y - previous.y > 0 &&
+          lines[i].y - previous.y < lines[i].h * 1.8 &&
+          nameOf(i - 1) &&
+          (nameOf(i - 1) + ' ' + nameOf(i)).length <= 80
+        )
+          name = niceName(nameOf(i - 1) + ' ' + nameOf(i));
+      }
       pageTitle = () => {
-        for (let i = typeAt - 4; i >= Math.max(0, typeAt - 30) && lines[i].page === lines[typeAt].page; i--)
-          if ((lines[i].bh ?? lines[i].h) >= tbh + 1.5 && nameOf(i)) {
-            return niceName(nameOf(i));
-          }
+        const candidates = [];
+        for (let i = typeAt - 4; i >= Math.max(0, typeAt - 200) && lines[i].page === lines[typeAt].page; i--)
+          if ((lines[i].bh ?? lines[i].h) >= tbh + 1.5 && nameOf(i)) candidates.push(i);
+        const biggest = Math.max(0, ...candidates.map(i => lines[i].bh ?? lines[i].h));
+        const i = candidates.find(i => (lines[i].bh ?? lines[i].h) >= biggest * 0.8);
+        if (i !== undefined) {
+          const previous = lines[i - 1];
+          const wrapped =
+            previous &&
+            previous.page === lines[i].page &&
+            previous.c === lines[i].c &&
+            Math.abs((previous.bh ?? previous.h) - (lines[i].bh ?? lines[i].h)) < 0.6 &&
+            lines[i].y - previous.y > 0 &&
+            lines[i].y - previous.y < lines[i].h * 1.8 &&
+            nameOf(i - 1);
+          return niceName((wrapped ? nameOf(i - 1) + ' ' : '') + nameOf(i));
+        }
         return '';
       };
     } else issues.push('Sin línea de tamaño y tipo');
@@ -982,7 +1031,7 @@
         f[lab[0]] = t.replace(lab[1], '').trim();
         if (['ac', 'hp', 'cr', 'speed'].includes(lab[0]))
           f[lab[0]] = fixDigits(f[lab[0]])
-            .replace(/\b(\d) (\d)\b/g, '$1$2')
+            .replace(/(?<=\d)\s+(?=\d)/g, '')
             .replace(/(?<![A-Za-zÁÉÍÓÚÑáéíóúñ])([lIOS\d]{1,3})(?=\s?(pies|ft)\b)/g, x =>
               x.replace(/[lI]/g, '1').replace(/O/g, '0').replace(/S/g, '5'),
             );
@@ -1072,6 +1121,8 @@
     const nameStart = l => {
       // Nombre del rasgo: el primer tramo en otra fuente que termina en punto, o «Nombre (algo).» al inicio.
       const r0 = l.runs[0];
+      const multi = /^(Multiattack|Multiataque|Ataque m[uú]ltiple)[,.]\s+(.+)$/i.exec(l.t);
+      if (multi) return { n: multi[1], rest: multi[2] };
       // Todo en una sola fuente (PDF escaneado con reconocimiento de texto): «Nombre. Texto» al empezar
       // un párrafo (la línea anterior terminó la frase).
       if (singleFont() && (!cur || /[.)]$/.test(cur.d.trim()))) {
@@ -1130,13 +1181,16 @@
     const size = l => l.bh ?? l.h;
     const sizes = [...body, ...lines.slice(i, Math.min(stopAt, i + 6)).filter(l => !l.edge)].map(size);
     const refH = sizes.length ? sizes.slice().sort((x, y) => x - y)[Math.floor(sizes.length / 2)] : bodyH;
-    const tol = Math.max(0.45, refH * 0.06);
+    const ocrFont = body.some(l => l.runs.some(r => r.f === 'OCR'));
+    const tol = Math.max(0.45, refH * (ocrFont ? 0.35 : 0.06));
     const foreign = l => l.edge || /^\d{1,3}$/.test(l.t) || !sizes.some(s => Math.abs(size(l) - s) <= tol);
     const isSec = l => SECTION.some(([, re]) => re.test(l.t));
     let j = i;
     for (; j < stopAt && j < i + 200; j++) {
       const l = lines[j],
         t = l.t;
+      // Un recuadro de variante no cambia las acciones de la criatura base.
+      if (/^(?:variante?|variantes?)\s*:/i.test(t.trim())) break;
       let sec = SECTION.find(([, re]) => re.test(t));
       if (!sec && singleFont()) {
         const fz = fuzzySection(t);
@@ -1200,11 +1254,11 @@
       }
     }
     // Libros en metros («1,5 m», «18 m»): a pies, como el resto del sitio (1,5 m = 5 pies).
-    const metric = /\d\s*m\b/.test(f.speed || '') && !/pies|ft/i.test(f.speed || '');
+    const metric = /\d\s*m(?=$|[\s,.;:)])/.test(f.speed || '') && !/pies|ft/i.test(f.speed || '');
     const toFeet = s =>
       metric
         ? String(s).replace(
-            /(\d+(?:[.,]\d+)?)\s*m\b/g,
+            /(\d+(?:[.,]\d+)?)\s*m(?=$|[\s,.;:)])/g,
             (x, n) => Math.round(Number(n.replace(',', '.')) / 1.5) * 5 + ' pies',
           )
         : String(s);
@@ -1212,6 +1266,7 @@
       mergeSplits(
         toFeet(s)
           .replace(/(\w)- (\w)/g, '$1$2')
+          .replace(/\bCD\s+([12]\d)0\b(?=\s+[a-záéíóúñ])/g, 'CD $1 o')
           .replace(/\s+/g, ' ')
           .trim(),
         opts.vocab,
@@ -1238,6 +1293,13 @@
         (f.hp || '') + ' ' + (f.ac || ''),
       );
     if (!crv && !summon) issues.push('Sin desafío');
+    f.hp = (f.hp || '').replace(/^\s*([\dlIOSO\s'’]{1,12})(?=\()/, prefix =>
+      prefix
+        .replace(/[lI]/g, '1')
+        .replace(/O/g, '0')
+        .replace(/S/g, '5')
+        .replace(/[\s'’]/g, ''),
+    );
     const ac = /\d+/.exec(
       (f.ac || '').replace(/^\s*([lIO\d]{1,2})(?![A-Za-z])/, x => x.replace(/[lI]/g, '1').replace(/O/g, '0')),
     );
@@ -1597,7 +1659,11 @@
         kind: m[1].toLowerCase(),
         detail: head.trim(),
         rarity: RARITY.find(([re]) => re.test(m[3]))?.[1] || '',
-        attunement: /sintoniz|attunement/i.test(head),
+        attunement:
+          /sintoniz|attunement/i.test(head) ||
+          bodyLines
+            .slice(0, 2)
+            .some(l => /^\(?\s*(requiere|requires)\b/i.test(l.t) && /sintoniz|attunement/i.test(l.t)),
         text: mergeSplits(body, v),
         page: lines[a].page + 1,
         ...(issues.length ? { issues } : {}),
@@ -1951,7 +2017,7 @@
       const assigned = new Map(feats.map(f => [f, []]));
       let prev = first;
       for (const p of sec.parts) {
-        let f = feats.find(x => nameHit(x.names, p.k));
+        let f = feats.find(x => nameHit(x.names, p.k) || x.children.some(c => nameHit([c], p.k)));
         if (!f && p.level !== null) {
           const same = feats.filter(x => x.level === p.level);
           const title = p.title || lines[p.i].t;
@@ -2194,7 +2260,11 @@
       emit(
         { ...ch.c, features: ch.c.features },
         'class:',
-        { parts: parts.filter(p => ch.c.features.some(f => nameHit(f.names, p.k))) },
+        {
+          parts: parts.filter(p =>
+            ch.c.features.some(f => nameHit(f.names, p.k) || f.children.some(c => nameHit([c], p.k))),
+          ),
+        },
         null,
       );
     }

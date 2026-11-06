@@ -19,21 +19,32 @@
     race: 'Raza / variante',
     background: 'Trasfondo',
     feat: 'Dote',
+    option: 'Opción de clase',
+    item: 'Objeto mágico',
   };
   const bundled = BookContentData.monsters;
   const sources = {
     ...CampaignData.sources,
     SRD: 'SRD 5.1',
-    ...Object.fromEntries(BookContentData.books.filter(b => b.creatures).map(b => [b.id, b.title])),
+    DMG: 'Guía del Dungeon Master',
   };
+  const bookSources = new Map(
+    [...BookContentData.books, ...OfficialContentData.books].map(b => [b.id, b.sourceKey || 'WOTC-' + b.id]),
+  );
   const rows = [
     ...Object.values(ClassData.classes).map(x => ({ ...x, kind: 'class' })),
     ...ClassData.subclasses.map(x => ({ ...x, kind: 'subclass' })),
     ...Catalog.spells.map(x => ({ ...x, kind: 'spell' })),
-    ...[...MonsterData, ...bundled].map(x => ({ ...x, sourceKey: x.bookId || 'SRD', kind: 'creature' })),
+    ...[...MonsterData, ...bundled].map(x => ({
+      ...x,
+      sourceKey: x.sourceKey || bookSources.get(x.bookId) || 'SRD',
+      kind: 'creature',
+    })),
     ...CampaignData.races.map(x => ({ ...x, kind: 'race' })),
     ...CampaignData.backgrounds.map(x => ({ ...x, kind: 'background' })),
     ...Catalog.feats.map(x => ({ ...x, kind: 'feat' })),
+    ...ClassData.options.map(x => ({ ...x, kind: 'option' })),
+    ...MagicItems.ITEMS.map(x => ({ ...x, sourceKey: x.sourceKey || 'DMG', kind: 'item' })),
   ];
   const rowSources = x => x.sources || [x.sourceKey || x.source];
   const sourceLabel = x =>
@@ -45,38 +56,32 @@
   $('compendium-source').innerHTML += Object.entries(sources)
     .map(([key, label]) => `<option value="${esc(key)}">${esc(label)}</option>`)
     .join('');
-  if (sources[params.get('book')]) $('compendium-source').value = params.get('book');
+  const requestedSource = bookSources.get(params.get('book')) || params.get('book');
+  if (sources[requestedSource]) $('compendium-source').value = requestedSource;
   if (labels[params.get('kind')]) $('compendium-kind').value = params.get('kind');
   $('compendium-counts').textContent =
-    `${Object.keys(ClassData.classes).length} clases · ${ClassData.subclasses.length} subclases · ${Catalog.spells.length} conjuros · ${MonsterData.length + bundled.length} entradas de criaturas`;
+    `${Object.keys(ClassData.classes).length} clases · ${ClassData.subclasses.length} subclases · ${Catalog.spells.length} conjuros · ${MagicItems.ITEMS.length} objetos mágicos · ${MonsterData.length + bundled.length} entradas de criaturas`;
   $('compendium-coverage').textContent =
-    `Se revisaron ${BookContentData.coverage.scannedBooks} PDFs. Esta conversión añade ${bundled.length} entradas de criaturas, una subclase y dos conjuros al catálogo base. ${BookContentData.coverage.noTextBooks} PDFs no tienen texto extraíble. Inventariar un PDF no significa que todas sus reglas estén convertidas: las clases nuevas de homebrew, otras opciones y las reglas revisadas siguen pendientes.`;
-  $('compendium-books').innerHTML = BookContentData.books
+    `Esta ampliación revisó ${OfficialContentData.books.length} libros oficiales de las reglas de 2014, incluidos los PDFs escaneados. Añade ${BookContentData.official.rules} textos de rasgos, dotes y opciones de clase, ${BookContentData.official.spellDescriptions} descripciones de conjuros, ${BookContentData.official.itemDescriptions} descripciones de objetos y ${OfficialContentData.monsters.length} bloques de criaturas. Se excluyen homebrew y las demás ediciones. Los bloques que no superaron la validación no se publican como criaturas nuevas.`;
+  $('compendium-books').innerHTML = OfficialContentData.books
     .map(b => {
-      const compatible = b.edition === '2014';
-      const sourceRows =
-        compatible && b.sourceKey ? rows.filter(x => x.kind !== 'creature' && rowSources(x).includes(b.sourceKey)) : [];
-      const status = !compatible
-        ? 'Otra edición: sin reglas incorporadas a la ficha de 2014'
-        : b.id === '94b03db20e9c61a6'
-          ? 'Mar Abierto y dos conjuros incorporados; las otras opciones siguen pendientes'
-          : sourceRows.length
-            ? `${sourceRows.length} opciones de esta fuente en el catálogo; cobertura parcial del libro`
-            : 'Sin opciones de personaje convertidas';
-      return `<div class="feature"><b>${esc(b.title)}</b><p class="small">Edición: ${esc(b.edition)} · ${esc(status)}${b.creatures ? ` · ${b.creatures} entradas de criaturas con estadísticas básicas` : ''}${b.status === 'needs-ocr' ? ' · PDF sin texto extraíble' : b.status === 'partial' ? ' · Extracción de texto parcial' : ''}</p></div>`;
+      const c = b.counts;
+      return `<div class="feature"><b>${esc(b.title)}</b><p class="small">${c.monsters} criaturas · ${c.spells} conjuros · ${c.items} objetos · ${c.rules} textos de personaje${c.rejected ? ` · ${c.rejected} bloques pendientes de revisión` : ''}${b.ocrPages ? ` · ${b.ocrPages} páginas con reconocimiento de texto` : ''}</p></div>`;
     })
     .join('');
   let shown = [];
   const summary = x =>
     x.kind === 'creature'
-      ? `VD ${x.cr} · CA ${x.ac} · ${x.hp} PG${x.bundled ? ` · ${x.actions.length} ataques con daño base` : ''}`
+      ? `VD ${x.cr} · CA ${x.ac} · ${x.hp} PG`
       : x.kind === 'spell'
         ? `${x.level ? 'Nivel ' + x.level : 'Truco'} · ${x.time} · ${x.range}`
         : x.kind === 'subclass'
           ? ClassData.classes[x.classId].name
           : x.kind === 'class'
             ? `Dado de golpe d${x.die}`
-            : x.prerequisite || '';
+            : x.kind === 'item'
+              ? `${x.rarity}${x.attune ? ' · Requiere sintonización' : ''}`
+              : x.prerequisite || '';
   function draw() {
     const query = canon($('compendium-q').value.trim());
     const source = $('compendium-source').value;
@@ -115,19 +120,52 @@
     const features = (x.features || [])
       .map(
         f =>
-          `<div class="feature"><h3>Nivel ${f.level} · ${esc(f.name)}</h3><p>${esc(f.es || 'Consultá los detalles y requisitos en el libro.')}</p></div>`,
+          `<div class="feature"><h3>Nivel ${f.level} · ${esc(f.name)}</h3><p>${esc(f.es || f.text || '')}</p>${OfficialContent.html(OfficialContent.ruleTexts.get(`${x.kind === 'class' ? 'class' : 'sub'}:${x.id}:${f.english || f.name}`))}</div>`,
       )
       .join('');
     const creature =
       x.kind === 'creature'
-        ? `<p><b>CA ${x.ac} · PG ${x.hp} (${esc(x.hd)}) · VD ${x.cr}</b></p><p>${esc(x.speed)}</p><p>FUE ${x.ab[0]} · DES ${x.ab[1]} · CON ${x.ab[2]} · INT ${x.ab[3]} · SAB ${x.ab[4]} · CAR ${x.ab[5]}</p><p>Salvaciones: ${esc(x.saves || 'Modificadores de característica')}</p>${x.actions.map(a => `<div class="feature"><h3>${esc(a.n)}</h3><p>${esc(a.d)}</p></div>`).join('')}<p class="small">${x.bundled ? 'Los demás poderes, alcances y efectos requieren consultar el libro. Estas entradas están disponibles en Agregar criaturas del DM.' : 'Entrada del bestiario base.'}</p>`
+        ? `<p><b>CA ${x.ac} · PG ${x.hp} (${esc(x.hd)}) · VD ${x.cr}</b></p><p>${esc(x.size)} · ${esc(x.type)} · ${esc(x.align)}</p><p>${esc(x.speed)}</p><p>FUE ${x.ab[0]} · DES ${x.ab[1]} · CON ${x.ab[2]} · INT ${x.ab[3]} · SAB ${x.ab[4]} · CAR ${x.ab[5]}</p>${[
+            ['Salvaciones', x.saves],
+            ['Habilidades', x.skills],
+            ['Resistencias', x.res],
+            ['Inmunidades', x.imm],
+            ['Inmunidades a estados', x.cimm],
+            ['Sentidos', x.senses],
+            ['Idiomas', x.lang],
+          ]
+            .filter(([, v]) => v)
+            .map(([k, v]) => `<p><b>${k}:</b> ${esc(v)}</p>`)
+            .join(
+              '',
+            )}${(x.traits || []).map(([n, d]) => `<div class="feature"><h3>${esc(n)}</h3><p>${esc(d)}</p></div>`).join('')}${[
+            ['Acciones', x.actions],
+            ['Reacciones', x.reactions],
+            ['Acciones legendarias', x.legendary],
+          ]
+            .filter(([, v]) => v?.length)
+            .map(
+              ([k, v]) =>
+                `<h3>${k}</h3>${v.map(a => `<div class="feature"><h3>${esc(a.n)}</h3><p>${esc(a.d)}</p></div>`).join('')}`,
+            )
+            .join(
+              '',
+            )}<p class="small">Disponible en Agregar criaturas del DM. ${x.referenceOnlyActions ? 'Esta entrada anterior incluye estadísticas básicas; los efectos adicionales requieren consultar el libro.' : 'Los dados y ataques compatibles se resuelven en combate; los demás efectos se consultan en el bloque.'}</p>`
         : '';
     const spell =
       x.kind === 'spell'
-        ? `<p>${esc(x.text || x.brief || '')}</p><p class="small">${esc(x.components)} · ${esc(x.duration)}${x.materialEs ? ' · ' + esc(x.materialEs) : ''}</p><p class="small">Disponible en el selector de conjuros de las clases y libros correspondientes, o como Extra del DM.</p>`
+        ? `<p>${esc(x.text || x.brief || '')}</p><p class="small">${esc(x.components)} · ${esc(x.duration)}${x.materialEs ? ' · ' + esc(x.materialEs) : ''}</p>${OfficialContent.spellHtml(x.id)}<p class="small">Disponible en el selector de conjuros de las clases y libros correspondientes, o como Extra del DM.</p>`
+        : '';
+    const rule =
+      x.kind === 'feat' || x.kind === 'option'
+        ? OfficialContent.html(OfficialContent.ruleTexts.get(`${x.kind === 'feat' ? 'feat' : 'opt'}:${x.id}`))
+        : '';
+    const item =
+      x.kind === 'item'
+        ? `<p>${esc(x.note || '')}</p>${OfficialContent.itemHtml(x.id)}<p class="small">Disponible en Equipo → Objetos mágicos. Los efectos especiales se aplican en la mesa.</p>`
         : '';
     $('compendium-detail-body').innerHTML =
-      `<p class="small muted">${esc(sourceLabel(x))}${x.page || x.pdfPage ? ' · PDF p. ' + (x.page || x.pdfPage) : ''}</p>${spell}${creature}${features}${!spell && !creature && !features ? '<p>Esta opción está incluida en el creador al habilitar su fuente.</p>' : ''}`;
+      `<p class="small muted">${esc(sourceLabel(x))}${x.page || x.pdfPage ? ' · PDF p. ' + (x.page || x.pdfPage) : ''}</p>${spell}${creature}${features}${rule}${item}${!spell && !creature && !features && !rule && !item ? '<p>Esta opción está incluida en el creador al habilitar su fuente.</p>' : ''}`;
     $('compendium-detail').showModal();
   });
   $('compendium-close').addEventListener('click', () => $('compendium-detail').close());

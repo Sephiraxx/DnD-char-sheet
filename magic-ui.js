@@ -20,7 +20,7 @@ const MagicUI = (() => {
     return `<section class="card section-space magic-card"><div class="card-header"><h2>Objetos mágicos</h2><div class="actions"><span class="tag ${n >= 3 ? 'warn' : ''}">Sintonía ${n}/3</span>${button('Añadir objeto mágico', 'magic-add', '')}</div></div>${
       list.length
         ? `<div class="magic-list">${list.map(row).join('')}</div>`
-        : '<p class="small">Anillos, capas, varitas, armas +1, pociones… Al agregarlos, sus bonos se aplican solos a la CA, salvaciones, conjuros, características y resistencias.</p>'
+        : '<p class="small">Anillos, capas, varitas, armas y pociones. Los bonos compatibles se calculan en la ficha; los demás efectos se consultan en las reglas del objeto.</p>'
     }</section>`;
   }
   function row(x) {
@@ -43,7 +43,7 @@ const MagicUI = (() => {
             `<button class="pip ${i < c.spent ? 'spent' : ''}" data-action="magic-pip" data-id="${esc(x.id)}" data-pip="${i}" aria-label="${i < c.spent ? 'Recuperar una carga' : 'Gastar una carga'}">${i < c.spent ? '−' : '✦'}</button>`,
         ).join('')}</div></div>`
       : '';
-    return `<article class="magic-item ${on ? '' : 'inactive'} ${x.qty ? '' : 'empty'}"><div class="magic-head"><div><h3>${esc(x.name)}${x.qty > 1 ? ' ×' + x.qty : ''}</h3><p class="eyebrow">${esc(m.rarity || 'mágico')}${m.attune ? ' · requiere sintonía' + (typeof m.attune === 'string' ? ' (' + esc(m.attune) + ')' : '') : ''}</p></div><div class="actions">${attune}${m.heal && x.qty ? button('Tomar', 'magic-drink', '', `data-id="${esc(x.id)}"`) : ''}${button('Editar', 'item-edit', 'secondary', `data-id="${esc(x.id)}"`)}</div></div>${fx.length ? `<p class="small">${on ? '✓ ' : 'Sin sintonizar: '}${esc(fx.join(' · '))}</p>` : ''}${m.note ? `<p class="small muted">${esc(m.note)}</p>` : ''}${charges}</article>`;
+    return `<article class="magic-item ${on ? '' : 'inactive'} ${x.qty ? '' : 'empty'}"><div class="magic-head"><div><h3>${esc(x.name)}${x.qty > 1 ? ' ×' + x.qty : ''}</h3><p class="eyebrow">${esc(m.rarity || 'mágico')}${m.attune ? ' · requiere sintonía' + (typeof m.attune === 'string' ? ' (' + esc(m.attune) + ')' : '') : ''}</p></div><div class="actions">${attune}${m.heal && x.qty ? button('Tomar', 'magic-drink', '', `data-id="${esc(x.id)}"`) : ''}${button('Editar', 'item-edit', 'secondary', `data-id="${esc(x.id)}"`)}</div></div>${fx.length ? `<p class="small">${on ? '✓ ' : 'Sin sintonizar: '}${esc(fx.join(' · '))}</p>` : ''}${m.note ? `<p class="small muted">${esc(m.note)}</p>` : ''}${typeof OfficialContent !== 'undefined' ? OfficialContent.itemHtml(m.id) : ''}${charges}</article>`;
   }
 
   // Selector del catálogo.
@@ -82,7 +82,7 @@ const MagicUI = (() => {
         : '';
     modal(
       it.name,
-      `<p class="small">${esc(M.effects(M.fromCatalog(it.id, { resist: 'fire' })).join(' · '))}</p>${it.note ? `<p class="small muted">${esc(it.note)}</p>` : ''}<div class="form-grid">${base}${resist}${field('Cantidad', 'qty', 1, 'number', 'min="1" max="99" required')}</div>`,
+      `<p class="small">${esc(M.effects(M.fromCatalog(it.id, { resist: 'fire' })).join(' · '))}</p>${it.note ? `<p class="small muted">${esc(it.note)}</p>` : ''}<div class="form-grid">${base}${resist}${field('Cantidad', 'qty', 1, 'number', 'min="1" max="99" required')}</div>${typeof OfficialContent !== 'undefined' ? OfficialContent.itemHtml(it.id) : ''}`,
       fd => {
         const m = M.fromCatalog(id, { resist: fd.get('resist') });
         const b = it.base ? EquipmentData.items[fd.get('base')] : null;
