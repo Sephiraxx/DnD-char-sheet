@@ -21,7 +21,14 @@
     page: row.page,
     book: row.book,
     bookId: row.bookId,
+    sourceKey: row.sourceKey || row.source,
     language: row.language,
+    rulesLanguage: row.rulesLanguage,
+    sourcePage: row.sourcePage,
+    spellDetails:
+      row.canonicalId && row.time
+        ? { time: row.time, range: row.range, components: row.components, duration: row.duration, ritual: row.ritual }
+        : undefined,
     bundled: true,
     variantNote: row.variantNote,
     variants: row.variants,
@@ -31,6 +38,12 @@
     const data = target.OfficialContentData;
     if (!data || applied) return;
     applied = true;
+    // This 8th-level replacement is Tasha's optional 2014 rule, including on older domains.
+    for (const sub of target.ClassData.subclasses.filter(s => s.classId === 'cleric'))
+      for (const feature of sub.features.filter(f => f.english === 'Blessed Strikes')) {
+        feature.source = 'TCE';
+        feature.optional = true;
+      }
     for (const book of data.books.filter(b => b.kind === 'adventure')) {
       adventureSources.add(book.sourceKey);
       for (const source of book.referenceSources || []) adventureSources.add(source);
@@ -61,8 +74,14 @@
       const id = row.canonicalId;
       if (!id) continue; // Unmatched names stay in the conversion audit until class membership is verified.
       const previous = spellTexts.get(id);
-      if (!previous || rank(row) > rank(previous))
+      const primarySource = target.Catalog.spells.find(spell => spell.id === id)?.sourceKey;
+      const spellRank = spell => rank(spell) + (spell.sourceKey === primarySource ? 100000 : 0);
+      if (!previous || spellRank(row) > spellRank(previous))
         spellTexts.set(id, { ...reference(row), higher: row.higher || '', language: row.language });
+    }
+    for (const [id, book] of spellTexts) {
+      const spell = target.Catalog.spells.find(s => s.id === id);
+      if (spell && book.spellDetails) spell.ritual = Boolean(book.spellDetails.ritual);
     }
     const existing = new Map(
       (target.MagicItems?.ITEMS || []).flatMap(it =>
@@ -128,7 +147,12 @@
     );
   function html(row) {
     if (!row) return '';
-    return `<details class="library-feature"><summary>Reglas del libro · ${esc(row.book)} · PDF p. ${row.page}</summary>${row.variantNote ? '<p class="small">' + esc(row.variantNote) + '</p>' : ''}${row.variants ? '<p class="small">' + row.variants.map(v => esc(v.name) + ' · ' + esc(v.rarity)).join('<br>') + '</p>' : ''}${row.attunementRequirement ? '<p class="small">Sintonización: ' + esc(row.attunementRequirement) + '</p>' : ''}<p class="small library-text">${esc(row.text)}${row.higher ? '\n\nA niveles superiores: ' + esc(row.higher) : ''}</p></details>`;
+    const location = row.page ? ` · PDF p. ${row.page}` : row.sourcePage ? ` · ed. inglesa p. ${row.sourcePage}` : '';
+    const spell = row.spellDetails;
+    const spellHeader = spell
+      ? `<p class="small library-text">Tiempo de lanzamiento: ${esc(spell.time)}${spell.ritual ? ' (ritual)' : ''}\nAlcance: ${esc(spell.range)}\nComponentes: ${esc(spell.components)}\nDuración: ${esc(spell.duration)}</p>`
+      : '';
+    return `<details class="library-feature"><summary>Reglas del libro · ${esc(row.book)}${location}${row.rulesLanguage === 'en' ? ' · texto en inglés' : ''}</summary>${spellHeader}${row.variantNote ? '<p class="small">' + esc(row.variantNote) + '</p>' : ''}${row.variants ? '<p class="small">' + row.variants.map(v => esc(v.name) + ' · ' + esc(v.rarity)).join('<br>') + '</p>' : ''}${row.attunementRequirement ? '<p class="small">Sintonización: ' + esc(row.attunementRequirement) + '</p>' : ''}<p class="small library-text">${esc(row.text)}${row.higher ? '\n\nA niveles superiores: ' + esc(row.higher) : ''}</p></details>`;
   }
   root.OfficialContent = {
     apply,
