@@ -304,8 +304,7 @@ function drawHome() {
   ${list}
   ${typeof EncounterGeneratorUI !== 'undefined' ? EncounterGeneratorUI.card() : ''}
   <section class="card section-space dm-new"><h2>Nueva mesa</h2><form id="create-form" class="stack"><div class="form-grid">${field('Nombre de la campaña', 'name', '', 'text', 'required maxlength="100" placeholder="La maldición de Strahd"')}${field('Tu nombre', 'display', 'DM', 'text', 'maxlength="100"')}</div><details class="battle-rule"><summary>Libros, nivel inicial y reglas de la casa (opcional)</summary><div class="section-space">${settingsFields()}</div></details><div class="actions"><button class="button" type="submit">Crear mesa</button></div><p class="form-error" id="create-error" role="alert">${esc(error)}</p></form></section>
-  ${typeof LibraryUI !== 'undefined' ? `<div class="section-space">${LibraryUI.card()}</div>` : ''}
-  <p class="small muted section-space">Tu acceso de DM y tu biblioteca quedan guardados en este navegador. Guardalos con tu email para usarlos desde otro dispositivo.</p>${AccountUI.card('account')}`;
+  <p class="small muted section-space">Tu acceso de DM queda guardado en este navegador. Guardalo con tu email para usarlo desde otro dispositivo.</p>${AccountUI.card('account')}`;
   if (!merged) {
     merged = true;
     Cloud.myDmTables()
