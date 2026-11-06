@@ -341,6 +341,202 @@ const Campaign = (() => {
     const list = [...group(false), ...group(true)];
     return { armor: armorText, weapons: list.length ? list.join(', ') : 'ninguna' };
   }
+  function stonecunning(s) {
+    if (!race(s)?.traits?.includes('Stonecunning')) return null;
+    return Rules.mod(Rules.scores(s).int) + 2 * Rules.stats(s).prof + (globalThis.MagicItems?.check(s) || 0);
+  }
+  function characterTraits(s) {
+    const rows = [],
+      add = (key, name, text, origin, book, extra = {}) => rows.push({ key, name, text, origin, book, ...extra }),
+      entry = (kind, id) => globalThis.OfficialContent?.entryTexts.get(kind + ':' + id),
+      section = (text, name, headings = []) => {
+        const blocks = String(text || '').split(/\n\s*\n/),
+          i = blocks.findIndex(block => block.split('\n')[0].trim() === name);
+        if (i < 0) return '';
+        const lines = blocks[i].split('\n'),
+          body = [lines.slice(1).join('\n')];
+        for (let j = i + 1; j < blocks.length; j++) {
+          if (headings.includes(blocks[j].split('\n')[0].trim())) break;
+          body.push(blocks[j]);
+        }
+        return body.filter(Boolean).join('\n\n');
+      };
+    for (const view of Classes.views(s)) {
+      const cls = Classes.info(view),
+        sub = Classes.sub(view);
+      for (const f of Classes.features(view)) {
+        const en = f.english || f.name,
+          isSub = sub?.features.some(x => x.level === f.level && (x.english || x.name) === en),
+          owner = isSub ? sub.id : cls.id,
+          scope = isSub ? 'sub' : 'class',
+          key = scope + ':' + owner + ':' + en,
+          book = f.book || globalThis.OfficialContent?.ruleTexts.get(key),
+          origin = (isSub ? sub.name : cls.name) + ' · nivel ' + f.level + ' · ' + f.source;
+        if (cls.id === 'cleric' && en === 'Divine Domain feature' && sub) continue;
+        if (owner === 'cleric-forge-domain' && en === 'Forge Domain') {
+          add(
+            key + ':proficiency',
+            'Competencias de la Forja',
+            'Competencia con armaduras pesadas y herramientas de herrero.',
+            origin,
+            book,
+          );
+          add(
+            key + ':blessing',
+            'Bendición de la forja',
+            'Al terminar un descanso largo, tocás una armadura o un arma sencilla o marcial no mágica. Hasta terminar tu siguiente descanso largo o hasta que mueras, se vuelve mágica: +1 a la CA si es armadura, o +1 a las tiradas de ataque y daño si es arma. Una vez usada, requiere otro descanso largo.',
+            origin,
+            book,
+            {
+              note: 'El objetivo y su bono se registran a mano. Para una armadura, revisá «Otros bonos confirmados» en Equipar / calcular CA; con CA manual, usá el campo de bonos. Si ya está incluido, no lo sumes otra vez. Revisá la bendición al terminar cada descanso largo.',
+              action: s.equipmentDefense ? 'equipment-defense' : 'stats',
+              actionLabel: 'Revisar CA',
+            },
+          );
+          continue;
+        }
+        let text = f.es || (book?.text || f.text || '').split(/\n\s*\n/)[0];
+        let language = f.es ? 'es' : book?.rulesLanguage || (f.text ? 'en' : '');
+        if (cls.id === 'cleric' && en === 'Spellcasting') {
+          text =
+            'Lanzás conjuros de clérigo con Sabiduría. Elegís tus conjuros preparados y podés cambiarlos al terminar un descanso largo. Podés lanzar como ritual un conjuro de clérigo que tengas preparado y lleve la etiqueta Ritual, sumando 10 minutos al tiempo de lanzamiento y sin gastar un espacio.';
+          language = 'es';
+        }
+        if (cls.id === 'cleric' && en === 'Channel Divinity') {
+          const resource = Classes.resources(view).find(r => r.id === 'channel');
+          text = `Tenés ${resource?.max || 1} uso(s); recuperás todos al terminar un descanso corto o largo. Expulsar muertos vivientes y las opciones de tu dominio comparten este contador.`;
+          language = 'es';
+          add(
+            key + ':turn-undead',
+            'Expulsar muertos vivientes',
+            'Acción: presentás tu símbolo sagrado. Cada muerto viviente que pueda verte u oírte a 30 pies hace una salvación de Sabiduría contra tu CD de conjuros. Si falla, queda expulsado durante 1 minuto o hasta recibir daño: debe alejarse de vos y no puede usar reacciones. Consultá las restricciones completas en las reglas del libro.',
+            origin,
+            book,
+          );
+        }
+        if (owner === 'cleric-forge-domain' && en === "Channel Divinity: Artisan's Blessing") {
+          text =
+            'Gastás un uso de Canalizar divinidad en un ritual de 1 hora para crear un objeto no mágico que incluya metal y valga como máximo 100 po: un arma sencilla o marcial, una armadura, diez municiones, herramientas u otro objeto metálico. Consumís metal o monedas de igual valor; también se forman las partes no metálicas. Aparece al terminar, en una superficie desocupada a 5 pies. Podés copiar un objeto no mágico que contenga metal, como una llave, si tenés el original durante el ritual.';
+          language = 'es';
+        }
+        if (cls.id === 'cleric' && en === 'Divine Domain') {
+          const spells = Classes.granted(view).prepared.map(
+            id => Rules.allSpells(s).find(sp => sp.id === id)?.name || id,
+          );
+          text = sub
+            ? 'Tu dominio es ' +
+              sub.name +
+              '.' +
+              (spells.length
+                ? ' Siempre preparados: ' + spells.join(', ') + '. No cuentan para el límite de preparaciones diarias.'
+                : '')
+            : 'Elegí tu dominio en Competencias para ver sus rasgos y conjuros.';
+          language = 'es';
+        }
+        add(key, f.name, text || 'Consultá las reglas completas de este rasgo.', origin, book, { language });
+      }
+    }
+    const r = race(s);
+    if (r) {
+      const book = entry('race', r.id),
+        origin = r.name + ' · ' + r.sources.join(' / '),
+        dwarf = {
+          'Dwarven Resilience': [
+            'Resistencia enana',
+            'Tenés resistencia al daño de veneno y ventaja en las salvaciones contra veneno. La resistencia ya se aplica al registrar daño tipado como veneno.',
+          ],
+          Stonecunning: [
+            'Afinidad con la piedra',
+            'En pruebas de Inteligencia (Historia) sobre el origen de trabajos en piedra, se te considera competente y sumás el doble de tu bonificador por competencia. Tu bono para esta prueba es ' +
+              (stonecunning(s) >= 0 ? '+' : '') +
+              stonecunning(s) +
+              '. Este beneficio no se aplica a todas las pruebas de Historia.',
+          ],
+          'Dwarven Toughness': [
+            'Dureza enana',
+            'Tu máximo de PG aumenta en 1 por cada nivel de personaje: +' +
+              Rules.totalLevel(s) +
+              ' PG a tu nivel actual.',
+          ],
+          Darkvision: [
+            'Visión en la oscuridad',
+            'Ves en luz tenue como si fuera luz brillante y en oscuridad como si fuera luz tenue, hasta ' +
+              (r.darkvision || 60) +
+              ' pies; en oscuridad distinguís grises, no colores.',
+          ],
+          'Dwarven Combat Training': [
+            'Entrenamiento de combate enano',
+            'Competencia con hacha de batalla, hacha de mano, martillo ligero y martillo de guerra.',
+          ],
+          'Tool Proficiency': [
+            'Competencia con herramientas',
+            'Elegí competencia con herramientas de herrero, útiles de cervecero o herramientas de albañil.',
+          ],
+        };
+      for (const name of r.traits || []) {
+        const summary = r.id.startsWith('dwarf-') ? dwarf[name] : null;
+        add(
+          'race:' + r.id + ':' + name,
+          summary?.[0] || name,
+          summary?.[1] ||
+            section(book?.text, name, [
+              ...r.traits,
+              'Age',
+              'Alignment',
+              'Size',
+              'Speed',
+              'Languages',
+              'Ability Score Increase',
+            ]) ||
+            'Consultá las reglas completas de tu linaje.',
+          origin,
+          book,
+          {
+            language: summary ? 'es' : book?.rulesLanguage,
+            ...(name === 'Stonecunning'
+              ? { action: 'stonecunning-roll', actionLabel: 'Tirar Historia de trabajos en piedra' }
+              : {}),
+            ...(name === 'Dwarven Toughness'
+              ? {
+                  note: 'Este bono no se suma automáticamente al máximo registrado. Comprobá que esté incluido en tus PG máximos; si ya lo incluiste, no lo sumes otra vez.',
+                }
+              : {}),
+          },
+        );
+      }
+    }
+    const bg = background(s);
+    if (bg) {
+      const book = entry('background', bg.id),
+        blocks = String(book?.text || '').split(/\n\s*\n/),
+        features = blocks.filter(block => /^(?:Feature|Rasgo|Característica):\s*/i.test(block));
+      for (const block of features) {
+        const lines = block.split('\n'),
+          heading = lines.shift().replace(/^(?:Feature|Rasgo|Característica):\s*/i, ''),
+          mercenary = bg.id === 'mercenary-veteran-SCAG';
+        add(
+          'background:' + bg.id + ':' + heading,
+          mercenary ? 'Vida de mercenaria' : heading,
+          mercenary
+            ? 'Reconocés compañías mercenarias por sus emblemas y conocés algo de ellas, incluido quién las contrató recientemente. Encontrás tabernas y salones donde se reúnen los mercenarios en zonas cuyo idioma hablás. Entre aventuras podés encontrar trabajo mercenario suficiente para mantener un estilo de vida cómodo.'
+            : lines.join('\n') || blocks[blocks.indexOf(block) + 1] || '',
+          bg.name + ' · ' + bg.sources.join(' / '),
+          book,
+          { language: mercenary ? 'es' : book?.rulesLanguage },
+        );
+      }
+      if (!features.length && book)
+        add('background:' + bg.id, bg.name, book.text.split(/\n\s*\n/)[0], bg.sources.join(' / '), book, {
+          language: book.rulesLanguage,
+        });
+    }
+    return rows;
+  }
+  function traitsCard(s) {
+    const rows = characterTraits(s);
+    if (!rows.length) return '';
+    return `<section class="card section-space" id="character-traits"><h2>Rasgos de tu personaje</h2><p class="small muted">Según tu clase, subclase, nivel, raza y trasfondo seleccionados. Las notas indican los efectos que debés registrar.</p><div class="character-traits-grid">${rows.map(row => `<article class="feature" data-trait="${esc(row.key)}"><h3>${esc(row.name)}</h3><p class="eyebrow">${esc(row.origin)}${row.language === 'en' ? ' · texto en inglés' : ''}</p><p class="library-text">${esc(row.text)}</p>${row.note ? `<p class="small trait-note">${esc(row.note)}</p>` : ''}${row.action ? button(row.actionLabel, row.action, 'secondary') : ''}${row.book ? OfficialContent.html(row.book) : ''}</article>`).join('')}</div></section>`;
+  }
   // Origen e identidad: raza, trasfondo, idiomas, competencias y velocidad en una sola tarjeta.
   function sheetOrigins() {
     const p = proficiencyText(state);
@@ -456,6 +652,9 @@ const Campaign = (() => {
     identityFields,
     sourceFields,
     originInfo,
+    characterTraits,
+    traitsCard,
+    stonecunning,
     sheetOrigins,
     proficiencyText,
     spellHelp,
