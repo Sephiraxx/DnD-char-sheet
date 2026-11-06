@@ -13,6 +13,7 @@ const EncounterGeneratorUI = (() => {
     row.parts.map(p => (p.type === 'text' ? p.text : p.type === 'dice' ? p.expression : p.display)).join('');
   const sourceText = t =>
     `${D.groups.find(g => g.id === t.group)?.book || t.source}${t.page ? ' · ed. inglesa p. ' + t.page : ''}`;
+  const language = t => (t.language === 'es' ? 'castellano' : 'inglés');
   const levels = () => (party?.characters || []).map(c => PV.summarize(c.data).level || 1);
   function defaultTable(groupId) {
     const choices = D.tables.filter(t => t.group === groupId),
@@ -21,7 +22,7 @@ const EncounterGeneratorUI = (() => {
     return (choices.find(t => t.minLevel <= level && t.maxLevel >= level) || choices[0]).id;
   }
   function card() {
-    return `<section class="card section-space"><div class="card-header"><h2>Generador de encuentros</h2>${button('Generar encuentro', 'encgen-open')}</div><p>Elegí un entorno y tirá en una tabla oficial de 2014. Podés consultar las tablas y copiar los resultados sin abrir una mesa.</p></section>`;
+    return `<section class="card section-space"><div class="card-header"><h2>Generador de encuentros</h2>${button('Generar encuentro', 'encgen-open')}</div><p>Elegí un entorno y tirá en las tablas publicadas o en las tablas propias con criaturas oficiales de 2014. Podés consultar y copiar los resultados sin abrir una mesa.</p></section>`;
   }
   async function open(target = null) {
     await MonsterUI.load({ sharedOnly: true });
@@ -34,13 +35,13 @@ const EncounterGeneratorUI = (() => {
     session = { target, campaignId: current, tableId: defaultTable(groupId), result: null };
     modal(
       'Generador de encuentros',
-      `<div class="encgen"><p class="small">Resultados de tablas oficiales de 2014. Pueden incluir combate, aliados o sucesos de viaje. Revisá la dificultad y el contexto antes de usarlos.</p><div class="form-grid">${select(
+      `<div class="encgen"><p class="small">Encuentros aleatorios para las reglas de 2014. Las tablas creadas para la herramienta se identifican como «tabla propia». Pueden incluir combate, aliados o sucesos de exploración. Revisá la dificultad y el contexto antes de usarlos.</p><div class="form-grid">${select(
         'Entorno / contexto',
         'encgen-group',
         D.groups
           .slice()
           .sort((a, b) => a.name.localeCompare(b.name, 'es'))
-          .map(g => [g.id, `${g.name} · ${g.source}`]),
+          .map(g => [g.id, `${g.name} · ${g.curated ? 'tabla propia' : g.source}`]),
         groupId,
       )}<div id="encgen-table-select"></div></div><p class="small muted" id="encgen-source"></p><div class="encgen-roll actions">${button('Tirar encuentro', 'encgen-roll', '')}<label class="field">Tirada manual<input name="encgen-manual" type="number" step="1" inputmode="numeric" placeholder="Número de tu dado"></label>${button('Usar tirada', 'encgen-manual', 'secondary')}</div><p class="small" id="encgen-dice-help"></p><div id="encgen-table-view"></div><p id="encgen-error" class="form-error" role="alert"></p><section id="encgen-result" aria-live="polite"></section></div>`,
       null,
@@ -66,11 +67,11 @@ const EncounterGeneratorUI = (() => {
       D.tables.filter(x => x.group === t.group).map(x => [x.id, x.name]),
       t.id,
     );
-    el('encgen-source').textContent = sourceText(t) + ' · texto de referencia en inglés';
+    el('encgen-source').textContent = sourceText(t) + ' · texto en ' + language(t);
     el('encgen-dice-help').textContent =
       `Se tira ${t.dice}${t.dice === 'd100' ? '; 00 equivale a 100' : ''}. El nivel indica la tabla de origen; no garantiza un combate equilibrado.`;
     el('encgen-table-view').innerHTML =
-      `<details class="encgen-table"><summary>Ver tabla completa (${t.rows.length} resultados)</summary><div class="encgen-table-scroll" tabindex="0" role="region" aria-label="Tabla de encuentros"><table><caption>${esc(group().name)} · ${esc(t.name)}</caption><thead><tr><th scope="col">${esc(t.dice)}</th><th scope="col">Encuentro (inglés)</th><th scope="col">Elegir</th></tr></thead><tbody>${t.rows.map((r, i) => `<tr><th scope="row">${range(r)}</th><td>${esc(bodyText(r))}${r.attitude ? `<br><small>Actitud: ${esc(r.attitude)}</small>` : ''}</td><td>${button('Usar', 'encgen-pick', 'text-btn', `data-index="${i}" aria-label="Usar resultado ${range(r)}"`)}</td></tr>`).join('')}</tbody></table></div>${t.footnotes.map(n => `<p class="small">${esc(n)}</p>`).join('')}</details>`;
+      `<details class="encgen-table"><summary>Ver tabla completa (${t.rows.length} resultados)</summary><div class="encgen-table-scroll" tabindex="0" role="region" aria-label="Tabla de encuentros"><table><caption>${esc(group().name)} · ${esc(t.name)}</caption><thead><tr><th scope="col">${esc(t.dice)}</th><th scope="col">Encuentro (${language(t)})</th><th scope="col">Elegir</th></tr></thead><tbody>${t.rows.map((r, i) => `<tr><th scope="row">${range(r)}</th><td>${esc(bodyText(r))}${r.attitude ? `<br><small>Actitud: ${esc(r.attitude)}</small>` : ''}</td><td>${button('Usar', 'encgen-pick', 'text-btn', `data-index="${i}" aria-label="Usar resultado ${range(r)}"`)}</td></tr>`).join('')}</tbody></table></div>${t.footnotes.map(n => `<p class="small">${esc(n)}</p>`).join('')}</details>`;
     el('encgen-result').innerHTML =
       '<p class="muted section-space">Tirá los dados, ingresá una tirada o elegí una fila de la tabla.</p>';
     el('encgen-error').textContent = '';
