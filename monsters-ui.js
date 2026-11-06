@@ -433,6 +433,7 @@ const MonsterUI = (() => {
       ${m.legendary.length ? '<h3 class="section-space">Acciones legendarias</h3>' + m.legendary.map(a => act(a, 'legendary')).join('') : ''}
       ${m.summon ? `<p class="small section-space"><b>Criatura invocada o compañero:</b> sin desafío propio.${m.acNote ? ' CA: ' + esc(m.acNote) + '.' : ''}${m.hpNote ? ' PG: ' + esc(m.hpNote) + '.' : ''} Ajustá la CA y los PG al agregarla.</p>` : ''}
       ${m.variantNote ? `<p class="small">${esc(m.variantNote)}</p>` : ''}
+      ${m.rulesLanguage === 'en' ? '<p class="small">Las reglas especiales conservan su texto de referencia en inglés.</p>' : ''}
       <p class="small muted section-space">${m.bundled ? `Catálogo compartido: ${esc(m.source)}, PDF p. ${m.page}. Estadísticas básicas y daño base; otros poderes, alcances y efectos requieren consultar la fuente.` : m.book ? `De tu biblioteca: ${esc(m.book)}${m.page ? ', pág. ' + m.page : ''}.${m.issues ? ' Datos incompletos: ' + esc(m.issues.join(', ')) + '.' : ''}` : 'Basado en el SRD 5.1 (CC-BY-4.0), traducido al español.'}</p>`;
   }
   async function view(id) {

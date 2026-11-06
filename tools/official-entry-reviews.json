@@ -356,6 +356,10 @@
     },
     "book-8c0aabc073ec4950-archidruida": {
       "reference": "VGM:Archdruid"
+    },
+    "book-7c68f9475cbd778d-loading-rig": {
+      "reference": "GGR:Loading Rig",
+      "evidence": "PDF page 171 (printed page 170): full Loading Rig construct stat block and adjacent piloting/repair instructions. Bestiary export omits this block."
     }
   },
   "items": {

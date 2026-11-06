@@ -9,41 +9,48 @@ const reviews = require('./official-entry-reviews.json'),
   sources = require('./official-book-sources.json'),
   names = require('./official-name-aliases.json');
 const LC = require('../library-core');
-const RAW = process.argv[2] ? JSON.parse(fs.readFileSync(process.argv[2], 'utf8')) : { monsters: [], items: [] };
+const rulePlain = require('./official-rules-text').plain;
+const RAW =
+  require.main === module && process.argv[2]
+    ? JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))
+    : { monsters: [], items: [] };
 const rawMonsters = new Map(RAW.monsters.map(r => [A.id(r), r]));
 const rawItems = new Map((RAW.items || []).map(r => [A.id(r), r]));
 const root = path.join(__dirname, '..');
 const data = A.ctx.OfficialContentData;
 const plain = s =>
-  String(s ?? '')
-    .replace(/\{@hom\}/g, 'Hit or Miss: ')
-    .replace(/\{@hitYourSpellAttack\}/g, 'your spell attack modifier')
-    .replace(/\{@quickref ([^}]+)\}/g, (_, v) => v.split('|')[4] || v.split('|')[0])
-    .replace(/\{@(?:h)\}/g, 'Hit: ')
-    .replace(
-      /\{@atk ([^}]+)\}/g,
-      (_, v) =>
-        ({
-          mw: 'Melee Weapon Attack:',
-          rw: 'Ranged Weapon Attack:',
-          ms: 'Melee Spell Attack:',
-          rs: 'Ranged Spell Attack:',
-          'mw,rw': 'Melee or Ranged Weapon Attack:',
-        })[v] || 'Attack:',
-    )
-    .replace(/\{@recharge(?: (\d))?\}/g, (_, v) => `(Recharge ${v || 6}${v && v !== '6' ? '-6' : ''})`)
-    .replace(/\{@hit ([^}]+)\}/g, (_, v) => (/^-/.test(v) ? v : '+' + v))
-    .replace(/\{@dc ([^}|]+)(?:\|[^}]+)?\}/g, 'DC $1')
-    .replace(/\{@\w+ ([^}]+)\}/g, (_, v) => {
-      const p = v.split('|');
-      return p[2] || p[0];
-    })
+  rulePlain(
+    String(s ?? '')
+      .replace(/\{@hom\}/g, 'Hit or Miss: ')
+      .replace(/\{@hitYourSpellAttack\}/g, 'your spell attack modifier')
+      .replace(/\{@quickref ([^}]+)\}/g, (_, v) => v.split('|')[4] || v.split('|')[0])
+      .replace(/\{@(?:h)\}/g, 'Hit: ')
+      .replace(
+        /\{@atk ([^}]+)\}/g,
+        (_, v) =>
+          ({
+            mw: 'Melee Weapon Attack:',
+            rw: 'Ranged Weapon Attack:',
+            ms: 'Melee Spell Attack:',
+            rs: 'Ranged Spell Attack:',
+            'mw,rw': 'Melee or Ranged Weapon Attack:',
+            'ms,rs': 'Melee or Ranged Spell Attack:',
+          })[v] || 'Attack:',
+      )
+      .replace(/\{@skillCheck ([^ }]+) ([^}]+)\}/g, (_, skill, bonus) => (/^[+-]/.test(bonus) ? bonus : '+' + bonus))
+      .replace(/\{@recharge(?: (\d))?\}/g, (_, v) => `(Recharge ${v || 6}${v && v !== '6' ? '-6' : ''})`)
+      .replace(/\{@hit ([^}]+)\}/g, (_, v) => (/^-/.test(v) ? v : '+' + v))
+      .replace(/\{@dc ([^}|]+)(?:\|[^}]+)?\}/g, 'DC $1'),
+  )
     .replace(/\s+/g, ' ')
     .trim();
 function prose(x) {
   if (typeof x === 'string') return plain(x);
+  if (typeof x === 'number') return String(x);
   if (Array.isArray(x)) return x.map(prose).filter(Boolean).join('\n\n');
   if (!x) return '';
+  if (x.type === 'cell' && x.roll)
+    return x.roll.exact !== undefined ? String(x.roll.exact) : x.roll.min + '–' + x.roll.max;
   if (x.type === 'table')
     return [x.caption, (x.colLabels || []).map(prose).join(' · '), ...(x.rows || []).map(r => r.map(prose).join(' · '))]
       .filter(Boolean)
@@ -112,7 +119,7 @@ function actions(raw, facts) {
     return out;
   });
 }
-function converted(m, r, review) {
+function converted(m, r, review, rawInput) {
   const out = { ...m, reference: A.id(r), reviewed: true, english: review.english || r.name };
   out.name = (
     review.name || (m.language === 'en' ? out.english : names[out.english]?.[0] || ES.name(out.english))
@@ -134,7 +141,7 @@ function converted(m, r, review) {
   out.cr = Number.isFinite(A.cr(r.cr)) ? A.cr(r.cr) : 0;
   out.unrated = !Number.isFinite(A.cr(r.cr));
   out.xp = out.unrated ? 0 : out.cr === 0.125 ? 25 : out.cr === 0.25 ? 50 : out.cr === 0.5 ? 100 : xp[out.cr] || 0;
-  const raw = rawMonsters.get(A.id(r));
+  const raw = rawInput || rawMonsters.get(A.id(r));
   out.acDetails = (r.ac || [])
     .map(a =>
       typeof a === 'number'
@@ -234,200 +241,202 @@ function converted(m, r, review) {
   delete out.issues;
   return out;
 }
-const report = { monsters: [], items: [], removedDuplicates: [], unresolved: [] };
-const map = new Map();
-for (const m of A.allMonsters()) {
-  const review = reviews.monsters[m.id] || {};
-  const matched = A.matchMonster(m);
-  const ref = review.reference || (matched.accepted ? matched.best?.reference : null);
-  const r = A.facts.monsters.find(r => A.id(r) === ref);
-  let out;
-  if (review.pdf)
-    out = {
-      ...m,
-      ...review.overrides,
-      english: review.english,
-      reviewed: true,
-      reference: 'PDF:' + m.bookId + ':' + m.page,
-    };
-  else if (r) out = converted(m, r, review);
-  else {
-    report.unresolved.push(m.id);
-    continue;
+if (require.main === module) {
+  const report = { monsters: [], items: [], removedDuplicates: [], unresolved: [] };
+  const map = new Map();
+  for (const m of A.allMonsters()) {
+    const review = reviews.monsters[m.id] || {};
+    const matched = A.matchMonster(m);
+    const ref = review.reference || (matched.accepted ? matched.best?.reference : null);
+    const r = A.facts.monsters.find(r => A.id(r) === ref);
+    let out;
+    if (review.pdf)
+      out = {
+        ...m,
+        ...review.overrides,
+        english: review.english,
+        reviewed: true,
+        reference: 'PDF:' + m.bookId + ':' + m.page,
+      };
+    else if (r) out = converted(m, r, review);
+    else {
+      report.unresolved.push(m.id);
+      continue;
+    }
+    const signature = m.bookId + ':' + (review.coreOnly || review.pdf ? m.id : ref);
+    if (map.has(signature)) {
+      const first = map.get(signature);
+      first.aliasIds = [...(first.aliasIds || []), out.id, ...(out.aliasIds || [])];
+      first.searchNames = [...new Set([...(first.searchNames || []), m.name])];
+      report.removedDuplicates.push(out.id);
+      continue;
+    }
+    map.set(signature, out);
+    report.monsters.push({
+      id: out.id,
+      reference: out.reference,
+      changed: ['name', 'hp', 'ac', 'cr', 'hd', 'ab'].filter(f => JSON.stringify(out[f]) !== JSON.stringify(m[f])),
+    });
   }
-  const signature = m.bookId + ':' + (review.coreOnly || review.pdf ? m.id : ref);
-  if (map.has(signature)) {
-    const first = map.get(signature);
-    first.aliasIds = [...(first.aliasIds || []), out.id, ...(out.aliasIds || [])];
-    first.searchNames = [...new Set([...(first.searchNames || []), m.name])];
-    report.removedDuplicates.push(out.id);
-    continue;
+  if (report.unresolved.length) throw Error('Unreviewed creatures: ' + report.unresolved.join(', '));
+  data.monsters = [...map.values()];
+  data.completeMonsterReplacement = true;
+  const rarities = {
+    common: 'común',
+    uncommon: 'infrecuente',
+    rare: 'raro',
+    'very rare': 'muy raro',
+    legendary: 'legendario',
+    artifact: 'artefacto',
+    varies: 'variable',
+    unknown: 'variable',
+    'unknown (magic)': 'variable',
+  };
+  const itemNames = require('./official-item-name-aliases.json');
+  const itemMap = new Map();
+  if (process.argv[4]) {
+    const z = require('node:zlib'),
+      id = '17182bc795d5ced5';
+    const input = JSON.parse(z.gunzipSync(fs.readFileSync(path.join(process.argv[4], id + '.json.gz'))));
+    const old = data.items.filter(r => r.bookId === id),
+      meta = old[0];
+    const fixed = require('./parse-official-cards')(input).map(r => ({ ...meta, ...r, canonicalId: null }));
+    const oldNames = [
+      'Arco largo +1',
+      'Bastón de llamada de ave',
+      'Cota de malla de mithral',
+      'Guanteletes de fuerza de ogro',
+      'Hacha de guerra +1',
+      'Pértiga contraíble',
+      'Piedras mensajeras',
+      'Poción de curación',
+      'Poción de curación',
+      'Poción de curación mayor',
+      'Poción de respirar bajo el agua',
+      'Sombrero de hechicería',
+      'Vara inamovible',
+      'Yelmo temible',
+    ];
+    for (let i = 0; i < old.length; i++) {
+      const target = fixed.find(r => r.name === oldNames[i]);
+      if (target) {
+        target.aliasCatalogIds = [
+          ...(target.aliasCatalogIds || []),
+          (
+            'official-' +
+            id +
+            '-' +
+            old[i].name
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, ' ')
+              .trim()
+              .replace(/ /g, '-')
+          ).slice(0, 100),
+        ];
+      }
+    }
+    data.items = data.items.filter(r => r.bookId !== id).concat(fixed);
   }
-  map.set(signature, out);
-  report.monsters.push({
-    id: out.id,
-    reference: out.reference,
-    changed: ['name', 'hp', 'ac', 'cr', 'hd', 'ab'].filter(f => JSON.stringify(out[f]) !== JSON.stringify(m[f])),
-  });
-}
-if (report.unresolved.length) throw Error('Unreviewed creatures: ' + report.unresolved.join(', '));
-data.monsters = [...map.values()];
-data.completeMonsterReplacement = true;
-const rarities = {
-  common: 'común',
-  uncommon: 'infrecuente',
-  rare: 'raro',
-  'very rare': 'muy raro',
-  legendary: 'legendario',
-  artifact: 'artefacto',
-  varies: 'variable',
-  unknown: 'variable',
-  'unknown (magic)': 'variable',
-};
-const itemNames = require('./official-item-name-aliases.json');
-const itemMap = new Map();
-if (process.argv[4]) {
-  const z = require('node:zlib'),
-    id = '17182bc795d5ced5';
-  const input = JSON.parse(z.gunzipSync(fs.readFileSync(path.join(process.argv[4], id + '.json.gz'))));
-  const old = data.items.filter(r => r.bookId === id),
-    meta = old[0];
-  const fixed = require('./parse-official-cards')(input).map(r => ({ ...meta, ...r, canonicalId: null }));
-  const oldNames = [
-    'Arco largo +1',
-    'Bastón de llamada de ave',
-    'Cota de malla de mithral',
-    'Guanteletes de fuerza de ogro',
-    'Hacha de guerra +1',
-    'Pértiga contraíble',
-    'Piedras mensajeras',
-    'Poción de curación',
-    'Poción de curación',
-    'Poción de curación mayor',
-    'Poción de respirar bajo el agua',
-    'Sombrero de hechicería',
-    'Vara inamovible',
-    'Yelmo temible',
-  ];
-  for (let i = 0; i < old.length; i++) {
-    const target = fixed.find(r => r.name === oldNames[i]);
-    if (target) {
-      target.aliasCatalogIds = [
-        ...(target.aliasCatalogIds || []),
-        (
-          'official-' +
-          id +
-          '-' +
-          old[i].name
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, ' ')
-            .trim()
-            .replace(/ /g, '-')
-        ).slice(0, 100),
-      ];
+  for (const original of data.items) {
+    const review = reviews.items[original.id] || {};
+    if (review.remove) {
+      report.removedDuplicates.push(original.id);
+      continue;
+    }
+    const row = { ...original, ...review.overrides };
+    if (review.name) row.name = review.name;
+    row.catalogId =
+      original.catalogId ||
+      (
+        'official-' +
+        original.bookId +
+        '-' +
+        original.name
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, ' ')
+          .trim()
+          .replace(/ /g, '-')
+      ).slice(0, 100);
+    const matched = A.matchItem(row),
+      ref = review.reference || (matched.accepted ? matched.best?.reference : null),
+      r = A.facts.items.find(r => A.id(r) === ref);
+    if (r) {
+      row.english = r.name;
+      row.reference = ref;
+      if (row.language === 'en') row.name = r.name;
+      else if (itemNames[r.name]) row.name = itemNames[r.name][0];
+      const group = matched.referenceGroup?.map(ref => A.facts.items.find(r => A.id(r) === ref));
+      row.rarity = group && new Set(group.map(r => r.rarity)).size > 1 ? 'variable' : rarities[r.rarity] || row.rarity;
+      row.attunement = Boolean(r.reqAttune);
+      row.attunementRequirement = typeof r.reqAttune === 'string' ? r.reqAttune : '';
+      if (group) {
+        row.variants = group.map(r => ({
+          name: r.name,
+          rarity: rarities[r.rarity] || r.rarity,
+          attunement: Boolean(r.reqAttune),
+        }));
+        row.variantNote = 'Elegí la variante y su rareza antes de usar este objeto.';
+      }
+      const generic = /variable|varies|\+1.*\+2/i.test(original.detail) || review.overrides?.rarity === 'variable';
+      const raw = rawItems.get(ref);
+      if (raw?.entries && !group && !generic) {
+        row.text = prose(raw.entries);
+        row.rulesLanguage = 'en';
+      }
+    }
+    Object.assign(row, review.overrides || {});
+    row.name = row.name
+      .replace(/^[^\p{L}\p{N}]+/u, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    row.name = row.name.charAt(0).toUpperCase() + row.name.slice(1);
+    row.reviewed = true;
+    const signature = row.bookId + ':' + (ref || A.key(row.name));
+    if (itemMap.has(signature)) {
+      report.removedDuplicates.push(row.id);
+      const keep = itemMap.get(signature);
+      keep.aliasCatalogIds = [...(keep.aliasCatalogIds || []), row.catalogId];
+      continue;
+    }
+    itemMap.set(signature, row);
+    report.items.push({ id: row.id, reference: ref || 'PDF:' + row.bookId + ':' + row.page });
+  }
+  data.items = [...itemMap.values()];
+  const adventures = new Set(
+    'LRDT DC CRCotN TftYP DitLCoT OotA DSotDQ RoT SDW DIP LLK SKT GoS NEE SLW CoS LMoP ToA WBtW KftGV LoX QftIS PaBTSO ToFW PotA BGDIA IMR DoSI HotDQ IDRotF VEoR JttRC WDH WDMM'.split(
+      ' ',
+    ),
+  );
+  for (const b of data.books) {
+    b.referenceSources = sources[b.id] || [];
+    b.kind = b.referenceSources.some(s => adventures.has(s)) ? 'adventure' : 'rules';
+    b.counts.monsters = data.monsters.filter(m => m.bookId === b.id).length;
+    b.counts.items = data.items.filter(m => m.bookId === b.id).length;
+  }
+  for (const s of data.spells) {
+    const canonical = A.ctx.Catalog.spells.find(x => x.id === s.canonicalId);
+    if (canonical) {
+      s.name = s.language === 'en' ? canonical.english : canonical.name;
+      s.reviewed = true;
     }
   }
-  data.items = data.items.filter(r => r.bookId !== id).concat(fixed);
+  data.audit.catalogueReview = {
+    creatures: data.monsters.length,
+    items: data.items.length,
+    duplicatesRemoved: report.removedDuplicates.length,
+    unresolved: report.unresolved.length,
+  };
+  fs.writeFileSync(
+    path.join(root, 'official-content-data.js'),
+    '/* Official 2014 game blocks from the supplied PDFs; identities and numerical fields reviewed against source metadata and documented PDF exceptions. */\n(function(r){r.OfficialContentData=' +
+      JSON.stringify(data) +
+      ';})(typeof window!=="undefined"?window:globalThis);\n',
+  );
+  if (process.argv[3]) fs.writeFileSync(process.argv[3], JSON.stringify(report, null, 2));
+  console.log(JSON.stringify(data.audit.catalogueReview));
 }
-for (const original of data.items) {
-  const review = reviews.items[original.id] || {};
-  if (review.remove) {
-    report.removedDuplicates.push(original.id);
-    continue;
-  }
-  const row = { ...original, ...review.overrides };
-  if (review.name) row.name = review.name;
-  row.catalogId =
-    original.catalogId ||
-    (
-      'official-' +
-      original.bookId +
-      '-' +
-      original.name
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, ' ')
-        .trim()
-        .replace(/ /g, '-')
-    ).slice(0, 100);
-  const matched = A.matchItem(row),
-    ref = review.reference || (matched.accepted ? matched.best?.reference : null),
-    r = A.facts.items.find(r => A.id(r) === ref);
-  if (r) {
-    row.english = r.name;
-    row.reference = ref;
-    if (row.language === 'en') row.name = r.name;
-    else if (itemNames[r.name]) row.name = itemNames[r.name][0];
-    const group = matched.referenceGroup?.map(ref => A.facts.items.find(r => A.id(r) === ref));
-    row.rarity = group && new Set(group.map(r => r.rarity)).size > 1 ? 'variable' : rarities[r.rarity] || row.rarity;
-    row.attunement = Boolean(r.reqAttune);
-    row.attunementRequirement = typeof r.reqAttune === 'string' ? r.reqAttune : '';
-    if (group) {
-      row.variants = group.map(r => ({
-        name: r.name,
-        rarity: rarities[r.rarity] || r.rarity,
-        attunement: Boolean(r.reqAttune),
-      }));
-      row.variantNote = 'Elegí la variante y su rareza antes de usar este objeto.';
-    }
-    const generic = /variable|varies|\+1.*\+2/i.test(original.detail) || review.overrides?.rarity === 'variable';
-    const raw = rawItems.get(ref);
-    if (raw?.entries && !group && !generic) {
-      row.text = prose(raw.entries);
-      row.rulesLanguage = 'en';
-    }
-  }
-  Object.assign(row, review.overrides || {});
-  row.name = row.name
-    .replace(/^[^\p{L}\p{N}]+/u, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  row.name = row.name.charAt(0).toUpperCase() + row.name.slice(1);
-  row.reviewed = true;
-  const signature = row.bookId + ':' + (ref || A.key(row.name));
-  if (itemMap.has(signature)) {
-    report.removedDuplicates.push(row.id);
-    const keep = itemMap.get(signature);
-    keep.aliasCatalogIds = [...(keep.aliasCatalogIds || []), row.catalogId];
-    continue;
-  }
-  itemMap.set(signature, row);
-  report.items.push({ id: row.id, reference: ref || 'PDF:' + row.bookId + ':' + row.page });
-}
-data.items = [...itemMap.values()];
-const adventures = new Set(
-  'LRDT DC CRCotN TftYP DitLCoT OotA DSotDQ RoT SDW DIP LLK SKT GoS NEE SLW CoS LMoP ToA WBtW KftGV LoX QftIS PaBTSO ToFW PotA BGDIA IMR DoSI HotDQ IDRotF VEoR JttRC WDH WDMM'.split(
-    ' ',
-  ),
-);
-for (const b of data.books) {
-  b.referenceSources = sources[b.id] || [];
-  b.kind = b.referenceSources.some(s => adventures.has(s)) ? 'adventure' : 'rules';
-  b.counts.monsters = data.monsters.filter(m => m.bookId === b.id).length;
-  b.counts.items = data.items.filter(m => m.bookId === b.id).length;
-}
-for (const s of data.spells) {
-  const canonical = A.ctx.Catalog.spells.find(x => x.id === s.canonicalId);
-  if (canonical) {
-    s.name = s.language === 'en' ? canonical.english : canonical.name;
-    s.reviewed = true;
-  }
-}
-data.audit.catalogueReview = {
-  creatures: data.monsters.length,
-  items: data.items.length,
-  duplicatesRemoved: report.removedDuplicates.length,
-  unresolved: report.unresolved.length,
-};
-fs.writeFileSync(
-  path.join(root, 'official-content-data.js'),
-  '/* Official 2014 game blocks from the supplied PDFs; identities and numerical fields reviewed against source metadata and documented PDF exceptions. */\n(function(r){r.OfficialContentData=' +
-    JSON.stringify(data) +
-    ';})(typeof window!=="undefined"?window:globalThis);\n',
-);
-if (process.argv[3]) fs.writeFileSync(process.argv[3], JSON.stringify(report, null, 2));
-console.log(JSON.stringify(data.audit.catalogueReview));
-module.exports = { plain, prose };
+module.exports = { plain, prose, converted };
