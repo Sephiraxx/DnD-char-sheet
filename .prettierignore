@@ -14,6 +14,7 @@ book-content-data.js
 official-content-data.js
 shared-reference-data.js
 encounter-tables-data.js
+curated-encounter-data.js
 tools/official-reference-facts.json
 tools/official-reference-additions.json
 tools/official-variant-facts.json

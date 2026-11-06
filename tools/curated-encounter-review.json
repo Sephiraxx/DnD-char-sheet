@@ -1,0 +1,578 @@
+{
+  "version": 1,
+  "provenance": "Original tables for Cuaderno de aventura; official 2014 creature blocks",
+  "groups": 2,
+  "tables": 8,
+  "rows": 200,
+  "unresolvedCreatures": [],
+  "creatures": [
+    {
+      "reference": "MM:Giant Rat",
+      "monsterId": "book-19ae44ca570d040b-rata-gigante",
+      "cr": 0.125,
+      "type": "bestia"
+    },
+    {
+      "reference": "MM:Kobold",
+      "monsterId": "book-19ae44ca570d040b-kobold",
+      "cr": 0.125,
+      "type": "humanoide"
+    },
+    {
+      "reference": "MM:Bandit",
+      "monsterId": "book-19ae44ca570d040b-bandido",
+      "cr": 0.125,
+      "type": "humanoide"
+    },
+    {
+      "reference": "MM:Skeleton",
+      "monsterId": "book-19ae44ca570d040b-esqueleto",
+      "cr": 0.25,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Giant Wolf Spider",
+      "monsterId": "book-19ae44ca570d040b-tarantula-gigante",
+      "cr": 0.25,
+      "type": "bestia"
+    },
+    {
+      "reference": "MM:Animated Armor",
+      "monsterId": "book-eb72ac69f14e9565-armadura-3",
+      "cr": 1,
+      "type": "constructo"
+    },
+    {
+      "reference": "MM:Flying Sword",
+      "monsterId": "book-19ae44ca570d040b-espada-voladora",
+      "cr": 0.25,
+      "type": "constructo"
+    },
+    {
+      "reference": "MM:Gray Ooze",
+      "monsterId": "gray-ooze",
+      "cr": 0.5,
+      "type": "cieno"
+    },
+    {
+      "reference": "MM:Goblin",
+      "monsterId": "book-7c68f9475cbd778d-goblin-gang-member",
+      "cr": 0.25,
+      "type": "humanoide (goblinoid)"
+    },
+    {
+      "reference": "MM:Rust Monster",
+      "monsterId": "book-19ae44ca570d040b-monstruo-corrosivo",
+      "cr": 0.5,
+      "type": "monstruosidad"
+    },
+    {
+      "reference": "MM:Grick",
+      "monsterId": "book-19ae44ca570d040b-grick",
+      "cr": 2,
+      "type": "monstruosidad"
+    },
+    {
+      "reference": "MM:Mimic",
+      "monsterId": "book-17182bc795d5ced5-mimeto",
+      "cr": 2,
+      "type": "monstruosidad"
+    },
+    {
+      "reference": "MM:Stirge",
+      "monsterId": "book-19ae44ca570d040b-estirge",
+      "cr": 0.125,
+      "type": "bestia"
+    },
+    {
+      "reference": "MM:Nothic",
+      "monsterId": "book-19ae44ca570d040b-notic-o",
+      "cr": 2,
+      "type": "aberración"
+    },
+    {
+      "reference": "MM:Swarm of Rats",
+      "monsterId": "book-19ae44ca570d040b-enjambre-de-ratas",
+      "cr": 0.25,
+      "type": "bestia"
+    },
+    {
+      "reference": "MM:Gelatinous Cube",
+      "monsterId": "book-19ae44ca570d040b-cubo-gelatinoso",
+      "cr": 2,
+      "type": "cieno"
+    },
+    {
+      "reference": "MM:Ghast",
+      "monsterId": "book-19ae44ca570d040b-ghast",
+      "cr": 2,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Ghoul",
+      "monsterId": "book-19ae44ca570d040b-gul",
+      "cr": 1,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Ogre",
+      "monsterId": "book-17182bc795d5ced5-ugro",
+      "cr": 2,
+      "type": "gigante"
+    },
+    {
+      "reference": "MM:Grell",
+      "monsterId": "book-19ae44ca570d040b-grell",
+      "cr": 3,
+      "type": "aberración"
+    },
+    {
+      "reference": "MM:Hobgoblin Captain",
+      "monsterId": "book-19ae44ca570d040b-capitan-hobgoblin",
+      "cr": 3,
+      "type": "humanoide"
+    },
+    {
+      "reference": "MM:Hobgoblin",
+      "monsterId": "book-19ae44ca570d040b-hobgoblin",
+      "cr": 0.5,
+      "type": "humanoide"
+    },
+    {
+      "reference": "MM:Bugbear",
+      "monsterId": "book-19ae44ca570d040b-osgo",
+      "cr": 1,
+      "type": "humanoide"
+    },
+    {
+      "reference": "MM:Otyugh",
+      "monsterId": "book-19ae44ca570d040b-otyugh",
+      "cr": 5,
+      "type": "aberración"
+    },
+    {
+      "reference": "MM:Roper",
+      "monsterId": "book-19ae44ca570d040b-lacero",
+      "cr": 5,
+      "type": "monstruosidad"
+    },
+    {
+      "reference": "MM:Piercer",
+      "monsterId": "book-19ae44ca570d040b-perforador",
+      "cr": 0.5,
+      "type": "monstruosidad"
+    },
+    {
+      "reference": "MM:Helmed Horror",
+      "monsterId": "book-eb72ac69f14e9565-horror-acorazado",
+      "cr": 4,
+      "type": "constructo"
+    },
+    {
+      "reference": "MM:Black Pudding",
+      "monsterId": "black-pudding",
+      "cr": 4,
+      "type": "cieno"
+    },
+    {
+      "reference": "MM:Umber Hulk",
+      "monsterId": "book-19ae44ca570d040b-mole-sombria",
+      "cr": 5,
+      "type": "monstruosidad"
+    },
+    {
+      "reference": "MM:Gargoyle",
+      "monsterId": "gargoyle",
+      "cr": 2,
+      "type": "elemental"
+    },
+    {
+      "reference": "MM:Mind Flayer",
+      "monsterId": "book-19ae44ca570d040b-azotamentes",
+      "cr": 7,
+      "type": "aberración"
+    },
+    {
+      "reference": "MM:Intellect Devourer",
+      "monsterId": "book-19ae44ca570d040b-devorador-de-intelectos",
+      "cr": 2,
+      "type": "aberración"
+    },
+    {
+      "reference": "MM:Shield Guardian",
+      "monsterId": "shield-guardian",
+      "cr": 7,
+      "type": "constructo"
+    },
+    {
+      "reference": "MM:Gynosphinx",
+      "monsterId": "gynosphinx",
+      "cr": 11,
+      "type": "monstruosidad"
+    },
+    {
+      "reference": "MM:Cloaker",
+      "monsterId": "cloaker",
+      "cr": 8,
+      "type": "aberración"
+    },
+    {
+      "reference": "MM:Spirit Naga",
+      "monsterId": "spirit-naga",
+      "cr": 8,
+      "type": "monstruosidad"
+    },
+    {
+      "reference": "MM:Stone Golem",
+      "monsterId": "book-e9682e11f112ff2f-stone-golem",
+      "cr": 10,
+      "type": "constructo"
+    },
+    {
+      "reference": "MM:Young Red Dragon",
+      "monsterId": "book-eb72ac69f14e9565-dragon-rojo-joven",
+      "cr": 10,
+      "type": "dragón"
+    },
+    {
+      "reference": "MM:Beholder",
+      "monsterId": "book-19ae44ca570d040b-contemplador",
+      "cr": 13,
+      "type": "aberración"
+    },
+    {
+      "reference": "MM:Horned Devil",
+      "monsterId": "book-19ae44ca570d040b-diablo-astado",
+      "cr": 11,
+      "type": "infernal"
+    },
+    {
+      "reference": "MM:Rakshasa",
+      "monsterId": "rakshasa",
+      "cr": 13,
+      "type": "infernal"
+    },
+    {
+      "reference": "MM:Adult Black Dragon",
+      "monsterId": "book-19ae44ca570d040b-dragon-negro-adulto",
+      "cr": 14,
+      "type": "dragón"
+    },
+    {
+      "reference": "MM:Purple Worm",
+      "monsterId": "book-19ae44ca570d040b-gusano-purpura",
+      "cr": 15,
+      "type": "monstruosidad"
+    },
+    {
+      "reference": "MM:Iron Golem",
+      "monsterId": "book-19ae44ca570d040b-golem-de-hierro",
+      "cr": 16,
+      "type": "constructo"
+    },
+    {
+      "reference": "MM:Nalfeshnee",
+      "monsterId": "book-19ae44ca570d040b-nalfeshnee",
+      "cr": 13,
+      "type": "infernal"
+    },
+    {
+      "reference": "MM:Mummy Lord",
+      "monsterId": "mummy-lord",
+      "cr": 15,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Arcanaloth",
+      "monsterId": "book-19ae44ca570d040b-arcanaloth",
+      "cr": 12,
+      "type": "infernal"
+    },
+    {
+      "reference": "MM:Death Tyrant",
+      "monsterId": "book-19ae44ca570d040b-tirano-sepulcral",
+      "cr": 14,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Adult Red Dragon",
+      "monsterId": "book-19ae44ca570d040b-dragon-rojo-adulto",
+      "cr": 17,
+      "type": "dragón"
+    },
+    {
+      "reference": "MM:Androsphinx",
+      "monsterId": "androsphinx",
+      "cr": 17,
+      "type": "monstruosidad"
+    },
+    {
+      "reference": "MM:Lich",
+      "monsterId": "lich",
+      "cr": 21,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Adult Gold Dragon",
+      "monsterId": "book-19ae44ca570d040b-dragon-de-oro-adulto",
+      "cr": 17,
+      "type": "dragón"
+    },
+    {
+      "reference": "MM:Death Knight",
+      "monsterId": "book-19ae44ca570d040b-caballero-de-la-muerte",
+      "cr": 17,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Wight",
+      "monsterId": "wight",
+      "cr": 3,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Pit Fiend",
+      "monsterId": "book-19ae44ca570d040b-diablo-de-la-sima",
+      "cr": 20,
+      "type": "infernal"
+    },
+    {
+      "reference": "MM:Balor",
+      "monsterId": "book-19ae44ca570d040b-balor",
+      "cr": 19,
+      "type": "infernal"
+    },
+    {
+      "reference": "MM:Ancient Black Dragon",
+      "monsterId": "book-19ae44ca570d040b-dragon-negro-anciano",
+      "cr": 21,
+      "type": "dragón"
+    },
+    {
+      "reference": "MM:Ancient White Dragon",
+      "monsterId": "book-19ae44ca570d040b-dragon-blanco-anciano",
+      "cr": 20,
+      "type": "dragón"
+    },
+    {
+      "reference": "MM:Solar",
+      "monsterId": "solar",
+      "cr": 21,
+      "type": "celestial"
+    },
+    {
+      "reference": "MM:Demilich",
+      "monsterId": "book-19ae44ca570d040b-semiliche",
+      "cr": 18,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Ancient Green Dragon",
+      "monsterId": "book-19ae44ca570d040b-dragon-verde-anciano",
+      "cr": 22,
+      "type": "dragón"
+    },
+    {
+      "reference": "MM:Kraken",
+      "monsterId": "book-19ae44ca570d040b-kraken",
+      "cr": 23,
+      "type": "monstruosidad"
+    },
+    {
+      "reference": "MM:Empyrean",
+      "monsterId": "book-19ae44ca570d040b-empireo",
+      "cr": 23,
+      "type": "celestial"
+    },
+    {
+      "reference": "MM:Ancient Blue Dragon",
+      "monsterId": "book-19ae44ca570d040b-dragon-azul-anciano",
+      "cr": 23,
+      "type": "dragón"
+    },
+    {
+      "reference": "MM:Ancient Silver Dragon",
+      "monsterId": "book-19ae44ca570d040b-dragon-de-plata-anciano",
+      "cr": 23,
+      "type": "dragón"
+    },
+    {
+      "reference": "MM:Ancient Red Dragon",
+      "monsterId": "book-19ae44ca570d040b-dragon-rojo-anciano",
+      "cr": 24,
+      "type": "dragón"
+    },
+    {
+      "reference": "MM:Zombie",
+      "monsterId": "book-8edd41e6da8d138e-zombi",
+      "cr": 0.25,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Crawling Claw",
+      "monsterId": "book-19ae44ca570d040b-garra-reptante",
+      "cr": 0,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Specter",
+      "monsterId": "book-19ae44ca570d040b-espectro",
+      "cr": 1,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Shadow",
+      "monsterId": "book-8edd41e6da8d138e-sombra",
+      "cr": 0.5,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Minotaur Skeleton",
+      "monsterId": "book-19ae44ca570d040b-minotauro-esqueleto",
+      "cr": 2,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Ogre Zombie",
+      "monsterId": "book-19ae44ca570d040b-ogro-zombi",
+      "cr": 2,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Will-o'-Wisp",
+      "monsterId": "book-19ae44ca570d040b-fuego-fatuo",
+      "cr": 2,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Ghost",
+      "monsterId": "book-8edd41e6da8d138e-fantasma",
+      "cr": 4,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Mummy",
+      "monsterId": "book-19ae44ca570d040b-momia",
+      "cr": 3,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Banshee",
+      "monsterId": "book-19ae44ca570d040b-banshee",
+      "cr": 4,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Revenant",
+      "monsterId": "book-19ae44ca570d040b-redivivo",
+      "cr": 5,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Wraith",
+      "monsterId": "book-19ae44ca570d040b-aparicion",
+      "cr": 5,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MPMM:Bodak",
+      "monsterId": "book-415b8e2bcdff9cbc-bodak",
+      "cr": 6,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Flameskull",
+      "monsterId": "book-19ae44ca570d040b-calavera-llameante",
+      "cr": 4,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Vampire Spawn",
+      "monsterId": "book-19ae44ca570d040b-engendro-vampirico",
+      "cr": 5,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MPMM:Allip",
+      "monsterId": "book-1afbf0a7c61664c7-alip",
+      "cr": 5,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MPMM:Alhoon",
+      "monsterId": "book-5abc59bf448b79b2-alhoon",
+      "cr": 10,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MPMM:Boneclaw",
+      "monsterId": "book-5abc59bf448b79b2-garra-osea",
+      "cr": 12,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Vampire",
+      "monsterId": "book-e9682e11f112ff2f-vampire",
+      "cr": 13,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MPMM:Skull Lord",
+      "monsterId": "book-5abc59bf448b79b2-senor-de-las-calaveras",
+      "cr": 15,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MM:Adult Blue Dracolich",
+      "monsterId": "book-19ae44ca570d040b-dracoliche-azul-adulto",
+      "cr": 17,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MPMM:Devourer",
+      "monsterId": "book-5abc59bf448b79b2-devorador",
+      "cr": 13,
+      "type": "muerto viviente"
+    },
+    {
+      "reference": "MPMM:Nightwalker",
+      "monsterId": "book-5abc59bf448b79b2-noctambulo",
+      "cr": 20,
+      "type": "muerto viviente"
+    }
+  ],
+  "hashes": [
+    {
+      "id": "CUADERNO-dungeon-1",
+      "sha256": "37664b76774cc233548f8a64b90e6cdb692f1f0aeb486c53eb2545bde73c0b1c"
+    },
+    {
+      "id": "CUADERNO-dungeon-5",
+      "sha256": "a5a08f1fab71d46e913dae390924c7ad41271bb5217583b110ab2aeb836f20c4"
+    },
+    {
+      "id": "CUADERNO-dungeon-11",
+      "sha256": "9bdcbaea918ef03a201eb02ede72279e9fc3e07f5acb28a7d7910690919f0122"
+    },
+    {
+      "id": "CUADERNO-dungeon-17",
+      "sha256": "cf6d85aaa8fed31cfb2c4c49d178d6fdc1d3b95d6bde6154f1c4204923c3de1f"
+    },
+    {
+      "id": "CUADERNO-undead-1",
+      "sha256": "61a96733e062d739b1fbf2799e60113a82893aed0ed81cc7a7c2435a82d1d0c9"
+    },
+    {
+      "id": "CUADERNO-undead-5",
+      "sha256": "63dcf79ed99d0775f75e58c0c50627de6c536057ca4e349c944444b7838142d7"
+    },
+    {
+      "id": "CUADERNO-undead-11",
+      "sha256": "e21b93e50e5c7cacea6b1941ef90668edf4fbc13fdcd20c52fde3a5144bbafa8"
+    },
+    {
+      "id": "CUADERNO-undead-17",
+      "sha256": "49ff186f85d58f733f01c14e7152e96065d7bc79f9a4bc73bdccde121ee52ba9"
+    }
+  ]
+}
