@@ -93,10 +93,34 @@ const Encounters = (() => {
       return target;
     }
     const id = 'enc-' + uid();
+    setOpen(id, true);
     save([...list(), { id, name, notes, style: 'battle', cry: '', theme: '', monsters, launched: false }]);
     return id;
   }
 
+  // Encuentros plegados: se abren tocando el nombre. Cuáles quedaron abiertos se recuerda en este dispositivo.
+  const OPEN_KEY = 'dnd-dm-prepared-open';
+  let opened = new Set();
+  try {
+    opened = new Set(JSON.parse(localStorage.getItem(OPEN_KEY) || '[]'));
+  } catch {
+    /* sin almacenamiento: todos plegados */
+  }
+  function setOpen(id, on) {
+    if (on) opened.add(id);
+    else opened.delete(id);
+    try {
+      localStorage.setItem(OPEN_KEY, JSON.stringify([...opened]));
+    } catch {
+      /* queda en memoria */
+    }
+  }
+  if (typeof document !== 'undefined')
+    document.addEventListener(
+      'toggle',
+      e => e.target?.matches?.('details.prepared') && setOpen(e.target.dataset.id, e.target.open),
+      true,
+    );
   function card() {
     const items = list();
     return `<section class="card prepared-card"><div class="card-header"><h2>Encuentros preparados</h2><div class="actions">${button('Preparar encuentro', 'prep-new')}${typeof EncounterGeneratorUI !== 'undefined' ? button('Generar encuentro', 'encgen-open') : ''}</div></div><p class="small muted">Armalos antes de la sesión: se guardan en este dispositivo y los jugadores no ven nada hasta que tocás «¡Lanzar!».</p>${
@@ -115,7 +139,16 @@ const Encounters = (() => {
                 typeof MonsterUI !== 'undefined'
                   ? MonsterUI.difficultyLine({ entries: enc.monsters.map(m => ({ monsterId: m.monsterId })) })
                   : '';
-              return `<article class="prepared"><div class="prepared-head"><div><b>${esc(enc.name)}</b> <span class="tag">${esc(STYLES[enc.style]?.[1] || '')}</span>${enc.launched ? ' <span class="tag">Ya lanzado</span>' : ''}</div>${button('Editar', 'prep-edit', 'text-btn', `data-id="${enc.id}"`)}</div>${rows || '<p class="small muted">Sin criaturas todavía.</p>'}${enc.notes ? `<details class="section-space"><summary>Notas privadas del encuentro</summary><p class="encounter-notes">${esc(enc.notes)}</p></details>` : ''}${diff}<div class="actions">${button('Criatura del catálogo', 'prep-srd', 'secondary', `data-id="${enc.id}"`)}${typeof EncounterGeneratorUI !== 'undefined' ? button('Generar desde tablas', 'encgen-open', 'secondary', `data-id="${enc.id}"`) : ''}${button('Criatura propia', 'prep-custom', 'secondary', `data-id="${enc.id}"`)}${button('Ver animación', 'prep-preview', 'secondary', `data-id="${enc.id}"`)}${button('Eliminar', 'prep-delete', 'secondary', `data-id="${enc.id}"`)}${button(enc.launched ? 'Lanzar otra vez' : '¡Lanzar!', 'prep-launch', '', `data-id="${enc.id}" ${enc.monsters.length ? '' : 'disabled'}`)}</div></article>`;
+              // Resumen visible con el encuentro plegado: cuántas criaturas y qué tan difícil.
+              const d =
+                typeof MonsterUI !== 'undefined' && window.MonsterData && enc.monsters.length
+                  ? MonsterUI.difficulty({ entries: enc.monsters.map(m => ({ monsterId: m.monsterId })) })
+                  : null;
+              const n = enc.monsters.length;
+              const sum = [n ? `${n} ${n === 1 ? 'criatura' : 'criaturas'}` : 'sin criaturas', d?.label]
+                .filter(Boolean)
+                .join(' · ');
+              return `<details class="prepared" data-id="${enc.id}"${opened.has(enc.id) ? ' open' : ''}><summary class="prepared-head"><span class="prepared-title"><b>${esc(enc.name)}</b> <span class="tag">${esc(STYLES[enc.style]?.[1] || '')}</span>${enc.launched ? ' <span class="tag">Ya lanzado</span>' : ''}<span class="small muted prepared-sum${d ? ' difficulty ' + esc(d.label.toLowerCase()) : ''}">${esc(sum)}</span></span></summary><div class="prepared-body">${rows || '<p class="small muted">Sin criaturas todavía.</p>'}${enc.notes ? `<details class="section-space"><summary>Notas privadas del encuentro</summary><p class="encounter-notes">${esc(enc.notes)}</p></details>` : ''}${diff}<div class="actions">${button('Criatura del catálogo', 'prep-srd', 'secondary', `data-id="${enc.id}"`)}${typeof EncounterGeneratorUI !== 'undefined' ? button('Generar desde tablas', 'encgen-open', 'secondary', `data-id="${enc.id}"`) : ''}${button('Criatura propia', 'prep-custom', 'secondary', `data-id="${enc.id}"`)}${button('Ver animación', 'prep-preview', 'secondary', `data-id="${enc.id}"`)}${button('Editar', 'prep-edit', 'secondary', `data-id="${enc.id}"`)}${button('Eliminar', 'prep-delete', 'secondary', `data-id="${enc.id}"`)}${button(enc.launched ? 'Lanzar otra vez' : '¡Lanzar!', 'prep-launch', '', `data-id="${enc.id}" ${enc.monsters.length ? '' : 'disabled'}`)}</div></div></details>`;
             })
             .join('')
         : '<p class="muted">Todavía no preparaste encuentros.</p>'
@@ -246,7 +279,9 @@ const Encounters = (() => {
           fd => {
             const v = read(fd);
             if (!v.name) throw Error('Ponele un nombre.');
-            save([...list(), { id: 'enc-' + Date.now().toString(36), ...v, monsters: [], launched: false }]);
+            const id = 'enc-' + Date.now().toString(36);
+            setOpen(id, true);
+            save([...list(), { id, ...v, monsters: [], launched: false }]);
           },
           'Crear',
         ),
