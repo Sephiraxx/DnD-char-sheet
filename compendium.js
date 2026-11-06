@@ -62,7 +62,7 @@
     .filter(([key]) => OfficialContent.selectableSource(key))
     .map(([key, label]) => `<option value="${esc(key)}">${esc(label)}</option>`)
     .join('');
-  const requestedSource = bookSources.get(params.get('book')) || params.get('book');
+  const requestedSource = ContentIndex.canonicalSource(bookSources.get(params.get('book')) || params.get('book'));
   if (sources[requestedSource]) $('compendium-source').value = requestedSource;
   if (labels[params.get('kind')]) $('compendium-kind').value = params.get('kind');
   const counts = dedupe(rows).reduce((a, x) => ((a[x.kind] = (a[x.kind] || 0) + 1), a), {});
