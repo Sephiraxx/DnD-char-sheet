@@ -37,6 +37,8 @@ Los 37 libros de aventuras se ocultan en los selectores de personaje, mesa, DM, 
 
 ## Alcance y límites
 
+Las diez descripciones completas de Acquisitions Incorporated y The Book of Many Things proporcionadas después de la revisión están en `shared-spell-data.js`. Se traducen al castellano, con el texto original inglés disponible en el desplegable de cada conjuro. Actualizan los resúmenes, tiempos de lanzamiento, materiales, escuelas y listas de clase de los IDs existentes. Amigos rápidos escala el número de objetivos, Antagonizar conserva la alternativa cuando no se puede usar la reacción y Espíritu de la muerte incluye el bloque completo del espíritu segador con sus fórmulas variables y su turno inmediatamente después del lanzador. No se presentan como nuevas extracciones PDF ni modifican los contadores de los 63 documentos. Los cuatro puntos de entrada y la caché sin conexión comparten estos textos. Los efectos especiales y el control del espíritu se resuelven en mesa.
+
 Los contadores describen entradas por libro, incluidas reimpresiones, no criaturas únicas. La página de catálogo muestra cuántas entradas se extrajeron y cuántos bloques no pasaron la validación por documento. Un PDF revisado no equivale a automatizar cada regla de ese libro.
 
 Las estadísticas de criaturas, dados de daño y salvaciones compatibles funcionan con el combate existente. Rasgos complejos, variantes, tablas, condiciones especiales, elecciones internas y poderes no compatibles con el motor se consultan en su texto y se resuelven en mesa. Los bloques de variantes separados no modifican la criatura base. Los compañeros e invocaciones conservan sus notas de CA/PG variables; no se inventa una escala automática.

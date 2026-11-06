@@ -16,6 +16,7 @@ const LOGIC = [
   'book-content-data.js',
   'book-content.js',
   'official-content-data.js',
+  'shared-spell-data.js',
   'official-content.js',
   'equipment-data.js',
   'equipment.js',
