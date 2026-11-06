@@ -584,7 +584,7 @@ const actions = {
       names = { pp: 'Platino', gp: 'Oro', ep: 'Electro', sp: 'Plata', cp: 'Cobre' };
     modal(
       'Monedas y objetos · ' + targetName(id),
-      `<p class="small">Bolsa actual: <b>${esc(PV.goldText(x.gold))}</b></p><h3>Monedas</h3><div class="actions"><label class="check"><input type="radio" name="mode" value="give" checked>Dar</label><label class="check"><input type="radio" name="mode" value="take">Cobrar</label></div><div class="form-grid">${['pp', 'gp', 'ep', 'sp', 'cp'].map(k => field(names[k], k, '', 'number', 'min="0" max="999999"')).join('')}</div><p class="small">Al cobrar, la ficha paga con las monedas que tenga y recibe el cambio.</p><h3>Objeto para entregar</h3>${field('Nombre', 'item', '', 'text', 'maxlength="150" placeholder="Poción de curación"')}<div class="form-grid">${field('Cantidad', 'qty', 1, 'number', 'min="1" max="999"')}</div><label class="field">Notas<textarea name="notes" maxlength="2000"></textarea></label>`,
+      `<p class="small">Bolsa actual: <b>${esc(PV.goldText(x.gold))}</b></p><h3>Monedas</h3><div class="actions"><label class="check"><input type="radio" name="mode" value="give" checked>Dar</label><label class="check"><input type="radio" name="mode" value="take">Cobrar</label></div><div class="form-grid">${['pp', 'gp', 'ep', 'sp', 'cp'].map(k => field(names[k], k, '', 'number', 'min="0" max="999999"')).join('')}</div><p class="small">Al cobrar, la ficha paga con las monedas que tenga y recibe el cambio.</p><h3>Objeto para entregar</h3>${ItemRef.picker('item').replace(' required', '')}<div class="form-grid">${field('Cantidad', 'qty', 1, 'number', 'min="1" max="999"')}</div><label class="field">Notas<textarea name="notes" maxlength="2000"></textarea></label>`,
       async fd => {
         const coins = Object.fromEntries(['pp', 'gp', 'ep', 'sp', 'cp'].map(k => [k, int(fd, k, 0, 999999, 0)]));
         const item = String(fd.get('item')).trim(),
@@ -594,8 +594,18 @@ const actions = {
           if (!PV.pay(x.gold, coins)) throw Error('No le alcanza: tiene ' + PV.goldText(x.gold) + '.');
           await send('gold-remove', coins, id);
         } else if (any) await send('gold', coins, id);
+        const ref = ItemRef.fromForm(fd);
         if (item)
-          await send('item', { name: item, qty: int(fd, 'qty', 1, 999, 1), notes: String(fd.get('notes')).trim() }, id);
+          await send(
+            'item',
+            {
+              name: ref ? ItemRef.name(ref, item) : item,
+              qty: int(fd, 'qty', 1, 999, 1),
+              notes: String(fd.get('notes')).trim(),
+              ...(ref ? { ref } : {}),
+            },
+            id,
+          );
         toast('Listo.');
       },
       'Aplicar',

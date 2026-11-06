@@ -2,15 +2,7 @@
 const MagicUI = (() => {
   'use strict';
   const M = MagicItems;
-  const BASES = {
-    weapon: x => x.weapon,
-    armor: x => x.armor && x.armor.type !== 'shield',
-    shield: x => x.armor?.type === 'shield',
-  };
-  const baseItems = kind =>
-    Object.values(EquipmentData.items)
-      .filter(BASES[kind])
-      .sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  const baseItems = kind => M.bases(kind);
   const uid = () => 'magic-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
   // Tarjeta de Equipo.
@@ -43,7 +35,7 @@ const MagicUI = (() => {
             `<button class="pip ${i < c.spent ? 'spent' : ''}" data-action="magic-pip" data-id="${esc(x.id)}" data-pip="${i}" aria-label="${i < c.spent ? 'Recuperar una carga' : 'Gastar una carga'}">${i < c.spent ? '−' : '✦'}</button>`,
         ).join('')}</div></div>`
       : '';
-    return `<article class="magic-item ${on ? '' : 'inactive'} ${x.qty ? '' : 'empty'}"><div class="magic-head"><div><h3>${esc(x.name)}${x.qty > 1 ? ' ×' + x.qty : ''}</h3><p class="eyebrow">${esc(m.rarity || 'mágico')}${m.attune ? ' · requiere sintonía' + (typeof m.attune === 'string' ? ' (' + esc(m.attune) + ')' : '') : ''}</p></div><div class="actions">${attune}${m.heal && x.qty ? button('Tomar', 'magic-drink', '', `data-id="${esc(x.id)}"`) : ''}${button('Editar', 'item-edit', 'secondary', `data-id="${esc(x.id)}"`)}</div></div>${fx.length ? `<p class="small">${on ? '✓ ' : 'Sin sintonizar: '}${esc(fx.join(' · '))}</p>` : ''}${m.note ? `<p class="small muted">${esc(m.note)}</p>` : ''}${typeof OfficialContent !== 'undefined' ? OfficialContent.itemHtml(m.id) : ''}${charges}</article>`;
+    return `<article class="magic-item ${on ? '' : 'inactive'} ${x.qty ? '' : 'empty'}"><div class="magic-head"><div><h3>${esc(x.name)}${x.qty > 1 ? ' ×' + x.qty : ''}</h3><p class="eyebrow">${esc(m.rarity || 'mágico')}${m.attune ? ' · requiere sintonía' + (typeof m.attune === 'string' ? ' (' + esc(m.attune) + ')' : '') : ''}</p></div><div class="actions">${attune}${m.heal && x.qty ? button('Tomar', 'magic-drink', '', `data-id="${esc(x.id)}"`) : m.consumable && x.qty ? button('Usar', 'magic-use', '', `data-id="${esc(x.id)}"`) : ''}${button('Editar', 'item-edit', 'secondary', `data-id="${esc(x.id)}"`)}</div></div>${fx.length ? `<p class="small">${on ? '✓ ' : 'Sin sintonizar: '}${esc(fx.join(' · '))}</p>` : ''}${m.note ? `<p class="small muted">${esc(m.note)}</p>` : ''}${typeof OfficialContent !== 'undefined' ? OfficialContent.itemHtml(m.id) : ''}${charges}</article>`;
   }
 
   // Selector del catálogo.
@@ -70,6 +62,7 @@ const MagicUI = (() => {
           it.base === 'weapon' ? 'Arma' : it.base === 'shield' ? 'Escudo' : 'Armadura',
           'base',
           baseItems(it.base).map(x => [x.id, x.name]),
+          M.baseFor(it),
         )
       : '';
     const resist =
@@ -84,25 +77,14 @@ const MagicUI = (() => {
       it.name,
       `<p class="small">${esc(M.effects(M.fromCatalog(it.id, { resist: 'fire' })).join(' · '))}</p>${it.note ? `<p class="small muted">${esc(it.note)}</p>` : ''}<div class="form-grid">${base}${resist}${field('Cantidad', 'qty', 1, 'number', 'min="1" max="99" required')}</div>${typeof OfficialContent !== 'undefined' ? OfficialContent.itemHtml(it.id) : ''}`,
       fd => {
-        const m = M.fromCatalog(id, { resist: fd.get('resist') });
-        const b = it.base ? EquipmentData.items[fd.get('base')] : null;
-        const n = it.weapon || it.armor || it.shield,
-          name = !b ? it.name : n && /\+\d$/.test(it.name) ? `${b.name} +${n}` : `${it.name} (${b.name})`;
-        const qty = Math.max(1, Math.min(99, Number(fd.get('qty')) || 1));
-        commit('Objeto mágico: ' + name, s => {
-          const rowData = {
-            id: uid(),
-            name,
-            qty,
-            category: b ? b.category : it.heal ? 'Consumibles' : 'Tesoro',
-            notes: '',
-            location: 'Encima',
-            weight: b ? b.weight : null,
-            magic: m,
-          };
-          if (b) rowData.equipmentId = b.id;
-          if (it.base === 'weapon')
-            rowData.attack = { ability: 'auto', proficient: 'auto', magic: m.weapon || 0, extra: m.extra || '' };
+        if (it.resist === 'choose' && !fd.get('resist')) throw Error('Elegí el tipo de daño de la resistencia.');
+        const rowData = M.inventoryRow(id, {
+          base: fd.get('base') || '',
+          resist: fd.get('resist') || '',
+          qty: fd.get('qty'),
+          uid: uid(),
+        });
+        commit('Objeto mágico: ' + rowData.name, s => {
           s.inventory.push(rowData);
         });
         toast(it.attune ? `${it.name} agregado. Sintonizalo para que funcione.` : `${it.name} agregado.`);
@@ -213,6 +195,19 @@ const MagicUI = (() => {
     toast(`${x.name}: ${x.magic.heal} → ${rolls.join(' + ')} + ${m[3]} = ${total} PG.`);
   }
 
+  // Pergaminos, aceites y pociones sin curación: se gastan y el efecto se lee en el texto del objeto.
+  function use(id) {
+    const x = find(id);
+    if (!x.qty) throw Error('No te quedan.');
+    commit(`${x.name}: usado`, s => {
+      const r = s.inventory.find(y => y.id === id);
+      r.qty = Math.max(0, r.qty - 1);
+    });
+    toast(
+      `Usaste ${x.name}. Quedan ${state.inventory.find(y => y.id === id)?.qty ?? 0}. Su efecto está en el texto del objeto.`,
+    );
+  }
+
   // Cargas como fichas en la vista compacta de combate.
   function pills() {
     return M.active(state)
@@ -233,6 +228,7 @@ const MagicUI = (() => {
       'magic-pip': e => pip(e.dataset.id, Number(e.dataset.pip)),
       'magic-charges': e => charges(e.dataset.id),
       'magic-drink': e => drink(e.dataset.id),
+      'magic-use': e => use(e.dataset.id),
     });
     document.addEventListener('input', e => {
       if (e.target.id !== 'magic-search') return;

@@ -330,6 +330,17 @@ const TableUI = (() => {
           .trim()
           .slice(0, 150);
         if (!name) return '';
+        // Del catálogo: llega con sus efectos, su arma o armadura base y sus cargas.
+        const made =
+          typeof ItemRef !== 'undefined'
+            ? ItemRef.rows(p.ref, { qty: n(p.qty) || 1, notes: String(p.notes || ''), uid })
+            : null;
+        if (made?.length) {
+          commit('DM: objeto recibido ' + made[0].name, s => {
+            for (const r of made) s.inventory.push(r);
+          });
+          return `El DM te entregó ${made[0].name}${made[0].magic?.attune ? '. Sintonizalo en Equipo para que funcione' : ''}.`;
+        }
         commit('DM: objeto recibido ' + name, s =>
           s.inventory.push({
             id: uid(),
