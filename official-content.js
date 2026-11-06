@@ -24,6 +24,8 @@
     sourceKey: row.sourceKey || row.source,
     language: row.language,
     rulesLanguage: row.rulesLanguage,
+    originalText: row.originalText,
+    originalHigher: row.originalHigher,
     sourcePage: row.sourcePage,
     spellDetails:
       row.canonicalId && row.time
@@ -78,6 +80,38 @@
       const spellRank = spell => rank(spell) + (spell.sourceKey === primarySource ? 100000 : 0);
       if (!previous || spellRank(row) > spellRank(previous))
         spellTexts.set(id, { ...reference(row), higher: row.higher || '', language: row.language });
+    }
+    // These references were supplied directly, rather than extracted from the PDF allowlist.
+    for (const row of target.SharedSpellData || []) {
+      const spell = target.Catalog.spells.find(s => s.id === row.canonicalId);
+      if (!spell || spell.english !== row.english || spell.sourceKey !== row.sourceKey) continue;
+      const { canonicalId, english, book, summary, text, higher, originalText, originalHigher, ...metadata } = row;
+      Object.assign(spell, metadata, {
+        text: summary,
+        brief: summary,
+        castingTimeEs: row.castingTimeEs || (row.time === 'Acción' ? '1 acción' : row.time),
+        ritual: false,
+        bard: row.classes.includes('bard'),
+        optionalBard: false,
+        referenceOnly: false,
+        summaryEs: true,
+        higherLevels: Boolean(higher),
+        saveAbility: row.saveAbility || [],
+        attackKind: row.attackKind || [],
+      });
+      target.ClassData.spellClasses[canonicalId] = [...row.classes];
+      spellTexts.set(canonicalId, {
+        ...reference({
+          ...row,
+          name: spell.name,
+          time: spell.castingTimeEs,
+          components: row.components + (row.materialEs ? ' (' + row.materialEs + ')' : ''),
+          language: 'es',
+          rulesLanguage: 'es',
+          ritual: false,
+        }),
+        higher,
+      });
     }
     for (const [id, book] of spellTexts) {
       const spell = target.Catalog.spells.find(s => s.id === id);
@@ -152,7 +186,10 @@
     const spellHeader = spell
       ? `<p class="small library-text">Tiempo de lanzamiento: ${esc(spell.time)}${spell.ritual ? ' (ritual)' : ''}\nAlcance: ${esc(spell.range)}\nComponentes: ${esc(spell.components)}\nDuración: ${esc(spell.duration)}</p>`
       : '';
-    return `<details class="library-feature"><summary>Reglas del libro · ${esc(row.book)}${location}${row.rulesLanguage === 'en' ? ' · texto en inglés' : ''}</summary>${spellHeader}${row.variantNote ? '<p class="small">' + esc(row.variantNote) + '</p>' : ''}${row.variants ? '<p class="small">' + row.variants.map(v => esc(v.name) + ' · ' + esc(v.rarity)).join('<br>') + '</p>' : ''}${row.attunementRequirement ? '<p class="small">Sintonización: ' + esc(row.attunementRequirement) + '</p>' : ''}<p class="small library-text">${esc(row.text)}${row.higher ? '\n\nA niveles superiores: ' + esc(row.higher) : ''}</p></details>`;
+    const original = row.originalText
+      ? `<details><summary>Texto original en inglés</summary><p class="small library-text">${esc(row.originalText)}${row.originalHigher ? '\n\nAt Higher Levels: ' + esc(row.originalHigher) : ''}</p></details>`
+      : '';
+    return `<details class="library-feature"><summary>Reglas del libro · ${esc(row.book)}${location}${row.rulesLanguage === 'en' ? ' · texto en inglés' : ''}</summary>${spellHeader}${row.variantNote ? '<p class="small">' + esc(row.variantNote) + '</p>' : ''}${row.variants ? '<p class="small">' + row.variants.map(v => esc(v.name) + ' · ' + esc(v.rarity)).join('<br>') + '</p>' : ''}${row.attunementRequirement ? '<p class="small">Sintonización: ' + esc(row.attunementRequirement) + '</p>' : ''}<p class="small library-text">${esc(row.text)}${row.higher ? '\n\nA niveles superiores: ' + esc(row.higher) : ''}</p>${original}</details>`;
   }
   root.OfficialContent = {
     apply,
