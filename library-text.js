@@ -71,7 +71,11 @@ const LibraryText = (() => {
           /[&<>"']/g,
           c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
         );
-      const where = [x.book ? '«' + x.book + '»' : 'tu biblioteca', x.page ? 'pág. ' + x.page : '']
+      const where = [
+        x.book ? '«' + x.book + '»' : 'tu biblioteca',
+        x.page ? 'PDF pág. ' + x.page : x.sourcePage ? 'ed. inglesa pág. ' + x.sourcePage : '',
+        x.rulesLanguage === 'en' ? 'texto en inglés' : '',
+      ]
         .filter(Boolean)
         .join(', ');
       return `<details class="library-feature"${open ? ' open' : ''}><summary>Texto del libro (${e(where)})</summary><p class="small library-text">${e(x.text)}</p></details>`;

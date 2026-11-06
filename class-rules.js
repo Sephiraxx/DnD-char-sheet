@@ -550,7 +550,9 @@
     const cls = info(s)
         .features.filter(x => !x.optional || s.optionalClassFeatures)
         .map(f => [f, 'class', id(s)]),
-      subs = (sub(s)?.features || []).map(f => [f, 'sub', sub(s).id]);
+      subs = (sub(s)?.features || [])
+        .filter(f => !f.optional || (s.optionalClassFeatures && (!root.Campaign || root.Campaign.enabled(s, f))))
+        .map(f => [f, 'sub', sub(s).id]);
     return [...cls, ...subs]
       .filter(([x]) => x.level <= level)
       .map(([f, scope, owner]) => {
