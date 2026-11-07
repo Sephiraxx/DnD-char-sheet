@@ -88,3 +88,57 @@ test('todas las fichas del dispositivo se copian y se pueden traer a otro', asyn
   await h.Cloud.deleteBackup(id);
   assert.equal(db.backups.length, 1);
 });
+
+const tick = () => new Promise(r => setTimeout(r, 5));
+test('«Subir ficha» sube lo cambiado acá, trae lo cambiado en otro dispositivo y pregunta si cambió en los dos', async () => {
+  const db = {},
+    a = setup(db);
+  a.localStorage.setItem('dnd-cloud-auth', '{}');
+  const s = a.Rules.validate(fixture('wizard-3.json'));
+  const id = a.CharacterStorage.add(s);
+  const other = a.CharacterStorage.add({ ...s, name: 'Otra' });
+  // Primera vez: no están en la nube, se suben las dos.
+  let r = await a.Cloud.syncBackups();
+  assert.equal(r.up.length, 2);
+  assert.equal(db.backups.length, 2);
+  // Sin cambios: nada que hacer.
+  r = await a.Cloud.syncBackups();
+  assert.deepEqual([r.up.length, r.down.length, r.conflicts.length, r.same], [0, 0, 0, 2]);
+
+  // Otro dispositivo trae la ficha y la cambia.
+  await tick();
+  const b = setup(db);
+  b.localStorage.setItem('dnd-cloud-auth', '{}');
+  await b.Cloud.restoreBackup(id);
+  b.Cloud.backup('dnd-character-' + id, { ...s, name: 'Lyra en el teléfono', hp: 3 });
+  await b.Cloud.flushBackups();
+
+  // En el primero, sin cambios propios: se trae la versión nueva.
+  r = await a.Cloud.syncBackups(id);
+  assert.deepEqual([...r.down], ['Lyra en el teléfono']);
+  assert.equal(JSON.parse(a.localStorage.getItem('dnd-character-' + id)).hp, 3);
+  assert.equal(a.CharacterStorage.list().find(x => x.id === id).name, 'Lyra en el teléfono');
+
+  // Cambio acá (sin conexión, no llegó a subirse): «Subir ficha» lo sube.
+  await tick();
+  a.localStorage.setItem('dnd-character-' + other, JSON.stringify({ ...s, name: 'Otra', hp: 7 }));
+  a.Cloud.backup('dnd-character-' + other, { ...s, name: 'Otra', hp: 7 });
+  r = await a.Cloud.syncBackups(other);
+  assert.deepEqual([...r.up], ['Otra']);
+  assert.equal(db.backups.find(x => x.local_id === other).data.hp, 7);
+
+  // Cambió en los dos lados: conflicto; se resuelve quedándose con la de la nube.
+  await tick();
+  b.Cloud.backup('dnd-character-' + id, { ...s, name: 'Lyra en el teléfono', hp: 1 });
+  await b.Cloud.flushBackups();
+  a.localStorage.setItem('dnd-character-' + id, JSON.stringify({ ...s, name: 'Lyra en el teléfono', hp: 9 }));
+  a.Cloud.backup('dnd-character-' + id, { ...s, name: 'Lyra en el teléfono', hp: 9 });
+  r = await a.Cloud.syncBackups();
+  assert.equal(r.conflicts.length, 1);
+  assert.equal(r.conflicts[0].id, id);
+  assert.equal(db.backups.find(x => x.local_id === id).data.hp, 1, 'no pisa la nube sin preguntar');
+  await a.Cloud.resolveBackup(id, 'cloud');
+  assert.equal(JSON.parse(a.localStorage.getItem('dnd-character-' + id)).hp, 1);
+  r = await a.Cloud.syncBackups();
+  assert.equal(r.conflicts.length, 0);
+});

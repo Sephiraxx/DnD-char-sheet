@@ -34,7 +34,7 @@ const AccountUI = (() => {
     return `<div class="cloud-backup"><h3>Copia en la nube</h3>${
       opening
         ? ''
-        : `<p class="small">Cada cambio de tus fichas se copia solo a tu cuenta, también las que no están en una mesa. ${mine.length ? `Este dispositivo: <b>${copied} de ${mine.length}</b> ficha(s) copiada(s) · última copia ${ago(last)}.` : 'Este dispositivo todavía no tiene fichas.'}</p><div class="actions"><button type="button" class="button secondary" data-backup="now">Copiar ahora</button></div>`
+        : `<p class="small">Cada cambio de tus fichas se copia solo a tu cuenta, también las que no están en una mesa. ${mine.length ? `Este dispositivo: <b>${copied} de ${mine.length}</b> ficha(s) copiada(s) · última copia ${ago(last)}.` : 'Este dispositivo todavía no tiene fichas.'}</p><p class="small muted">«Sincronizar» deja cada ficha con su versión más nueva: sube lo que cambiaste acá y trae lo que cambiaste en otro dispositivo.</p><div class="actions"><button type="button" class="button secondary" data-sync-all>Sincronizar fichas</button></div>`
     }${
       away.length
         ? `<p class="small section-space">${opening ? 'Fichas guardadas en tu cuenta:' : 'En la nube, pero no en este dispositivo:'}</p><div class="party-list">${away
@@ -196,17 +196,73 @@ const AccountUI = (() => {
       }
     };
   }
+  const when = iso => new Date(iso).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
+  const notify = msg => (typeof toast === 'function' ? toast(msg) : alert(msg));
+  // Sincroniza con la nube (todas las fichas, o solo una) y pregunta qué versión quedarse si cambió en los dos lados.
+  async function sync(only = '') {
+    const r = await Cloud.syncBackups(only);
+    const parts = [
+      r.up.length ? `subida(s): ${r.up.join(', ')}` : '',
+      r.down.length ? `traída(s) de la nube: ${r.down.join(', ')}` : '',
+    ].filter(Boolean);
+    if (!r.conflicts.length) {
+      notify(
+        parts.length ? 'Listo · ' + parts.join(' · ') : 'Todo al día: este dispositivo y la nube tienen lo mismo.',
+      );
+      if (r.activeChanged) setTimeout(() => location.reload(), 900);
+      else refill();
+      return;
+    }
+    const pick = c =>
+      `<fieldset class="sync-conflict"><legend><b>${esc(c.name)}</b> cambió acá y en otro dispositivo</legend><label class="check"><input type="radio" name="keep-${esc(c.id)}" value="here" checked>Quedarme con la de este dispositivo (se sube)</label><label class="check"><input type="radio" name="keep-${esc(c.id)}" value="cloud">Usar la de la nube${c.cloudName && c.cloudName !== c.name ? ` («${esc(c.cloudName)}»)` : ''} · ${esc(when(c.cloudAt))}</label></fieldset>`;
+    const run = async fd => {
+      let reload = r.activeChanged;
+      for (const c of r.conflicts) reload = (await Cloud.resolveBackup(c.id, fd.get('keep-' + c.id))) || reload;
+      notify('Fichas sincronizadas.');
+      if (reload) setTimeout(() => location.reload(), 900);
+      else refill();
+    };
+    const html = `${parts.length ? `<p class="small">${esc(parts.join(' · '))}.</p>` : ''}<p>Elegí qué versión queda. La otra se pierde.</p>${r.conflicts.map(pick).join('')}`;
+    if (typeof modal === 'function')
+      modal(
+        'Elegí la versión de cada ficha',
+        html,
+        fd => {
+          run(fd).catch(err => notify(err.message));
+        },
+        'Sincronizar',
+      );
+    else {
+      const fd = new FormData();
+      for (const c of r.conflicts)
+        fd.set('keep-' + c.id, confirm(`«${c.name}» cambió en los dos lados. ¿Usar la de la nube?`) ? 'cloud' : 'here');
+      await run(fd);
+    }
+  }
   document.addEventListener('click', async e => {
-    const t = e.target.closest('[data-backup], [data-backup-restore], [data-backup-delete]');
+    const t = e.target.closest('[data-sync-all], [data-sheet-sync]');
+    if (!t) return;
+    t.disabled = true;
+    const label = t.textContent;
+    t.textContent = 'Sincronizando…';
+    try {
+      const key = CharacterStorage.activeKey();
+      await sync(
+        t.dataset.sheetSync !== undefined && key ? (key.startsWith('dnd-character-') ? key.slice(14) : 'darien') : '',
+      );
+    } catch (err) {
+      notify(err.message);
+    }
+    t.disabled = false;
+    t.textContent = label;
+  });
+  document.addEventListener('click', async e => {
+    const t = e.target.closest('[data-backup-restore], [data-backup-delete]');
     if (!t) return;
     const box = t.closest('.cloud-backup');
     t.disabled = true;
     try {
-      if (t.dataset.backup === 'now') {
-        const n = await Cloud.backupAll();
-        if (typeof toast === 'function') toast(`Copia en la nube: ${n} ficha(s) actualizada(s).`);
-        refill();
-      } else if (t.dataset.backupRestore) {
+      if (t.dataset.backupRestore) {
         const id = await Cloud.restoreBackup(t.dataset.backupRestore);
         CharacterStorage.activate(id);
       } else if (t.dataset.backupDelete) {
@@ -255,5 +311,5 @@ const AccountUI = (() => {
     }
     refill();
   });
-  return { card, refill };
+  return { card, refill, sync };
 })();

@@ -502,8 +502,26 @@
       localStorage.setItem(BACKUP_AT, JSON.stringify({ ...backupTimes(), [id]: at }));
     } catch {}
   }
+  // Fichas cambiadas en este dispositivo desde su última copia (sobrevive a recargar la página).
+  const DIRTY = 'dnd-backup-dirty-v1';
+  function dirtySet() {
+    try {
+      return JSON.parse(localStorage.getItem(DIRTY) || '{}') || {};
+    } catch {
+      return {};
+    }
+  }
+  function setDirty(id, on) {
+    try {
+      const d = dirtySet();
+      if (on) d[id] = true;
+      else delete d[id];
+      localStorage.setItem(DIRTY, JSON.stringify(d));
+    } catch {}
+  }
   function backup(key, state) {
     if (!hasSession() || !key || !state) return;
+    setDirty(localId(key), true);
     backupQueue.set(localId(key), state);
     clearTimeout(backupTimer);
     backupTimer = setTimeout(() => flushBackups().catch(() => {}), 4000);
@@ -526,7 +544,10 @@
           .upsert(batch, { onConflict: 'owner_id,local_id' })
           .select('local_id, updated_at'),
       );
-      for (const r of rows || []) markBackup(r.local_id, r.updated_at);
+      for (const r of rows || []) {
+        markBackup(r.local_id, r.updated_at);
+        if (!backupQueue.has(r.local_id)) setDirty(r.local_id, false);
+      }
       dispatchEvent(new CustomEvent('cloud-backup'));
       return batch.length;
     } catch (e) {
@@ -545,6 +566,85 @@
       } catch {}
     }
     return flushBackups();
+  }
+  // «Subir ficha»: deja cada ficha igual en este dispositivo y en la nube, con la versión más nueva.
+  // - Solo cambió acá (o no está en la nube) → se sube.
+  // - Solo cambió en la nube (otro dispositivo) → se trae.
+  // - Cambió en los dos → conflicto: se devuelve para que la persona elija.
+  // only: id local de una sola ficha. Devuelve { up, down, same, conflicts, activeChanged }.
+  async function syncBackups(only = '') {
+    if (!(await currentUser()))
+      throw Error('Creá una cuenta o conectate a una mesa para guardar tus fichas en la nube.');
+    // Los cambios pendientes de subir quedan marcados como «cambiados acá»; se deciden abajo.
+    clearTimeout(backupTimer);
+    for (const id of backupQueue.keys()) setDirty(id, true);
+    backupQueue = new Map();
+    let q = (await api()).from('backups').select('local_id, name, data, updated_at');
+    if (only) q = q.eq('local_id', only);
+    const cloud = new Map(check(await q).map(r => [r.local_id, r]));
+    const times = backupTimes(),
+      dirty = dirtySet(),
+      active = root.CharacterStorage.activeKey(),
+      out = { up: [], down: [], same: 0, conflicts: [], activeChanged: false };
+    const norm = d => {
+      try {
+        return JSON.stringify(root.Rules.validate(JSON.parse(JSON.stringify(d))));
+      } catch {
+        return JSON.stringify(d);
+      }
+    };
+    for (const x of root.CharacterStorage.list()) {
+      const id = localId(x.key);
+      if (only && id !== only) continue;
+      let local;
+      try {
+        local = JSON.parse(localStorage.getItem(x.key));
+      } catch {
+        continue;
+      }
+      const r = cloud.get(id);
+      if (!r) {
+        out.up.push([id, local]);
+        continue;
+      }
+      if (norm(local) === norm(r.data)) {
+        markBackup(id, r.updated_at);
+        setDirty(id, false);
+        out.same++;
+        continue;
+      }
+      const known = times[id],
+        cloudNewer = !known || new Date(r.updated_at) > new Date(known),
+        changedHere = !known || !!dirty[id];
+      if (!cloudNewer) out.up.push([id, local]);
+      else if (!changedHere) {
+        root.CharacterStorage.replace(id, r.data);
+        markBackup(id, r.updated_at);
+        setDirty(id, false);
+        out.down.push(r.data.name || x.name);
+        if (x.key === active) out.activeChanged = true;
+      } else out.conflicts.push({ id, name: x.name, cloudName: r.data?.name || r.name, cloudAt: r.updated_at });
+    }
+    for (const [id, data] of out.up) backupQueue.set(id, data);
+    if (backupQueue.size) await flushBackups();
+    out.up = out.up.map(([, d]) => d.name || 'Sin nombre');
+    return out;
+  }
+  // Conflicto resuelto por la persona: 'here' sube la de este dispositivo, 'cloud' la reemplaza por la de la nube.
+  async function resolveBackup(id, keep) {
+    const x = root.CharacterStorage.list().find(e => localId(e.key) === id);
+    if (!x) throw Error('Esa ficha ya no está en este dispositivo.');
+    if (keep === 'here') {
+      backupQueue.set(id, JSON.parse(localStorage.getItem(x.key)));
+      await flushBackups();
+      return false;
+    }
+    const r = check(await (await api()).from('backups').select('data, updated_at').eq('local_id', id).maybeSingle());
+    if (!r) throw Error('Esa copia ya no está en la nube.');
+    root.CharacterStorage.replace(id, r.data);
+    markBackup(id, r.updated_at);
+    setDirty(id, false);
+    return x.key === root.CharacterStorage.activeKey();
   }
   async function backups() {
     if (!(await currentUser())) return [];
@@ -1087,6 +1187,8 @@
     restore,
     backup,
     backupAll,
+    syncBackups,
+    resolveBackup,
     backupMissing,
     flushBackups,
     backups,

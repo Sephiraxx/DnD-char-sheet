@@ -79,6 +79,16 @@
     localStorage.removeItem(item.key + '-previous');
     localStorage.removeItem(item.key + '-level-draft');
   }
+  // Reemplaza los datos de una ficha (por ejemplo, con su copia más nueva de la nube).
+  function replace(id, s) {
+    const entries = list(),
+      item = entries.find(x => x.id === id);
+    if (!item) throw Error('Personaje no encontrado.');
+    const data = root.Rules.validate(s);
+    localStorage.setItem(item.key, JSON.stringify(data));
+    if (data.name && data.name !== item.name)
+      localStorage.setItem(INDEX, JSON.stringify(entries.map(x => (x.id === id ? { ...x, name: data.name } : x))));
+  }
   // Borra el personaje abierto y abre otro (o la portada si no queda ninguno).
   function removeActive() {
     const entries = list(),
@@ -92,5 +102,5 @@
     else localStorage.removeItem(ACTIVE);
     location.reload();
   }
-  root.CharacterStorage = { list, activeKey, add, activate, remove, removeActive };
+  root.CharacterStorage = { list, activeKey, add, activate, remove, removeActive, replace };
 })(typeof window !== 'undefined' ? window : globalThis);

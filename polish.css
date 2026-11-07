@@ -1992,3 +1992,11 @@ button.cc-stat {
   margin: 10px auto 0;
   font-size: 0.8rem;
 }
+
+/* Conflicto al sincronizar: una ficha cambió en este dispositivo y en otro. */
+.sync-conflict {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin: 12px 0;
+}
