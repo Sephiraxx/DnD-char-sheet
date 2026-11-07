@@ -596,7 +596,7 @@
 
   async function party(campaignId) {
     const c = await api();
-    await user();
+    const me = await user();
     const [campaign, members, characters] = await Promise.all([
       c.from('campaigns').select('id, name, code, dm_id, settings').eq('id', campaignId).maybeSingle().then(check),
       c.from('members').select('user_id, role, display_name, joined_at').eq('campaign_id', campaignId).then(check),
@@ -633,7 +633,17 @@
         .maybeSingle()
         .then(r => r.data || null),
     ]);
-    return { campaign, members, characters, loot, homebrew, combatants, secrets, encounter };
+    return {
+      campaign,
+      members,
+      characters,
+      loot,
+      homebrew,
+      combatants,
+      secrets,
+      encounter,
+      viewerIsDM: campaign.dm_id === me.id,
+    };
   }
   async function events(campaignId, limit = 60) {
     return check(

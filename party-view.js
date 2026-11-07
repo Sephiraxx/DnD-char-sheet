@@ -206,8 +206,14 @@
         return `<b>DM</b>: ${esc(target)} puede repetir una tirada`;
       case 'level':
         return `<b>DM</b>: ${esc(target)} puede subir a nivel ${esc(p.level || '')}`;
-      case 'turn':
-        return `<b>Iniciativa</b> · ronda ${esc(p.round || 1)}: turno de ${esc(p.name)}`;
+      case 'turn': {
+        const actor = party?.combatants?.find(c => c.id === p.combatantId),
+          hidden =
+            p.hidden ||
+            actor?.hidden ||
+            (p.combatantId && Array.isArray(party?.combatants) && !actor && !party.viewerIsDM);
+        return `<b>Iniciativa</b> · ronda ${esc(p.round || 1)}: ${hidden ? (party?.viewerIsDM && actor ? 'turno de ' + esc(actor.name) : 'turno oculto') : 'turno de ' + esc(p.name)}`;
+      }
       case 'combat-end':
         return '<b>Iniciativa</b> · fin del combate';
       default:

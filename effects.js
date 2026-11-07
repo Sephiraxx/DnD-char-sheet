@@ -25,7 +25,7 @@
     return Array.isArray(s.timedEffects) ? s.timedEffects : [];
   }
   // `link` identifica un efecto lanzado por otro (personaje:conjuro): relanzarlo lo reemplaza.
-  function add(s, { name, rounds = null, concentration = null, from = 'self', link = null }) {
+  function add(s, { name, rounds = null, concentration = null, from = 'self', link = null, casting = null }) {
     const id = 'fx-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     s.timedEffects = [
       ...list(s).filter(x => !(concentration && x.concentration === concentration) && !(link && x.link === link)),
@@ -36,15 +36,64 @@
         concentration,
         from,
         ...(link ? { link: String(link).slice(0, 120) } : {}),
+        ...(casting ? { casting: structuredClone(casting) } : {}),
       },
     ].slice(-30);
   }
   // Al lanzar un conjuro con duración se anota su efecto, ligado a la concentración si corresponde.
-  function fromSpell(s, sp) {
+  function fromSpell(s, sp, opts = {}) {
     const rounds = roundsFrom(sp.duration);
     if (rounds === 0 || rounds === 1) return;
     if (!sp.concentration && rounds === null) return;
-    add(s, { name: sp.name, rounds, concentration: sp.concentration ? sp.id : null });
+    add(s, {
+      name: sp.name,
+      rounds,
+      concentration: sp.concentration ? sp.id : null,
+      ...(sp.id === 'heat-metal'
+        ? {
+            casting: {
+              spellId: sp.id,
+              slot: opts.slot || sp.level,
+              ability: sp.castAbility || root.Classes.casting(root.Classes.spellCaster(s, sp.id)).ability,
+              turn: root.Combat.data(s).active ? root.Combat.data(s).turn : null,
+              object: String(opts.object || '').slice(0, 150),
+            },
+          }
+        : {}),
+    });
+  }
+  function repeatInfo(s) {
+    if (s.concentration !== 'heat-metal') return null;
+    const effect = list(s).find(x => x.from === 'self' && x.concentration === 'heat-metal' && x.rounds !== 0),
+      sp = root.Rules.allSpells(s).find(sp => sp.id === 'heat-metal');
+    if (!effect || !sp) return null;
+    return {
+      effect,
+      sp,
+      slot: effect.casting?.slot || null,
+      ability: effect.casting?.ability || root.Classes.casting(root.Classes.spellCaster(s, sp.id)).ability,
+      object: effect.casting?.object || '',
+    };
+  }
+  function repeatBlock(s) {
+    const info = repeatInfo(s);
+    if (!info) return 'Calentar metal ya no está activo.';
+    const blocked = root.Combat.blocked(s, 'bonus');
+    if (blocked) return blocked;
+    const c = root.Combat.data(s);
+    if (c.active && info.effect.casting?.turn === c.turn) return 'Podés repetir el daño desde tu siguiente turno.';
+    return '';
+  }
+  function repeat(s, legacySlot) {
+    const reason = repeatBlock(s);
+    if (reason) throw Error(reason);
+    const info = repeatInfo(s),
+      slot = info.slot || legacySlot;
+    if (!Number.isInteger(slot) || slot < 2 || slot > 9) throw Error('Confirmá el nivel original de Calentar metal.');
+    if (!info.slot)
+      info.effect.casting = { spellId: info.sp.id, slot, ability: info.ability, turn: null, object: info.object };
+    root.Combat.use(s, 'bonus', 'Calentar metal · repetir daño');
+    return { sp: { ...info.sp, castAbility: info.ability }, slot, object: info.object };
   }
   // Al empezar tu turno pasa una ronda. Devuelve los nombres de los efectos que terminaron.
   function tick(s) {
@@ -54,6 +103,10 @@
       x.rounds--;
       if (x.rounds > 0) return true;
       ended.push(x.name);
+      if (x.concentration && x.concentration === s.concentration) {
+        s.concentration = null;
+        if (root.Combat) root.Combat.data(s).checks = [];
+      }
       return false;
     });
     return ended;
@@ -85,10 +138,20 @@
             (x.rounds === null || (Number.isInteger(x.rounds) && x.rounds >= 0 && x.rounds <= 100000)) &&
             (x.concentration === null || typeof x.concentration === 'string') &&
             (x.link === undefined || (typeof x.link === 'string' && x.link.length <= 120)) &&
-            ['self', 'dm'].includes(x.from),
+            ['self', 'dm'].includes(x.from) &&
+            (x.casting === undefined ||
+              (x.casting &&
+                x.casting.spellId === 'heat-metal' &&
+                Number.isInteger(x.casting.slot) &&
+                x.casting.slot >= 2 &&
+                x.casting.slot <= 9 &&
+                ['str', 'dex', 'con', 'int', 'wis', 'cha'].includes(x.casting.ability) &&
+                (x.casting.turn === null || (Number.isInteger(x.casting.turn) && x.casting.turn >= 0)) &&
+                typeof x.casting.object === 'string' &&
+                x.casting.object.length <= 150)),
         ))
     );
   }
-  root.Effects = { roundsFrom, list, add, fromSpell, tick, sync, remaining, valid };
+  root.Effects = { roundsFrom, list, add, fromSpell, repeatInfo, repeatBlock, repeat, tick, sync, remaining, valid };
   if (typeof module !== 'undefined') module.exports = root.Effects;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -1554,7 +1554,7 @@
   function card() {
     const el = $('#board-card'),
       t = S.tokens.find(x => x.id === S.sel && x.map_id === S.mapId);
-    if (!t || TV) {
+    if (!t || TV || (playerView() && !visibleTokens().some(x => x.id === t.id))) {
       el.hidden = true;
       return;
     }
@@ -1571,8 +1571,15 @@
     const el = $('#board-turn'),
       enc = S.party?.encounter;
     const cur = enc?.active ? (S.party.combatants || []).find(c => c.id === enc.current_id) : null;
-    el.hidden = !cur;
-    if (cur) el.innerHTML = `Ronda ${enc.round} · turno de <b>${esc(cur.hidden && playerView() ? '¿?' : cur.name)}</b>`;
+    const visible =
+      cur &&
+      (!playerView() ||
+        (!cur.hidden &&
+          visibleTokens().some(
+            t => t.combatant_id === cur.id || (cur.character_id && t.character_id === cur.character_id),
+          )));
+    el.hidden = !visible;
+    el.innerHTML = visible ? `Ronda ${enc.round} · turno de <b>${esc(cur.name)}</b>` : '';
   }
 
   // ---------- Acciones ----------

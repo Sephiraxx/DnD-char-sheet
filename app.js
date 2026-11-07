@@ -463,6 +463,16 @@ function cast(id, ritual = false) {
     html +=
       field('Quién recibe la ventaja (opcional)', 'ventaja', '', 'text', 'maxlength="100"') +
       '<p class="small">Otra criatura que veas a 60 pies, incluido vos. El enemigo repite el d20 exitoso y usa el menor: podría seguir teniendo éxito.</p>';
+  if (sp.id === 'heat-metal' && !ritual)
+    html +=
+      field(
+        'Objeto metálico calentado (opcional)',
+        'heatObject',
+        '',
+        'text',
+        'maxlength="150" placeholder="La coraza del guardia"',
+      ) +
+      '<p class="small">El daño inicial es automático. En tus turnos siguientes podés repetirlo con una acción adicional, sin otro espacio, mientras mantengas concentración y siga siendo el mismo objeto.</p>';
   if (!ritual && MM) html += MM.castFields(state, sp);
   if (onlyQuick)
     html += `<div class="banner"><p>${esc(reason)} Solo podés lanzarlo con <b>Conjuro acelerado</b>.</p></div>`;
@@ -497,7 +507,7 @@ function cast(id, ritual = false) {
         s => {
           Combat.cast(s, now, slot, ritual);
           if (mm?.cost) MM.pay(s, mm.cost);
-          if (!ritual) Effects.fromSpell(s, now);
+          if (!ritual) Effects.fromSpell(s, now, { slot: castLevel, object: fd.get('heatObject') || '' });
           const target = String(fd.get('ventaja') || '').trim();
           if (sp.id === 'silvery' && target) {
             const effects = Combat.data(s).effects;
