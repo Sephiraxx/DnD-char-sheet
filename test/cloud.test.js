@@ -42,6 +42,28 @@ function setup(db) {
 
 const T0 = '2026-01-01T00:00:00.000Z',
   T1 = '2026-01-02T00:00:00.000Z';
+test('hidden-turn support is detected without changing table data and notices a newly installed migration', async () => {
+  const g = setup({});
+  let installed = false,
+    calls = 0;
+  const base = fakeSupabase({}).createClient();
+  g.supabase = {
+    createClient: () => ({
+      ...base,
+      rpc: async (name, args) => {
+        calls++;
+        assert.equal(name, 'combatant_is_hidden');
+        assert.equal(args.p_id, '00000000-0000-0000-0000-000000000000');
+        return installed ? { data: true, error: null } : { error: { code: 'PGRST202', message: 'Missing function' } };
+      },
+    }),
+  };
+  assert.equal(await g.Cloud.hiddenTurnsReady(), false);
+  installed = true;
+  assert.equal(await g.Cloud.hiddenTurnsReady(), true);
+  assert.equal(await g.Cloud.hiddenTurnsReady(), true);
+  assert.equal(calls, 2);
+});
 const linkTo = (g, extra = {}) =>
   g.Cloud.setLink('k', {
     campaignId: 'c',

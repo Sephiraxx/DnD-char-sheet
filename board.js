@@ -1554,7 +1554,7 @@
   function card() {
     const el = $('#board-card'),
       t = S.tokens.find(x => x.id === S.sel && x.map_id === S.mapId);
-    if (!t || TV) {
+    if (!t || TV || (playerView() && !visibleTokens().some(x => x.id === t.id))) {
       el.hidden = true;
       return;
     }
@@ -1571,8 +1571,15 @@
     const el = $('#board-turn'),
       enc = S.party?.encounter;
     const cur = enc?.active ? (S.party.combatants || []).find(c => c.id === enc.current_id) : null;
-    el.hidden = !cur;
-    if (cur) el.innerHTML = `Ronda ${enc.round} · turno de <b>${esc(cur.hidden && playerView() ? '¿?' : cur.name)}</b>`;
+    const visible =
+      cur &&
+      (!playerView() ||
+        (!cur.hidden &&
+          visibleTokens().some(
+            t => t.combatant_id === cur.id || (cur.character_id && t.character_id === cur.character_id),
+          )));
+    el.hidden = !visible;
+    el.innerHTML = visible ? `Ronda ${enc.round} · turno de <b>${esc(cur.name)}</b>` : '';
   }
 
   // ---------- Acciones ----------
@@ -1679,6 +1686,16 @@
   async function patchToken(t, patch) {
     const rows = await Cloud.updateToken(t.id, patch);
     S.tokens = S.tokens.map(x => (x.id === t.id ? rows[0] || { ...x, ...patch } : x));
+    if (dmView() && t.combatant_id && Object.hasOwn(patch, 'hidden')) {
+      if (!(await Cloud.hiddenTurnsReady())) {
+        toast('La ficha del mapa se actualizó. La iniciativa necesita la actualización de privacidad de tu mesa.');
+        return;
+      }
+      await Cloud.updateCombatant(t.combatant_id, { hidden: patch.hidden });
+      const actor = S.party?.combatants.find(c => c.id === t.combatant_id);
+      if (actor) actor.hidden = patch.hidden;
+      lastHidden.set(t.combatant_id, patch.hidden);
+    }
   }
   async function goLive(id) {
     await Cloud.setBoardMap(S.id, id);

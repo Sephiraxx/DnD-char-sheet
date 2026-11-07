@@ -321,6 +321,18 @@ const RollUI = (() => {
     };
   }
   function spellInfo(sp, slot) {
+    if (sp.id === 'heat-metal') {
+      const info = catalogInfo(sp, slot || sp.level);
+      return {
+        ...info,
+        save: '',
+        saveName: '',
+        notes: [
+          ...info.notes,
+          'El daño no admite salvación. Quien sostenga o vista el objeto y reciba daño salva Constitución contra tu CD para soltarlo, si puede; si no lo suelta, tiene desventaja en ataques y pruebas hasta el inicio de tu próximo turno.',
+        ],
+      };
+    }
     if (sp.dice) {
       const info = catalogInfo(sp, slot);
       if (info) return info;

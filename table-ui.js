@@ -123,16 +123,18 @@ const TableUI = (() => {
   };
   function encounter() {
     const enc = party?.encounter;
-    const entries = Cloud.order(party?.combatants || []).map(c => ({
-      id: c.id,
-      kind: c.kind,
-      name: c.name,
-      init: c.init,
-      status: c.status,
-      conditions: c.conditions || [],
-      characterId: c.character_id,
-      current: Boolean(enc?.active && enc.current_id === c.id),
-    }));
+    const entries = Cloud.order(party?.combatants || [])
+      .filter(c => !c.hidden)
+      .map(c => ({
+        id: c.id,
+        kind: c.kind,
+        name: c.name,
+        init: c.init,
+        status: c.status,
+        conditions: c.conditions || [],
+        characterId: c.character_id,
+        current: Boolean(enc?.active && enc.current_id === c.id),
+      }));
     return { active: Boolean(enc?.active), round: enc?.round || 0, entries };
   }
   const isMyTurn = () => {

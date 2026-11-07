@@ -117,6 +117,12 @@ function combatSpell(sp) {
     d = R.stats(state);
   return `<article class="battle-choice spell-choice"><div><span class="eyebrow">${sp.level ? 'Nivel ' + sp.level : 'Nivel 0 · Truco'}${sp.concentration ? ' · Concentración' : ''}</span><h3>${esc(sp.name)} <button type="button" class="fav-star ${favoriteIds().includes(sp.id) ? 'on' : ''}" data-action="spell-fav" data-id="${esc(sp.id)}" aria-pressed="${favoriteIds().includes(sp.id)}" aria-label="Favorito" title="Favorito para la vista compacta">${favoriteIds().includes(sp.id) ? '★' : '☆'}</button></h3>${PartyUI.automaticSpellNote(state, sp.id)}<p>${esc(sp.brief)}</p>${(n => (n ? `<p class="spell-numbers-inline">${esc(n)}</p>` : ''))(R.spellNumbersFor(state, sp)[0])}<div class="small">${esc(sp.range)} · ${esc(sp.components)}${state.extras.includes(sp.id) ? ' · Extra DM' : ''}</div></div><div class="choice-bottom">${reason ? `<p class="choice-reason">${esc(reason)}</p>` : ''}<div class="actions">${button('Ver detalles', 'combat-spell-info', 'secondary', `data-id="${esc(sp.id)}"`)}${RollUI.rollable(sp) ? button('Solo tirar', 'spell-roll', 'secondary', `data-id="${esc(sp.id)}"`) : ''}${button(sp.level ? 'Lanzar' : 'Usar truco', 'cast', '', `data-id="${esc(sp.id)}" ${reason ? 'disabled' : ''}`)}</div></div></article>`;
 }
+function ongoingSpellActions() {
+  const info = Effects.repeatInfo(state);
+  if (!info) return '';
+  const reason = Effects.repeatBlock(state);
+  return `<article class="battle-choice"><div><span class="eyebrow">Acción adicional · conjuro en curso</span><h3>Calentar metal · repetir daño</h3><p>${info.slot ? info.slot + 'd8 de daño de fuego · lanzamiento de nivel ' + info.slot : 'Confirmá el nivel original del lanzamiento.'}${info.object ? ' · ' + esc(info.object) : ''}</p><p class="small">Mismo objeto; sin gastar otro espacio ni reiniciar la concentración. El daño es automático; la salvación de CON permite soltar el objeto.</p></div><div>${reason ? '<p class="choice-reason">' + esc(reason) + '</p>' : ''}${button('Repetir daño', 'effect-repeat-heat', 'secondary', reason ? 'disabled' : '')}</div></article>`;
+}
 // Vista compacta: todo lo del turno en una pantalla (preferencia de este dispositivo).
 const COMPACT_KEY = 'dnd-combat-compact';
 function combatCompactOn() {
@@ -212,6 +218,7 @@ function combatCompact() {
   ${state.hp === 0 ? `<section class="banner"><p><b>A 0 PG.</b> Salvaciones de muerte: ${state.death.success}/3 éxitos · ${state.death.failure}/3 fallos.</p><div class="actions">${button('Tirar salvación de muerte', 'death-roll', '')}${button('Reiniciar', 'death-reset')}</div></section>` : ''}
   ${state.heroicInspiration ? `<button class="text-btn heroic" data-action="heroic-toggle">★ Inspiración del DM</button>` : ''}
   ${state.concentration ? `<div class="cc-focus ${c.checks.length ? 'alert' : ''}"><span><b>${c.checks.length ? '⚠ Salvación de concentración' : 'Concentración'}</b> · ${esc(spellName(state.concentration))}${c.checks.length ? ' · CON ' + sign(R.saveBonus(state, 'con')) + ' vs CD ' + c.checks[0] : ''}</span><div class="actions">${c.checks.length ? button('Tirar', 'concentration-roll', '') + button('Superada', 'combat-concentration-pass') + button('Fallada', 'combat-concentration-fail', 'danger') : button('Terminar', 'concentration-end')}</div></div>` : ''}
+  ${combatTab !== 'bonus' ? ongoingSpellActions() : ''}
   ${state.conditions.length ? `<p class="cc-conditions">${state.conditions.map(x => `<button class="chip selected" data-action="condition" data-condition="${esc(x)}" title="Quitar">${esc(x)} ×</button>`).join('')}</p>` : ''}
   ${typeof CompanionsUI !== 'undefined' ? CompanionsUI.combat() : ''}
   ${typeof Cannon !== 'undefined' ? Cannon.card() : ''}
@@ -228,7 +235,7 @@ function combatCompact() {
       '',
     )}<div class="actions">${button(c.active ? 'Mi turno' : 'Iniciar turno', 'turn', '')}${on ? button('Terminar', 'combat-end') : ''}</div></div>
   <div class="cc-pills" aria-label="Recursos">${pills}</div>
-  <div class="battle-choices cc-list">${AttackUI.choices(combatTab)}${PartyUI.combatAbilities(combatTab)}${options
+  <div class="battle-choices cc-list">${combatTab === 'bonus' ? ongoingSpellActions() : ''}${AttackUI.choices(combatTab)}${PartyUI.combatAbilities(combatTab)}${options
     .filter(o => combatTab !== 'action' || o.weapon)
     .map(combatChoice)
     .join('')}${shown.map(combatSpell).join('')}</div>
@@ -309,7 +316,7 @@ function combatView() {
    )
    .join('')}</div>
  ${combatTab === 'reaction' ? '<p class="small">Necesitás el desencadenante de cada reacción. Tenés una hasta el inicio de tu próximo turno; no es una acción extra libre.</p>' : combatTab === 'bonus' ? '<p class="small">Elegí una sola acción adicional por turno entre las opciones de tus rasgos y conjuros.</p>' : `<p class="small">Podés moverte antes y después de actuar. Tu velocidad es ${combatSpeed()} pies${state.equipmentDefense && Equipment.defense(state).speedPenalty ? ' (penalización por armadura incluida)' : ''}; condiciones y terreno pueden reducirla.</p>`}
- <h3 class="section-space">Tus conjuros</h3><div class="level-filters" role="group" aria-label="Nivel de conjuro">${[['all', 'Todos'], [0, '0 · Trucos'], ...[...new Set([...d.slots.flatMap((max, i) => (max ? [i + 1] : [])), ...all.filter(x => x.level > 0).map(x => x.level)])].sort((a, b) => a - b).map(l => [l, 'Nivel ' + l])].map(([k, l]) => `<button class="chip ${String(k) === combatLevel ? 'selected' : ''}" data-action="combat-level" data-level="${k}" aria-pressed="${String(k) === combatLevel}">${l}</button>`).join('')}</div><p class="small">El filtro indica el nivel del conjuro. Al lanzarlo elegís qué nivel de espacio gastar.</p><div class="battle-choices">${spells.length ? spells.map(combatSpell).join('') : '<p class="empty">No conocés conjuros de este nivel que usen ' + combatLabels[combatTab].toLowerCase() + '.</p>'}</div>
+ ${combatTab === 'bonus' ? ongoingSpellActions() : ''}<h3 class="section-space">Tus conjuros</h3><div class="level-filters" role="group" aria-label="Nivel de conjuro">${[['all', 'Todos'], [0, '0 · Trucos'], ...[...new Set([...d.slots.flatMap((max, i) => (max ? [i + 1] : [])), ...all.filter(x => x.level > 0).map(x => x.level)])].sort((a, b) => a - b).map(l => [l, 'Nivel ' + l])].map(([k, l]) => `<button class="chip ${String(k) === combatLevel ? 'selected' : ''}" data-action="combat-level" data-level="${k}" aria-pressed="${String(k) === combatLevel}">${l}</button>`).join('')}</div><p class="small">El filtro indica el nivel del conjuro. Al lanzarlo elegís qué nivel de espacio gastar.</p><div class="battle-choices">${spells.length ? spells.map(combatSpell).join('') : '<p class="empty">No conocés conjuros de este nivel que usen ' + combatLabels[combatTab].toLowerCase() + '.</p>'}</div>
  <details class="battle-rule"><summary>Conjuros de acción adicional · regla de 2014</summary><p>Si lanzás un conjuro de acción adicional, los otros conjuros de ese mismo turno solo pueden ser trucos de una acción. En el turno de otra criatura podés volver a lanzar una reacción si te queda disponible. Inspirar y Palabras perturbadoras son rasgos, no conjuros.</p></details>
  <h3 class="section-space">${combatTab === 'bonus' ? 'Tus habilidades' : combatTab === 'reaction' ? 'Otras reacciones' : 'Armas y otras acciones'}</h3><div class="battle-choices">${AttackUI.choices(combatTab)}${PartyUI.combatAbilities(combatTab)}${options
    .filter(o => combatTab !== 'action' || o.weapon)
@@ -324,7 +331,7 @@ function combatView() {
  }
  <div class="actions section-space">${button('Otra opción del DM', 'combat-custom')}${button('Gestionar conjuros', 'spell-manage')}</div></section>
  <aside class="stack"><section class="card"><div class="card-header"><h2>Tus recursos</h2>${button('Ajustar', 'resources')}</div>${d.slots.map((max, i) => (max ? pool((Classes.id(state) === 'warlock' ? 'Pacto · ' : '') + 'Espacios de nivel ' + (i + 1), 'slot', i) : '')).join('')}<p class="small">Los trucos (nivel 0) no gastan espacios.</p>${Classes.id(state) === 'bard' ? pool('Inspiración bárdica · d' + d.inspirationDie, 'inspiration', '', state.level >= 5 ? 'Recuperás usos con descanso corto o largo.' : 'Recuperás usos con descanso largo.') + `<button class="text-btn" data-action="combat-help" data-topic="inspiration">¿Cómo uso la Inspiración?</button>` : ''}${PartyUI.resourceCards()}${pool('Dados de Golpe · ' + d.hitDiceSet.map(x => x.count + 'd' + x.die).join(' + '), 'hd')}${d.pact ? pool('Pacto mágico · espacios de nivel ' + d.pact.level, 'pact', '', 'Se recuperan con descanso corto o largo.') : ''}<button class="text-btn" data-action="combat-help" data-topic="hd">¿Para qué sirven los Dados de Golpe?</button>${state.level >= 6 && state.subclass === 'eloquence' ? pool('Discurso universal', 'universal') : ''}${state.level >= 14 && state.subclass === 'eloquence' ? pool('Inspiración contagiosa', 'infectious') : ''}${state.extraResources.map(x => pool(esc(x.name), 'extra', x.id)).join('')}<p class="small section-space">Los símbolos ajustan recursos manualmente; no ejecutan acciones. «Elegir» o «Lanzar» registra ambos juntos.</p></section>
- <section class="card" id="combat-ongoing"><h2>En curso</h2><h3>Concentración</h3><p>${state.concentration ? esc(spellName(state.concentration)) : 'Ningún conjuro activo.'}</p>${state.concentration ? button('Terminar concentración', 'concentration-end') : ''}${c.checks.length && state.concentration ? `<div class="concentration-alert"><b>Salvación pendiente: CON ${sign(R.saveBonus(state, 'con'))} contra CD ${c.checks[0]}</b><p class="small">Una salvación por cada fuente de daño. Pendientes: ${c.checks.length}. No gasta reacción.</p>${button('Tirar salvación', 'concentration-roll', '')}${button('La superé', 'combat-concentration-pass', 'secondary')}${button('Fallé', 'combat-concentration-fail', 'danger')}</div>` : ''}${(state.bonusDice || []).length ? `<h3 class="section-space">Dados del DM</h3>${state.bonusDice.map(b => `<div class="effect-note"><b>d${b.die}${b.reason ? ' · ' + esc(b.reason) : ''}</b><p>Para ${esc(RollUI.bonusScope(b))}. Se ofrece al tirar.</p>${button('Descartar', 'bonus-discard', 'secondary', `data-id="${esc(b.id)}"`)}</div>`).join('')}` : ''}<div class="card-header section-space"><h3>Efectos con duración</h3>${button('Agregar', 'effect-new', 'text-btn')}</div>${
+ <section class="card" id="combat-ongoing"><h2>En curso</h2><h3>Concentración</h3><p>${state.concentration ? esc(spellName(state.concentration)) : 'Ningún conjuro activo.'}</p>${state.concentration ? button('Terminar concentración', 'concentration-end') : ''}${ongoingSpellActions()}${c.checks.length && state.concentration ? `<div class="concentration-alert"><b>Salvación pendiente: CON ${sign(R.saveBonus(state, 'con'))} contra CD ${c.checks[0]}</b><p class="small">Una salvación por cada fuente de daño. Pendientes: ${c.checks.length}. No gasta reacción.</p>${button('Tirar salvación', 'concentration-roll', '')}${button('La superé', 'combat-concentration-pass', 'secondary')}${button('Fallé', 'combat-concentration-fail', 'danger')}</div>` : ''}${(state.bonusDice || []).length ? `<h3 class="section-space">Dados del DM</h3>${state.bonusDice.map(b => `<div class="effect-note"><b>d${b.die}${b.reason ? ' · ' + esc(b.reason) : ''}</b><p>Para ${esc(RollUI.bonusScope(b))}. Se ofrece al tirar.</p>${button('Descartar', 'bonus-discard', 'secondary', `data-id="${esc(b.id)}"`)}</div>`).join('')}` : ''}<div class="card-header section-space"><h3>Efectos con duración</h3>${button('Agregar', 'effect-new', 'text-btn')}</div>${
    Effects.list(state).length
      ? Effects.list(state)
          .map(
@@ -439,6 +446,24 @@ function combatHp() {
 }
 function installCombatActions() {
   Object.assign(actions, {
+    'effect-repeat-heat': () => {
+      const reason = Effects.repeatBlock(state);
+      if (reason) throw Error(reason);
+      const info = Effects.repeatInfo(state);
+      modal(
+        'Calentar metal · repetir daño',
+        `<p>Gastás tu acción adicional para repetir el daño sobre el mismo objeto${info.object ? ': <b>' + esc(info.object) + '</b>' : ''}. Conservás la acción normal, los espacios y la duración restante.</p>${info.slot ? '<p><b>' + info.slot + 'd8 de daño de fuego</b> · nivel original ' + info.slot + '.</p>' : select('Nivel del lanzamiento original', 'originalSlot', [['', 'Elegí…'], ...Array.from({ length: 8 }, (_, i) => [i + 2, 'Nivel ' + (i + 2) + ' · ' + (i + 2) + 'd8'])], '')}<label class="check"><input type="checkbox" name="contact" required>Es un turno posterior al lanzamiento y el objetivo sigue en contacto con el mismo objeto calentado.</label><p class="small">El daño es automático. La salvación de Constitución solo determina si suelta el objeto, si puede; si no lo suelta, sufre desventaja en ataques y pruebas hasta el inicio de tu próximo turno.</p>`,
+        fd => {
+          if (!fd.has('contact')) throw Error('Confirmá que se cumple el efecto del conjuro.');
+          let activation;
+          commit('Calentar metal: repetir daño con acción adicional', s => {
+            activation = Effects.repeat(s, info.slot || Number(fd.get('originalSlot')));
+          });
+          setTimeout(() => RollUI.spell(activation.sp, activation.slot), 0);
+        },
+        'Usar acción adicional',
+      );
+    },
     'combat-tab': e => {
       combatTab = e.dataset.tab;
       combatLevel = 'all';
@@ -522,6 +547,11 @@ function installCombatActions() {
       }),
     'effect-end': e =>
       commit('Efecto terminado', s => {
+        const effect = Effects.list(s).find(x => x.id === e.dataset.id);
+        if (effect?.concentration && effect.concentration === s.concentration) {
+          s.concentration = null;
+          Combat.data(s).checks = [];
+        }
         s.timedEffects = Effects.list(s).filter(x => x.id !== e.dataset.id);
       }),
     'effect-new': () =>

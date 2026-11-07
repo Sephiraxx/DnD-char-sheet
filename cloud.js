@@ -596,7 +596,7 @@
 
   async function party(campaignId) {
     const c = await api();
-    await user();
+    const me = await user();
     const [campaign, members, characters] = await Promise.all([
       c.from('campaigns').select('id, name, code, dm_id, settings').eq('id', campaignId).maybeSingle().then(check),
       c.from('members').select('user_id, role, display_name, joined_at').eq('campaign_id', campaignId).then(check),
@@ -633,7 +633,17 @@
         .maybeSingle()
         .then(r => r.data || null),
     ]);
-    return { campaign, members, characters, loot, homebrew, combatants, secrets, encounter };
+    return {
+      campaign,
+      members,
+      characters,
+      loot,
+      homebrew,
+      combatants,
+      secrets,
+      encounter,
+      viewerIsDM: campaign.dm_id === me.id,
+    };
   }
   async function events(campaignId, limit = 60) {
     return check(
@@ -710,6 +720,17 @@
   }
   async function advanceTurn(campaignId) {
     return check(await (await api()).rpc('advance_turn', { p_campaign: campaignId }));
+  }
+  let hiddenTurnsSupport = false;
+  async function hiddenTurnsReady() {
+    if (hiddenTurnsSupport) return true;
+    const c = await api();
+    await user();
+    const result = await c.rpc('combatant_is_hidden', { p_id: '00000000-0000-0000-0000-000000000000' });
+    if (result.error?.code === 'PGRST202') return false;
+    check(result);
+    hiddenTurnsSupport = true;
+    return true;
   }
   async function endCombat(campaignId) {
     check(await (await api()).rpc('end_combat', { p_campaign: campaignId }));
@@ -1031,6 +1052,7 @@
     updateSecret,
     removeCombatant,
     advanceTurn,
+    hiddenTurnsReady,
     endCombat,
     resolveAttack,
     damageCombatant,
