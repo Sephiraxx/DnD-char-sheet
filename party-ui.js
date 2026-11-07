@@ -426,7 +426,7 @@ const PartyUI = (() => {
       `<div class="ability-grid">${Object.entries(R.attrs)
         .map(
           ([k, label]) =>
-            `<section class="card ability-box"><span>${label}</span><strong>${sign(R.mod(sc[k]))}</strong><span>Puntuación ${sc[k]}${state.wildShape?.ab && ['str', 'dex', 'con'].includes(k) ? ' (bestia)' : sc[k] !== state.abilities[k] ? ' (objeto)' : ''}</span></section>`,
+            `<section class="card ability-box"><span>${label}</span><strong>${sign(R.mod(sc[k]))}</strong><span>Puntuación ${sc[k]}${state.wildShape?.ab && ['str', 'dex', 'con'].includes(k) ? ' (bestia)' : sc[k] !== state.abilities[k] ? ' (objeto)' : ''}</span>${(parts => `<button class="roll-button ability-check" data-action="ability-check" data-ability="${k}" title="${esc(R.partsText(parts))}">Prueba ${sign(parts.reduce((t, x) => t + x.value, 0))}</button>`)(R.checkParts(state, k))}</section>`,
         )
         .join(
           '',
@@ -438,7 +438,7 @@ const PartyUI = (() => {
         .map(([k, l]) => `<div class="passive-box"><strong>${R.passive(state, k)}</strong><span>${l}</span></div>`)
         .join(
           '',
-        )}</div>${R.skills.map(([k, n, ab]) => `<div class="list-row"><span>${n} <small class="muted">(${R.attrs[ab].slice(0, 3)})</small>${R.hasExpertise(state, k) ? ' ◆' : R.hasSkill(state, k) ? ' •' : ''}</span><button class="roll-button" data-action="skill-roll" data-id="${k}">${sign(R.skillBonus(state, k))}</button></div>`).join('')}</section><div class="stack"><section class="card"><h2>Salvaciones</h2>${Object.entries(
+        )}</div>${R.skills.map(([k, n, ab]) => `<div class="list-row"><span>${n} <small class="muted">(${R.attrs[ab].slice(0, 3)})</small>${R.hasExpertise(state, k) ? ' ◆' : R.hasSkill(state, k) ? ' •' : R.halfProf(state, ab) ? ' ½' : ''}</span><button class="roll-button" data-action="skill-roll" data-id="${k}" title="${esc(R.partsText(R.checkParts(state, ab, k)))}">${sign(R.skillBonus(state, k))}</button></div>`).join('')}${(h => `<p class="small muted">• competencia · ◆ pericia${h ? ` · ½ ${h.label} +${h.value}` : ''}</p>`)(R.halfProf(state, 'int') || R.halfProf(state, 'str'))}</section><div class="stack"><section class="card"><h2>Salvaciones</h2>${Object.entries(
         R.attrs,
       )
         .map(

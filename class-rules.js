@@ -198,11 +198,9 @@
         cast.type === 'prepared' || cast.type === 'book'
           ? Math.max(1, m[cast.ability] + (['artificer', 'paladin'].includes(id(s)) ? Math.floor(l / 2) : l))
           : 0,
-      initiative:
-        (s.wildShape?.ab ? mod(s.wildShape.ab[1]) : m.dex) +
-        (views(s).some(v => id(v) === 'bard' && v.level >= 2) ? Math.floor(p / 2) : 0) +
-        (root.FeatFX?.initiative(s) || 0) +
-        (mi?.check(s) || 0),
+      initiative: R()
+        .initiativeParts(s)
+        .reduce((t, x) => t + x.value, 0),
       speed: (s.speed ?? 30) + (root.FeatFX?.speed(s) || 0),
       songDie: id(s) === 'bard' && l >= 2 ? R().song(l) : 0,
     };

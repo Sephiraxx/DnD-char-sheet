@@ -706,20 +706,29 @@ const TableUI = (() => {
     if (req.kind === 'area-save') return areaSave(req);
     const p = req.payload;
     let bonus = 0,
-      kind = 'check';
-    if (p.type === 'skill') bonus = R.skillBonus(state, p.id);
-    else if (p.type === 'save') {
+      kind = 'check',
+      parts = null;
+    if (p.type === 'skill') {
+      bonus = R.skillBonus(state, p.id);
+      parts = R.checkParts(state, R.skills.find(x => x[0] === p.id)?.[2] || 'str', p.id);
+    } else if (p.type === 'save') {
       bonus = R.saveBonus(state, p.id);
       kind = 'save';
-    } else if (p.type === 'ability')
-      bonus = Math.floor((R.scores(state)[p.id] - 10) / 2) + (window.MagicItems?.check(state) || 0);
-    else if (p.type === 'initiative') bonus = R.stats(state).initiative;
+    } else if (p.type === 'ability') {
+      // Prueba sin habilidad: también lleva Polivalente o Atleta excepcional.
+      parts = R.checkParts(state, p.id);
+      bonus = parts.reduce((t, x) => t + x.value, 0);
+    } else if (p.type === 'initiative') {
+      bonus = R.stats(state).initiative;
+      parts = R.initiativeParts(state);
+    }
     RollUI.d20({
       title: 'El DM pide: ' + p.label,
       label: p.label + ' (pedido del DM)',
       bonus,
       kind,
       ability: p.type === 'save' ? p.id : '',
+      parts,
       share: false,
       onDone: r =>
         Cloud.post(
