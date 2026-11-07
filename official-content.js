@@ -158,6 +158,12 @@
         if (count && Number(count[1]) > 0) item.charges = { max: Number(count[1]), regain: '0' };
         // Bonos que la ficha sabe aplicar, leídos del texto (+N, CA, salvaciones, resistencias, curación…).
         if (target.MagicItems.derive) Object.assign(item, target.MagicItems.derive(item, row));
+        // Texto del libro en inglés: nombre y resumen en español (traits-es-data.js); el libro sigue en el desplegable.
+        const es = target.TraitsEs?.item(id);
+        if (es) {
+          if (es.name) item.name = es.name;
+          item.note = es.note;
+        }
         target.MagicItems.ITEMS.push(item);
         existing.set(normalize(name), item);
       }
