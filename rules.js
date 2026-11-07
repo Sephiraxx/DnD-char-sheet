@@ -413,8 +413,14 @@
   }
   // Puntuaciones efectivas: las de la ficha o las que fija un objeto mágico (Amuleto de salud…), la mayor.
   function scores(s) {
-    const set = root.MagicItems?.setScores(s) || {};
-    return Object.fromEntries(Object.entries(s.abilities).map(([k, v]) => [k, Math.max(v, set[k] || 0)]));
+    const set = root.MagicItems?.setScores(s) || {},
+      bonus = root.Grants?.abilityBonuses(s) || {};
+    return Object.fromEntries(
+      Object.entries(s.abilities).map(([k, v]) => [
+        k,
+        Math.max(bonus[k] ? Math.min(20, v + bonus[k]) : v, set[k] || 0),
+      ]),
+    );
   }
   // En forma salvaje, FUE, DES y CON son las de la bestia para pruebas y salvaciones
   // (se conservan las competencias; los PG máximos siguen usando tu propia CON).
@@ -467,9 +473,9 @@
     return (
       mod(formScores(s)[a[2]]) +
       (root.MagicItems?.check(s) || 0) +
-      (s.expertise.includes(id)
+      (s.expertise.includes(id) || root.Grants?.proficiencies(s, 'expertise').includes(id)
         ? 2 * p
-        : s.proficiencies.includes(id)
+        : s.proficiencies.includes(id) || root.Grants?.proficiencies(s, 'skill').includes(id)
           ? p
           : ((s.classId || 'bard') === 'bard' && s.level >= 2) ||
               (s.multiclass || []).some(x => x.classId === 'bard' && x.level >= 2)
@@ -477,6 +483,10 @@
             : 0)
     );
   }
+  const hasSkill = (s, id) =>
+    s.proficiencies.includes(id) || Boolean(root.Grants?.proficiencies(s, 'skill').includes(id));
+  const hasExpertise = (s, id) =>
+    s.expertise.includes(id) || Boolean(root.Grants?.proficiencies(s, 'expertise').includes(id));
   function saveBonus(s, a) {
     const own = ownSaveBonus(s, a),
       beast = s.wildShape?.saves?.[a];
@@ -634,11 +644,22 @@
     if (root.Campaign) root.Campaign.validate(o);
     if (root.Defenses) root.Defenses.validate(o);
     if (root.FeatFX) root.FeatFX.validate(o);
+    if (root.Grants) {
+      root.Grants.validate(o);
+      root.Grants.migrate(o);
+    }
     if (root.MagicItems) root.MagicItems.validate(o);
     if (root.Companions) root.Companions.validate(o);
     if (root.Equipment) root.Equipment.validate(o);
     if (root.Metamagic) root.Metamagic.validate(o);
     if (root.Cannon) root.Cannon.validate(o);
+    if (
+      o.dmCommandsApplied !== undefined &&
+      (!Array.isArray(o.dmCommandsApplied) ||
+        o.dmCommandsApplied.length > 500 ||
+        o.dmCommandsApplied.some(id => !(typeof id === 'string' && id.length <= 150) && !Number.isInteger(id)))
+    )
+      fail();
     if (o.hpAuto !== undefined && typeof o.hpAuto !== 'boolean') fail();
     if (
       o.forgeBlessing !== undefined &&
@@ -942,7 +963,7 @@
   // Opciones para un personaje: nivel total y modificador de la clase que lanza ese conjuro.
   function spellOpts(s, sp, slot) {
     const C = root.Classes,
-      caster = C?.spellCaster ? C.spellCaster(s, sp.id) : s,
+      caster = sp.castAbility ? { ...s, castingAbility: sp.castAbility } : C?.spellCaster ? C.spellCaster(s, sp.id) : s,
       ability = C?.casting ? C.casting(caster).ability : 'cha',
       mod = ability ? stats(caster).mods[ability] : undefined;
     return { level: totalLevel(s), slot, mod };
@@ -959,6 +980,8 @@
     return parts.filter(Boolean).length > 1 ? 'Por espacio · ' + parts.filter(Boolean).join(' · ') : '';
   }
   const api = {
+    hasSkill,
+    hasExpertise,
     spellDice,
     spellOpts,
     spellNumbersFor,

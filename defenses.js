@@ -68,6 +68,7 @@
       add('vulnerable', race.vulnerable, race.name);
       for (const c of race.conditionImmune || []) if (typeof c === 'string') out.conditions.push(c);
     }
+    add('resist', root.Grants?.proficiencies(s, 'resist'), race?.name || 'Rasgo');
     const own = s.defenses || {};
     add('resist', own.resist, 'anotada');
     add('immune', own.immune, 'anotada');

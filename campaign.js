@@ -568,8 +568,17 @@ const Campaign = (() => {
   }
   // Origen e identidad: raza, trasfondo, idiomas, competencias y velocidad en una sola tarjeta.
   function sheetOrigins() {
-    const p = proficiencyText(state);
-    return `<section class="card section-space"><div class="card-header"><h2>Origen e identidad</h2>${button('Editar', 'party-identity')}</div><div class="grid two"><div><h3>${esc(state.race || 'Raza por registrar')}</h3>${originInfo(race(state), 'race')}</div><div><h3>${esc(state.background || 'Trasfondo por registrar')}</h3>${originInfo(background(state), 'background')}</div></div><div class="divider"></div><p><b>Idiomas que hablás:</b> ${state.languages ? esc(state.languages) : '<span class="muted">elegilos con «Editar»; la raza y el trasfondo indican cuántos</span>'}</p>${p ? `<p><b>Armaduras:</b> ${esc(p.armor)}. <b>Armas:</b> ${esc(p.weapons)}.</p><p class="small muted">Calculado con tu clase, subclase, raza y multiclase. Herramientas y otras competencias: «Competencias» o «Rasgos y notas».</p>` : ''}</section>`;
+    const p = proficiencyText(state),
+      languages = [
+        ...new Set([
+          ...(state.languages || '')
+            .split(/[,;]/)
+            .map(x => x.trim())
+            .filter(Boolean),
+          ...(globalThis.Grants?.proficiencies(state, 'language') || []).map(x => facts(x)),
+        ]),
+      ];
+    return `<section class="card section-space"><div class="card-header"><h2>Origen e identidad</h2>${button('Editar', 'party-identity')}</div><div class="grid two"><div><h3>${esc(state.race || 'Raza por registrar')}</h3>${originInfo(race(state), 'race')}</div><div><h3>${esc(state.background || 'Trasfondo por registrar')}</h3>${originInfo(background(state), 'background')}</div></div><div class="divider"></div><p><b>Idiomas que hablás:</b> ${languages.length ? esc(languages.join(', ')) : '<span class="muted">elegilos con «Editar»; la raza y el trasfondo indican cuántos</span>'}</p>${p ? `<p><b>Armaduras:</b> ${esc(p.armor)}. <b>Armas:</b> ${esc(p.weapons)}.</p><p class="small muted">Calculado con tu clase, subclase, raza y multiclase. Herramientas y otras competencias: «Competencias» o «Rasgos y notas».</p>` : ''}</section>`;
   }
   function glossary() {
     const d = Rules.stats(state),
@@ -670,6 +679,7 @@ const Campaign = (() => {
     return `${lv === '0' ? 'un truco' : lv ? 'un conjuro de nivel ' + lv : 'un conjuro'}${clsEs ? ' de ' + clsEs.toLowerCase() : ''}`;
   }
   return {
+    facts,
     selected,
     availableSources,
     enabled,

@@ -53,6 +53,87 @@ const linkTo = (g, extra = {}) =>
     ...extra,
   });
 
+test('realtime catches up on connection, failure and foreground polling; unsubscribing stops recovery', async () => {
+  const g = setup({}),
+    timers = new Map(),
+    calls = [],
+    channels = [];
+  let timerId = 0,
+    subscription,
+    removed = 0,
+    release;
+  const channel = {
+    on: () => channel,
+    subscribe: fn => {
+      subscription = fn;
+      return channel;
+    },
+    track: () => {},
+    presenceState: () => ({}),
+  };
+  g.setTimeout = (fn, delay) => {
+    timers.set(++timerId, { fn, delay });
+    return timerId;
+  };
+  g.clearTimeout = id => timers.delete(id);
+  g.document = { hidden: false };
+  g.supabase = {
+    createClient: () => ({
+      auth: { getSession: async () => ({ data: { session: { user: { id: 'u1' } } } }) },
+      channel: name => {
+        channels.push(name);
+        return channel;
+      },
+      removeChannel: async () => {
+        removed++;
+      },
+    }),
+  };
+  const stop = await g.Cloud.subscribe('c1', async table => {
+    calls.push(table);
+    if (release)
+      await new Promise(ok => {
+        release = ok;
+      });
+  });
+  const settle = () => new Promise(ok => setImmediate(ok));
+  subscription('SUBSCRIBED');
+  await settle();
+  assert.deepEqual(calls, ['resync']);
+  subscription('CHANNEL_ERROR');
+  await settle();
+  assert.equal(calls.length, 2);
+  const tick = () => {
+    const [id, t] = [...timers].find(([, t]) => t.delay === 10000);
+    timers.delete(id);
+    t.fn();
+  };
+  g.document.hidden = true;
+  tick();
+  await settle();
+  assert.equal(calls.length, 2);
+  g.document.hidden = false;
+  tick();
+  await settle();
+  assert.equal(calls.length, 3);
+  release = true;
+  subscription('TIMED_OUT');
+  await settle();
+  tick();
+  await settle();
+  assert.equal(calls.length, 4, 'recovery queries never overlap');
+  release();
+  release = null;
+  await settle();
+  await stop();
+  assert.equal(removed, 1);
+  assert.equal(timers.size, 0);
+  subscription('CHANNEL_ERROR');
+  await settle();
+  assert.equal(calls.length, 4);
+  assert.deepEqual(channels, ['mesa-c1']);
+});
+
 test('sin cambios en ningún lado no hace nada', async () => {
   const g = setup({ characters: [{ id: 'ch', data: { name: 'A' }, updated_at: T0 }] });
   linkTo(g);
@@ -96,6 +177,40 @@ test('subir marca la ficha como sincronizada', async () => {
   assert.equal(db.characters[0].data.name, 'Nueva');
   assert.equal(g.Cloud.link('k').dirty, false);
   assert.equal(g.Cloud.status(), 'synced');
+});
+
+test('overlapping flush calls await the same upload rather than reporting an early success', async () => {
+  const db = { characters: [{ id: 'ch', data: { name: 'A' }, updated_at: T0 }] },
+    g = setup(db),
+    base = fakeSupabase(db).createClient();
+  let release, started;
+  const gate = new Promise(ok => (release = ok)),
+    begin = new Promise(ok => (started = ok));
+  g.supabase = {
+    createClient: () => ({
+      ...base,
+      from: table => {
+        const q = base.from(table),
+          read = q.maybeSingle;
+        q.maybeSingle = async () => {
+          started();
+          await gate;
+          return read();
+        };
+        return q;
+      },
+    }),
+  };
+  linkTo(g);
+  g.Cloud.changed('k', { name: 'B' });
+  const first = g.Cloud.flush();
+  await begin;
+  const second = g.Cloud.flush();
+  assert.equal(first, second);
+  assert.equal(g.Cloud.status(), 'syncing');
+  release();
+  assert.equal(await second, true);
+  assert.equal(db.characters[0].data.name, 'B');
 });
 
 test('reglas de características de la mesa: valores por defecto y saneado', () => {

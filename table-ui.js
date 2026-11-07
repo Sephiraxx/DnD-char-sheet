@@ -36,15 +36,21 @@ const TableUI = (() => {
 
   // Ids de órdenes ya aplicadas en este dispositivo, para no aplicarlas dos veces.
   const appliedKey = () => KEY + '-cloud-applied';
+  const appliedMemory = new Map();
   function appliedIds() {
     try {
-      return new Set(JSON.parse(localStorage.getItem(appliedKey()) || '[]'));
+      return new Set([
+        ...(state.dmCommandsApplied || []),
+        ...(appliedMemory.get(appliedKey()) || []),
+        ...JSON.parse(localStorage.getItem(appliedKey()) || '[]'),
+      ]);
     } catch {
-      return new Set();
+      return new Set([...(state.dmCommandsApplied || []), ...(appliedMemory.get(appliedKey()) || [])]);
     }
   }
   function rememberApplied(ids) {
     const all = [...appliedIds(), ...ids].slice(-500);
+    appliedMemory.set(appliedKey(), new Set(all));
     try {
       localStorage.setItem(appliedKey(), JSON.stringify(all));
     } catch {}
@@ -265,6 +271,11 @@ const TableUI = (() => {
 
   function applyCommand(ev) {
     const p = ev.payload || {};
+    const apply = (label, fn) =>
+      commit(label, s => {
+        fn(s);
+        recordCommand(s, ev.id);
+      });
     const n = v => Math.max(0, Math.min(9999, Math.floor(Number(v) || 0)));
     switch (ev.kind) {
       case 'damage': {
@@ -278,7 +289,7 @@ const TableUI = (() => {
         if (!amount) return `No recibís daño${why}.`;
         const conc = state.concentration;
         let wild = null;
-        commit((p.from || 'DM') + ': daño recibido ' + amount + (p.source ? ' (' + p.source + ')' : ''), s => {
+        apply((p.from || 'DM') + ': daño recibido ' + amount + (p.source ? ' (' + p.source + ')' : ''), s => {
           wild = Companions.absorb(s, amount);
           s.hp = Math.max(0, s.hp - wild.toCharacter);
           if (s.hp === 0) {
@@ -297,24 +308,24 @@ const TableUI = (() => {
       case 'heal': {
         const amount = n(p.amount);
         if (!amount || state.hp === null) return 'Curación del DM pendiente: confirmá tus PG actuales.';
-        commit((p.from || 'DM') + ': curación ' + amount, s => {
+        apply((p.from || 'DM') + ': curación ' + amount, s => {
           Companions.heal(s, amount);
         });
         return `${p.from || 'El DM'} te curó ${amount} PG${p.source ? ' (' + p.source + ')' : ''}.`;
       }
       case 'temp':
-        commit('DM: PG temporales ' + n(p.amount), s => (s.temp = Math.max(s.temp, n(p.amount))));
+        apply('DM: PG temporales ' + n(p.amount), s => (s.temp = Math.max(s.temp, n(p.amount))));
         return `El DM te dio ${n(p.amount)} PG temporales.`;
       case 'condition': {
         if (!CONDITIONS.includes(p.name)) return '';
-        commit(`DM: ${p.on ? 'estado' : 'fin de estado'} ${p.name}`, s => {
+        apply(`DM: ${p.on ? 'estado' : 'fin de estado'} ${p.name}`, s => {
           s.conditions = s.conditions.filter(x => x !== p.name);
           if (p.on) s.conditions.push(p.name);
         });
         return `El DM ${p.on ? 'te aplicó' : 'te quitó'}: ${p.name}.`;
       }
       case 'gold':
-        commit('DM: monedas recibidas ' + PV.goldText(p), s => {
+        apply('DM: monedas recibidas ' + PV.goldText(p), s => {
           for (const k of ['cp', 'sp', 'ep', 'gp', 'pp']) s.gold[k] = Math.min(9999999, s.gold[k] + n(p[k]));
         });
         return 'El DM te dio ' + PV.goldText(p) + '.';
@@ -322,7 +333,7 @@ const TableUI = (() => {
         const cost = Object.fromEntries(['cp', 'sp', 'ep', 'gp', 'pp'].map(k => [k, n(p[k])]));
         const next = PV.pay(state.gold, cost);
         if (!next) return 'El DM te cobró ' + PV.goldText(cost) + ', pero no te alcanza. Arreglalo con el DM.';
-        commit('DM: pagaste ' + PV.goldText(cost), s => (s.gold = next));
+        apply('DM: pagaste ' + PV.goldText(cost), s => (s.gold = next));
         return 'Pagaste ' + PV.goldText(cost) + '.';
       }
       case 'item': {
@@ -336,12 +347,12 @@ const TableUI = (() => {
             ? ItemRef.rows(p.ref, { qty: n(p.qty) || 1, notes: String(p.notes || ''), uid })
             : null;
         if (made?.length) {
-          commit('DM: objeto recibido ' + made[0].name, s => {
+          apply('DM: objeto recibido ' + made[0].name, s => {
             for (const r of made) s.inventory.push(r);
           });
           return `El DM te entregó ${made[0].name}${made[0].magic?.attune ? '. Sintonizalo en Equipo para que funcione' : ''}.`;
         }
-        commit('DM: objeto recibido ' + name, s =>
+        apply('DM: objeto recibido ' + name, s =>
           s.inventory.push({
             id: uid(),
             name,
@@ -363,7 +374,7 @@ const TableUI = (() => {
         const amount = n(p.amount);
         if (!amount) return '';
         const before = Number(state.xp) || 0;
-        commit('DM: experiencia +' + amount + ' PX' + (p.session ? ' (sesión ' + p.session + ')' : ''), s => {
+        apply('DM: experiencia +' + amount + ' PX' + (p.session ? ' (sesión ' + p.session + ')' : ''), s => {
           s.xp = before + amount;
         });
         const next = R.xpNext?.(state);
@@ -377,7 +388,7 @@ const TableUI = (() => {
         if (!die) return '';
         const kind = ['any', 'check', 'attack', 'save'].includes(p.kind) ? p.kind : 'any';
         const skills = kind === 'check' ? (p.skills || []).filter(k => R.skills.some(x => x[0] === k)) : [];
-        commit('DM: dado de bonificación d' + die, s => {
+        apply('DM: dado de bonificación d' + die, s => {
           s.bonusDice = [
             ...(s.bonusDice || []),
             { id: uid(), die, reason: String(p.reason || '').slice(0, 200), kind, skills },
@@ -393,25 +404,25 @@ const TableUI = (() => {
         // Fin de un efecto ajeno: el que lo lanzó perdió la concentración.
         if (p.end) {
           if (!p.link || !Effects.list(state).some(x => x.link === p.link)) return '';
-          commit((p.from || 'DM') + ': termina ' + name, s => {
+          apply((p.from || 'DM') + ': termina ' + name, s => {
             s.timedEffects = Effects.list(s).filter(x => x.link !== p.link);
           });
           return `Terminó ${name}: ${p.from || 'el DM'} perdió la concentración.`;
         }
         const rounds = Number.isInteger(p.rounds) && p.rounds > 0 ? Math.min(100000, p.rounds) : null;
-        commit((p.from || 'DM') + ': efecto ' + name, s =>
+        apply((p.from || 'DM') + ': efecto ' + name, s =>
           Effects.add(s, { name, rounds, from: 'dm', link: typeof p.link === 'string' ? p.link : null }),
         );
         return `${p.from || 'El DM'} te aplicó: ${name}${rounds ? ' (' + Effects.remaining({ rounds }) + ')' : ''}.`;
       }
       case 'reroll':
-        commit('DM: otra tirada habilitada', s => {
+        apply('DM: otra tirada habilitada', s => {
           const c = Combat.data(s);
           c.extraRolls = Math.min(99, (c.extraRolls || 0) + 1);
         });
         return '↻ El DM te habilitó otra tirada.';
       case 'inspiration':
-        commit(p.on === false ? 'DM: Inspiración retirada' : 'DM: Inspiración recibida', s => {
+        apply(p.on === false ? 'DM: Inspiración retirada' : 'DM: Inspiración recibida', s => {
           s.heroicInspiration = p.on !== false;
         });
         return p.on === false ? 'El DM retiró tu Inspiración.' : '★ El DM te dio Inspiración: ventaja en una tirada.';
@@ -424,18 +435,30 @@ const TableUI = (() => {
     const messages = [],
       ids = [];
     for (const ev of fresh) {
+      if (appliedIds().has(ev.id)) continue;
       try {
         const msg = applyCommand(ev);
-        if (typeof msg === 'string' && !msg.includes('pendiente')) ids.push(ev.id);
+        if (typeof msg === 'string' && !msg.includes('pendiente')) {
+          if (!(state.dmCommandsApplied || []).includes(ev.id))
+            commit('Orden del DM recibida', s => recordCommand(s, ev.id));
+          ids.push(ev.id);
+        }
         if (msg) messages.push(msg);
       } catch (e) {
         messages.push('No se pudo aplicar una orden del DM: ' + e.message);
-        ids.push(ev.id);
       }
     }
     rememberApplied(ids);
     if (messages.length) toast(messages.join(' '));
-    if (ids.length) Cloud.markApplied(ids).catch(() => {});
+    if (ids.length) {
+      // Publish the changed HP before acknowledging delivery to the DM.
+      try {
+        if ((await Cloud.flush()) !== false) await Cloud.markApplied(ids);
+      } catch {}
+    }
+  }
+  function recordCommand(s, id) {
+    s.dmCommandsApplied = [...new Set([...(s.dmCommandsApplied || []), id])].slice(-500);
   }
 
   function onTurn(ev) {
@@ -471,6 +494,7 @@ const TableUI = (() => {
     const l = link();
     if (!l) return;
     globalThis.Board?.onParty(table);
+    if (table === 'resync') return catchUpCommands(l);
     if (table === 'presence') {
       online = payload;
       redraw();
@@ -516,6 +540,22 @@ const TableUI = (() => {
     }
     refresh();
   }
+  let commandSync = null;
+  function catchUpCommands(l = link()) {
+    if (!l) return Promise.resolve();
+    return (commandSync ||= (async () => {
+      try {
+        const pending = await Cloud.pendingCommands(l.characterId);
+        if (link()?.characterId !== l.characterId) return;
+        const done = pending.filter(ev => appliedIds().has(ev.id)).map(ev => ev.id);
+        await applyCommands(pending);
+        // Retry acknowledgements if a previous upload was interrupted.
+        if (done.length && (await Cloud.flush()) !== false) await Cloud.markApplied(done);
+      } finally {
+        commandSync = null;
+      }
+    })());
+  }
 
   async function connect() {
     const l = link();
@@ -543,7 +583,7 @@ const TableUI = (() => {
       else Cloud.acceptRemote(KEY, link().syncedAt);
       unsubscribe = await Cloud.subscribe(l.campaignId, onChange, { characterId: l.characterId });
       await refresh();
-      applyCommands(await Cloud.pendingCommands(l.characterId));
+      await catchUpCommands(l);
     } catch (e) {
       error = e.message;
       showStatus('offline');

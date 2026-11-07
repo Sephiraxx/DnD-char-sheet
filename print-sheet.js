@@ -20,14 +20,14 @@ const PrintSheet = (() => {
     return `<div class="ps-abilities">${Object.entries(R.attrs)
       .map(([k, label]) => {
         const mod = Math.floor((sc[k] - 10) / 2);
-        return `<div class="ps-ability"><span>${e(label)}</span><b>${sg(mod)}</b><small>${sc[k]}${sc[k] !== s.abilities[k] ? ' (objeto)' : ''}</small><em>${saves.has(k) ? '●' : '○'} Salvación ${sg(R.saveBonus(s, k))}</em></div>`;
+        return `<div class="ps-ability"><span>${e(label)}</span><b>${sg(mod)}</b><small>${sc[k]}${sc[k] !== s.abilities[k] ? ' (bono)' : ''}</small><em>${saves.has(k) ? '●' : '○'} Salvación ${sg(R.saveBonus(s, k))}</em></div>`;
       })
       .join('')}</div>`;
   }
   function skills(s) {
     return `<ul class="ps-skills">${R.skills
       .map(([id, label, ab]) => {
-        const mark = s.expertise.includes(id) ? '◆' : s.proficiencies.includes(id) ? '●' : '○';
+        const mark = R.hasExpertise(s, id) ? '◆' : R.hasSkill(s, id) ? '●' : '○';
         return `<li>${mark} <span>${e(label)}</span> <small>(${e(String(R.attrs[ab]).slice(0, 3))})</small><b>${sg(R.skillBonus(s, id))}</b></li>`;
       })
       .join('')}</ul><p class="ps-note">● competencia · ◆ pericia</p>`;
@@ -52,7 +52,16 @@ const PrintSheet = (() => {
   }
   function proficiencies(s) {
     const p = Campaign.proficiencyText?.(s);
-    return `<p class="ps-line">${p ? `<b>Armaduras:</b> ${e(p.armor)} · <b>Armas:</b> ${e(p.weapons)}<br>` : ''}<b>Idiomas:</b> ${e(s.languages || '—')}</p>`;
+    return `<p class="ps-line">${p ? `<b>Armaduras:</b> ${e(p.armor)} · <b>Armas:</b> ${e(p.weapons)}<br>` : ''}<b>Idiomas:</b> ${e([s.languages, ...(globalThis.Grants?.proficiencies(s, 'language') || []).map(x => Campaign.facts(x))].filter(Boolean).join(', ') || '—')}${
+      globalThis.Grants?.proficiencies(s, 'tool').length
+        ? '<br><b>Herramientas:</b> ' +
+          e(
+            Grants.proficiencies(s, 'tool')
+              .map(x => Campaign.facts(x))
+              .join(', '),
+          )
+        : ''
+    }</p>`;
   }
   function features(s) {
     const blocks = C.views(s).map(v => {
