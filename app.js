@@ -334,6 +334,7 @@ function render() {
         character,
         traits: () =>
           header('Tus rasgos.', Classes.label(state, true)) +
+          PartyUI.strixhavenCard(state) +
           Campaign.traitsCard(state) +
           (typeof Cannon !== 'undefined' ? Cannon.card() : '') +
           `<section class="card section-space"><h2>Recursos de tus rasgos</h2>${PartyUI.resourceCards() || '<p>No tenés recursos de clase con usos limitados a este nivel.</p>'}</section>`,
@@ -397,7 +398,8 @@ function cast(id, ritual = false) {
     sp.time === 'Acción' &&
     !Combat.spellBlock(state, { ...sp, time: 'Adicional' }, ritual);
   if (reason && !onlyQuick) throw Error(reason);
-  const special = Combat.specialCast(state, sp);
+  const special = Combat.specialCast(state, sp),
+    featFree = special?.startsWith('feat-');
   const d = R.stats(state),
     caster = Classes.spellCaster(state, sp.id),
     casterStats = R.stats(caster),
@@ -414,13 +416,21 @@ function cast(id, ritual = false) {
       )
     : '';
   let html = `<p>${esc(sp.text || sp.brief)}</p>${spellNumbersHtml(sp)}${table ? `<p class="small">${esc(table)}</p>` : ''}<p class="small">Dados: 1d4 = un dado de 4 caras; 2d6 = dos dados de 6 caras. «Modificador de lanzamiento» de este conjuro: ${sign(casterStats.mods[Classes.casting(caster).ability])}. ${esc(sp.materialEs || '')}</p><p class="small">${sp.level ? 'Conjuro de nivel ' + sp.level : 'Truco · no gasta espacio'} · ${esc(sp.time)} · ${esc(sp.range)}<br>${esc(sp.components)} · ${esc(sp.duration)}${ritual ? ' · Ritual: añade 10 minutos al lanzamiento.' : ''}</p>`;
-  if (sp.level && !ritual && !special) html += select('Espacio a gastar', 'espacio', eligible, eligible[0]?.[0]);
+  if (sp.level && !ritual && (!special || featFree))
+    html += select(
+      'Cómo lanzarlo',
+      'espacio',
+      [...(featFree ? [[0, 'Iniciado de Strixhaven · sin espacio (1 por descanso largo)']] : []), ...eligible],
+      featFree ? 0 : eligible[0]?.[0],
+    );
   if (special)
     html +=
       '<p class="tag">' +
       (special === 'free'
         ? 'Lanzamiento sin espacio autorizado por DM; controlá sus límites de uso.'
-        : 'Gasta un uso de Arcanum; no gasta espacio de pacto.') +
+        : featFree
+          ? 'Podés usar el lanzamiento gratuito de Iniciado de Strixhaven o elegir un espacio. El gratuito vuelve con un descanso largo.'
+          : 'Gasta un uso de Arcanum; no gasta espacio de pacto.') +
       '</p>';
   if (sp.concentration || ritual)
     html += `<div class="banner"><p>${state.concentration ? 'Al iniciar, termina tu concentración en ' + esc(spellName(state.concentration)) + '.' : 'Requiere concentración.'}</p></div>`;
@@ -442,10 +452,10 @@ function cast(id, ritual = false) {
     html,
     fd => {
       const slot =
-        sp.level && !ritual && !special
+        sp.level && !ritual && (!special || featFree)
           ? fd.get('espacio') === 'pact'
             ? 'pact'
-            : number(fd, 'espacio', sp.level, 9)
+            : number(fd, 'espacio', featFree ? 0 : sp.level, 9)
           : 0;
       const castLevel = slot === 'pact' ? d.pact.level : slot || sp.level;
       // Metamagia: el conjuro de esta vez (acelerado, distante, extendido…) y su coste en puntos.

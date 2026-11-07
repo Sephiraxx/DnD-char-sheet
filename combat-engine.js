@@ -85,21 +85,30 @@
   function specialCast(s, sp) {
     if (s.extras.includes(sp.id) && s.spellModes?.[sp.id] === 'free') return 'free';
     const level = Object.keys(s.arcanum || {}).find(l => s.arcanum[l] === sp.id);
-    return level ? 'arcanum' + level : null;
+    if (level) return 'arcanum' + level;
+    const feat = root.FeatFX?.spellGrant(s, sp.id),
+      resource = feat?.freeResource && root.Classes.resources(s).find(r => r.id === feat.freeResource);
+    return resource && root.Classes.spent(s, resource) !== null && root.Classes.spent(s, resource) < resource.max
+      ? resource.id
+      : null;
   }
   function cast(s, sp, slot, ritual = false) {
     const reason = spellBlock(s, sp, ritual);
     if (reason) throw Error(reason);
     const c = data(s),
-      k = kind(sp);
-    if (sp.level && !ritual && !specialCast(s, sp)) {
+      k = kind(sp),
+      special = specialCast(s, sp),
+      payment =
+        special?.startsWith('feat-') && (slot === 'pact' || (Number.isInteger(slot) && slot >= sp.level))
+          ? null
+          : special;
+    if (sp.level && !ritual && !payment) {
       if (!availableSlots(s, sp).some(x => x.value === slot)) throw Error('No queda un espacio válido de ese nivel.');
     }
     if (!ritual && k !== 'special') use(s, k, sp.name);
     if (!ritual && sp.level) {
-      const special = specialCast(s, sp);
-      if (special?.startsWith('arcanum')) root.Classes.spend(s, special, 1);
-      else if (!special) {
+      if (payment?.startsWith('arcanum') || payment?.startsWith('feat-')) root.Classes.spend(s, payment, 1);
+      else if (!payment) {
         if (slot === 'pact') s.pactSpent = (s.pactSpent ?? 0) + 1;
         else if (Array.isArray(s.fontSlots) && s.fontSlots[slot - 1] > 0) {
           s.fontSlots = s.fontSlots.slice();

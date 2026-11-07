@@ -118,6 +118,10 @@
       manual: 'Tus conjuros ignoran la resistencia al tipo elegido y los 1 de daño cuentan como 2.',
     },
     'magic-initiate': { manual: 'Dos trucos y un conjuro de nivel 1 de una lista de clase: agregalos en Conjuros.' },
+    'strixhaven-initiate': {
+      manual:
+        'Elegí tu facultad, dos trucos, un conjuro de nivel 1 y su característica en Rasgos o Conjuros → Elegir conjuros de Strixhaven. Se agregan automáticamente sin ocupar elecciones de clase.',
+    },
     'ritual-caster': { manual: 'Libro de rituales: anotá los conjuros rituales que copies.' },
     'tavern-brawler': {
       manual: 'Golpes sin armas d4, competencia con armas improvisadas y agarre como acción adicional al impactar.',
@@ -148,6 +152,116 @@
   const learned = s => s?.progression?.learnedFeats || [];
   const choiceOf = (s, id) => s?.progression?.featChoices?.[id] || {};
   const skillName = id => root.Rules?.skills.find(x => x[0] === id)?.[1] || id;
+  const STRIXHAVEN = {
+    lorehold: { name: 'Lorehold', cantrips: ['light', 'sacred-flame', 'thaumaturgy'], classes: ['cleric', 'wizard'] },
+    prismari: {
+      name: 'Prismari',
+      cantrips: ['fire-bolt', 'prestidigitation', 'ray-of-frost'],
+      classes: ['bard', 'sorcerer'],
+    },
+    quandrix: { name: 'Quandrix', cantrips: ['druidcraft', 'guidance', 'mage-hand'], classes: ['druid', 'wizard'] },
+    silverquill: {
+      name: 'Silverquill',
+      cantrips: ['sacred-flame', 'thaumaturgy', 'vicious-mockery'],
+      classes: ['bard', 'cleric'],
+    },
+    witherbloom: {
+      name: 'Witherbloom',
+      cantrips: ['chill-touch', 'druidcraft', 'spare-the-dying'],
+      classes: ['druid', 'wizard'],
+    },
+  };
+  const spellClassTokens = new Map(
+    Object.entries(root.ClassData.spellClasses).map(([id, list]) => [id.replace(/[^a-z0-9]/g, ''), list]),
+  );
+  const collegeMember = (sp, classId, s) =>
+    classId === 'bard'
+      ? sp.bard && (!sp.optionalBard || s.progression?.expanded)
+      : (
+          sp.classes ||
+          root.ClassData.spellClasses[sp.id] ||
+          spellClassTokens.get(sp.id.replace(/[^a-z0-9]/g, '')) ||
+          []
+        ).includes(classId);
+  function strixhaven(s) {
+    const background = root.CampaignData?.backgrounds.find(b => b.id === s.backgroundId),
+      forced = Object.keys(STRIXHAVEN).find(k => background?.id === k + '-student-SCC');
+    if (!forced && !learned(s).includes('strixhaven-initiate')) return null;
+    const saved = choiceOf(s, 'strixhaven-initiate'),
+      picks = forced && saved.college !== forced ? { college: forced } : saved,
+      college = forced || picks.college || '',
+      data = STRIXHAVEN[college],
+      cantrips = (picks.cantrips || []).filter(id => data?.cantrips.includes(id)),
+      firstSpells = data
+        ? root.Catalog.spells.filter(
+            sp =>
+              sp.level === 1 &&
+              data.classes.some(classId => collegeMember(sp, classId, s)) &&
+              (!root.Campaign || root.Campaign.enabled(s, sp) || sp.id === picks.spell),
+          )
+        : [],
+      spell = firstSpells.find(sp => sp.id === picks.spell),
+      complete = Boolean(
+        data &&
+        cantrips.length === 2 &&
+        new Set(cantrips).size === 2 &&
+        spell &&
+        ['int', 'wis', 'cha'].includes(picks.castingAbility),
+      );
+    return {
+      college,
+      forced,
+      data,
+      picks,
+      cantrips,
+      spell,
+      firstSpells,
+      complete,
+      background: forced ? background.name : '',
+    };
+  }
+  function configureStrixhaven(s, picks) {
+    const current = strixhaven(s);
+    if (!current) throw Error('Tu trasfondo o tus dotes deben conceder Iniciado de Strixhaven.');
+    if (!STRIXHAVEN[picks.college] || (current.forced && picks.college !== current.forced))
+      throw Error('Elegí la facultad que corresponde a tu trasfondo.');
+    const next = {
+        ...s,
+        progression: { ...s.progression, featChoices: { ...s.progression.featChoices, 'strixhaven-initiate': picks } },
+      },
+      info = strixhaven(next);
+    if (root.Campaign && !root.Campaign.enabled(s, info.spell || {}) && current.picks.spell !== picks.spell)
+      throw Error('El libro de ese conjuro no está habilitado.');
+    if (picks.cantrips?.length !== 2 || !info.complete || info.cantrips.length !== picks.cantrips.length)
+      throw Error(
+        'Elegí dos trucos distintos de tu facultad, un conjuro de nivel 1 permitido y una característica de lanzamiento.',
+      );
+    s.progression.featChoices = {
+      ...s.progression.featChoices,
+      'strixhaven-initiate': {
+        college: picks.college,
+        cantrips: picks.cantrips.slice(),
+        spell: picks.spell,
+        castingAbility: picks.castingAbility,
+      },
+    };
+    return s;
+  }
+  function spellGrants(s) {
+    if (s._total) return [];
+    const info = strixhaven(s);
+    if (!info?.complete) return [];
+    return [...info.cantrips, info.spell.id].map(id => ({
+      id,
+      mode: 'known',
+      grantType: 'feat',
+      origin: 'Iniciado de Strixhaven · ' + info.data.name,
+      source: 'SCC',
+      ability: info.picks.castingAbility,
+      ...(id === info.spell.id ? { freeResource: 'feat-strixhaven-initiate' } : {}),
+    }));
+  }
+  const spellGrant = (s, id) => spellGrants(s).find(g => g.id === id) || null;
 
   // Lo que la ficha hace sola con la dote (sin depender de lo que elijas).
   function autoList(id, s) {
@@ -277,12 +391,24 @@
   }
   function resources(s) {
     const seen = new Set();
-    return learned(s)
+    const out = learned(s)
       .filter(id => data(id).res && !seen.has(id) && seen.add(id))
       .map(id => {
         const [name, max, reset, text, action = 'manual'] = data(id).res;
         return { id: 'feat-' + id, name, max, reset, text, action, feat: id };
       });
+    const info = strixhaven(s);
+    if (info?.complete)
+      out.push({
+        id: 'feat-strixhaven-initiate',
+        name: 'Iniciado de Strixhaven · ' + info.spell.name,
+        max: 1,
+        reset: 'long',
+        text: 'Un lanzamiento del conjuro elegido de nivel 1 sin espacio por descanso largo. También podés usar tus espacios normales o de pacto.',
+        action: 'manual',
+        feat: 'strixhaven-initiate',
+      });
+    return out;
   }
   // Para la tarjeta de dotes: cada dote con lo automático y lo manual.
   function report(s) {
@@ -312,9 +438,28 @@
           ),
       );
     if (!ok) throw Error('Las elecciones de dotes no son válidas.');
+    const pick = fc['strixhaven-initiate'];
+    if (
+      pick &&
+      ((pick.college !== undefined && !STRIXHAVEN[pick.college]) ||
+        (pick.castingAbility !== undefined && !['int', 'wis', 'cha'].includes(pick.castingAbility)) ||
+        (pick.cantrips !== undefined &&
+          (!Array.isArray(pick.cantrips) ||
+            pick.cantrips.length > 2 ||
+            new Set(pick.cantrips).size !== pick.cantrips.length ||
+            pick.cantrips.some(id => !STRIXHAVEN[pick.college]?.cantrips.includes(id)))) ||
+        (pick.spell !== undefined &&
+          (typeof pick.spell !== 'string' || !root.Catalog.spells.some(sp => sp.id === pick.spell && sp.level === 1))))
+    )
+      throw Error('Las elecciones de Iniciado de Strixhaven no son válidas.');
   }
 
   root.FeatFX = {
+    STRIXHAVEN,
+    strixhaven,
+    configureStrixhaven,
+    spellGrants,
+    spellGrant,
     summary,
     auto,
     autoList,

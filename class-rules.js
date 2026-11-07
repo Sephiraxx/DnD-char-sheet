@@ -238,6 +238,10 @@
   function granted(s) {
     const result = { prepared: [], known: [], expanded: [], choices: [], details: {} },
       sc = sub(s);
+    for (const grant of root.FeatFX?.spellGrants(s) || []) {
+      result.known.push(grant.id);
+      result.details[grant.id] = grant;
+    }
     if (!sc || s.level < info(s).subclassLevel) return result;
     for (const grant of sc.spells || [])
       for (const mode of ['prepared', 'known', 'expanded'])
@@ -304,6 +308,8 @@
   // Qué clase lanza un conjuro (para la CD y el ataque): la principal o una secundaria de la multiclase.
   function spellCaster(s, spellId) {
     if (s._total) return s;
+    const feat = root.FeatFX?.spellGrant(s, spellId);
+    if (feat) return { ...s, castingAbility: feat.ability };
     return views(s).find(v => ownUsable(v).includes(spellId)) || s;
   }
   function usable(s) {
@@ -330,6 +336,10 @@
     if (s.extras.includes(sp.id)) return true;
     const c = id(s);
     if (c === 'wizard') return s.known.includes(sp.id);
+    if (root.FeatFX?.spellGrant(s, sp.id) && granted(s).details[sp.id]?.grantType === 'feat')
+      return ['cleric', 'druid', 'artificer'].includes(c)
+        ? (s.prepared || []).includes(sp.id)
+        : c === 'bard' && s.known.includes(sp.id);
     return ['bard', 'cleric', 'druid', 'artificer'].includes(c) && usable(s).includes(sp.id);
   }
   // Recursos de clase (de cada clase con multiclase) y de dotes.

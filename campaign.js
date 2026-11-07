@@ -581,8 +581,9 @@ const Campaign = (() => {
     );
   }
   function spellHelp(sp) {
-    const d = Rules.stats(state),
-      a = Classes.casting(state).ability;
+    const caster = Classes.spellCaster(state, sp.id),
+      d = Rules.stats(caster),
+      a = Classes.casting(caster).ability;
     let body = `<p>${esc(sp.text)}</p><div class="spell-facts">${sp.saveAbility?.length ? `<p><b>Quién tira:</b> el objetivo hace una salvación de ${esc(sp.saveAbility.join(' o '))} contra tu CD ${d.dc}. Algunos efectos tienen más de una salvación: seguí el resumen y la fuente.</p>` : ''}${sp.attackKind?.length ? `<p><b>Tu ataque de conjuro:</b> 1d20 ${sign(d.attack)} contra la CA del objetivo; el daño se tira aparte.</p>` : ''}${['healingword', 'cure', 'mass-healing-word', 'mass-cure-wounds', 'spiritual-weapon', 'prayer-of-healing'].includes(sp.id) ? `<p><b>En tu ficha:</b> donde dice «modificador de lanzamiento», sumás ${sign(d.mods[a])} por ${Rules.attrs[a]}. No sumes la puntuación ${state.abilities[a]}.</p>` : ''}<p><b>Lanzamiento:</b> ${esc(sp.castingTimeEs || sp.time)} · <b>Alcance:</b> ${esc(sp.range)}.</p><p><b>Componentes:</b> ${esc(sp.components)}${sp.materialEs ? '. ' + esc(sp.materialEs) : ''}</p><p><b>Duración:</b> ${esc(sp.duration)}${sp.concentration ? ' · requiere concentración' : ''}.</p>${sp.higherLevels ? '<p>Este conjuro tiene una mejora con espacios mayores. Revisá qué aumenta: daño, objetivos o duración; no siempre son más dados.</p>' : ''}</div><p class="small">Resumen de mesa, no texto íntegro. Fuente: ${esc(sp.source)}${sp.sourcePage ? ', pág. ' + sp.sourcePage : ''}. Revisá allí excepciones, formas invocadas y tablas.</p>${button('¿Qué significan los dados y siglas?', 'rules-help')}`;
     if (typeof OfficialContent !== 'undefined') body += OfficialContent.spellHtml(sp.id);
     return body;
