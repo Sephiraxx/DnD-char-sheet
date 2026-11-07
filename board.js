@@ -1686,6 +1686,16 @@
   async function patchToken(t, patch) {
     const rows = await Cloud.updateToken(t.id, patch);
     S.tokens = S.tokens.map(x => (x.id === t.id ? rows[0] || { ...x, ...patch } : x));
+    if (dmView() && t.combatant_id && Object.hasOwn(patch, 'hidden')) {
+      if (!(await Cloud.hiddenTurnsReady())) {
+        toast('La ficha del mapa se actualizó. La iniciativa necesita la actualización de privacidad de tu mesa.');
+        return;
+      }
+      await Cloud.updateCombatant(t.combatant_id, { hidden: patch.hidden });
+      const actor = S.party?.combatants.find(c => c.id === t.combatant_id);
+      if (actor) actor.hidden = patch.hidden;
+      lastHidden.set(t.combatant_id, patch.hidden);
+    }
   }
   async function goLive(id) {
     await Cloud.setBoardMap(S.id, id);

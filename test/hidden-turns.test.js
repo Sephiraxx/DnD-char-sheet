@@ -26,7 +26,7 @@ test('turn messages conceal hidden and unknown actors, including older unredacte
   party.combatants[0].hidden = false;
   assert.match(g.PartyView.eventText(event, party), /Revenant/);
 });
-test('map-hidden and initiative-hidden turns never reveal an actor in the player banner or selected card', () => {
+test('map-hidden and initiative-hidden turns never reveal an actor in the player banner or selected card', async () => {
   const g = context(),
     turn = { hidden: true, innerHTML: '' },
     card = { hidden: false, innerHTML: 'antes' },
@@ -45,7 +45,7 @@ test('map-hidden and initiative-hidden turns never reveal an actor in the player
   g.addEventListener = () => {};
   const source = fs
     .readFileSync(path.join(__dirname, '../board.js'), 'utf8')
-    .replace('    _state: () => S,', '    testTurn:turn, testCard:card, _state: () => S,');
+    .replace('    _state: () => S,', '    testTurn:turn, testCard:card, testPatch:patchToken, _state: () => S,');
   vm.runInContext(source, g);
   const s = g.Board._state();
   Object.assign(s, {
@@ -80,4 +80,17 @@ test('map-hidden and initiative-hidden turns never reveal an actor in the player
   g.Board.testTurn();
   assert.equal(turn.hidden, true);
   assert.equal(turn.innerHTML, '');
+  s.asPlayer = false;
+  const updates = [];
+  g.Cloud = {
+    hiddenTurnsReady: async () => true,
+    updateToken: async (id, patch) => [{ ...s.tokens.find(t => t.id === id), ...patch }],
+    updateCombatant: async (id, patch) => updates.push({ id, ...patch }),
+  };
+  await g.Board.testPatch(s.tokens[0], { hidden: false });
+  assert.equal(s.party.combatants[0].hidden, false);
+  await g.Board.testPatch(s.tokens[0], { hidden: true });
+  assert.equal(s.party.combatants[0].hidden, true);
+  assert.equal(s.tokens[0].hidden, true);
+  assert.equal(updates.length, 2);
 });
