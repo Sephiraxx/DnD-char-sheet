@@ -1,4 +1,5 @@
-/* Acceso con email y contraseña: guardar el acceso de este dispositivo y abrir las mismas fichas en otro.
+/* Cuenta con email y contraseña: crearla (con o sin mesa) vincula las fichas de este dispositivo, y entrar
+   con ella en otro dispositivo las trae.
    No se envían correos; si alguien olvida la contraseña, se la reinicia desde el panel de Supabase. */
 const AccountUI = (() => {
   'use strict';
@@ -52,17 +53,27 @@ const AccountUI = (() => {
     return `<section class="card account-card section-space" id="account-${kind}"><h2>${title}</h2><div class="account-body"><p class="small muted">Cargando…</p></div></section>`;
   }
   const form = (mode, label, { newPassword = false } = {}) =>
-    `<form class="account-form" data-account="${mode}"><div class="form-grid">${mode === 'password' ? '' : `<label class="field">Email<input type="email" name="email" required maxlength="200" autocomplete="email" placeholder="tu@email.com"></label>`}<label class="field">Contraseña<input type="password" name="password" required minlength="6" maxlength="72" autocomplete="${newPassword ? 'new-password' : 'current-password'}"></label></div><div class="actions"><button class="button" type="submit">${label}</button></div><p class="form-error" role="alert"></p></form>`;
+    `<form class="account-form" data-account="${mode}"><div class="form-grid">${mode === 'password' ? '' : `<label class="field">Email<input type="email" name="email" required maxlength="200" autocomplete="email" placeholder="tu@email.com"></label>`}<label class="field">Contraseña<input type="password" name="password" required minlength="6" maxlength="72" autocomplete="${newPassword ? 'new-password' : 'current-password'}"></label>${newPassword && mode !== 'password' ? `<label class="field">Repetí la contraseña<input type="password" name="again" required minlength="6" maxlength="72" autocomplete="new-password"></label>` : ''}</div><div class="actions"><button class="button" type="submit">${label}</button></div><p class="form-error" role="alert"></p></form>`;
   const loginBlock = intro =>
     `<p>${intro}</p>${form('login', 'Entrar')}<p class="small muted">Si no te acordás de la contraseña, pedile a quien administra la mesa que la reinicie.</p>`;
 
+  // Cuenta nueva: guarda todas las fichas de este dispositivo en ella, sin necesidad de una mesa.
+  const fichas = () => {
+    const n = CharacterStorage.list().length;
+    return n === 1
+      ? 'tu ficha de este dispositivo queda vinculada'
+      : n
+        ? `tus ${n} fichas de este dispositivo quedan vinculadas`
+        : 'las fichas que crees quedan vinculadas';
+  };
+  const createBlock = () =>
+    `<p>Creá una cuenta con email y contraseña: ${fichas()} a ella, para abrir todo desde cualquier dispositivo aunque no estés en una mesa. No te llega ningún correo.</p>${form('create', 'Crear cuenta y vincular fichas', { newPassword: true })}`;
+
   function accountHtml(me) {
     if (!me)
-      return loginBlock(
-        'Todavía no te conectaste a una mesa desde este dispositivo. Si ya guardaste tu acceso en otro, entrá con tu email y contraseña.',
-      );
+      return `${createBlock()}<details class="battle-rule"><summary>Ya tengo cuenta</summary>${loginBlock('Entrá con tu email y contraseña.')}</details>`;
     if (me.is_anonymous)
-      return `<p>Tu acceso a la mesa vive solo en este navegador. Guardalo con un email y una contraseña para abrir tus fichas y mesas en otro dispositivo, o recuperarlas si se borran los datos del navegador. No te llega ningún correo.</p>${form('link', 'Guardar acceso', { newPassword: true })}<details class="battle-rule"><summary>Ya guardé mi acceso en otro dispositivo</summary>${loginBlock('Entrá con ese email y contraseña.')}</details>`;
+      return `<p>Tu acceso vive solo en este navegador. Creá una cuenta con email y contraseña: ${fichas()}, junto con tus mesas, para abrir todo en otro dispositivo o recuperarlo si se borran los datos del navegador. No te llega ningún correo.</p>${form('link', 'Crear cuenta y vincular fichas', { newPassword: true })}<details class="battle-rule"><summary>Ya guardé mi acceso en otro dispositivo</summary>${loginBlock('Entrá con ese email y contraseña.')}</details>`;
     return `<p>Acceso guardado: <b>${esc(me.email)}</b>.</p><p class="small">En otro dispositivo: abrí la aplicación, buscá «¿Ya tenés una ficha en una mesa?» (o «Tu acceso» en la pantalla del DM) y entrá con este email y tu contraseña.</p><details class="battle-rule"><summary>Cambiar contraseña</summary>${form('password', 'Cambiar', { newPassword: true })}</details>`;
   }
   async function restoreHtml(me) {
@@ -84,7 +95,12 @@ const AccountUI = (() => {
           : '<p class="muted">No tenés fichas en ninguna mesa con este acceso.</p>'
       }${clouds === null || clouds.length || CharacterStorage.list().length ? backupHtml(clouds) : ''}<p class="small section-space"><a href="./dm.html">Pantalla del DM</a>: tus mesas aparecen ahí.</p>`;
     }
-    return loginBlock('Entrá con el email y la contraseña con los que guardaste tu acceso.');
+    // Acceso anónimo (por ejemplo, salió de la mesa): crear la cuenta sobre ese acceso.
+    if (me?.is_anonymous) return accountHtml(me) + backupHtml(clouds);
+    // Con fichas en este dispositivo, lo primero es ofrecer crear la cuenta; sin fichas, entrar.
+    return CharacterStorage.list().length
+      ? `${createBlock()}<details class="battle-rule"><summary>Ya tengo cuenta</summary>${loginBlock('Entrá con tu email y contraseña.')}</details>`
+      : `${loginBlock('Entrá con el email y la contraseña de tu cuenta.')}<details class="battle-rule"><summary>No tengo cuenta: crear una</summary>${createBlock()}</details>`;
   }
 
   async function fill(kind) {
@@ -99,6 +115,11 @@ const AccountUI = (() => {
       }
       clouds = me ? await Cloud.backups().catch(() => null) : [];
       box.innerHTML = kind === 'restore' ? await restoreHtml(me) : accountHtml(me) + (me ? backupHtml(clouds) : '');
+      const h = box.parentElement.querySelector('h2');
+      const email = me && !me.is_anonymous;
+      if (h && kind === 'account') h.textContent = email ? 'Tu cuenta' : 'Crear cuenta y vincular fichas';
+      if (h && kind === 'restore' && !email && (me || CharacterStorage.list().length))
+        h.textContent = 'Crear cuenta y vincular fichas';
     } catch (e) {
       box.innerHTML = `<p class="small muted">${esc(e.message)}</p>`;
     }
@@ -114,11 +135,21 @@ const AccountUI = (() => {
       fd = new FormData(f),
       email = String(fd.get('email') || '').trim(),
       password = String(fd.get('password') || '');
+    if (fd.has('again') && fd.get('again') !== password) {
+      out.textContent = 'Las contraseñas no coinciden.';
+      return;
+    }
     btn.disabled = true;
     out.textContent = 'Un momento…';
     try {
-      if (f.dataset.account === 'link') await Cloud.linkEmail(email, password);
-      else if (f.dataset.account === 'login') await Cloud.signIn(email, password);
+      if (f.dataset.account === 'create') {
+        const n = await Cloud.createAccount(email, password);
+        if (typeof toast === 'function') toast(`Cuenta creada: ${email}.${n ? ` ${n} ficha(s) vinculada(s).` : ''}`);
+      } else if (f.dataset.account === 'link') {
+        await Cloud.linkEmail(email, password);
+        await Cloud.backupAll().catch(() => 0);
+        if (typeof toast === 'function') toast(`Cuenta creada: ${email}. Tus fichas y mesas quedaron vinculadas.`);
+      } else if (f.dataset.account === 'login') await Cloud.signIn(email, password);
       else {
         await Cloud.changePassword(password);
         out.textContent = 'Contraseña cambiada.';
@@ -154,6 +185,7 @@ const AccountUI = (() => {
           moved?.dm ? moved.dm + ' mesa(s) como DM' : '',
           moved?.backups ? moved.backups + ' copia(s) en la nube' : '',
         ].filter(Boolean);
+        Cloud.backupAll().catch(() => 0);
         const msg = `Listo: ahora entrás con ${email}.${parts.length ? ' Se sumaron ' + parts.join(', ') + ' de este dispositivo.' : ''}`;
         box.remove();
         refill();

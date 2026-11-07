@@ -144,6 +144,13 @@
     dispatchEvent(new CustomEvent('cloud-login', { detail: { error: '' } }));
     return r.data.user;
   }
+  // Cuenta nueva sin pasar por una mesa: sesión anónima, email y contraseña, y copia de todas las fichas
+  // de este dispositivo a la cuenta. Devuelve cuántas fichas quedaron vinculadas.
+  async function createAccount(email, password) {
+    await linkEmail(email, password);
+    await backupAll().catch(() => 0);
+    return root.CharacterStorage ? root.CharacterStorage.list().length : 0;
+  }
   async function changePassword(password) {
     const r = await (await api()).auth.updateUser({ password });
     if (r.error) throw friendly(r.error);
@@ -1072,6 +1079,7 @@
     attach,
     currentUser,
     linkEmail,
+    createAccount,
     changePassword,
     signIn,
     myCharacters,
