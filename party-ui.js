@@ -420,7 +420,10 @@ const PartyUI = (() => {
           button('Competencias', 'class-config') +
           button('Imprimir / PDF', 'print-sheet') +
           button('Subir de nivel', 'levelup', '') +
-          button('Libros habilitados', 'campaign-sources'),
+          button('Libros habilitados', 'campaign-sources') +
+          (typeof Cloud !== 'undefined' && Cloud.enabled && Cloud.hasSession()
+            ? '<button type="button" class="button secondary" data-sheet-sync title="Deja esta ficha igual acá y en la nube, con la versión más nueva">Subir ficha</button>'
+            : ''),
       ) +
       Portrait.card(state) +
       `<div class="ability-grid">${Object.entries(R.attrs)
