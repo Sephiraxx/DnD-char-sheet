@@ -228,7 +228,18 @@ const PartyUI = (() => {
         Object.entries(state.classChoices || {})
           .map(
             ([name, ids]) =>
-              `<div class="feature"><h3>${esc(NamesEs.choice(name))}</h3><p>${ids.map(x => esc(D.options.find(o => o.id === x)?.name || x)).join(', ')}</p>${typeof LibraryText !== 'undefined' ? ids.map(x => (LibraryText.option(x) ? `<p class="small"><b>${esc(D.options.find(o => o.id === x)?.name || x)}</b></p>${LibraryText.html(LibraryText.option(x))}` : '')).join('') : ''}</div>`,
+              `<div class="feature"><h3>${esc(NamesEs.choice(name))}</h3><p>${ids.map(x => esc(D.options.find(o => o.id === x)?.name || x)).join(', ')}</p>${
+                typeof LibraryText !== 'undefined'
+                  ? ids
+                      .map(x => {
+                        const o = D.options.find(o => o.id === x);
+                        return TraitsEs.option(o) || LibraryText.option(x)
+                          ? `<p class="small"><b>${esc(o?.name || x)}</b>${TraitsEs.option(o) ? ': ' + esc(TraitsEs.option(o)) : ''}</p>${LibraryText.html(LibraryText.option(x))}`
+                          : '';
+                      })
+                      .join('')
+                  : ''
+              }</div>`,
           )
           .join('') ||
         '<p class="small">Estilos, infusiones, Metamagia, invocaciones y otras elecciones aparecerán acá.</p>'
@@ -330,7 +341,7 @@ const PartyUI = (() => {
     }
     modal(
       'Opciones de tu clase',
-      `<p class="small">Las opciones muestran fuente y requisitos. Elegí hasta el máximo de cada grupo. Los efectos sobre armas, armadura u otros recursos se aplican según el rasgo; registralos en la ficha. Se pueden dejar elecciones pendientes.</p>${groups.map(g => `<details open class="battle-rule"><summary>${esc(NamesEs.choice(g.name))} · ${g.count} elección(es)</summary><div class="option-picker">${g.options.map(o => `<label class="option-row"><input type="checkbox" name="choice:${esc(g.name)}" value="${esc(o.id)}" ${(state.classChoices?.[g.name] || []).includes(o.id) ? 'checked' : ''}><span><b>${esc(o.name)}</b><small>${esc(o.source)}${o.prerequisite.length ? ' · Requisitos: ' + esc(prerequisiteText(o.prerequisite)) : ''}</small>${o.text ? `<details><summary>Efecto SRD</summary><p class="spell-reference">${esc(o.text)}</p></details>` : ''}</span></label>`).join('')}</div></details>`).join('') || '<p>No hay una elección de catálogo pendiente para esta clase y nivel. Usá las notas para otras decisiones del rasgo.</p>'}<label class="check"><input type="checkbox" required>Revisé los requisitos de las opciones elegidas con mi DM.</label>`,
+      `<p class="small">Las opciones muestran fuente y requisitos. Elegí hasta el máximo de cada grupo. Los efectos sobre armas, armadura u otros recursos se aplican según el rasgo; registralos en la ficha. Se pueden dejar elecciones pendientes.</p>${groups.map(g => `<details open class="battle-rule"><summary>${esc(NamesEs.choice(g.name))} · ${g.count} elección(es)</summary><div class="option-picker">${g.options.map(o => `<label class="option-row"><input type="checkbox" name="choice:${esc(g.name)}" value="${esc(o.id)}" ${(state.classChoices?.[g.name] || []).includes(o.id) ? 'checked' : ''}><span><b>${esc(o.name)}</b><small>${esc(o.source)}${o.prerequisite.length ? ' · Requisitos: ' + esc(prerequisiteText(o.prerequisite)) : ''}</small>${TraitsEs.option(o) ? `<details><summary>Efecto</summary><p class="spell-reference">${esc(TraitsEs.option(o))}</p></details>` : ''}</span></label>`).join('')}</div></details>`).join('') || '<p>No hay una elección de catálogo pendiente para esta clase y nivel. Usá las notas para otras decisiones del rasgo.</p>'}<label class="check"><input type="checkbox" required>Revisé los requisitos de las opciones elegidas con mi DM.</label>`,
       fd =>
         commit('Opciones de clase actualizadas', s => {
           s.classChoices = s.classChoices || {};
@@ -662,7 +673,10 @@ const PartyUI = (() => {
   function featBook(x) {
     if (typeof LibraryText === 'undefined' || !/^Dote:/.test(x.text || '')) return '';
     const f = Catalog.feats.find(c => c.name === x.name && (state.progression?.learnedFeats || []).includes(c.id));
-    return f ? LibraryText.html(LibraryText.feat(f.id)) : '';
+    return f
+      ? (TraitsEs.brief('feat:' + f.id) ? `<p class="small">${esc(TraitsEs.brief('feat:' + f.id))}</p>` : '') +
+          LibraryText.html(LibraryText.feat(f.id))
+      : '';
   }
   function spellOptions(sp, s, d, mode, g) {
     let options = [['no', 'No seleccionado']];

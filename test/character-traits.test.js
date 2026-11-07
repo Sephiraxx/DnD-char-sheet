@@ -106,7 +106,15 @@ test('traits follow current identity, class level and multiclass views without r
   s.backgroundId = 'acolyte-PHB';
   s.classSubclass = '';
   rows = g.Campaign.characterTraits(s);
-  assert.ok(rows.some(r => r.name === 'Constructed Resilience' && /poison/.test(r.text)));
+  assert.ok(
+    rows.some(
+      r =>
+        r.name === 'Resiliencia de constructo' &&
+        /veneno/.test(r.text) &&
+        r.language === 'es' &&
+        /poison/.test(r.book.text),
+    ),
+  );
   assert.ok(rows.some(r => r.key.startsWith('background:acolyte-PHB:')));
   assert.ok(!rows.some(r => ['Dureza enana', 'Vida de mercenaria', 'Bendición de la forja'].includes(r.name)));
 });
@@ -125,4 +133,16 @@ test('Stonecunning button opens the normal roll dialog with its conditional +5 b
   g.actions['stonecunning-roll']();
   assert.equal(g.dialog.title, 'Afinidad con la piedra');
   assert.match(g.dialog.html, /Bono: <b>\+5<\/b>/);
+});
+
+test('rasgos con texto incluido en inglés se muestran con nombre y resumen en español', () => {
+  const g = load(),
+    s = cleric(g, { level: 6, classId: 'warlock', classSubclass: 'warlock-the-hexblade' });
+  const rows = g.Campaign.characterTraits(s);
+  const curse = rows.find(r => r.key === 'sub:warlock-the-hexblade:Accursed Specter');
+  assert.ok(curse && curse.language === 'es' && /espectro/i.test(curse.text));
+  assert.ok(!rows.some(r => r.language === 'en'));
+  // El resumen también llega a la progresión de la clase.
+  const f = g.Classes.features(s).find(x => (x.english || x.name) === 'Accursed Specter');
+  assert.match(f.es, /humanoide/);
 });

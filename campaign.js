@@ -559,7 +559,23 @@ const Campaign = (() => {
           language: book.rulesLanguage,
         });
     }
-    return rows;
+    return rows.map(spanish);
+  }
+  // Texto incluido en inglés → nombre y resumen en español (traits-es-data.js); el libro sigue en el desplegable.
+  const looksEnglish = t =>
+    (String(t).match(/\b(the|you|your|and|of|to|with|a|an|when|can)\b/gi) || []).length >
+    (String(t).match(/\b(el|la|los|las|de|que|y|con|un|una|tu|tus|podés)\b/gi) || []).length;
+  function spanish(row) {
+    if (row.language === 'es' || !looksEnglish(row.text)) return row;
+    const es = globalThis.TraitsEs?.get(row.key);
+    if (!es) return row;
+    const english = row.key.split(':').slice(2).join(':');
+    return {
+      ...row,
+      name: row.name === english || looksEnglish(row.name) ? es.name : row.name,
+      text: es.text,
+      language: 'es',
+    };
   }
   function traitsCard(s) {
     const rows = characterTraits(s);

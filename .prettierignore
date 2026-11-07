@@ -2,6 +2,7 @@
 catalog.js
 class-data.js
 campaign-data.js
+traits-es-data.js
 equipment-data.js
 *.md
 node_modules

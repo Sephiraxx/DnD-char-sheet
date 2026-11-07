@@ -86,3 +86,17 @@ test('QA L-09: secondary fighter fourth level offers and applies an ASI independ
   assert.equal(g.Rules.stats(g.state).maxHP, hp + 6 + g.Rules.stats(g.state).mods.con);
   assert.equal(g.state.slotsSpent[0], 2);
 });
+
+test('QA L-10: el paso de dote muestra requisitos y resúmenes en español sin romperse', () => {
+  const { g, host, click } = wizard();
+  g.state.multiclass = [{ classId: 'fighter', level: 3, subclass: 'fighter-champion', notes: '' }];
+  vm.runInContext("LevelUp.startFor('fighter')", g);
+  click('next');
+  click('next');
+  click('asimode', { v: 'feat' });
+  assert.match(host.innerHTML, /data-lv="feat" data-id="sentinel"/);
+  assert.match(host.innerHTML, /Requisito: Fuerza 13 o más/);
+  assert.doesNotMatch(host.innerHTML, /Requisito: [^<]*(?:or higher|Proficiency with)/);
+  click('feat', { id: 'sentinel' });
+  assert.match(host.innerHTML, /Al impactar con un ataque de oportunidad/);
+});

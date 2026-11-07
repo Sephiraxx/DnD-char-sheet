@@ -672,13 +672,16 @@
         root.Rules.totalLevel(s) < 3
       )
         continue;
+      const es = root.TraitsEs?.get('race:' + race.id + ':' + name);
       out.push({
         id: 'racial:' + race.id + ':' + norm(name),
-        name: race.name + ' · ' + name,
+        name: race.name + ' · ' + (es?.name || name),
         max,
         reset,
         action,
-        text: section + '\nEste contador registra el uso. Resolvé el efecto, sus requisitos y objetivos en mesa.',
+        text:
+          (es?.text || section) +
+          '\nEste contador registra el uso. Resolvé el efecto, sus requisitos y objetivos en mesa.',
       });
     }
     if (race?.traits.includes('Relentless Endurance') && !out.some(r => r.id.endsWith(':relentlessendurance')))
