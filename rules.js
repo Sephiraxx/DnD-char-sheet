@@ -447,7 +447,7 @@
       slots: slots[s.level],
       known: known[s.level],
       cantrips: s.level >= 10 ? 4 : s.level >= 4 ? 3 : 2,
-      initiative: m.dex + (s.level >= 2 ? Math.floor(p / 2) : 0),
+      initiative: sum(initiativeParts(s)),
       songDie: song(s.level),
     };
   }
@@ -467,22 +467,50 @@
     return Number.isInteger(beast) ? Math.max(own, beast) : own;
   }
   function ownSkillBonus(s, id) {
-    let a = skills.find(x => x[0] === id);
+    const a = skills.find(x => x[0] === id);
     if (!a) throw Error('Habilidad inválida');
-    let p = prof(totalLevel(s));
-    return (
-      mod(formScores(s)[a[2]]) +
-      (root.MagicItems?.check(s) || 0) +
-      (s.expertise.includes(id) || root.Grants?.proficiencies(s, 'expertise').includes(id)
-        ? 2 * p
-        : s.proficiencies.includes(id) || root.Grants?.proficiencies(s, 'skill').includes(id)
-          ? p
-          : ((s.classId || 'bard') === 'bard' && s.level >= 2) ||
-              (s.multiclass || []).some(x => x.classId === 'bard' && x.level >= 2)
-            ? Math.floor(p / 2)
-            : 0)
-    );
+    return sum(checkParts(s, a[2], id));
   }
+  const sum = parts => parts.reduce((t, x) => t + x.value, 0);
+  const short = ab => attrs[ab].slice(0, 3).toUpperCase();
+  // Mitad de la competencia en pruebas sin competencia: Polivalente (bardo 2, hacia abajo) o Atleta
+  // excepcional (campeón 7, hacia arriba, solo FUE, DES y CON). No se acumulan: vale la mayor.
+  function halfProf(s, ability) {
+    const p = prof(totalLevel(s)),
+      views = root.Classes?.views ? root.Classes.views(s) : [s],
+      out = [];
+    if (
+      ['str', 'dex', 'con'].includes(ability) &&
+      views.some(v => v.classId === 'fighter' && v.classSubclass === 'fighter-champion' && v.level >= 7)
+    )
+      out.push({ label: 'Atleta excepcional', value: Math.ceil(p / 2) });
+    if (views.some(v => (v.classId || 'bard') === 'bard' && v.level >= 2))
+      out.push({ label: 'Polivalente', value: Math.floor(p / 2) });
+    // A igual valor queda el primero (Atleta excepcional).
+    return out.sort((x, y) => y.value - x.value)[0] || null;
+  }
+  // Desglose de una prueba de característica (con habilidad o sin ella): [{ label, value }].
+  function checkParts(s, ability, skill = '') {
+    const p = prof(totalLevel(s)),
+      parts = [{ label: short(ability), value: mod(formScores(s)[ability]) }];
+    if (skill && hasExpertise(s, skill)) parts.push({ label: 'Pericia', value: 2 * p });
+    else if (skill && hasSkill(s, skill)) parts.push({ label: 'Competencia', value: p });
+    else {
+      const half = halfProf(s, ability);
+      if (half) parts.push(half);
+    }
+    const items = root.MagicItems?.check(s) || 0;
+    if (items) parts.push({ label: 'Objetos', value: items });
+    return parts;
+  }
+  // La iniciativa es una prueba de Destreza: Polivalente, Alerta y los objetos también cuentan.
+  function initiativeParts(s) {
+    const parts = checkParts(s, 'dex'),
+      feat = root.FeatFX?.initiative(s) || 0;
+    if (feat) parts.push({ label: 'Dotes', value: feat });
+    return parts;
+  }
+  const partsText = parts => parts.map(x => (x.value < 0 ? '−' : '+') + Math.abs(x.value) + ' ' + x.label).join(' ');
   const hasSkill = (s, id) =>
     s.proficiencies.includes(id) || Boolean(root.Grants?.proficiencies(s, 'skill').includes(id));
   const hasExpertise = (s, id) =>
@@ -1002,6 +1030,10 @@
     scores,
     formScores,
     skillBonus,
+    checkParts,
+    halfProf,
+    initiativeParts,
+    partsText,
     passive,
     saveBonus,
     allSpells,

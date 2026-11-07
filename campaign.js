@@ -559,7 +559,28 @@ const Campaign = (() => {
           language: book.rulesLanguage,
         });
     }
-    return rows.map(spanish);
+    return rows.map(spanish).map(row => applied(s, row));
+  }
+  // Rasgos que la ficha ya suma sola: la nota dice cuánto y dónde.
+  function applied(s, row) {
+    const R = globalThis.Rules,
+      half = {
+        'class:bard:Jack of All Trades': ['Polivalente', 'int'],
+        'sub:fighter-champion:Remarkable Athlete': ['Atleta excepcional', 'str'],
+      }[row.key];
+    if (!half || !R?.halfProf) return row;
+    const h = R.halfProf(s, half[1]),
+      p = R.prof(R.totalLevel ? R.totalLevel(s) : s.level);
+    if (!h || h.label !== half[0])
+      return { ...row, note: 'No se suma: Atleta excepcional y Polivalente no se acumulan y el otro da más.' };
+    const where =
+      half[0] === 'Polivalente'
+        ? 'habilidades sin competencia, pruebas de característica e iniciativa'
+        : 'habilidades de Fuerza, Destreza y Constitución sin competencia, esas pruebas e iniciativa';
+    return {
+      ...row,
+      note: `Ya incluido en la ficha: +${h.value} (la mitad de tu bonificador por competencia +${p}, redondeando hacia ${half[0] === 'Polivalente' ? 'abajo' : 'arriba'}) en ${where}. Las habilidades marcadas con ½ lo llevan.`,
+    };
   }
   // Texto incluido en inglés → nombre y resumen en español (traits-es-data.js); el libro sigue en el desplegable.
   const looksEnglish = t =>

@@ -162,9 +162,13 @@ const RollUI = (() => {
     share = true,
     min = 0,
     advantage = '',
+    parts = null,
     onDone,
   }) {
     const mods = conditionMods(state, kind, ability);
+    // Desglose del bono (característica, competencia, Polivalente…) si coincide con el total.
+    const shown =
+      parts && parts.reduce((t, x) => t + x.value, 0) === bonus && parts.length > 1 ? R.partsText(parts) : sign(bonus);
     // Ventaja propia de la tirada (por ejemplo, Lanzador de guerra en concentración).
     if (advantage) {
       mods.mode = mods.mode === 'dis' ? '' : 'adv';
@@ -172,13 +176,13 @@ const RollUI = (() => {
     }
     modal(
       title,
-      `<p>Bono: <b>${sign(bonus)}</b>${min ? ` · Lengua de plata: un d20 menor que ${min} cuenta como ${min}` : ''}</p>${d20Fields(mods, '', { kind: kind === 'death' ? '' : kind, skill })}${mods.autoFail ? '<p class="small">Podés registrar la falla sin tirar.</p>' : ''}`,
+      `<p>Bono: <b>${sign(bonus)}</b>${shown !== sign(bonus) ? ` <span class="muted">(${esc(shown)})</span>` : ''}${min ? ` · Lengua de plata: un d20 menor que ${min} cuenta como ${min}` : ''}</p>${d20Fields(mods, '', { kind: kind === 'death' ? '' : kind, skill })}${mods.autoFail ? '<p class="small">Podés registrar la falla sin tirar.</p>' : ''}`,
       fd => {
         const r = readD20(fd),
           extra = readBonus(fd);
         if (min && r.kept < min) r.kept = min;
         const total = r.kept + bonus + extra.total;
-        commit(`${label}: ${diceText(r)} ${sign(bonus)}${extra.text} = ${total}`, s => {
+        commit(`${label}: ${diceText(r)} ${shown}${extra.text} = ${total}`, s => {
           if (r.heroic) s.heroicInspiration = false;
           spendBonus(s, extra.ids);
         });
@@ -196,7 +200,7 @@ const RollUI = (() => {
             label,
             total,
             face: r.kept,
-            detail: `${diceText(r)} ${sign(bonus)}${extra.text}`,
+            detail: `${diceText(r)} ${shown}${extra.text}`,
             crit: r.kept === 20,
             fumble: r.kept === 1,
           }),
@@ -864,6 +868,20 @@ const RollUI = (() => {
           bonus: Number(e.dataset.bonus),
           kind: e.dataset.label === 'Iniciativa' ? 'check' : e.dataset.kind || 'check',
           ability: e.dataset.ability || '',
+          parts: e.dataset.label === 'Iniciativa' && !state.wildShape ? R.initiativeParts(state) : null,
+        });
+      },
+      // Prueba de característica sin habilidad (Fuerza para empujar una puerta, Inteligencia para recordar…).
+      'ability-check': e => {
+        const k = e.dataset.ability,
+          parts = R.checkParts(state, k);
+        d20({
+          title: 'Prueba de ' + R.attrs[k],
+          label: 'Prueba de ' + R.attrs[k],
+          bonus: parts.reduce((t, x) => t + x.value, 0),
+          kind: 'check',
+          ability: k,
+          parts,
         });
       },
       'stonecunning-roll': () => {
@@ -887,6 +905,7 @@ const RollUI = (() => {
           bonus: R.skillBonus(state, id),
           kind: 'check',
           skill: id,
+          parts: R.checkParts(state, R.skills.find(x => x[0] === id)[2], id),
           min: silver ? 10 : 0,
         });
       },

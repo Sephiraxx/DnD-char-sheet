@@ -1985,3 +1985,10 @@ button.cc-stat {
 .metamagic-panel ul {
   padding-left: 18px;
 }
+
+/* Prueba de característica sin habilidad, bajo cada puntuación. */
+.ability-box .ability-check {
+  display: block;
+  margin: 10px auto 0;
+  font-size: 0.8rem;
+}
