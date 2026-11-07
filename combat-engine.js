@@ -15,6 +15,7 @@
   const kind = sp => ({ Acción: 'action', Adicional: 'bonus', Reacción: 'reaction' })[sp.time] || 'special';
   // Las dos reservas pueden pagar conjuros de cualquiera de las clases.
   function availableSlots(s, sp) {
+    if (root.Grants && !root.Grants.slotAllowed(s, sp)) return [];
     const d = root.Rules.stats(s);
     // Espacios creados con Fuente de magia (por encima del máximo hasta el descanso largo).
     const font = Array.isArray(s.fontSlots) ? s.fontSlots : [];
@@ -56,6 +57,9 @@
       k = kind(sp),
       reason = blocked(s, k);
     const special = specialCast(s, sp);
+    const grant = root.Grants?.castingGrant(s, sp);
+    if (!ritual && grant?.slotRequired && !invocationSlots(s, sp).length)
+      return 'Esta invocación necesita un espacio de brujo disponible.';
     if (special?.startsWith('arcanum')) {
       const res = root.Classes.resources(s).find(r => r.id === special);
       if (!res || root.Classes.spent(s, res) === null || root.Classes.spent(s, res) >= res.max)
@@ -86,11 +90,22 @@
     if (s.extras.includes(sp.id) && s.spellModes?.[sp.id] === 'free') return 'free';
     const level = Object.keys(s.arcanum || {}).find(l => s.arcanum[l] === sp.id);
     if (level) return 'arcanum' + level;
+    const grant = root.Grants?.castingGrant(s, sp);
+    if (grant)
+      return (
+        grant.freeResource || (grant.costResource ? 'grant-cost:' + grant.sourceKey : 'grant-will:' + grant.sourceKey)
+      );
     const feat = root.FeatFX?.spellGrant(s, sp.id),
       resource = feat?.freeResource && root.Classes.resources(s).find(r => r.id === feat.freeResource);
     return resource && root.Classes.spent(s, resource) !== null && root.Classes.spent(s, resource) < resource.max
       ? resource.id
       : null;
+  }
+  function invocationSlots(s, sp) {
+    const d = root.Rules.stats(s);
+    const available = availableSlots(s, sp);
+    // These invocations explicitly require a warlock spell slot.
+    return available.filter(x => (d.pact ? x.value === 'pact' : s.classId === 'warlock'));
   }
   function cast(s, sp, slot, ritual = false) {
     const reason = spellBlock(s, sp, ritual);
@@ -98,17 +113,26 @@
     const c = data(s),
       k = kind(sp),
       special = specialCast(s, sp),
+      grant = root.Grants?.castingGrant(s, sp),
       payment =
-        special?.startsWith('feat-') && (slot === 'pact' || (Number.isInteger(slot) && slot >= sp.level))
+        (special?.startsWith('feat-') || special?.startsWith('grant')) &&
+        !grant?.slotRequired &&
+        (slot === 'pact' || (Number.isInteger(slot) && slot >= sp.level))
           ? null
           : special;
+    if (!ritual && grant?.ritualOnly && !root.Grants.normalSpell(s, sp))
+      throw Error('Este rasgo solo permite lanzarlo como ritual.');
+    if (!ritual && grant?.slotRequired && !invocationSlots(s, sp).some(x => x.value === slot))
+      throw Error('Elegí un espacio de brujo válido para la invocación.');
     if (sp.level && !ritual && !payment) {
       if (!availableSlots(s, sp).some(x => x.value === slot)) throw Error('No queda un espacio válido de ese nivel.');
     }
     if (!ritual && k !== 'special') use(s, k, sp.name);
     if (!ritual && sp.level) {
-      if (payment?.startsWith('arcanum') || payment?.startsWith('feat-')) root.Classes.spend(s, payment, 1);
-      else if (!payment) {
+      if (payment?.startsWith('arcanum') || payment?.startsWith('feat-') || payment?.startsWith('grant:'))
+        root.Classes.spend(s, payment, 1);
+      if (payment?.startsWith('grant-cost:')) root.Classes.spend(s, grant.costResource, grant.cost);
+      if (!payment || grant?.slotRequired) {
         if (slot === 'pact') s.pactSpent = (s.pactSpent ?? 0) + 1;
         else if (Array.isArray(s.fontSlots) && s.fontSlots[slot - 1] > 0) {
           s.fontSlots = s.fontSlots.slice();
@@ -198,6 +222,7 @@
     takeRoll,
     kind,
     availableSlots,
+    invocationSlots,
     blocked,
     specialCast,
     spellBlock,

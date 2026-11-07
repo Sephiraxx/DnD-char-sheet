@@ -207,6 +207,10 @@ async function refresh() {
   draw();
 }
 function onChange(table, payload) {
+  if (table === 'resync') {
+    globalThis.Board?.onParty(table);
+    return current ? refresh() : Promise.resolve();
+  }
   globalThis.Board?.onParty(table);
   if (table === 'presence') {
     online = payload;

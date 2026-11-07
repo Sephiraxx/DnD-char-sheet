@@ -145,12 +145,29 @@
     },
     'dragon-hide': { manual: 'Sin armadura, tu CA es 13 + DES; garras de 1d4 cortante.' },
     'infernal-constitution': { manual: 'Ventaja en salvaciones contra veneno.' },
+    'squire-of-solamnia': {
+      res: [
+        'Golpe preciso',
+        'prof',
+        'long',
+        'Al atacar con un arma, podés obtener ventaja y sumar 1d8 al daño si impactás. Si falla, no se gasta el uso. Controlá el impacto en mesa.',
+      ],
+    },
+    'strike-of-the-giants': {
+      res: [
+        'Golpe de gigante',
+        'prof',
+        'long',
+        'Al impactar con un arma cuerpo a cuerpo o un arma arrojadiza, aplicá la opción de gigante elegida. Una vez por turno; controlá sus condiciones y salvación en mesa.',
+      ],
+    },
   };
 
   const data = id => ({ ...(root.FeatData?.[id] || {}), ...(HAND[id] || {}) });
   const feat = id => root.Catalog?.feats.find(f => f.id === id);
-  const learned = s => s?.progression?.learnedFeats || [];
-  const choiceOf = (s, id) => s?.progression?.featChoices?.[id] || {};
+  const learned = s => root.Grants?.feats(s) || s?.progression?.learnedFeats || [];
+  const choiceOf = (s, id) =>
+    s?.progression?.featChoices?.[id] || { ability: s.grantChoices?.['feat:' + id]?.featAbility };
   const skillName = id => root.Rules?.skills.find(x => x[0] === id)?.[1] || id;
   const STRIXHAVEN = {
     lorehold: { name: 'Lorehold', cantrips: ['light', 'sacred-flame', 'thaumaturgy'], classes: ['cleric', 'wizard'] },
@@ -319,7 +336,7 @@
     const e = data(id),
       out = {};
     if (e.ability?.from) out.ability = e.ability.from.filter(k => (s?.abilities?.[k] ?? 0) < 20);
-    if (e.skills && !e.skills.fixed) {
+    if (e.skills && !e.skills.fixed && !(e.skills.tools && root.Grants)) {
       const have = new Set(s?.proficiencies || []);
       out.skills = {
         n: e.skills.n,
@@ -366,7 +383,10 @@
 
   // ---------- Lo que la ficha calcula ----------
   const sum = (s, k) => learned(s).reduce((a, id) => a + (data(id)[k] || 0), 0);
-  const hpPerLevel = s => sum(s, 'hp');
+  const hpPerLevel = s =>
+    learned(s)
+      .filter(id => s.originAuto || (s.progression?.learnedFeats || []).includes(id))
+      .reduce((a, id) => a + (data(id).hp || 0), 0);
   const initiative = s => sum(s, 'init');
   const speed = s => sum(s, 'speed');
   const passive = (s, skill) => (['perception', 'investigation'].includes(skill) ? sum(s, 'passive') : 0);
@@ -386,6 +406,11 @@
       for (const t of e.resist || []) out.resist.push([t, name]);
       for (const t of e.immune || []) out.immune.push([t, name]);
       for (const c of e.conditionImmune || []) out.conditions.push(c);
+      if (id === 'scion-of-the-outer-planes') {
+        const index = s.grantChoices?.['feat:' + id]?.variant,
+          t = ['poison', 'necrotic', 'radiant', 'force', 'psychic'][index];
+        if (t) out.resist.push([t, name]);
+      }
     }
     return out;
   }
@@ -395,7 +420,15 @@
       .filter(id => data(id).res && !seen.has(id) && seen.add(id))
       .map(id => {
         const [name, max, reset, text, action = 'manual'] = data(id).res;
-        return { id: 'feat-' + id, name, max, reset, text, action, feat: id };
+        return {
+          id: 'feat-' + id,
+          name,
+          max: max === 'prof' ? 2 + Math.floor((root.Rules.totalLevel(s) - 1) / 4) : max,
+          reset,
+          text,
+          action,
+          feat: id,
+        };
       });
     const info = strixhaven(s);
     if (info?.complete)

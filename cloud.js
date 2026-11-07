@@ -429,13 +429,19 @@
     clearTimeout(timer);
     timer = setTimeout(flush, 1200);
   }
-  async function flush() {
+  let uploadInFlight = null;
+  function flush() {
+    return (uploadInFlight ||= flushPending().finally(() => {
+      uploadInFlight = null;
+    }));
+  }
+  async function flushPending() {
     clearTimeout(timer);
-    if (!pending) return;
+    if (!pending) return status !== 'offline';
     const { key, state } = pending;
     pending = null;
     const l = link(key);
-    if (!l) return;
+    if (!l) return false;
     try {
       setStatus('syncing');
       const row = check(
@@ -451,13 +457,15 @@
       if (!row) {
         setLink(key, null);
         setStatus('removed');
-        return;
+        return false;
       }
       if (!pending) setLink(key, { ...link(key), syncedAt: row.updated_at, dirty: false });
       setStatus(pending ? 'pending' : 'synced');
+      return !pending;
     } catch (e) {
       pending ||= { key, state };
       setStatus('offline');
+      return false;
     }
   }
   if (typeof addEventListener === 'function') addEventListener('online', () => pending && flush());
@@ -788,6 +796,18 @@
     await user();
     const filter = 'campaign_id=eq.' + campaignId;
     const channel = c.channel('mesa-' + campaignId);
+    let closed = false,
+      syncing = false;
+    const catchUp = async () => {
+      if (closed || syncing || (typeof document !== 'undefined' && document.hidden)) return;
+      syncing = true;
+      try {
+        await handler('resync', { campaignId });
+      } catch {
+      } finally {
+        syncing = false;
+      }
+    };
     for (const table of [
       'characters',
       'events',
@@ -802,8 +822,20 @@
     channel.on('presence', { event: 'sync' }, () => handler('presence', Object.values(channel.presenceState()).flat()));
     channel.subscribe(status => {
       if (status === 'SUBSCRIBED' && presence) channel.track(presence);
+      if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') catchUp();
     });
-    return () => c.removeChannel(channel);
+    // Realtime can silently miss updates after sleep or a short network interruption.
+    const tick = () => {
+      if (closed) return;
+      catchUp();
+      timer = setTimeout(tick, 10000);
+    };
+    let timer = setTimeout(tick, 10000);
+    return () => {
+      closed = true;
+      clearTimeout(timer);
+      return c.removeChannel(channel);
+    };
   }
 
   // ---------- Tablero (migración 008): mapas, fichas sobre el mapa y niebla ----------

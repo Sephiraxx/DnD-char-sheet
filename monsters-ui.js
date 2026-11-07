@@ -585,15 +585,18 @@ const MonsterUI = (() => {
     }
     panel.damage = total;
     panel.parts = parts && parts.map(p => ({ amount: p.total, type: p.type }));
-    RollFX.show({ label: 'Daño · ' + panel.name, total, face: '⚔', detail: text, crit: Boolean(crit) }).then(() => {
-      const amountField = document.getElementById('monster-amount');
-      if (amountField) amountField.value = total;
-      logLine(`<b>Daño${crit ? ' crítico' : ''}:</b> ${esc(text)} = <b>${total}</b>`, 'damage');
-      const btn = document.getElementById('monster-apply');
-      if (btn) btn.disabled = false;
-    });
+    // Applying damage must not depend on an animation finishing successfully.
+    const amountField = document.getElementById('monster-amount');
+    if (amountField) amountField.value = total;
+    logLine(`<b>Daño${crit ? ' crítico' : ''}:</b> ${esc(text)} = <b>${total}</b>`, 'damage');
+    const btn = document.getElementById('monster-apply');
+    if (btn) btn.disabled = false;
+    Promise.resolve(
+      RollFX.show({ label: 'Daño · ' + panel.name, total, face: '⚔', detail: text, crit: Boolean(crit) }),
+    ).catch(() => {});
   }
   async function apply() {
+    if (panel?.applying) return;
     const fd = formData(),
       target = fd.get('target'),
       t = targets().find(x => x.id === target);
@@ -608,20 +611,35 @@ const MonsterUI = (() => {
       parts = untouched
         ? panel.parts.map(p => ({ amount: fd.has('half') ? Math.floor(p.amount / 2) : p.amount, type: p.type }))
         : null;
-    if (amount > 0)
-      await send(
+    const activePanel = panel,
+      btn = document.getElementById('monster-apply');
+    activePanel.applying = true;
+    if (btn) btn.disabled = true;
+    try {
+      if (amount > 0)
+        await send(
+          'damage',
+          {
+            amount,
+            ...(parts ? { parts } : { type: a.dmg?.[0]?.[1] || '' }),
+            source: tracker().entries.find(x => x.id === panel.entryId)?.name + ': ' + panel.name,
+          },
+          target,
+        );
+      if (panel !== activePanel) return;
+      logLine(
+        `Enviado: ${amount} de daño a ${esc(t.name)}. La ficha lo aplicará al recibir la orden; sus PG se actualizan al sincronizar.`,
         'damage',
-        {
-          amount,
-          ...(parts ? { parts } : { type: a.dmg?.[0]?.[1] || '' }),
-          source: tracker().entries.find(x => x.id === panel.entryId)?.name + ': ' + panel.name,
-        },
-        target,
       );
-    logLine(`Aplicado: ${amount} de daño a ${esc(t.name)}.`);
-    document.getElementById('monster-apply').disabled = true;
-    document.getElementById('monster-amount').value = '';
-    panel.damage = 0;
+      const input = document.getElementById('monster-amount');
+      if (input) input.value = '';
+      panel.damage = 0;
+    } catch (error) {
+      if (panel === activePanel && btn) btn.disabled = false;
+      throw error;
+    } finally {
+      activePanel.applying = false;
+    }
   }
   // Salvación de la party (aliento, aura…): el daño se tira acá y cada ficha alcanzada salva y lo aplica.
   async function askSave(entryId, kind, name) {

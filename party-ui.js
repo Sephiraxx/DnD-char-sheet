@@ -198,6 +198,7 @@ const PartyUI = (() => {
     EquipmentUI.initialState(d, s);
     // Los PG de rasgos (Dureza enana, Resistencia dracónica) se suman solos; los PG sugeridos no los incluyen.
     s.hpAuto = true;
+    s.originAuto = true;
     if (d.full) s.hp = R.stats(s).maxHP;
     return R.validate(s);
   }
@@ -304,7 +305,7 @@ const PartyUI = (() => {
     const c = C.info(state);
     modal(
       'Subclase, competencias y Pericias',
-      `${state.level >= c.subclassLevel ? select('Subclase', 'subclass', [['', 'Pendiente'], ...D.subclasses.filter(x => x.classId === C.id(state) && (Campaign.enabled(state, x) || x.id === state.classSubclass)).map(x => [x.id, x.name + ' · ' + x.source])], state.classSubclass || C.sub(state)?.id || '') : ''}<p class="small">Marcá competencias concedidas por clase, raza, trasfondo o DM. La Pericia requiere competencia previa. Revisá cuántas te concede tu clase.</p><div class="class-skills">${R.skills.map(([k, n]) => `<div><b>${n}</b><label><input type="checkbox" name="skill" value="${k}" ${state.proficiencies.includes(k) ? 'checked' : ''}> Competencia</label><label><input type="checkbox" name="expertise" value="${k}" ${state.expertise.includes(k) ? 'checked' : ''}> Pericia</label></div>`).join('')}</div><label class="check"><input type="checkbox" name="optional" ${state.optionalClassFeatures ? 'checked' : ''}>Mostrar rasgos opcionales de clase (Tasha y otras fuentes). Revisaré reemplazos y requisitos con el DM.</label>`,
+      `${state.level >= c.subclassLevel ? select('Subclase', 'subclass', [['', 'Pendiente'], ...D.subclasses.filter(x => x.classId === C.id(state) && (Campaign.enabled(state, x) || x.id === state.classSubclass)).map(x => [x.id, x.name + ' · ' + x.source])], state.classSubclass || C.sub(state)?.id || '') : ''}<p class="small">Marcá tus competencias manuales o de clase. Las concesiones automáticas se completan en Rasgos y se suman sin marcarlas aquí. La Pericia requiere competencia previa. Revisá cuántas te concede tu clase.</p><div class="class-skills">${R.skills.map(([k, n]) => `<div><b>${n}</b><label><input type="checkbox" name="skill" value="${k}" ${state.proficiencies.includes(k) ? 'checked' : ''}> Competencia</label><label><input type="checkbox" name="expertise" value="${k}" ${state.expertise.includes(k) ? 'checked' : ''}> Pericia</label></div>`).join('')}</div><label class="check"><input type="checkbox" name="optional" ${state.optionalClassFeatures ? 'checked' : ''}>Mostrar rasgos opcionales de clase (Tasha y otras fuentes). Revisaré reemplazos y requisitos con el DM.</label>`,
       fd =>
         commit('Subclase y competencias actualizadas', s => {
           if (fd.has('subclass')) {
@@ -426,7 +427,7 @@ const PartyUI = (() => {
         .map(([k, l]) => `<div class="passive-box"><strong>${R.passive(state, k)}</strong><span>${l}</span></div>`)
         .join(
           '',
-        )}</div>${R.skills.map(([k, n, ab]) => `<div class="list-row"><span>${n} <small class="muted">(${R.attrs[ab].slice(0, 3)})</small>${state.expertise.includes(k) ? ' ◆' : state.proficiencies.includes(k) ? ' •' : ''}</span><button class="roll-button" data-action="skill-roll" data-id="${k}">${sign(R.skillBonus(state, k))}</button></div>`).join('')}</section><div class="stack"><section class="card"><h2>Salvaciones</h2>${Object.entries(
+        )}</div>${R.skills.map(([k, n, ab]) => `<div class="list-row"><span>${n} <small class="muted">(${R.attrs[ab].slice(0, 3)})</small>${R.hasExpertise(state, k) ? ' ◆' : R.hasSkill(state, k) ? ' •' : ''}</span><button class="roll-button" data-action="skill-roll" data-id="${k}">${sign(R.skillBonus(state, k))}</button></div>`).join('')}</section><div class="stack"><section class="card"><h2>Salvaciones</h2>${Object.entries(
         R.attrs,
       )
         .map(
@@ -486,7 +487,22 @@ const PartyUI = (() => {
           : g.spellLevel
             ? 'Desde acceso a conjuros de nivel ' + g.spellLevel
             : '';
-    return `<div class="spell-origin" data-spell-origin="${esc(id)}"><b>${label} · ${esc(g.origin)}</b><small>${esc(since)}${g.mode === 'prepared' ? ' · No ocupa tus preparaciones diarias.' : ' · No ocupa una elección normal de conjuro o truco.'}</small></div>`;
+    const resource = g.freeResource && C.resources(s).find(r => r.id === g.freeResource),
+      limits = resource
+        ? ' · ' +
+          (C.spent(s, resource) === null
+            ? 'usos por confirmar'
+            : Math.max(0, resource.max - C.spent(s, resource)) + '/' + resource.max + ' usos') +
+          ' por descanso ' +
+          (resource.reset === 'short' ? 'corto o largo' : 'largo')
+        : g.ritualOnly
+          ? ' · solo ritual'
+          : g.costResource
+            ? ' · ' + g.cost + ' ' + g.costResource
+            : g.unlimited
+              ? ' · sin espacio'
+              : '';
+    return `<div class="spell-origin" data-spell-origin="${esc(id)}"><b>${label} · ${esc(g.origin)}</b><small>${esc(since)}${g.mode === 'prepared' ? ' · No ocupa tus preparaciones diarias.' : ' · No ocupa una elección normal de conjuro o truco.'}${esc(limits)}${g.castLevel && g.castLevel !== spellById(id)?.level ? ' · lanzamiento nivel ' + g.castLevel : ''}</small>${g.note ? '<p class="small">' + esc(g.note) + '</p>' : ''}</div>`;
   }
   function strixhavenCard(s) {
     const info = FeatFX.strixhaven(s);
@@ -585,6 +601,7 @@ const PartyUI = (() => {
           button('Dados y siglas', 'rules-help'),
       ) +
       strixhavenCard(state) +
+      GrantUI.card(state, true) +
       `<div class="banner"><p>${cast.type === 'book' ? 'El libro conserva lo aprendido. Para lanzar, prepará hasta ' + d.prepared + ' conjuros; los rituales del libro pueden lanzarse sin prepararlos.' : cast.type === 'prepared' ? 'Podés preparar hasta ' + d.prepared + ' conjuros de clase, además de los siempre preparados y extras.' : cast.type === 'known' ? 'Máximo de clase: ' + d.known + ' conjuros y ' + d.cantrips + ' trucos.' : 'Los conjuros concedidos por objetos, raza o el DM se agregan como extras.'} Los extras del DM pueden ser de cualquier clase o nivel.</p></div>${['prepared', 'book'].includes(cast.type) ? `<p class="spell-counts">${counts.prepared}/${d.prepared} preparados por vos · ${counts.automaticPrepared} siempre preparados por subclase${counts.automaticKnown ? ' · ' + counts.automaticKnown + ' concedido(s) automáticamente' : ''}.</p>` : ''}<div class="toolbar"><input class="control" id="spell-search" type="search" aria-label="Buscar conjuros" placeholder="Buscar por nombre español o inglés…" value="${esc(query)}"><select class="control" id="spell-filter" aria-label="Filtrar conjuros">${[
         ['all', 'Todos'],
         ['ritual', 'Rituales'],

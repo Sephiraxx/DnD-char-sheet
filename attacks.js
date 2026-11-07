@@ -33,7 +33,7 @@
   const parts = s => (C()?.views ? C().views(s) : [s]);
   const subId = s => s.classSubclass || '';
   function styles(s) {
-    return Object.values(s.classChoices || {}).flat();
+    return [...Object.values(s.classChoices || {}).flat(), ...(root.Grants?.optionIds(s) || [])];
   }
   function hasStyle(s, id) {
     return styles(s).includes(id + '-PHB');
@@ -74,6 +74,13 @@
 
   // Competencias por multiclase (PHB p. 164): solo algunas clases dan armas al sumarse después.
   function proficient(s, w) {
+    const granted = root.Grants?.proficiencies(s, 'weapon') || [],
+      norm = x =>
+        String(x)
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '');
+    if (granted.some(x => norm(x.split('|')[0]) === norm(w.id) || x === (w.martial ? 'martial' : 'simple')))
+      return true;
     return parts(s).some((v, i) => (i === 0 ? classProficient(s, w) : multiclassProficient(v, w)));
   }
   function multiclassProficient(v, w) {

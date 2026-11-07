@@ -50,7 +50,7 @@
       type,
       cantrips:
         at(sc?.cantrips || c.cantrips, s.level) +
-        ((s.classChoices?.['Pact Boon'] || []).includes('pact-of-the-tome-PHB') ? 3 : 0),
+        (!root.Grants && (s.classChoices?.['Pact Boon'] || []).includes('pact-of-the-tome-PHB') ? 3 : 0),
       known: at(sc?.known || c.known, s.level),
     };
   }
@@ -216,7 +216,8 @@
   const spellClassesByToken = new Map(Object.entries(D.spellClasses).map(([key, lists]) => [spellToken(key), lists]));
   function member(sp, s) {
     if (root.Campaign?.expanded(s).includes(sp.id) && casting(s).type !== 'none') return true;
-    if (sp.level === 0 && (s.classChoices?.['Pact Boon'] || []).includes('pact-of-the-tome-PHB')) return true;
+    if (!root.Grants && sp.level === 0 && (s.classChoices?.['Pact Boon'] || []).includes('pact-of-the-tome-PHB'))
+      return true;
     const lists = sp.classes || D.spellClasses[sp.id] || spellClassesByToken.get(spellToken(sp.id)) || [];
     if (id(s) === 'bard') return sp.bard && (!sp.optionalBard || s.progression.expanded);
     if (['fighter', 'rogue'].includes(id(s)) && casting(s).caster) return lists.includes('wizard');
@@ -238,11 +239,11 @@
   function granted(s) {
     const result = { prepared: [], known: [], expanded: [], choices: [], details: {} },
       sc = sub(s);
-    for (const grant of root.FeatFX?.spellGrants(s) || []) {
-      result.known.push(grant.id);
-      result.details[grant.id] = grant;
+    for (const grant of [...(root.FeatFX?.spellGrants(s) || []), ...(root.Grants?.spells(s) || [])]) {
+      if (!result[grant.mode || 'known'].includes(grant.id)) result[grant.mode || 'known'].push(grant.id);
+      if (grant.mode !== 'expanded') result.details[grant.id] = grant;
     }
-    if (!sc || s.level < info(s).subclassLevel) return result;
+    if (root.Grants || !sc || s.level < info(s).subclassLevel) return result;
     for (const grant of sc.spells || [])
       for (const mode of ['prepared', 'known', 'expanded'])
         for (const [key, values] of Object.entries(grant[mode] || {})) {
@@ -306,10 +307,32 @@
     ];
   }
   // Qué clase lanza un conjuro (para la CD y el ataque): la principal o una secundaria de la multiclase.
-  function spellCaster(s, spellId) {
+  function spellCaster(s, spellId, slot = 0) {
     if (s._total) return s;
+    const sp = R()
+        .allSpells(s)
+        .find(sp => sp.id === spellId),
+      active = sp && root.Grants?.castingGrant(s, sp);
+    const fromGrant = grant => ({
+      ...((grant.classId && views(s).find(v => v.classId === grant.classId)) || s),
+      castingAbility: grant.ability,
+    });
+    if (active && (!(slot === 'pact' || Number(slot) > 0) || active.allowSlots || active.slotRequired))
+      return fromGrant(active);
     const feat = root.FeatFX?.spellGrant(s, spellId);
     if (feat) return { ...s, castingAbility: feat.ability };
+    const grant = root.Grants?.grantFor(s, spellId);
+    if (grant && !grant.allowSlots) {
+      const ordinary = views(s).find(
+        v =>
+          (v.known || []).includes(spellId) &&
+          (sp?.level === 0 || !['prepared', 'book'].includes(casting(v).type) || (v.prepared || []).includes(spellId)),
+      );
+      if (ordinary) return ordinary;
+      const subclass = root.Grants.spells(s).find(g => g.id === spellId && g.classId && g.mode === 'prepared');
+      if (subclass) return fromGrant(subclass);
+    }
+    if (grant && grant.mode !== 'expanded') return fromGrant(grant);
     return views(s).find(v => ownUsable(v).includes(spellId)) || s;
   }
   function usable(s) {
@@ -333,10 +356,29 @@
   }
   function ritualAllowed(s, sp) {
     if (!sp.ritual) return false;
+    if (
+      !s._total &&
+      views(s)
+        .slice(1)
+        .some(v => ritualAllowed(v, sp))
+    )
+      return true;
     if (s.extras.includes(sp.id)) return true;
+    if (root.Grants?.spells(s).some(g => g.id === sp.id && g.ritual)) return true;
+    if (
+      views(s).some(
+        v =>
+          (v.classChoices?.['Eldritch Invocations'] || []).includes('book-of-ancient-secrets-PHB') &&
+          (v.known || []).includes(sp.id),
+      )
+    )
+      return true;
     const c = id(s);
     if (c === 'wizard') return s.known.includes(sp.id);
-    if (root.FeatFX?.spellGrant(s, sp.id) && granted(s).details[sp.id]?.grantType === 'feat')
+    if (
+      (root.FeatFX?.spellGrant(s, sp.id) || root.Grants?.grantFor(s, sp.id)) &&
+      ['feat', 'race', 'option'].includes(granted(s).details[sp.id]?.grantType)
+    )
       return ['cleric', 'druid', 'artificer'].includes(c)
         ? (s.prepared || []).includes(sp.id)
         : c === 'bard' && s.known.includes(sp.id);
@@ -344,7 +386,9 @@
   }
   // Recursos de clase (de cada clase con multiclase) y de dotes.
   function resources(s) {
-    return s._total ? ownResources(s) : [...classResources(s), ...(root.FeatFX?.resources(s) || [])];
+    return s._total
+      ? ownResources(s)
+      : [...classResources(s), ...(root.FeatFX?.resources(s) || []), ...(root.Grants?.resources(s) || [])];
   }
   function classResources(s) {
     if (!mcList(s).length) return ownResources(s);

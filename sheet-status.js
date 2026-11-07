@@ -5,6 +5,7 @@ const SheetStatus = (() => {
 
   // Conjuros fijos de la raza que todavía no están en la ficha.
   function missingRaceSpells(s) {
+    if (globalThis.Grants) return [];
     const have = new Set([...(s.known || []), ...(s.extras || [])]);
     return Campaign.raceSpells(s).spells.filter(x => !have.has(x.id));
   }
@@ -30,9 +31,20 @@ const SheetStatus = (() => {
       def.immune.size ? 'inmunidad a ' + [...def.immune.keys()].map(Defenses.label).join(', ') : '',
     ].filter(Boolean);
     if (race) out.push([race.name, raceBits.join(' · ') + '.']);
-    const rs = Campaign.raceSpells(s).spells.filter(
-      x => (s.extras || []).includes(x.id) || (s.known || []).includes(x.id),
-    );
+    const rs = globalThis.Grants
+      ? Grants.spells(s)
+          .filter(g => g.grantType === 'race' && g.mode !== 'expanded')
+          .map(g => ({
+            name: Grants.lookup(g.id)?.name || g.id,
+            uses: g.ritualOnly
+              ? 'solo ritual'
+              : g.freeResource
+                ? (g.max || 1) + ' por descanso ' + (g.reset === 'short' ? 'corto o largo' : 'largo')
+                : g.unlimited
+                  ? 'sin espacio'
+                  : '',
+          }))
+      : Campaign.raceSpells(s).spells.filter(x => (s.extras || []).includes(x.id) || (s.known || []).includes(x.id));
     if (rs.length)
       out.push([
         'Magia de linaje',
@@ -66,16 +78,22 @@ const SheetStatus = (() => {
         text: `Tu raza te da ${miss.map(x => x.name).join(', ')}.`,
         action: button('Agregar', 'status-race-spells', ''),
       });
-    for (const c of Campaign.raceSpells(s).choices)
+    for (const c of globalThis.Grants ? [] : Campaign.raceSpells(s).choices)
       out.push({
         text: `Por tu raza elegís ${Campaign.choiceText(c.text)}: agregalo como extra.`,
         action: button('Conjuros', 'spell-manage'),
       });
+    if (typeof GrantUI !== 'undefined')
+      for (const p of Grants.plans(s).filter(p => p.source.id !== 'strixhaven-initiate' && GrantUI.pending(s, p)))
+        out.push({
+          text: p.source.name + ': falta completar sus beneficios.',
+          action: button('Elegir', 'grant-config', '', 'data-key="' + esc(p.source.key) + '"'),
+        });
     return out;
   }
   function reminders(s) {
     const out = [];
-    for (const x of Campaign.raceSpells(s).spells)
+    for (const x of globalThis.Grants ? [] : Campaign.raceSpells(s).spells)
       if (x.uses && x.uses !== 'según el rasgo') out.push([x.name, `${x.uses}, sin gastar espacio (magia de linaje).`]);
     for (const f of FeatFX.report(s)) for (const m of f.manual) out.push([f.name, m]);
     return out;

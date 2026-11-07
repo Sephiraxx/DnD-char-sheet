@@ -19,3 +19,4 @@ tools/official-reference-facts.json
 tools/official-reference-additions.json
 tools/official-variant-facts.json
 tools/official-rules-reviews.json
+grant-data.js

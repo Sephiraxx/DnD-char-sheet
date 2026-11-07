@@ -22,7 +22,7 @@ const skillId = s => SKILL[s] || s;
 const out = {};
 let missing = [];
 for (const f of ctx.Catalog.feats) {
-  const x = feats.find(e => e.name === f.name && e.source === f.sourceKey) || feats.find(e => e.name === f.name);
+  const x = feats.find(e => e.name === (f.english || f.name) && e.source === f.sourceKey);
   if (!x) {
     missing.push(f.id);
     continue;

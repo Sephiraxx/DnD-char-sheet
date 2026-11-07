@@ -479,7 +479,10 @@ const RollUI = (() => {
 
   let spellSession = null;
   // Con multiclase, cada conjuro usa la CD y el ataque de la clase que lo lanza.
-  const caster = sp => Classes.spellCaster(state, sp.id);
+  const caster = sp =>
+    sp.castAbility
+      ? { ...Classes.spellCaster(state, sp.id), castingAbility: sp.castAbility }
+      : Classes.spellCaster(state, sp.id);
   const spellStats = sp => R.stats(caster(sp));
   // Un pergamino lanza con su propia CD y su propio bono de ataque.
   const withOverride = (st, o) => (o ? { ...st, dc: o.dc, attack: o.attack } : st);
