@@ -478,8 +478,75 @@ const PartyUI = (() => {
   function automaticSpellNote(s, id, grants = C.granted(s)) {
     const g = grants.details[id];
     if (!g) return '';
-    const label = g.mode === 'prepared' ? 'Siempre preparado' : 'Concedido automáticamente';
-    return `<div class="spell-origin" data-spell-origin="${esc(id)}"><b>${label} · ${esc(g.origin)}</b><small>${g.level ? 'Desde nivel ' + g.level : g.spellLevel ? 'Desde acceso a conjuros de nivel ' + g.spellLevel : ''}${g.mode === 'prepared' ? ' · No ocupa tus preparaciones diarias.' : ' · No ocupa una elección normal de conjuro o truco.'}</small></div>`;
+    const label = g.mode === 'prepared' ? 'Siempre preparado' : 'Concedido automáticamente',
+      since = g.ability
+        ? 'Lanzamiento con ' + R.attrs[g.ability]
+        : g.level
+          ? 'Desde nivel ' + g.level
+          : g.spellLevel
+            ? 'Desde acceso a conjuros de nivel ' + g.spellLevel
+            : '';
+    return `<div class="spell-origin" data-spell-origin="${esc(id)}"><b>${label} · ${esc(g.origin)}</b><small>${esc(since)}${g.mode === 'prepared' ? ' · No ocupa tus preparaciones diarias.' : ' · No ocupa una elección normal de conjuro o truco.'}</small></div>`;
+  }
+  function strixhavenCard(s) {
+    const info = FeatFX.strixhaven(s);
+    if (!info) return '';
+    const name = id => R.allSpells(s).find(sp => sp.id === id)?.name || id;
+    return `<section class="card section-space"><div class="card-header"><h2>Iniciado de Strixhaven${info.data ? ' · ' + esc(info.data.name) : ''}</h2>${button(info.complete ? 'Editar conjuros de Strixhaven' : 'Elegir conjuros de Strixhaven', 'strixhaven-config')}</div><p>${info.background ? 'Concedido por ' + esc(info.background) + '.' : 'Concedido por tu dote.'} Dos trucos y un conjuro de nivel 1, adicionales a los de tu clase.</p>${info.complete ? `<p><b>Trucos:</b> ${info.cantrips.map(id => esc(name(id))).join(', ')}.</p><p><b>Conjuro de nivel 1:</b> ${esc(info.spell.name)}. <b>Característica:</b> ${esc(R.attrs[info.picks.castingAbility])}.</p><p class="small">Ya están en Conjuros. El conjuro de nivel 1 permite un lanzamiento gratuito por descanso largo; también podés gastar espacios. Los trucos no gastan espacios.</p>` : '<p class="small">Falta elegir la facultad, dos trucos, un conjuro de nivel 1 y la característica de lanzamiento. Se agregarán automáticamente a Conjuros al guardar.</p>'}</section>`;
+  }
+  function configureStrixhaven() {
+    const initial = FeatFX.strixhaven(state);
+    if (!initial) throw Error('Tu personaje no tiene Iniciado de Strixhaven.');
+    let draft = { ...initial.picks, college: initial.college };
+    const draw = () => {
+      const next = {
+          ...state,
+          progression: {
+            ...state.progression,
+            featChoices: { ...state.progression.featChoices, 'strixhaven-initiate': draft },
+          },
+        },
+        info = FeatFX.strixhaven(next),
+        name = id => R.allSpells(state).find(sp => sp.id === id)?.name || id;
+      modal(
+        'Conjuros de Iniciado de Strixhaven',
+        (info.forced
+          ? `<p><b>Facultad: ${esc(info.data.name)}</b> · concedida por ${esc(info.background)}.</p>`
+          : select(
+              'Facultad de Strixhaven',
+              'strixhavenCollege',
+              [['', 'Elegí…'], ...Object.entries(FeatFX.STRIXHAVEN).map(([id, data]) => [id, data.name])],
+              draft.college || '',
+            )) +
+          (info.data
+            ? `<fieldset><legend>Elegí dos trucos de ${esc(info.data.name)}</legend>${info.data.cantrips.map(id => `<label class="check"><input type="checkbox" name="strixhavenCantrip" value="${esc(id)}" ${(draft.cantrips || []).includes(id) ? 'checked' : ''}>${esc(name(id))}</label>`).join('')}</fieldset>${select('Conjuro de nivel 1 de la dote', 'strixhavenSpell', [['', 'Elegí…'], ...info.firstSpells.sort((a, b) => a.name.localeCompare(b.name, 'es')).map(sp => [sp.id, sp.name + ' · ' + sp.sourceKey])], draft.spell || '')}${select('Característica de lanzamiento de la dote', 'strixhavenAbility', [['', 'Elegí…'], ...['int', 'wis', 'cha'].map(id => [id, R.attrs[id]])], draft.castingAbility || '')}`
+            : '<p>Elegí una facultad para ver sus conjuros permitidos.</p>') +
+          '<p class="small">No usan tus elecciones de trucos, conjuros conocidos ni preparaciones de clase. El conjuro de nivel 1 se puede lanzar una vez sin espacio por descanso largo, o con tus espacios.</p>',
+        fd =>
+          commit('Conjuros de Iniciado de Strixhaven actualizados', s =>
+            FeatFX.configureStrixhaven(s, {
+              college: initial.forced || String(fd.get('strixhavenCollege') || ''),
+              cantrips: fd.getAll('strixhavenCantrip'),
+              spell: String(fd.get('strixhavenSpell') || ''),
+              castingAbility: String(fd.get('strixhavenAbility') || ''),
+            }),
+          ),
+        'Guardar elecciones',
+      );
+      document
+        .getElementById('dialog-form')
+        .querySelector('[name="strixhavenCollege"]')
+        ?.addEventListener('change', e => {
+          const form = new FormData(document.getElementById('dialog-form'));
+          draft = {
+            college: e.target.value,
+            cantrips: [],
+            castingAbility: String(form.get('strixhavenAbility') || ''),
+          };
+          draw();
+        });
+    };
+    draw();
   }
   function spells() {
     const d = R.stats(state),
@@ -517,6 +584,7 @@ const PartyUI = (() => {
           button('Libros habilitados', 'campaign-sources') +
           button('Dados y siglas', 'rules-help'),
       ) +
+      strixhavenCard(state) +
       `<div class="banner"><p>${cast.type === 'book' ? 'El libro conserva lo aprendido. Para lanzar, prepará hasta ' + d.prepared + ' conjuros; los rituales del libro pueden lanzarse sin prepararlos.' : cast.type === 'prepared' ? 'Podés preparar hasta ' + d.prepared + ' conjuros de clase, además de los siempre preparados y extras.' : cast.type === 'known' ? 'Máximo de clase: ' + d.known + ' conjuros y ' + d.cantrips + ' trucos.' : 'Los conjuros concedidos por objetos, raza o el DM se agregan como extras.'} Los extras del DM pueden ser de cualquier clase o nivel.</p></div>${['prepared', 'book'].includes(cast.type) ? `<p class="spell-counts">${counts.prepared}/${d.prepared} preparados por vos · ${counts.automaticPrepared} siempre preparados por subclase${counts.automaticKnown ? ' · ' + counts.automaticKnown + ' concedido(s) automáticamente' : ''}.</p>` : ''}<div class="toolbar"><input class="control" id="spell-search" type="search" aria-label="Buscar conjuros" placeholder="Buscar por nombre español o inglés…" value="${esc(query)}"><select class="control" id="spell-filter" aria-label="Filtrar conjuros">${[
         ['all', 'Todos'],
         ['ritual', 'Rituales'],
@@ -606,7 +674,16 @@ const PartyUI = (() => {
     const current = statusOf(sp.id, g),
       automatic = g.details[sp.id];
     if (automatic)
-      options = [[current, automatic.mode === 'prepared' ? 'Siempre preparado · subclase' : 'Concedido por subclase']];
+      options = [
+        [
+          current,
+          automatic.mode === 'prepared'
+            ? 'Siempre preparado · subclase'
+            : automatic.grantType === 'feat'
+              ? 'Concedido por dote'
+              : 'Concedido por subclase',
+        ],
+      ];
     if (!options.some(x => x[0] === current)) options.push([current, 'Selección previa']);
     return { options, current, automatic };
   }
@@ -650,7 +727,7 @@ const PartyUI = (() => {
       mode === 'book' ? meter('En el libro', counts.known, null) : '',
       ['prepared', 'book'].includes(mode) ? meter('Preparados', counts.prepared, d.prepared) : '',
       counts.automaticPrepared + counts.automaticKnown
-        ? meter('De la subclase', counts.automaticPrepared + counts.automaticKnown, null)
+        ? meter('Concedidos por rasgos', counts.automaticPrepared + counts.automaticKnown, null)
         : '',
       s.extras.length ? meter('Extras del DM', s.extras.length, null) : '',
     ].join('');
@@ -1161,6 +1238,7 @@ const PartyUI = (() => {
         el.click();
       },
       'class-open': () => (location.hash = 'class'),
+      'strixhaven-config': configureStrixhaven,
       'class-config': classConfig,
       'oath-break': oathBreak,
       'oath-atone': oathAtone,
@@ -1203,6 +1281,7 @@ const PartyUI = (() => {
     levelup,
     character,
     spells,
+    strixhavenCard,
     manageSpells,
     validateRepertoire,
     automaticSpellNote,
