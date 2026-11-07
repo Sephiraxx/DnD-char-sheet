@@ -943,7 +943,7 @@
         if (!c || !int(c.max, 1, 100) || !int(c.spent, 0, c.max) || !/^\d+(d\d+)?(\+\d+)?$/.test(String(c.regain)))
           bad();
       }
-      for (const k of ['heal', 'note', 'extra']) if (m[k] !== undefined && !txt(m[k], k === 'note' ? 500 : 60)) bad();
+      for (const k of ['heal', 'note', 'extra']) if (m[k] !== undefined && !txt(m[k], k === 'note' ? 700 : 60)) bad();
       if (m.consumable !== undefined && typeof m.consumable !== 'boolean') bad();
       if (m.spell !== undefined && (!txt(m.spell, 100) || !int(m.spellLevel, 0, 9))) bad();
     }

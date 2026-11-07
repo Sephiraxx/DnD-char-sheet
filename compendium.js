@@ -89,7 +89,9 @@
             ? `Dado de golpe d${x.die}`
             : x.kind === 'item'
               ? `${x.rarity}${x.attune ? ' · Requiere sintonización' : ''}`
-              : x.prerequisite || '';
+              : x.prerequisite
+                ? TraitsEs.prereq(x.prerequisite)
+                : '';
   function draw() {
     const query = canon($('compendium-q').value.trim());
     const source = $('compendium-source').value;
@@ -181,7 +183,10 @@
         : '';
     const rule =
       x.kind === 'feat' || x.kind === 'option'
-        ? OfficialContent.html(OfficialContent.ruleTexts.get(`${x.kind === 'feat' ? 'feat' : 'opt'}:${x.id}`))
+        ? (x.kind === 'feat' ? TraitsEs.brief('feat:' + x.id) : TraitsEs.option(x)).replace(
+            /^(.+)$/,
+            s => `<p>${esc(s)}</p>`,
+          ) + OfficialContent.html(OfficialContent.ruleTexts.get(`${x.kind === 'feat' ? 'feat' : 'opt'}:${x.id}`))
         : '';
     const item =
       x.kind === 'item'

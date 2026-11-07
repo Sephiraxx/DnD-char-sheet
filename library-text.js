@@ -15,6 +15,12 @@ const LibraryText = (() => {
   } catch {
     /* sin almacenamiento: se carga de la nube */
   }
+  // 1 si el texto parece inglés: cuenta palabras comunes de cada idioma.
+  const english = t =>
+    +(
+      (String(t).match(/\b(the|you|your|and|of|to|with|when|can)\b/gi) || []).length >
+      (String(t).match(/\b(el|la|los|las|de|que|y|con|una|tu|tus|podés|puedes)\b/gi) || []).length
+    );
   const signature = () => [...map.keys()].length + '|' + [...map.values()].reduce((a, x) => a + x.text.length, 0);
   stamp = signature();
 
@@ -29,8 +35,12 @@ const LibraryText = (() => {
           const d = r.data || {};
           if (typeof d.text !== 'string' || !d.text) continue;
           const prev = next.get(r.key);
-          // El mismo rasgo en dos libros: el texto más completo.
-          if (!prev || d.text.length > prev.text.length)
+          // El mismo rasgo en dos textos: primero el que está en español; entre iguales, el más completo.
+          const better =
+            !prev ||
+            english(prev.text) > english(d.text) ||
+            (english(prev.text) === english(d.text) && d.text.length > prev.text.length);
+          if (better)
             next.set(r.key, {
               name: d.name || r.name,
               text: d.text.slice(0, 8000),

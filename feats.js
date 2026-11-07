@@ -167,7 +167,7 @@
   const feat = id => root.Catalog?.feats.find(f => f.id === id);
   const learned = s => root.Grants?.feats(s) || s?.progression?.learnedFeats || [];
   const choiceOf = (s, id) =>
-    s?.progression?.featChoices?.[id] || { ability: s.grantChoices?.['feat:' + id]?.featAbility };
+    s?.progression?.featChoices?.[id] || { ability: s?.grantChoices?.['feat:' + id]?.featAbility };
   const skillName = id => root.Rules?.skills.find(x => x[0] === id)?.[1] || id;
   const STRIXHAVEN = {
     lorehold: { name: 'Lorehold', cantrips: ['light', 'sacred-flame', 'thaumaturgy'], classes: ['cleric', 'wizard'] },

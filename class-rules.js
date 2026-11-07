@@ -643,8 +643,14 @@
       .filter(([x]) => x.level <= level)
       .map(([f, scope, owner]) => {
         const children = (f.children || []).map(c => [c, FEATURE_ES[id(s) + ' · ' + c]]).filter(x => x[1]);
-        const es = featureEs(s, f) || children.map(([c, t]) => c + ': ' + t).join(' ');
         const book = bookText(scope, owner, f);
+        // Sin resumen propio y con el libro solo en inglés: resumen en español de traits-es-data.js.
+        const es =
+          featureEs(s, f) ||
+          children.map(([c, t]) => c + ': ' + t).join(' ') ||
+          ((!book || book.rulesLanguage === 'en') &&
+            root.TraitsEs?.get(scope + ':' + owner + ':' + (f.english || f.name))?.text) ||
+          '';
         return es || book ? { ...f, ...(es ? { es } : {}), ...(book ? { book } : {}) } : f;
       });
   }

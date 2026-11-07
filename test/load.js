@@ -15,6 +15,7 @@ const LOGIC = [
   'cannon.js',
   'companions.js',
   'campaign-data.js',
+  'traits-es-data.js',
   'book-content-data.js',
   'book-content.js',
   'official-content-data.js',
