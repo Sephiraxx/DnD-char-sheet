@@ -353,15 +353,7 @@ const PartyUI = (() => {
         }),
     );
   }
-  function prerequisiteText(p) {
-    return p
-      .map(x =>
-        Object.entries(x)
-          .map(([k, v]) => k + ': ' + (typeof v === 'string' || typeof v === 'number' ? v : JSON.stringify(v)))
-          .join(', '),
-      )
-      .join(' / ');
-  }
+  const prerequisiteText = p => TraitsEs.prereqText(p);
   function levelup() {
     if (R.totalLevel(state) >= 20) throw Error('Ya estás en nivel 20 de personaje.');
     if (typeof LevelUp !== 'undefined') return LevelUp.start();

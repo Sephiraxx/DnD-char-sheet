@@ -65,6 +65,112 @@
   const requestedSource = ContentIndex.canonicalSource(bookSources.get(params.get('book')) || params.get('book'));
   if (sources[requestedSource]) $('compendium-source').value = requestedSource;
   if (labels[params.get('kind')]) $('compendium-kind').value = params.get('kind');
+  // ---------- Filtros por tipo ----------
+  // Conjuros: nivel y clase. Criaturas: VD y tipo. Objetos: rareza. Todo queda en la dirección.
+  const CLASS_NAMES = Object.fromEntries(Object.values(ClassData.classes).map(c => [c.id, c.name]));
+  const spellToken = t =>
+    String(t)
+      .split(/[|#]/)[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
+  const spellLists = new Map(Object.entries(ClassData.spellClasses || {}).map(([k, v]) => [spellToken(k), v]));
+  const classesOf = sp => [
+    ...(sp.classes || ClassData.spellClasses?.[sp.id] || spellLists.get(spellToken(sp.id)) || []),
+    ...(sp.bard ? ['bard'] : []),
+  ];
+  // «humanoide (elfo)» y «humanoide» son el mismo tipo; el paréntesis es la etiqueta.
+  const typeOf = x =>
+    String(x.type || '')
+      .split('(')[0]
+      .trim()
+      .toLowerCase() || 'otro';
+  const rarityOf = x => ({ infrecuente: 'poco común' })[x.rarity] || x.rarity;
+  const CRS = [0, 0.125, 0.25, 0.5, ...Array.from({ length: 30 }, (_, i) => i + 1)];
+  const filters = {
+    level: params.get('nivel') || '',
+    cls: params.get('clase') || '',
+    crMin: params.get('vdmin') || '',
+    crMax: params.get('vdmax') || '',
+    type: params.get('tipo') || '',
+    rarity: params.get('rareza') || '',
+  };
+  const pick = (label, key, options) =>
+    `<label class="field">${label}<select data-filter="${key}"><option value="">Todos</option>${options
+      .map(
+        ([v, t]) =>
+          `<option value="${esc(v)}" ${String(filters[key]) === String(v) ? 'selected' : ''}>${esc(t)}</option>`,
+      )
+      .join('')}</select></label>`;
+  function extraFilters(kind) {
+    if (kind === 'spell')
+      return (
+        pick('Nivel', 'level', [['0', 'Trucos'], ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => [String(n), 'Nivel ' + n])]) +
+        pick(
+          'Clase',
+          'cls',
+          Object.entries(CLASS_NAMES)
+            .filter(([id]) => rows.some(x => x.kind === 'spell' && classesOf(x).includes(id)))
+            .sort((a, b) => a[1].localeCompare(b[1], 'es')),
+        )
+      );
+    if (kind === 'creature') {
+      const types = [...new Set(rows.filter(x => x.kind === 'creature').map(typeOf))].sort();
+      const crs = CRS.map(c => [String(c), crText(c)]);
+      return (
+        pick('VD desde', 'crMin', crs) +
+        pick('VD hasta', 'crMax', crs) +
+        pick(
+          'Tipo de criatura',
+          'type',
+          types.sort((a, b) => a.localeCompare(b, 'es')).map(t => [t, t[0].toUpperCase() + t.slice(1)]),
+        )
+      );
+    }
+    if (kind === 'item') {
+      const order = ['común', 'poco común', 'raro', 'muy raro', 'legendario', 'artefacto'];
+      const rar = [
+        ...new Set(
+          rows
+            .filter(x => x.kind === 'item')
+            .map(rarityOf)
+            .filter(Boolean),
+        ),
+      ].sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));
+      return pick(
+        'Rareza',
+        'rarity',
+        rar.map(r => [r, r[0].toUpperCase() + r.slice(1)]),
+      );
+    }
+    return '';
+  }
+  const passes = x => {
+    if (x.kind === 'spell') {
+      if (filters.level !== '' && String(x.level) !== filters.level) return false;
+      if (filters.cls && !classesOf(x).includes(filters.cls)) return false;
+    }
+    if (x.kind === 'creature') {
+      if (filters.crMin !== '' && (x.unrated || x.cr < Number(filters.crMin))) return false;
+      if (filters.crMax !== '' && (x.unrated || x.cr > Number(filters.crMax))) return false;
+      if (filters.type && typeOf(x) !== filters.type) return false;
+    }
+    if (x.kind === 'item' && filters.rarity && rarityOf(x) !== filters.rarity) return false;
+    return true;
+  };
+  // La búsqueda y los filtros quedan en la dirección: se puede volver o compartir el mismo resultado.
+  function remember() {
+    const q = new URLSearchParams();
+    const set = (k, v) => v !== '' && v !== undefined && v !== null && q.set(k, v);
+    set('q', $('compendium-q').value.trim());
+    set('kind', $('compendium-kind').value);
+    set('book', $('compendium-source').value);
+    const kind = $('compendium-kind').value;
+    if (kind === 'spell') (set('nivel', filters.level), set('clase', filters.cls));
+    if (kind === 'creature') (set('vdmin', filters.crMin), set('vdmax', filters.crMax), set('tipo', filters.type));
+    if (kind === 'item') set('rareza', filters.rarity);
+    const url = location.pathname + (q.toString() ? '?' + q : '');
+    if (url !== location.pathname + location.search) history.replaceState(null, '', url);
+  }
   const counts = dedupe(rows).reduce((a, x) => ((a[x.kind] = (a[x.kind] || 0) + 1), a), {});
   $('compendium-counts').textContent =
     `${counts.class} clases · ${counts.subclass} subclases · ${counts.spell} conjuros · ${counts.item} objetos mágicos · ${counts.creature} entradas únicas de criaturas`;
@@ -89,17 +195,27 @@
             ? `Dado de golpe d${x.die}`
             : x.kind === 'item'
               ? `${x.rarity}${x.attune ? ' · Requiere sintonización' : ''}`
-              : x.prerequisite
-                ? TraitsEs.prereq(x.prerequisite)
+              : TraitsEs.prereqText(x.prerequisite)
+                ? 'Requisito: ' + TraitsEs.prereqText(x.prerequisite)
                 : '';
-  function draw() {
+  const PAGE = 60;
+  let limit = PAGE;
+  function draw(more = false) {
+    limit = more ? limit + PAGE : PAGE;
     const query = canon($('compendium-q').value.trim());
     const source = $('compendium-source').value;
     const kind = $('compendium-kind').value;
+    const extra = $('compendium-extra');
+    if (extra.dataset.kind !== kind) {
+      extra.dataset.kind = kind;
+      extra.innerHTML = extraFilters(kind);
+    }
+    remember();
     const filtered = dedupe(
       rows.filter(
         x =>
           (!kind || x.kind === kind) &&
+          passes(x) &&
           (!source || rowSources(x).includes(source)) &&
           (!query ||
             canon(
@@ -113,9 +229,12 @@
             ).includes(query)),
       ),
     );
-    shown = filtered.sort((a, b) => a.name.localeCompare(b.name, 'es')).slice(0, 80);
+    shown = filtered.sort((a, b) => a.name.localeCompare(b.name, 'es')).slice(0, limit);
     $('compendium-status').textContent =
-      `${filtered.length} coincidencia(s)${filtered.length > 80 ? ' · se muestran las primeras 80' : ''}`;
+      `${filtered.length} coincidencia(s)${filtered.length > shown.length ? ` · se muestran ${shown.length}` : ''}`;
+    const rest = filtered.length - shown.length;
+    $('compendium-more').hidden = rest <= 0;
+    $('compendium-more').textContent = `Ver ${Math.min(PAGE, rest)} más (quedan ${rest})`;
     $('compendium-results').innerHTML =
       shown
         .map(
@@ -129,7 +248,19 @@
     e.preventDefault();
     draw();
   });
-  for (const name of ['kind', 'source']) $('compendium-' + name).addEventListener('change', draw);
+  for (const name of ['kind', 'source']) $('compendium-' + name).addEventListener('change', () => draw());
+  $('compendium-extra').addEventListener('change', e => {
+    const key = e.target.dataset.filter;
+    if (!key) return;
+    filters[key] = e.target.value;
+    draw();
+  });
+  // «Ver más» suma la página siguiente y deja el foco en la primera tarjeta nueva.
+  $('compendium-more').addEventListener('click', () => {
+    const before = shown.length;
+    draw(true);
+    $('compendium-results').querySelector(`[data-detail="${before}"]`)?.focus();
+  });
   $('compendium-results').addEventListener('click', e => {
     const button = e.target.closest('[data-detail]');
     if (!button) return;
