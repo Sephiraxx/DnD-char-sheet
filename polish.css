@@ -2039,3 +2039,12 @@ button.cc-stat {
 .load-meter .meter {
   margin: 6px 0 8px;
 }
+
+/* Combate compacto: elecciones pendientes en una línea, sin tapar PG y ataques. */
+.cc-pending {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--gold);
+  background: rgba(224, 190, 128, 0.06);
+  border-radius: 8px;
+}
