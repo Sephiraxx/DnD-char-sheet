@@ -326,6 +326,18 @@ const TableUI = (() => {
         });
         return `El DM ${p.on ? 'te aplicó' : 'te quitó'}: ${p.name}.`;
       }
+      case 'exhaustion': {
+        const level = Math.max(0, Math.min(6, n(p.level)));
+        apply('DM: agotamiento ' + level, s => {
+          s.exhaustion = level;
+          if (s.hp !== null) s.hp = Math.min(s.hp, R.stats(s).maxHP);
+          if (level === 6) {
+            s.hp = 0;
+            s.death = { success: 0, failure: 3 };
+          }
+        });
+        return `El DM ${level ? 'te dejó en agotamiento ' + level : 'te quitó el agotamiento'}.`;
+      }
       case 'gold':
         apply('DM: monedas recibidas ' + PV.goldText(p), s => {
           for (const k of ['cp', 'sp', 'ep', 'gp', 'pp']) s.gold[k] = Math.min(9999999, s.gold[k] + n(p[k]));

@@ -503,6 +503,65 @@
     if (items) parts.push({ label: 'Objetos', value: items });
     return parts;
   }
+  // ---------- Agotamiento (PHB, apéndice A) ----------
+  const EXHAUSTION = [
+    '',
+    'Desventaja en las pruebas de característica',
+    'Velocidad a la mitad',
+    'Desventaja en tiradas de ataque y salvaciones',
+    'PG máximos a la mitad',
+    'Velocidad 0',
+    'Muerte',
+  ];
+  const exhaustion = s => s.exhaustion || 0;
+  // Efectos acumulados del nivel actual («1: …», «2: …»).
+  const exhaustionEffects = s => EXHAUSTION.slice(1, exhaustion(s) + 1).map((x, i) => `${i + 1}: ${x.toLowerCase()}`);
+
+  // ---------- Carga (PHB, cap. 7) ----------
+  // Capacidad: FUE × 15 lb; el doble con Constitución poderosa (o similar) o tamaño Grande, la mitad si es Diminuto.
+  // Lo que está en la mula, el carro o el campamento no cuenta. 50 monedas pesan 1 lb.
+  const AWAY = /mula|carro|carreta|caballo|montura|campamento|casa|guardad|cofre|almac|banco|barco|depósito/i;
+  function carrying(s) {
+    const str = formScores(s).str,
+      race = root.Campaign?.race?.(s),
+      size = [].concat(race?.size || 'M')[0],
+      powerful = (race?.traits || []).some(t => /powerful build|constitución poderosa/i.test(t)) || size === 'L',
+      factor = (size === 'T' ? 0.5 : 1) * (powerful ? 2 : 1);
+    const items = (s.inventory || []).filter(x => !AWAY.test(x.location || '')),
+      coins = Object.values(s.gold || {}).reduce((a, n) => a + n, 0),
+      gear = items.reduce((a, x) => a + (x.weight || 0) * x.qty, 0),
+      weight = Math.round((gear + coins / 50) * 10) / 10,
+      capacity = str * 15 * factor,
+      unknown = items.filter(x => x.weight === null && x.qty > 0).length;
+    // Regla variante: más de FUE × 5 = cargado (−10 pies); más de FUE × 10 = muy cargado (−20 pies y desventaja).
+    const variant = !!s.encumbranceVariant,
+      level =
+        weight > capacity * 2
+          ? 'stuck'
+          : weight > capacity
+            ? 'over'
+            : variant && weight > str * 10 * factor
+              ? 'heavy'
+              : variant && weight > str * 5 * factor
+                ? 'light'
+                : 'ok';
+    return { weight, coins: Math.round((coins / 50) * 10) / 10, capacity, unknown, variant, level, str, factor };
+  }
+  // Velocidad caminando de este turno: la base (o la de la forma salvaje) con carga y agotamiento.
+  function speedInfo(s, base = stats(s).speed) {
+    const notes = [],
+      c = carrying(s),
+      ex = exhaustion(s);
+    let v = base;
+    if (c.level === 'stuck') ((v = 0), notes.push('Más del doble de tu capacidad: no podés moverte'));
+    else if (c.level === 'over') ((v = Math.min(v, 5)), notes.push('Sobre tu capacidad: velocidad 5 pies'));
+    else if (c.level === 'heavy') ((v -= 20), notes.push('Muy cargado: −20 pies'));
+    else if (c.level === 'light') ((v -= 10), notes.push('Cargado: −10 pies'));
+    if (ex >= 5) ((v = 0), notes.push('Agotamiento 5: velocidad 0'));
+    else if (ex >= 2) ((v = Math.floor(v / 2)), notes.push(`Agotamiento ${ex}: velocidad a la mitad`));
+    return { speed: Math.max(0, v), base, notes };
+  }
+
   // La iniciativa es una prueba de Destreza: Polivalente, Alerta y los objetos también cuentan.
   function initiativeParts(s) {
     const parts = checkParts(s, 'dex'),
@@ -702,6 +761,7 @@
     if (o.expertise.some(x => !o.proficiencies.includes(x))) fail();
     if (!int(o.hpBase, -500, 2000) || !int(o.temp, 0, 9999) || !int(o.acBase, 0, 40) || !int(o.acBonus, -20, 30))
       fail();
+    if (o.exhaustion !== undefined && !int(o.exhaustion, 0, 6)) throw Error('Nivel de agotamiento inválido.');
     if (o.hp !== null && !int(o.hp, 0, stats(o).maxHP)) fail();
     if (
       !list(o.slotsSpent, 9) ||
@@ -712,6 +772,17 @@
     if (o.inspirationSpent !== null && !int(o.inspirationSpent, 0, stats(o).inspirationMax)) fail();
     if (o.hdSpent !== null && !int(o.hdSpent, 0, totalLevel(o))) fail();
     if (o.heroicInspiration !== undefined && typeof o.heroicInspiration !== 'boolean') fail();
+    if (o.encumbranceVariant !== undefined && typeof o.encumbranceVariant !== 'boolean') fail();
+    if (o.ammoUsed !== undefined) {
+      if (
+        !o.ammoUsed ||
+        typeof o.ammoUsed !== 'object' ||
+        Array.isArray(o.ammoUsed) ||
+        Object.keys(o.ammoUsed).length > 20 ||
+        Object.entries(o.ammoUsed).some(([k, n]) => k.length > 100 || !int(n, 0, 9999))
+      )
+        fail();
+    }
     // Juramento roto: el juramento anterior, para poder volver con Expiación.
     if (
       o.oathBroken !== undefined &&
@@ -1030,6 +1101,11 @@
     scores,
     formScores,
     skillBonus,
+    exhaustion,
+    exhaustionEffects,
+    EXHAUSTION,
+    carrying,
+    speedInfo,
     checkParts,
     halfProf,
     initiativeParts,

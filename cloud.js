@@ -10,6 +10,7 @@
     'heal',
     'temp',
     'condition',
+    'exhaustion',
     'rest',
     'gold',
     'item',

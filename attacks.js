@@ -241,7 +241,61 @@
     return { parts, total };
   }
 
+  // ---------- Munición ----------
+  // Qué gasta cada arma con la propiedad Munición, y cómo se reconoce en el inventario (por catálogo o nombre).
+  const AMMO = [
+    { label: 'flechas', weapon: /arco|bow/i, item: /^arrow$|flecha|arrow/i },
+    { label: 'virotes', weapon: /ballesta|crossbow/i, item: /^crossbow-bolt$|virote|bolt/i },
+    { label: 'balas', weapon: /honda|sling|pistola|mosquete|rifle|pistol|musket/i, item: /bala|bullet/i },
+    { label: 'agujas', weapon: /cerbatana|blowgun/i, item: /aguja|needle/i },
+  ];
+  // { label, rows (con cantidad), total, next (la fila de la que sale el próximo disparo) } o null.
+  function ammoFor(s, item) {
+    const w = item && !item.unarmed && weaponOf(item);
+    if (!w || !w.props.includes('Munición')) return null;
+    const a = AMMO.find(x => x.weapon.test((item.equipmentId || '') + ' ' + item.name));
+    if (!a) return null;
+    const rows = (s.inventory || []).filter(
+      x =>
+        x.id !== item.id &&
+        x.category !== 'Armas' &&
+        (a.item.test(x.equipmentId || '') || a.item.test(x.name)) &&
+        x.qty > 0,
+    );
+    // Primero la munición común; la mágica se usa cuando no queda otra (o la elige la persona en Equipo).
+    const next = rows.find(x => !x.magic) || rows[0] || null;
+    return { label: a.label, rows, total: rows.reduce((t, x) => t + x.qty, 0), next };
+  }
+  // Gasta una pieza y la anota para recuperar la mitad después del combate. Devuelve el nombre o ''.
+  function spendAmmo(s, item) {
+    const a = ammoFor(s, item);
+    if (!a?.next) return '';
+    const row = s.inventory.find(x => x.id === a.next.id);
+    row.qty--;
+    s.ammoUsed = { ...(s.ammoUsed || {}), [row.id]: ((s.ammoUsed || {})[row.id] || 0) + 1 };
+    return row.name;
+  }
+  // Después del combate: un minuto de búsqueda recupera la mitad de lo gastado (hacia abajo).
+  function ammoRecovery(s) {
+    return Object.entries(s.ammoUsed || {})
+      .map(([id, used]) => ({ row: (s.inventory || []).find(x => x.id === id), used }))
+      .filter(x => x.row && x.used)
+      .map(x => ({ id: x.row.id, name: x.row.name, used: x.used, back: Math.floor(x.used / 2) }));
+  }
+  function recoverAmmo(s, keep = true) {
+    if (keep)
+      for (const r of ammoRecovery(s)) {
+        const row = s.inventory.find(x => x.id === r.id);
+        row.qty = Math.min(999999, row.qty + r.back);
+      }
+    delete s.ammoUsed;
+  }
+
   root.Attacks = {
+    ammoFor,
+    spendAmmo,
+    ammoRecovery,
+    recoverAmmo,
     weaponOf,
     proficient,
     profile,

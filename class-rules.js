@@ -177,9 +177,13 @@
     return {
       prof: p,
       mods: m,
+      // Agotamiento 4 o más: PG máximos a la mitad.
       maxHP: Math.max(
         1,
-        s.hpBase + total * (m.con + (root.FeatFX?.hpPerLevel(s) || 0)) + (s.hpAuto ? traitHp(s).value : 0),
+        Math.floor(
+          (s.hpBase + total * (m.con + (root.FeatFX?.hpPerLevel(s) || 0)) + (s.hpAuto ? traitHp(s).value : 0)) /
+            ((s.exhaustion || 0) >= 4 ? 2 : 1),
+        ),
       ),
       ac,
       dc: 8 + p + m[cast.ability] + (mi?.spellDC(s) || 0),
@@ -580,6 +584,8 @@
     if (type === 'long') {
       delete s.fontSlots;
       delete s.forgeBlessing;
+      // Un descanso largo (con comida y bebida) baja un nivel de agotamiento.
+      if (s.exhaustion) s.exhaustion--;
     }
     s.classSpent = s.classSpent || {};
     for (const res of resources(s)) if (type === 'long' || res.reset === 'short') s.classSpent[res.id] = 0;

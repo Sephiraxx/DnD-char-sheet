@@ -135,10 +135,28 @@ function combatCompactOn() {
 function favoriteIds() {
   return state.favorites || [];
 }
+// Velocidad del turno: base (o forma salvaje) menos la armadura pesada, con carga y agotamiento.
+function combatSpeedInfo() {
+  const base = state.wildShape
+    ? Companions.vitals(state).speed
+    : Math.max(0, R.stats(state).speed - (state.equipmentDefense ? Equipment.defense(state).speedPenalty : 0));
+  return R.speedInfo(state, base);
+}
 function combatSpeed() {
-  if (state.wildShape) return Companions.vitals(state).speed;
-  const pen = state.equipmentDefense ? Equipment.defense(state).speedPenalty : 0;
-  return Math.max(0, R.stats(state).speed - pen);
+  return combatSpeedInfo().speed;
+}
+// Agotamiento: nivel 0–6 con − / + y lo que aplica cada nivel.
+function exhaustionControl() {
+  const n = R.exhaustion(state);
+  return `<div class="exhaustion-row ${n ? 'on' : ''}"><span>Agotamiento <b>${n}</b> / 6</span><div class="qty"><button type="button" class="icon-btn" data-action="exhaustion" data-delta="-1" aria-label="Bajar agotamiento" ${n ? '' : 'disabled'}>−</button><button type="button" class="icon-btn" data-action="exhaustion" data-delta="1" aria-label="Subir agotamiento" ${n >= 6 ? 'disabled' : ''}>+</button></div>${n ? `<p class="small">${esc(R.exhaustionEffects(state).join(' · '))}. Un descanso largo con comida y bebida baja un nivel.</p>` : ''}</div>`;
+}
+// Después del combate: recuperar la mitad de la munición gastada (un minuto de búsqueda).
+function ammoBanner() {
+  if (Combat.data(state).active) return '';
+  const r = Attacks.ammoRecovery(state);
+  if (!r.length) return '';
+  const back = r.reduce((t, x) => t + x.back, 0);
+  return `<div class="banner"><p><b>Munición gastada:</b> ${esc(r.map(x => `${x.used} de ${x.name}`).join(', '))}. Con un minuto de búsqueda recuperás la mitad: <b>${back}</b>.</p><div class="actions">${button('Recuperar ' + back, 'ammo-recover', '', 'data-keep="1"')}${button('No recuperar', 'ammo-recover', 'secondary', 'data-keep="0"')}</div></div>`;
 }
 function combatCompact() {
   const d = R.stats(state),
@@ -212,14 +230,16 @@ function combatCompact() {
     <div class="cc-stat"><b>${v.ac}</b><span>CA</span></div>
     <button type="button" class="cc-stat" data-action="roll" data-bonus="${d.initiative}" data-label="Iniciativa" title="Iniciativa"><b>${sign(d.initiative)}</b><span>Inic.</span></button>
     ${all.length ? `<div class="cc-stat"><b>${d.dc}</b><span>CD</span></div>` : ''}
-    <div class="cc-stat"><b>${combatSpeed()}</b><span>Pies</span></div>
+    <div class="cc-stat" title="${esc(combatSpeedInfo().notes.join(' · '))}"><b>${combatSpeed()}${combatSpeedInfo().notes.length ? '*' : ''}</b><span>Pies</span></div>
     <div class="cc-stat" title="Percepción pasiva"><b>${R.passive(state, 'perception')}</b><span>Pasiva</span></div>
   </div>
+  ${ammoBanner()}
   ${state.hp === 0 ? `<section class="banner"><p><b>A 0 PG.</b> Salvaciones de muerte: ${state.death.success}/3 éxitos · ${state.death.failure}/3 fallos.</p><div class="actions">${button('Tirar salvación de muerte', 'death-roll', '')}${button('Reiniciar', 'death-reset')}</div></section>` : ''}
   ${state.heroicInspiration ? `<button class="text-btn heroic" data-action="heroic-toggle">★ Inspiración del DM</button>` : ''}
   ${state.concentration ? `<div class="cc-focus ${c.checks.length ? 'alert' : ''}"><span><b>${c.checks.length ? '⚠ Salvación de concentración' : 'Concentración'}</b> · ${esc(spellName(state.concentration))}${c.checks.length ? ' · CON ' + sign(R.saveBonus(state, 'con')) + ' vs CD ' + c.checks[0] : ''}</span><div class="actions">${c.checks.length ? button('Tirar', 'concentration-roll', '') + button('Superada', 'combat-concentration-pass') + button('Fallada', 'combat-concentration-fail', 'danger') : button('Terminar', 'concentration-end')}</div></div>` : ''}
   ${combatTab !== 'bonus' ? ongoingSpellActions() : ''}
-  ${state.conditions.length ? `<p class="cc-conditions">${state.conditions.map(x => `<button class="chip selected" data-action="condition" data-condition="${esc(x)}" title="Quitar">${esc(x)} ×</button>`).join('')}</p>` : ''}
+  ${state.conditions.length || R.exhaustion(state) ? `<p class="cc-conditions">${R.exhaustion(state) ? `<span class="chip warn" title="${esc(R.exhaustionEffects(state).join(' · '))}">Agotamiento ${R.exhaustion(state)}</span>` : ''}${state.conditions.map(x => `<button class="chip selected" data-action="condition" data-condition="${esc(x)}" title="Quitar">${esc(x)} ×</button>`).join('')}</p>` : ''}
+  ${combatSpeedInfo().notes.length ? `<p class="small muted">Velocidad: ${esc(combatSpeedInfo().notes.join(' · '))}.</p>` : ''}
   ${typeof CompanionsUI !== 'undefined' ? CompanionsUI.combat() : ''}
   ${typeof Cannon !== 'undefined' ? Cannon.card() : ''}
   <div class="cc-turn">${[
@@ -249,7 +269,7 @@ function combatCompact() {
       : ''
   }
   ${effects.length ? `<div class="cc-effects">${effects.map(x => `<span class="tag">${esc(x.name)} · ${esc(Effects.remaining(x))}</span>`).join('')}</div>` : ''}
-  <details class="battle-rule"><summary>Condiciones</summary><div class="chips section-space">${CONDITIONS.map(x => `<button class="chip ${state.conditions.includes(x) ? 'selected' : ''}" data-action="condition" data-condition="${x}" aria-pressed="${state.conditions.includes(x)}">${x}</button>`).join('')}</div></details>
+  <details class="battle-rule"><summary>Condiciones</summary><div class="chips section-space">${CONDITIONS.map(x => `<button class="chip ${state.conditions.includes(x) ? 'selected' : ''}" data-action="condition" data-condition="${x}" aria-pressed="${state.conditions.includes(x)}">${x}</button>`).join('')}</div>${exhaustionControl()}</details>
   <div class="actions section-space">${button('Descansar', 'rest')}${button('Otra opción del DM', 'combat-custom')}${c.active ? button('Salir de combate', 'combat-finish') : ''}</div>
 </div>`;
 }
@@ -291,6 +311,7 @@ function combatView() {
         button('Dados y siglas', 'rules-help'),
     ) +
     `${!state.hpConfirmed || state.hp === null || (Classes.id(state) === 'bard' && state.inspirationSpent === null) || d.slots.some((max, i) => max && state.slotsSpent[i] === null) || Classes.resources(state).some(r => Classes.spent(state, r) === null) ? `<div class="banner"><p><b>Recursos sin confirmar.</b> Ingresá lo que te queda después de la pelea.</p>${button('Ajustar recursos', 'resources')}</div>` : ''}` +
+    ammoBanner() +
     `${state.classId && Classes.tasks(state).length ? `<div class="banner"><p><b>Tu ficha tiene elecciones pendientes.</b> Revisá los conjuros y rasgos de tu nivel.</p>${button('Completar ficha', 'class-open')}</div>` : ''}<section class="turn-console card"><div class="card-header"><div><p class="eyebrow">${c.active ? (on ? 'ES TU TURNO' : 'TURNO AJENO') : 'SEGUIMIENTO DE COMBATE'}</p><h2>${c.active ? 'Turno propio ' + c.turn : '¿Qué vas a hacer?'}</h2></div><div class="actions">${button(c.active ? 'Mi turno' : 'Iniciar mi turno', 'turn', '')}${on ? button('Terminar turno', 'combat-end') : ''}${c.active ? button('Salir de combate', 'combat-finish') : ''}</div></div><p class="small">${c.active ? '«Mi turno» recupera acción, adicional y reacción. Terminar tu turno conserva la reacción gastada.' : 'Activá el seguimiento cuando empiece tu turno. Fuera de combate podés consultar opciones y registrar recursos sin limitar acciones por turno.'}</p><div class="turn-status">${[
       ['action', 'Acción', c.action],
       ['bonus', 'Adicional', c.bonus],
@@ -341,7 +362,7 @@ function combatView() {
          .join('')
      : '<p class="small">Los conjuros con duración se anotan al lanzarlos y descuentan una ronda al empezar tu turno.</p>'
  }<h3 class="section-space">Efectos que recordar</h3>${c.effects.length ? c.effects.map(x => `<div class="effect-note"><b>${esc(x.target)}</b><p>${x.kind === 'inspired' ? 'Inspiración: d' + x.value + ' · 10 minutos' : x.kind === 'unsettling' ? 'Resta ' + x.value + ' a la próxima salvación · hasta tu próximo turno' : x.kind === 'advantage' ? 'Silvery Barbs: ventaja en la próxima prueba, ataque o salvación · 1 minuto' : 'Acción preparada · hasta tu próximo turno'}</p>${button('Usado / terminado', 'combat-effect-remove', 'secondary', `data-id="${esc(x.id)}"`)}</div>`).join('') : '<p class="small">Al inspirar o usar Palabras perturbadoras, el objetivo aparece acá. Las duraciones en minutos se controlan en mesa.</p>'}
- <details class="battle-rule"><summary>Condiciones ${state.conditions.length ? '(' + state.conditions.length + ')' : ''}</summary><div class="chips section-space">${['Derribado', 'Asustado', 'Hechizado', 'Envenenado', 'Incapacitado', 'Inconsciente', 'Agarrado', 'Restringido', 'Cegado', 'Ensordecido', 'Paralizado', 'Aturdido', 'Invisible', 'Petrificado'].map(c => `<button class="chip ${state.conditions.includes(c) ? 'selected' : ''}" data-action="condition" data-condition="${c}" aria-pressed="${state.conditions.includes(c)}">${c}</button>`).join('')}</div></details>${state.conditions.length ? `<p class="small">${state.conditions.map(esc).join(' · ')}</p>` : ''}</section></aside></div>`
+ <details class="battle-rule"><summary>Condiciones ${state.conditions.length + (R.exhaustion(state) ? 1 : 0) ? '(' + (state.conditions.length + (R.exhaustion(state) ? 1 : 0)) + ')' : ''}</summary><div class="chips section-space">${['Derribado', 'Asustado', 'Hechizado', 'Envenenado', 'Incapacitado', 'Inconsciente', 'Agarrado', 'Restringido', 'Cegado', 'Ensordecido', 'Paralizado', 'Aturdido', 'Invisible', 'Petrificado'].map(c => `<button class="chip ${state.conditions.includes(c) ? 'selected' : ''}" data-action="condition" data-condition="${c}" aria-pressed="${state.conditions.includes(c)}">${c}</button>`).join('')}</div>${exhaustionControl()}</details>${state.conditions.length ? `<p class="small">${state.conditions.map(esc).join(' · ')}</p>` : ''}</section></aside></div>`
   );
 }
 function combatHelp(topic) {

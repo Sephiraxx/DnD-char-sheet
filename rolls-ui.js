@@ -16,6 +16,12 @@ const RollUI = (() => {
       adv = [],
       dis = [];
     let autoFail = '';
+    // Agotamiento: 1 → desventaja en pruebas; 3 → también en ataques y salvaciones.
+    const ex = s.exhaustion || 0;
+    if (ex >= 1 && kind === 'check') dis.push('Agotamiento ' + ex);
+    if (ex >= 3 && (kind === 'attack' || kind === 'save')) dis.push('Agotamiento ' + ex);
+    // Regla variante de carga: muy cargado → desventaja en pruebas, ataques y salvaciones de FUE, DES y CON.
+    if (['str', 'dex', 'con'].includes(ability) && Rules.carrying(s).level === 'heavy') dis.push('Muy cargado');
     if (kind === 'attack') {
       for (const c of ['Envenenado', 'Asustado', 'Derribado', 'Cegado', 'Restringido']) if (has(c)) dis.push(c);
       if (has('Invisible')) adv.push('Invisible');
@@ -904,6 +910,7 @@ const RollUI = (() => {
           label: name,
           bonus: R.skillBonus(state, id),
           kind: 'check',
+          ability: R.skills.find(x => x[0] === id)[2],
           skill: id,
           parts: R.checkParts(state, R.skills.find(x => x[0] === id)[2], id),
           min: silver ? 10 : 0,
