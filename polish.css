@@ -2000,3 +2000,42 @@ button.cc-stat {
   padding: 10px 14px;
   margin: 12px 0;
 }
+
+/* Agotamiento: nivel con − / + y sus efectos. */
+.exhaustion-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.exhaustion-row.on > span b {
+  color: var(--red);
+}
+.exhaustion-row p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+/* Carga del inventario. */
+.load-meter .load-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-bottom: 6px;
+}
+.load-meter .load-head span {
+  color: var(--muted);
+}
+.load-meter:is(.light, .heavy, .over, .stuck) .load-head span {
+  color: var(--red);
+}
+.load-meter:is(.heavy, .over, .stuck) .meter span {
+  background: var(--red);
+}
+.load-meter .meter {
+  margin: 6px 0 8px;
+}

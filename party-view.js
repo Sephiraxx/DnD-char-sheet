@@ -39,7 +39,8 @@
       temp: s.temp || 0,
       ac: s.wildShape ? s.wildShape.ac : st.ac,
       initiative: st.initiative,
-      speed: st.speed ?? (s.speed || 30),
+      speed: root.Rules.speedInfo ? root.Rules.speedInfo(s, s.wildShape ? undefined : st.speed).speed : st.speed,
+      exhaustion: s.exhaustion || 0,
       passive: {
         perception: root.Rules.passive(s, 'perception'),
         insight: root.Rules.passive(s, 'insight'),
@@ -81,6 +82,7 @@
     const hpKnown = x.hp !== null && x.hp !== undefined;
     const pct = hpKnown ? Math.max(0, Math.min(100, Math.round((x.hp / x.maxHP) * 100))) : 0;
     const chips = [
+      x.exhaustion ? `<span class="chip warn">Agotamiento ${x.exhaustion}</span>` : '',
       ...x.conditions.map(c => `<span class="chip warn">${esc(c)}</span>`),
       x.concentration ? `<span class="chip">Concentración: ${esc(x.concentration)}</span>` : '',
       x.heroic ? '<span class="chip selected">★ Inspiración</span>' : '',

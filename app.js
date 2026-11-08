@@ -248,18 +248,31 @@ function spellCard(s) {
     extra = state.extras.includes(s.id) && !race;
   return `<details class="spell" id="spell-${esc(s.id)}"><summary><div class="spell-title"><div><h2>${esc(s.name)}</h2><div class="spell-meta">${s.level ? 'Nivel ' + s.level : 'Truco'} · ${esc(s.time)} · ${esc(s.range)}</div></div>${race ? '<span class="tag">Raza</span>' : extra ? '<span class="tag">Extra DM</span>' : s.concentration ? '<span class="tag">Conc.</span>' : ''}</div><p class="spell-brief">${esc(s.brief)}</p>${s.level === 0 && R.spellNumbersFor(state, s).length ? `<p class="spell-numbers-inline">${esc(R.spellNumbersFor(state, s)[0])}</p>` : ''}</summary><div class="spell-body"><p>${esc(s.text)}</p><p class="small">${libraryLink(s.name)}</p>${typeof OfficialContent !== 'undefined' ? OfficialContent.spellHtml(s.id) : ''}${spellNumbersHtml(s)}${button('Explicación y requisitos', 'spell-help', 'secondary', `data-id="${esc(s.id)}"`)}<p class="small">Componentes: ${esc(s.components)}<br>Duración: ${esc(s.duration)}${s.concentration ? ' · Concentración' : ''}<br>Fuente: ${esc(s.source)}</p><div class="spell-footer">${button(s.level ? 'Lanzar' : 'Usar truco', 'cast', '', `data-id="${esc(s.id)}"`)}${Classes.ritualAllowed(state, s) ? button('Ritual · sin espacio', 'ritual', 'secondary', `data-id="${esc(s.id)}"`) : ''}${button('Editar', 'spell-edit', 'secondary', `data-id="${esc(s.id)}"`)}</div></div></details>`;
 }
+// Carga: lo que llevás encima frente a tu capacidad, con la regla variante si la mesa la usa.
+function loadMeter() {
+  const c = R.carrying(state),
+    pct = Math.min(100, Math.round((c.weight / c.capacity) * 100)),
+    label = {
+      ok: 'Dentro de tu capacidad',
+      light: 'Cargado: −10 pies de velocidad',
+      heavy: 'Muy cargado: −20 pies y desventaja en pruebas, ataques y salvaciones de FUE, DES y CON',
+      over: 'Sobre tu capacidad: velocidad 5 pies (solo empujar o arrastrar)',
+      stuck: 'Más del doble de tu capacidad: no podés moverte',
+    }[c.level];
+  return `<div class="load-meter section-space ${c.level}"><div class="load-head"><b>Carga: ${c.weight} / ${c.capacity} lb</b><span>${esc(label)}</span></div><div class="meter" aria-hidden="true"><span style="width:${pct}%"></span></div><p class="small">FUE ${c.str} × 15${c.factor !== 1 ? ' × ' + c.factor : ''}. Incluye ${c.coins} lb de monedas (50 por libra). No cuenta lo que tenga como ubicación la mula, el carro, el campamento o un cofre.${c.unknown ? ` ${c.unknown} objeto(s) sin peso informado.` : ''}</p><label class="check"><input type="checkbox" data-action="encumbrance-variant" ${c.variant ? 'checked' : ''}>Regla variante de carga (Manual del Jugador): −10 pies a partir de FUE × 5 y −20 a partir de FUE × 10</label></div>`;
+}
 function gear() {
   const total = state.gold.cp + state.gold.sp * 10 + state.gold.ep * 50 + state.gold.gp * 100 + state.gold.pp * 1000;
-  const weight = state.inventory.reduce((a, x) => a + (x.weight || 0) * x.qty, 0);
   return (
     header(
       'Cada cosa en su lugar.',
       'Equipo, provisiones y cuentas del viaje.',
       button('Añadir del catálogo', 'equipment-catalog', '') + button('Añadir objeto libre', 'item-new', 'secondary'),
     ) +
+    (typeof ammoBanner === 'function' ? ammoBanner() : '') +
     EquipmentUI.panel(state) +
     MagicUI.panel() +
-    `<div class="columns gear-columns"><section class="card"><div class="card-header"><h2>Inventario</h2><small>${state.inventory.length} entradas</small></div><div class="inventory-list">${state.inventory.map(x => `<div class="list-row"><div><button class="text-btn item-name" data-action="item-edit" data-id="${esc(x.id)}">${esc(x.name)}</button><p>${esc(x.category)} · ${esc(x.location)}</p></div><div class="qty"><button class="icon-btn" aria-label="Restar ${esc(x.name)}" data-action="qty" data-id="${esc(x.id)}" data-delta="-1" ${x.qty === 0 ? 'disabled' : ''}>−</button><span>${x.qty}</span><button class="icon-btn" aria-label="Sumar ${esc(x.name)}" data-action="qty" data-id="${esc(x.id)}" data-delta="1">+</button></div></div>`).join('')}</div><p class="small section-space">Peso registrado: ${weight.toFixed(1)} lb. Solo suma objetos con peso informado; no es la carga total. Capacidad normal del personaje: ${state.abilities.str * 15} lb.</p></section><div class="stack"><section class="card"><div class="card-header"><h2>La bolsa</h2><button class="text-btn" data-action="gold-edit">Editar saldo</button></div><div class="coin-grid">${[
+    `<div class="columns gear-columns"><section class="card"><div class="card-header"><h2>Inventario</h2><small>${state.inventory.length} entradas</small></div><div class="inventory-list">${state.inventory.map(x => `<div class="list-row"><div><button class="text-btn item-name" data-action="item-edit" data-id="${esc(x.id)}">${esc(x.name)}</button><p>${esc(x.category)} · ${esc(x.location)}</p></div><div class="qty"><button class="icon-btn" aria-label="Restar ${esc(x.name)}" data-action="qty" data-id="${esc(x.id)}" data-delta="-1" ${x.qty === 0 ? 'disabled' : ''}>−</button><span>${x.qty}</span><button class="icon-btn" aria-label="Sumar ${esc(x.name)}" data-action="qty" data-id="${esc(x.id)}" data-delta="1">+</button></div></div>`).join('')}</div>${loadMeter()}</section><div class="stack"><section class="card"><div class="card-header"><h2>La bolsa</h2><button class="text-btn" data-action="gold-edit">Editar saldo</button></div><div class="coin-grid">${[
       ['cp', 'pc'],
       ['sp', 'pp'],
       ['ep', 'pe'],
@@ -638,6 +651,8 @@ function longRest() {
         s.concentration = null;
         s.combatState = Combat.fresh();
         Classes.reset(s, 'long');
+        // Después del descanso: si bajó el agotamiento de 4, el máximo vuelve a ser el completo.
+        s.hp = R.stats(s).maxHP;
         s.death = { success: 0, failure: 0 };
         s.universalSpent = 0;
         s.infectiousSpent = 0;
@@ -945,6 +960,36 @@ const actions = {
       s.concentration = null;
       Combat.data(s).checks = [];
     }),
+  'ammo-recover': e => {
+    const keep = e.dataset.keep === '1',
+      back = Attacks.ammoRecovery(state).reduce((t, x) => t + x.back, 0);
+    commit(keep ? `Munición recuperada: ${back}` : 'Munición gastada sin recuperar', s => Attacks.recoverAmmo(s, keep));
+  },
+  'encumbrance-variant': e =>
+    commit(e.checked ? 'Regla variante de carga activada' : 'Regla variante de carga desactivada', s => {
+      s.encumbranceVariant = e.checked;
+    }),
+  exhaustion: e => {
+    const next = Math.max(0, Math.min(6, R.exhaustion(state) + Number(e.dataset.delta)));
+    const apply = () =>
+      commit(`Agotamiento ${next}`, s => {
+        s.exhaustion = next;
+        // Nivel 4: PG máximos a la mitad (los actuales no pueden superarlos). Nivel 6: muerte.
+        if (s.hp !== null) s.hp = Math.min(s.hp, R.stats(s).maxHP);
+        if (next === 6) {
+          s.hp = 0;
+          s.death = { success: 0, failure: 3 };
+        }
+      });
+    if (next === 6)
+      confirmAction(
+        'Agotamiento 6',
+        'El sexto nivel de agotamiento es la muerte: la ficha queda a 0 PG con tres salvaciones fallidas.',
+        apply,
+        'Aplicar',
+      );
+    else apply();
+  },
   condition: e => {
     let c = e.dataset.condition;
     commit((state.conditions.includes(c) ? 'Quitada: ' : 'Añadida: ') + c, s => {

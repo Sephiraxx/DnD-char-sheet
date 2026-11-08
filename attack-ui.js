@@ -108,7 +108,8 @@ const AttackUI = (() => {
       (mode === 'reaction' ? 'Ataque de oportunidad con ' : 'Atacar con ') + item.name,
       `<p>${mode === 'action' && n > 1 ? `Tu acción de Atacar permite <b>${n} ataques</b>; podés repartirlos entre objetivos y moverte entre ellos.` : mode === 'bonus' ? 'Ataque con la otra mano: requiere haber atacado con un arma ligera en la otra mano en este turno.' : mode === 'reaction' ? 'Cuando un enemigo sale de tu alcance usando su movimiento.' : 'Un ataque con tu acción de Atacar.'}</p>
       ${foes.length ? select('Objetivo', 'target', [...foes.map(f => [f.id, f.name + ' · ' + TableUI.statusLabel(f.status)]), ['', 'Otro objetivo (lo resuelve la mesa)']], TableUI.preferredTarget(foes)) : ''}
-      ${RollUI.d20Fields(RollUI.boardMods(RollUI.conditionMods(state, 'attack'), { ranged: !!w.ranged || (!!w.range && (TableUI.boardContext()?.distance || 0) > (w.reach ? 10 : 5)), reach: w.reach ? 10 : 5 }), '', { kind: 'attack' }).replace(/<details class="physical-dice">[\s\S]*<\/details>$/, '')}
+      ${RollUI.d20Fields(RollUI.boardMods(RollUI.conditionMods(state, 'attack', p.ability), { ranged: !!w.ranged || (!!w.range && (TableUI.boardContext()?.distance || 0) > (w.reach ? 10 : 5)), reach: w.reach ? 10 : 5 }), '', { kind: 'attack' }).replace(/<details class="physical-dice">[\s\S]*<\/details>$/, '')}
+      ${(ammo => (ammo ? `<p class="small">${ammo.total ? `Munición: <b>${ammo.total} ${ammo.label}</b>${ammo.next ? ` · cada ataque gasta 1 de ${esc(ammo.next.name)}` : ''}.` : `No te quedan ${ammo.label} en el inventario. Anotalas en Equipo si tenés, o resolvelo con el DM.`}</p>` : ''))(A.ammoFor(state, item))}
       ${w.versatile && mode !== 'bonus' ? `<label class="check"><input type="checkbox" name="twoHands">A dos manos (${esc(w.versatile)})</label>` : ''}
       <details class="physical-dice"><summary>Uso mis propios dados</summary><p class="small">Escribí lo que salió en la mesa y la ficha suma tus bonos. Con ventaja o desventaja, anotá el d20 que conservás. En un crítico, sumá todos los dados duplicados.</p><div class="form-grid">${field('Mi d20', 'myD20', '', 'number', 'min="1" max="20" inputmode="numeric"')}${field('Suma de mis dados de daño', 'myDamage', '', 'number', 'min="0" max="999" inputmode="numeric"')}</div></details>
       <div class="attack-log" id="attack-log" aria-live="polite"></div>
@@ -124,6 +125,7 @@ const AttackUI = (() => {
 
   function attack() {
     const { item, p } = current();
+    let shot = '';
     const heroic = Boolean(document.querySelector('#dialog-form [name=heroic]')?.checked);
     let adv = document.querySelector('#dialog-form [name=adv]:checked')?.value || '';
     if (heroic) adv = adv === 'dis' ? '' : 'adv';
@@ -187,8 +189,12 @@ const AttackUI = (() => {
       s => {
         if (heroic) s.heroicInspiration = false;
         RollUI.spendBonus(s, extra.ids);
+        shot = A.spendAmmo(s, item);
       },
     );
+    // Munición: avisa cuando se termina.
+    const left = A.ammoFor(state, item);
+    if (shot && left && !left.total) toast(`Se te terminaron las ${left.label}.`);
     document.querySelectorAll('#dialog-form [name=bonusDie]:checked').forEach(x => x.closest('.bonus-die').remove());
     const box = document.querySelector('#dialog-form [name=heroic]');
     if (heroic && box) box.closest('label').remove();
