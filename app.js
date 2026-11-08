@@ -301,9 +301,22 @@ function journal() {
     }</div></section></div>`
   );
 }
+// Pie de página: dónde está guardada la ficha abierta (mismas palabras que Personajes y Mi ficha).
+function copyFooter() {
+  const el = $('#copy-footer');
+  if (!el) return;
+  if (state && typeof AccountUI !== 'undefined') el.innerHTML = AccountUI.copyTag(KEY);
+  else el.textContent = 'Tus fichas se guardan en este dispositivo.';
+}
+addEventListener('cloud-backup', () => {
+  copyFooter();
+  const tag = document.querySelector('.settings-copy .copy-state');
+  if (tag && typeof AccountUI !== 'undefined') tag.outerHTML = AccountUI.copyTag(KEY);
+});
 function render() {
   const y = scrollY;
   document.body.classList.toggle('no-character', !state);
+  copyFooter();
   if (!state) {
     PartyUI.welcome();
     if (Cloud.enabled) {
@@ -801,14 +814,14 @@ function spellPage() {
 function settings() {
   modal(
     'Mi ficha',
-    `${field('Nombre', 'nombre', state.name, 'text', 'required maxlength="100"')}<div class="actions">${button('Ajustar recursos', 'resources')}${button('Características', 'stats')}${button('Foto del personaje', 'portrait-edit')}${button('Recurso personalizado', 'resource-new')}</div><div class="divider"></div><h3>Copias y dispositivos</h3><p class="small">La ficha se guarda en este dispositivo. Si estás en una mesa, también se sincroniza con ella. Con una sesión abierta (mesa o acceso guardado), cada ficha se copia sola en la nube: guardá tu acceso con email y contraseña en <b>Mesa → Tu acceso</b> para recuperarlas en otro dispositivo o si se borran los datos del navegador. Sin mesa, exportá un archivo JSON e importalo en el otro dispositivo.</p><div class="actions">${button('Imprimir / PDF', 'print-sheet', '')}${button('Exportar JSON', 'backup', '')}${button('Importar JSON', 'import')}${button('Recuperar copia anterior', 'recover')}${rawBroken ? button('Descargar datos no legibles', 'raw-backup') : ''}</div><div class="divider"></div><p class="small">El nivel actual es ${state.level}. Los PG máximos ${state.hpConfirmed ? 'fueron confirmados' : 'están sugeridos con aumento fijo'}. Para impresiones, usá la versión PDF de tu ficha o la función del navegador.</p>${button('Eliminar personaje', 'reset', 'danger')}`,
+    `${field('Nombre', 'nombre', state.name, 'text', 'required maxlength="100"')}<div class="actions">${button('Ajustar recursos', 'resources')}${button('Características', 'stats')}${button('Foto del personaje', 'portrait-edit')}${button('Recurso personalizado', 'resource-new')}</div><div class="divider"></div><h3>Copias y dispositivos</h3><p class="settings-copy">${typeof AccountUI !== 'undefined' ? AccountUI.copyTag(KEY) : ''}</p><p class="small">${esc(PartyUI.storageHelp())}</p><div class="actions">${PartyUI.accountReady() ? button('Tu cuenta', 'account', '') : ''}${button('Imprimir / PDF', 'print-sheet', '')}${button('Exportar JSON', 'backup', '')}${button('Importar JSON', 'import')}${button('Recuperar copia anterior', 'recover')}${rawBroken ? button('Descargar datos no legibles', 'raw-backup') : ''}</div><div class="divider"></div><p class="small">El nivel actual es ${state.level}. Los PG máximos ${state.hpConfirmed ? 'fueron confirmados' : 'están sugeridos con aumento fijo'}. Para impresiones, usá la versión PDF de tu ficha o la función del navegador.</p>${button('Eliminar personaje', 'reset', 'danger')}`,
     fd => commit('Nombre actualizado', s => (s.name = String(fd.get('nombre')).trim())),
   );
 }
 function sources() {
   modal(
     'Reglas y créditos',
-    `<p>Ficha para <b>D&D 5e 2014</b>. Las reglas de mesa del DM prevalecen sobre la referencia. Los cálculos automáticos cubren las 13 clases, la multiclase, los ataques con armas, las dotes más comunes, la magia de linaje y los objetos mágicos del catálogo; otras excepciones se registran y ajustan manualmente.</p><p><a href="https://media.wizards.com/2023/downloads/dnd/SRD_CC_v5.1.pdf" target="_blank" rel="noopener">SRD 5.1</a></p><p class="small">Referencias resumidas para uso de mesa de los libros de la línea 2014. Los libros se habilitan en cada ficha o los elige el DM para su mesa. Los conjuros incluyen resúmenes de uso en español; las excepciones y tablas se consultan en su fuente. Aplicación no oficial, sin afiliación con Wizards of the Coast.</p><p class="small">This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.</p><p class="small"><b>Tus datos.</b> Tus fichas se guardan en este dispositivo. Si te unís a una mesa, esa ficha, tus tiradas y tu nombre de jugador se comparten con la mesa a través de su servidor (Supabase); el ingreso usa Cloudflare Turnstile contra bots y, si lo elegís, tu email para abrir tus fichas en otros dispositivos. Nada se comparte si no te unís a una mesa.</p>`,
+    `<p>Ficha para <b>D&D 5e 2014</b>. Las reglas de mesa del DM prevalecen sobre la referencia. Los cálculos automáticos cubren las 13 clases, la multiclase, los ataques con armas, las dotes más comunes, la magia de linaje y los objetos mágicos del catálogo; otras excepciones se registran y ajustan manualmente.</p><p><a href="https://media.wizards.com/2023/downloads/dnd/SRD_CC_v5.1.pdf" target="_blank" rel="noopener">SRD 5.1</a></p><p class="small">Referencias resumidas para uso de mesa de los libros de la línea 2014. Los libros se habilitan en cada ficha o los elige el DM para su mesa. Los conjuros incluyen resúmenes de uso en español; las excepciones y tablas se consultan en su fuente. Aplicación no oficial, sin afiliación con Wizards of the Coast.</p><p class="small">This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.</p><p class="small"><b>Tus datos.</b> Tus fichas se guardan en este dispositivo. Si te unís a una mesa, esa ficha, tus tiradas y tu nombre de jugador se comparten con la mesa a través de su servidor (Supabase); el ingreso usa Cloudflare Turnstile contra bots y, si lo elegís, tu email para abrir tus fichas en otros dispositivos. Con una cuenta, cada ficha también se copia en ese servidor. Nada sale de este dispositivo si no te unís a una mesa ni creás una cuenta.</p>`,
   );
 }
 const actions = {
@@ -1190,6 +1203,7 @@ document.addEventListener('click', e => {
         'party-create',
         'party-import',
         'party-open',
+        'account',
         'table-pending-cancel',
         'toast-dismiss',
         'sources',
