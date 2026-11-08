@@ -285,10 +285,61 @@ function gear() {
       )}</div><p class="small section-space">Equivalente: ${(total / 100).toLocaleString('es-AR', { maximumFractionDigits: 2 })} po. ${state.goldConfirmed ? '' : 'Confirmá gastos y recompensas.'}</p><div class="actions">${button('Ingreso / gasto', 'gold-transaction', '')}</div></section><section class="card ${state.classId ? 'legacy-only' : ''}"><div class="card-header"><h2>${esc(state.mule.name)}</h2><span class="tag">CA 10</span></div><div class="hp-number" style="font-size:2.8rem">${state.mule.hp ?? '—'}<small> / ${state.mule.max} PG</small></div><p class="small section-space">40 pies · Iniciativa +0 · Mediana<br>Pezuñas +2 · 1d4 + 2 contundente<br>Paso firme: ventaja FUE/DES contra derribo.</p><p class="small">Carga: 420 lb. Con carro: 2.100 lb incluido el carro. El DM maneja su conducta; no es un ataque adicional automático. Un personaje puede ir en el carro; la mula no es de un tamaño mayor que él.</p>${button('Editar mula', 'mule')}</section><section class="card ${state.classId ? 'legacy-only' : ''}"><h2>Comerciante gremial</h2><p class="small">Cuota: 5 po al mes. Herramientas de navegante: competencia confirmada, juego físico por confirmar. No se añadieron raciones, cuerda ni otros objetos que no tuvieras.</p></section></div></div>`
   );
 }
+// ---------- Notas que se guardan solas ----------
+// Mientras escribís, el texto queda como borrador en este dispositivo (sobrevive a cambiar de sección
+// y a recargar). Al dejar de escribir un momento, al cambiar de sección o al salir de la app se guarda
+// en la ficha. Varios guardados seguidos de las mismas notas ocupan una sola línea del historial.
+const AUTOSAVE = { notes: 'Notas de sesión', classNotes: 'Notas de clase' };
+let autosaveTimer = null;
+const draftKey = f => 'dnd-draft-v1:' + KEY + ':' + f;
+function draftOf(f) {
+  try {
+    return KEY ? localStorage.getItem(draftKey(f)) : null;
+  } catch {
+    return null;
+  }
+}
+function noteValue(f) {
+  const d = draftOf(f);
+  return d !== null ? d : state?.[f] || '';
+}
+function noteStatus(f) {
+  const d = draftOf(f);
+  return d !== null && d !== (state?.[f] || '') ? 'Sin guardar…' : 'Se guarda solo mientras escribís.';
+}
+function setNoteStatus(f, text) {
+  const el = document.querySelector(`[data-autosave-status="${f}"]`);
+  if (el) el.textContent = text;
+}
+function flushNotes() {
+  clearTimeout(autosaveTimer);
+  if (!state || !KEY) return;
+  for (const f of Object.keys(AUTOSAVE)) {
+    const d = draftOf(f);
+    if (d === null) continue;
+    if (d !== (state[f] || '')) {
+      const label = AUTOSAVE[f] + ' guardadas';
+      try {
+        commit(label, s => {
+          s[f] = d;
+          const last = s.log[0];
+          if (last?.text === label && Date.now() - new Date(last.date) < 30 * 60000) s.log.shift();
+        });
+      } catch (e) {
+        setNoteStatus(f, 'No se pudo guardar: ' + e.message);
+        continue;
+      }
+    }
+    try {
+      localStorage.removeItem(draftKey(f));
+    } catch {}
+    setNoteStatus(f, 'Guardado.');
+  }
+}
 function journal() {
   return (
     header('El viaje continúa.', 'Notas, compañeros e historial de cambios.', button('Exportar copia', 'backup')) +
-    `<div class="columns"><div class="stack"><section class="card"><h2>Notas de la sesión</h2><label class="field"><span class="visually-hidden">Notas</span><textarea id="journal-notes" style="min-height:230px">${esc(state.notes)}</textarea></label>${button('Guardar notas', 'notes-save', '')}</section>${CompanionsUI.card()}<section class="card"><h2>Progresión registrada</h2>${state.levelHistory.length ? state.levelHistory.map(x => `<div class="feature"><h3>Nivel ${x.level}</h3><p>${esc(x.note)}</p></div>`).join('') : '<p class="muted">Las próximas subidas de nivel quedarán registradas acá.</p>'}</section></div><section class="card"><div class="card-header"><h2>Últimos cambios</h2><button class="text-btn" data-action="undo">Deshacer</button></div><div class="log">${
+    `<div class="columns"><div class="stack"><section class="card"><h2>Notas de la sesión</h2><label class="field"><span class="visually-hidden">Notas</span><textarea id="journal-notes" data-autosave="notes" style="min-height:230px">${esc(noteValue('notes'))}</textarea></label><p class="small muted autosave-status" data-autosave-status="notes" aria-live="polite">${noteStatus('notes')}</p></section>${CompanionsUI.card()}<section class="card"><h2>Progresión registrada</h2>${state.levelHistory.length ? state.levelHistory.map(x => `<div class="feature"><h3>Nivel ${x.level}</h3><p>${esc(x.note)}</p></div>`).join('') : '<p class="muted">Las próximas subidas de nivel quedarán registradas acá.</p>'}</section></div><section class="card"><div class="card-header"><h2>Últimos cambios</h2><button class="text-btn" data-action="undo">Deshacer</button></div><div class="log">${
       state.log.length
         ? state.log
             .slice(0, 40)
@@ -301,9 +352,22 @@ function journal() {
     }</div></section></div>`
   );
 }
+// Pie de página: dónde está guardada la ficha abierta (mismas palabras que Personajes y Mi ficha).
+function copyFooter() {
+  const el = $('#copy-footer');
+  if (!el) return;
+  if (state && typeof AccountUI !== 'undefined') el.innerHTML = AccountUI.copyTag(KEY);
+  else el.textContent = 'Tus fichas se guardan en este dispositivo.';
+}
+addEventListener('cloud-backup', () => {
+  copyFooter();
+  const tag = document.querySelector('.settings-copy .copy-state');
+  if (tag && typeof AccountUI !== 'undefined') tag.outerHTML = AccountUI.copyTag(KEY);
+});
 function render() {
   const y = scrollY;
   document.body.classList.toggle('no-character', !state);
+  copyFooter();
   if (!state) {
     PartyUI.welcome();
     if (Cloud.enabled) {
@@ -334,6 +398,15 @@ function render() {
     )
     .join('');
   $('#breadcrumb').textContent = navs.find(x => x[0] === view)?.[2] || 'Combate';
+  // Si estabas escribiendo notas, el campo conserva el foco, el cursor y el desplazamiento.
+  const typing = document.activeElement?.dataset?.autosave
+    ? {
+        f: document.activeElement.dataset.autosave,
+        a: document.activeElement.selectionStart,
+        b: document.activeElement.selectionEnd,
+        top: document.activeElement.scrollTop,
+      }
+    : null;
   $('#main').innerHTML =
     (storageIssue ? `<div class="banner"><p>${esc(storageIssue)}</p>${button('Mi ficha', 'settings')}</div>` : '') +
     (view === 'combat'
@@ -358,10 +431,19 @@ function render() {
       }[view] || combat
     )();
   scrollTo(0, y);
+  if (typing) {
+    const el = document.querySelector(`[data-autosave="${typing.f}"]`);
+    if (el) {
+      el.focus({ preventScroll: true });
+      el.setSelectionRange(typing.a, typing.b);
+      el.scrollTop = typing.top;
+    }
+  }
   globalThis.Board?.refresh();
 }
 function go() {
   hideToast();
+  flushNotes();
   view = location.hash.slice(1);
   if (!navs.some(x => x[0] === view)) view = 'combat';
   query = '';
@@ -801,14 +883,14 @@ function spellPage() {
 function settings() {
   modal(
     'Mi ficha',
-    `${field('Nombre', 'nombre', state.name, 'text', 'required maxlength="100"')}<div class="actions">${button('Ajustar recursos', 'resources')}${button('Características', 'stats')}${button('Foto del personaje', 'portrait-edit')}${button('Recurso personalizado', 'resource-new')}</div><div class="divider"></div><h3>Copias y dispositivos</h3><p class="small">La ficha se guarda en este dispositivo. Si estás en una mesa, también se sincroniza con ella. Con una sesión abierta (mesa o acceso guardado), cada ficha se copia sola en la nube: guardá tu acceso con email y contraseña en <b>Mesa → Tu acceso</b> para recuperarlas en otro dispositivo o si se borran los datos del navegador. Sin mesa, exportá un archivo JSON e importalo en el otro dispositivo.</p><div class="actions">${button('Imprimir / PDF', 'print-sheet', '')}${button('Exportar JSON', 'backup', '')}${button('Importar JSON', 'import')}${button('Recuperar copia anterior', 'recover')}${rawBroken ? button('Descargar datos no legibles', 'raw-backup') : ''}</div><div class="divider"></div><p class="small">El nivel actual es ${state.level}. Los PG máximos ${state.hpConfirmed ? 'fueron confirmados' : 'están sugeridos con aumento fijo'}. Para impresiones, usá la versión PDF de tu ficha o la función del navegador.</p>${button('Eliminar personaje', 'reset', 'danger')}`,
+    `${field('Nombre', 'nombre', state.name, 'text', 'required maxlength="100"')}<div class="actions">${button('Ajustar recursos', 'resources')}${button('Características', 'stats')}${button('Foto del personaje', 'portrait-edit')}${button('Recurso personalizado', 'resource-new')}</div><div class="divider"></div><h3>Copias y dispositivos</h3><p class="settings-copy">${typeof AccountUI !== 'undefined' ? AccountUI.copyTag(KEY) : ''}</p><p class="small">${esc(PartyUI.storageHelp())}</p><div class="actions">${PartyUI.accountReady() ? button('Tu cuenta', 'account', '') : ''}${button('Imprimir / PDF', 'print-sheet', '')}${button('Exportar JSON', 'backup', '')}${button('Importar JSON', 'import')}${button('Recuperar copia anterior', 'recover')}${rawBroken ? button('Descargar datos no legibles', 'raw-backup') : ''}</div><div class="divider"></div><p class="small">El nivel actual es ${state.level}. Los PG máximos ${state.hpConfirmed ? 'fueron confirmados' : 'están sugeridos con aumento fijo'}. Para impresiones, usá la versión PDF de tu ficha o la función del navegador.</p>${button('Eliminar personaje', 'reset', 'danger')}`,
     fd => commit('Nombre actualizado', s => (s.name = String(fd.get('nombre')).trim())),
   );
 }
 function sources() {
   modal(
     'Reglas y créditos',
-    `<p>Ficha para <b>D&D 5e 2014</b>. Las reglas de mesa del DM prevalecen sobre la referencia. Los cálculos automáticos cubren las 13 clases, la multiclase, los ataques con armas, las dotes más comunes, la magia de linaje y los objetos mágicos del catálogo; otras excepciones se registran y ajustan manualmente.</p><p><a href="https://media.wizards.com/2023/downloads/dnd/SRD_CC_v5.1.pdf" target="_blank" rel="noopener">SRD 5.1</a></p><p class="small">Referencias resumidas para uso de mesa de los libros de la línea 2014. Los libros se habilitan en cada ficha o los elige el DM para su mesa. Los conjuros incluyen resúmenes de uso en español; las excepciones y tablas se consultan en su fuente. Aplicación no oficial, sin afiliación con Wizards of the Coast.</p><p class="small">This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.</p><p class="small"><b>Tus datos.</b> Tus fichas se guardan en este dispositivo. Si te unís a una mesa, esa ficha, tus tiradas y tu nombre de jugador se comparten con la mesa a través de su servidor (Supabase); el ingreso usa Cloudflare Turnstile contra bots y, si lo elegís, tu email para abrir tus fichas en otros dispositivos. Nada se comparte si no te unís a una mesa.</p>`,
+    `<p>Ficha para <b>D&D 5e 2014</b>. Las reglas de mesa del DM prevalecen sobre la referencia. Los cálculos automáticos cubren las 13 clases, la multiclase, los ataques con armas, las dotes más comunes, la magia de linaje y los objetos mágicos del catálogo; otras excepciones se registran y ajustan manualmente.</p><p><a href="https://media.wizards.com/2023/downloads/dnd/SRD_CC_v5.1.pdf" target="_blank" rel="noopener">SRD 5.1</a></p><p class="small">Referencias resumidas para uso de mesa de los libros de la línea 2014. Los libros se habilitan en cada ficha o los elige el DM para su mesa. Los conjuros incluyen resúmenes de uso en español; las excepciones y tablas se consultan en su fuente. Aplicación no oficial, sin afiliación con Wizards of the Coast.</p><p class="small">This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.</p><p class="small"><b>Tus datos.</b> Tus fichas se guardan en este dispositivo. Si te unís a una mesa, esa ficha, tus tiradas y tu nombre de jugador se comparten con la mesa a través de su servidor (Supabase); el ingreso usa Cloudflare Turnstile contra bots y, si lo elegís, tu email para abrir tus fichas en otros dispositivos. Con una cuenta, cada ficha también se copia en ese servidor. Nada sale de este dispositivo si no te unís a una mesa ni creás una cuenta.</p>`,
   );
 }
 const actions = {
@@ -1093,11 +1175,7 @@ const actions = {
           s.mule = { name: fd.get('nombre'), max, hp: number(fd, 'PG', 0, max), notes: fd.get('notas') };
         }),
     ),
-  'notes-save': () => {
-    const txt = $('#journal-notes').value;
-    commit('Notas de sesión guardadas', s => (s.notes = txt));
-    toast('Notas guardadas.');
-  },
+  'notes-save': () => flushNotes(),
   companion: () =>
     modal(
       'Compañeros y mascotas',
@@ -1190,6 +1268,7 @@ document.addEventListener('click', e => {
         'party-create',
         'party-import',
         'party-open',
+        'account',
         'table-pending-cancel',
         'toast-dismiss',
         'sources',
@@ -1203,6 +1282,16 @@ document.addEventListener('click', e => {
   }
 });
 document.addEventListener('input', e => {
+  const f = e.target.dataset?.autosave;
+  if (f && AUTOSAVE[f] && KEY) {
+    try {
+      localStorage.setItem(draftKey(f), e.target.value);
+    } catch {}
+    setNoteStatus(f, 'Sin guardar…');
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(flushNotes, 1500);
+    return;
+  }
   if (e.target.id === 'spell-search') {
     let pos = e.target.selectionStart;
     query = e.target.value;
@@ -1243,6 +1332,8 @@ $('#import-file').addEventListener('change', async e => {
   }
 });
 window.addEventListener('hashchange', go);
+document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && flushNotes());
+window.addEventListener('pagehide', flushNotes);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) hideToast();
 });

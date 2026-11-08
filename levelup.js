@@ -191,10 +191,12 @@ const LevelUp = (() => {
     host.hidden = false;
     document.body.classList.add('creator-open');
     draw();
+    globalThis.OverlayFocus?.open(host);
   }
   function close() {
     host.hidden = true;
     document.body.classList.remove('creator-open');
+    globalThis.OverlayFocus?.close(host);
   }
 
   // ---------- Dibujo ----------
@@ -429,37 +431,9 @@ const LevelUp = (() => {
   }
 
   // 6. Opciones de clase (estilos, invocaciones, metamagia, maniobras…)
-  const PACTS = {
-    Tome: 'Pacto del tomo',
-    Blade: 'Pacto del filo',
-    Chain: 'Pacto de la cadena',
-    Talisman: 'Pacto del talismán',
-  };
-  const spellEs = t => {
-    const key = canon(String(t).split('#')[0].split('|')[0]);
-    if (key === 'hex/curse') return 'Maleficio o una maldición';
-    return Catalog.spells.find(s => canon(s.english || '') === key)?.name || String(t).split('#')[0];
-  };
+  // Requisitos legibles en español (los mismos textos que el compendio y las elecciones de clase).
   function requirement(o) {
-    return (o.prerequisite || [])
-      .map(p =>
-        Object.entries(p)
-          .map(([k, v]) =>
-            k === 'level'
-              ? 'nivel ' + (v.level ?? v)
-              : k === 'pact'
-                ? PACTS[v] || v
-                : k === 'spell'
-                  ? 'conocer ' + [].concat(v).map(spellEs).join(' o ')
-                  : k === 'item'
-                    ? 'objeto: ' + [].concat(v).join(', ')
-                    : '',
-          )
-          .filter(Boolean)
-          .join(', '),
-      )
-      .filter(Boolean)
-      .join(' o ');
+    return TraitsEs.prereqText(o.prerequisite);
   }
   // El pacto se controla: sin el don del pacto pedido, la invocación no se puede elegir.
   function pactMissing(o, n) {

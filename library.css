@@ -39,6 +39,16 @@
 .library-filters select {
   max-width: 100%;
 }
+#compendium-more[hidden] {
+  display: none;
+}
+.library-more {
+  justify-content: center;
+  margin-top: 16px;
+}
+#compendium-extra:empty {
+  display: none;
+}
 .library-results {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
