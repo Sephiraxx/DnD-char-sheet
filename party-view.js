@@ -188,6 +188,8 @@
         return `<b>DM</b>: ${esc(target)} obtiene ${esc(p.amount)} PG temporales`;
       case 'condition':
         return `<b>DM</b>: ${esc(target)} ${p.on ? 'queda' : 'deja de estar'} ${esc(p.name)}`;
+      case 'exhaustion':
+        return `<b>DM</b>: ${esc(target)} ${p.level ? 'queda con agotamiento ' + esc(p.level) : 'deja de estar agotado'}`;
       case 'rest':
         return `<b>DM</b>: descanso ${p.type === 'long' ? 'largo' : 'corto'}${target ? ' para ' + esc(target) : ''}`;
       case 'gold':

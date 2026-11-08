@@ -51,7 +51,33 @@ const AttackUI = (() => {
     const item = itemById(session.itemId);
     if (!item) throw Error('Esa arma ya no está en tu inventario.');
     const twoHands = Boolean(document.querySelector('#dialog-form [name=twoHands]')?.checked);
-    return { item, p: A.profile(state, item, { mode: session.mode, twoHands }) };
+    const p = A.profile(state, item, { mode: session.mode, twoHands }),
+      ammo = A.ammoFor(state, item),
+      row = ammo?.rows.find(x => x.id === document.querySelector('#dialog-form [name=ammo]')?.value) || ammo?.next,
+      bonus = A.ammoBonus(row);
+    // La munición mágica suma su bono al del arma en este disparo.
+    return {
+      item,
+      ammoId: row?.id || '',
+      p: bonus ? { ...p, toHit: p.toHit + bonus, dmgMod: p.dmgMod + bonus, ammoBonus: bonus } : p,
+    };
+  }
+  // Munición del arma: cuánta queda y cuál usar (la común primero; la mágica suma su bono).
+  function ammoField(item, chosen = '') {
+    const a = A.ammoFor(state, item);
+    if (!a) return '';
+    if (!a.total)
+      return `<p class="small">No te quedan ${a.label} en el inventario. Anotalas en Equipo si tenés, o resolvelo con el DM.</p>`;
+    const pickId = a.rows.some(r => r.id === chosen) ? chosen : a.next.id;
+    const label = r => `${r.name} × ${r.qty}${A.ammoBonus(r) ? ` (+${A.ammoBonus(r)} al ataque y al daño)` : ''}`;
+    return a.rows.length > 1
+      ? select(
+          `Munición · ${a.total} ${a.label}`,
+          'ammo',
+          a.rows.map(r => [r.id, label(r)]),
+          pickId,
+        )
+      : `<p class="small">Munición: <b>${esc(label(a.rows[0]))}</b> · cada ataque gasta 1.</p><input type="hidden" name="ammo" value="${esc(a.rows[0].id)}">`;
   }
   // Ataques que permite este modo en el turno: los de la acción de Atacar, o uno.
   const cap = () => (session.mode === 'action' ? A.attacksPerAction(state) : 1);
@@ -109,7 +135,7 @@ const AttackUI = (() => {
       `<p>${mode === 'action' && n > 1 ? `Tu acción de Atacar permite <b>${n} ataques</b>; podés repartirlos entre objetivos y moverte entre ellos.` : mode === 'bonus' ? 'Ataque con la otra mano: requiere haber atacado con un arma ligera en la otra mano en este turno.' : mode === 'reaction' ? 'Cuando un enemigo sale de tu alcance usando su movimiento.' : 'Un ataque con tu acción de Atacar.'}</p>
       ${foes.length ? select('Objetivo', 'target', [...foes.map(f => [f.id, f.name + ' · ' + TableUI.statusLabel(f.status)]), ['', 'Otro objetivo (lo resuelve la mesa)']], TableUI.preferredTarget(foes)) : ''}
       ${RollUI.d20Fields(RollUI.boardMods(RollUI.conditionMods(state, 'attack', p.ability), { ranged: !!w.ranged || (!!w.range && (TableUI.boardContext()?.distance || 0) > (w.reach ? 10 : 5)), reach: w.reach ? 10 : 5 }), '', { kind: 'attack' }).replace(/<details class="physical-dice">[\s\S]*<\/details>$/, '')}
-      ${(ammo => (ammo ? `<p class="small">${ammo.total ? `Munición: <b>${ammo.total} ${ammo.label}</b>${ammo.next ? ` · cada ataque gasta 1 de ${esc(ammo.next.name)}` : ''}.` : `No te quedan ${ammo.label} en el inventario. Anotalas en Equipo si tenés, o resolvelo con el DM.`}</p>` : ''))(A.ammoFor(state, item))}
+      <div id="attack-ammo">${ammoField(item)}</div>
       ${w.versatile && mode !== 'bonus' ? `<label class="check"><input type="checkbox" name="twoHands">A dos manos (${esc(w.versatile)})</label>` : ''}
       <details class="physical-dice"><summary>Uso mis propios dados</summary><p class="small">Escribí lo que salió en la mesa y la ficha suma tus bonos. Con ventaja o desventaja, anotá el d20 que conservás. En un crítico, sumá todos los dados duplicados.</p><div class="form-grid">${field('Mi d20', 'myD20', '', 'number', 'min="1" max="20" inputmode="numeric"')}${field('Suma de mis dados de daño', 'myDamage', '', 'number', 'min="0" max="999" inputmode="numeric"')}</div></details>
       <div class="attack-log" id="attack-log" aria-live="polite"></div>
@@ -124,7 +150,7 @@ const AttackUI = (() => {
   }
 
   function attack() {
-    const { item, p } = current();
+    const { item, p, ammoId } = current();
     let shot = '';
     const heroic = Boolean(document.querySelector('#dialog-form [name=heroic]')?.checked);
     let adv = document.querySelector('#dialog-form [name=adv]:checked')?.value || '';
@@ -151,7 +177,7 @@ const AttackUI = (() => {
       (r.physical ? ' (dado físico)' : '') +
       extra.text;
     const entry = {
-      html: `<b>${label}:</b> ${dice} ${sign(p.toHit)} = <b>${r.total}</b>${r.crit ? ' · <b>¡Crítico!</b>' : r.fumble ? ' · Pifia: falla automáticamente' : ''}${session.attacks > n ? ' <span class="muted">(más ataques que los de tu acción: confirmalo con el DM)</span>' : ''}`,
+      html: `<b>${label}:</b> ${dice} ${sign(p.toHit)}${p.ammoBonus ? ` <span class="muted">(incluye +${p.ammoBonus} de la munición)</span>` : ''} = <b>${r.total}</b>${r.crit ? ' · <b>¡Crítico!</b>' : r.fumble ? ' · Pifia: falla automáticamente' : ''}${session.attacks > n ? ' <span class="muted">(más ataques que los de tu acción: confirmalo con el DM)</span>' : ''}`,
       cls: r.crit ? 'crit' : r.fumble ? 'fumble' : '',
     };
     const landed = RollFX.show({
@@ -189,11 +215,13 @@ const AttackUI = (() => {
       s => {
         if (heroic) s.heroicInspiration = false;
         RollUI.spendBonus(s, extra.ids);
-        shot = A.spendAmmo(s, item);
+        shot = A.spendAmmo(s, item, ammoId);
       },
     );
-    // Munición: avisa cuando se termina.
-    const left = A.ammoFor(state, item);
+    // Munición: actualiza lo que queda y avisa cuando se termina.
+    const left = A.ammoFor(state, item),
+      ammoBox = document.getElementById('attack-ammo');
+    if (ammoBox && left) ammoBox.innerHTML = ammoField(item, ammoId);
     if (shot && left && !left.total) toast(`Se te terminaron las ${left.label}.`);
     document.querySelectorAll('#dialog-form [name=bonusDie]:checked').forEach(x => x.closest('.bonus-die').remove());
     const box = document.querySelector('#dialog-form [name=heroic]');

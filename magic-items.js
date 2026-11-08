@@ -273,6 +273,11 @@
     ),
     // Armas
     ...plus('weapon', 'Arma', 'Weapon', 'weapon', [U, R, V], { base: 'weapon' }),
+    // Munición mágica: el bono se suma al del arma en el disparo que la usa (Attacks.ammoFor).
+    ...plus('ammunition', 'Munición', 'Ammunition', 'ammo', [U, R, V], {
+      base: 'ammo',
+      note: '+N a la tirada de ataque y al daño del disparo, además del bono del arma. La pieza pierde la magia al impactar.',
+    }),
     {
       id: 'flame-tongue',
       name: 'Lengua de fuego',
@@ -585,6 +590,7 @@
     'spellAttack',
     'spellDC',
     'weapon',
+    'ammo',
     'armor',
     'shield',
   ];
@@ -688,7 +694,13 @@
       return m ? Number(m[1]) : 0;
     };
     const hint = (/\(([^)]{2,60})\)/.exec(row.detail || '')?.[1] || '').trim();
-    if (/^\s*(arma|weapon)\b/.test(d)) {
+    // Munición mágica de los libros («Arma (cualquier munición)», flechas asesinas…): la gasta el arco.
+    if (/^\s*(arma|weapon)\b/.test(d) && /munici[oó]n|ammunition|flecha|arrow/i.test(d + ' ' + (it.name || ''))) {
+      const n = Number(plus) || num(/\+\s?(\d)[^.]{0,30}?(?:tiradas de ataque|attack(?: and damage)? rolls)/i);
+      if (n) out.ammo = n;
+      out.base = 'ammo';
+      if (/flecha|arrow/i.test(it.name || '')) out.baseHint = 'flecha';
+    } else if (/^\s*(arma|weapon)\b/.test(d)) {
       const n = Number(plus) || num(/\+\s?(\d)[^.]{0,30}?(?:tiradas de ataque|attack(?: and damage)? rolls)/i);
       if (n) out.weapon = n;
       out.base = 'weapon';
@@ -770,6 +782,7 @@
       .trim();
   const BASE_OK = {
     weapon: x => x.weapon,
+    ammo: x => ['arrow', 'crossbow-bolt'].includes(x.id),
     armor: x => x.armor && x.armor.type !== 'shield',
     shield: x => x.armor?.type === 'shield',
   };
@@ -810,7 +823,7 @@
     if (it.scroll && !m.spell) throw Error('Elegí el conjuro del pergamino.');
     const b = it.base ? root.EquipmentData?.items[base || baseFor(it)] : null;
     const usable = b && BASE_OK[it.base](b) ? b : null;
-    const n = it.weapon || it.armor || it.shield;
+    const n = it.weapon || it.armor || it.shield || it.ammo;
     const name = it.scroll
       ? `${it.name}: ${scrollSpell(m.spell).name}`
       : !usable
@@ -873,6 +886,7 @@
     const sg = n => (n >= 0 ? '+' : '') + n,
       out = [];
     if (m.weapon) out.push(`${sg(m.weapon)} al ataque y al daño`);
+    if (m.ammo) out.push(`${sg(m.ammo)} al ataque y al daño del disparo`);
     if (m.armor) out.push(`${sg(m.armor)} a la CA (equipada)`);
     if (m.shield) out.push(`${sg(m.shield)} a la CA (equipado)`);
     if (m.ac) out.push(`${sg(m.ac)} a la CA`);

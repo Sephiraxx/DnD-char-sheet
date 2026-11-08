@@ -137,6 +137,9 @@
       let item = row.canonicalId
         ? target.MagicItems?.byId(row.canonicalId)
         : existing.get(normalize(row.name)) || existing.get(normalize(row.english));
+      // «Munición +1, +2 o +3» del libro: es la «Munición +1» de la ficha (con «+2» y «+3» al lado), con su texto.
+      if (!item && /^munici[oó]n\s*,?\s*\+\s?[1li]\b.*\+\s?2.*\+\s?3/i.test(row.name))
+        item = target.MagicItems?.byId('ammunition-1');
       if (!item && target.MagicItems) {
         const name = row.name.trim();
         if (name.length < 3 || name.length > 100) continue;

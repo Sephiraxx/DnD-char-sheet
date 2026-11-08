@@ -266,11 +266,14 @@
     const next = rows.find(x => !x.magic) || rows[0] || null;
     return { label: a.label, rows, total: rows.reduce((t, x) => t + x.qty, 0), next };
   }
+  // Bono de la munición mágica (Munición +1…) al ataque y al daño de ese disparo.
+  const ammoBonus = row => row?.magic?.ammo || 0;
   // Gasta una pieza y la anota para recuperar la mitad después del combate. Devuelve el nombre o ''.
-  function spendAmmo(s, item) {
+  // rowId: la munición elegida en el ataque (si no queda, la siguiente).
+  function spendAmmo(s, item, rowId = '') {
     const a = ammoFor(s, item);
     if (!a?.next) return '';
-    const row = s.inventory.find(x => x.id === a.next.id);
+    const row = s.inventory.find(x => x.id === (a.rows.some(r => r.id === rowId) ? rowId : a.next.id));
     row.qty--;
     s.ammoUsed = { ...(s.ammoUsed || {}), [row.id]: ((s.ammoUsed || {})[row.id] || 0) + 1 };
     return row.name;
@@ -293,6 +296,7 @@
 
   root.Attacks = {
     ammoFor,
+    ammoBonus,
     spendAmmo,
     ammoRecovery,
     recoverAmmo,

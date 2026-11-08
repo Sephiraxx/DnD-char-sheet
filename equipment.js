@@ -397,6 +397,9 @@ const Equipment = (() => {
     if (Array.isArray(s.inventory))
       for (const x of s.inventory) {
         if (x.equipmentId !== undefined && !item(x.equipmentId)) throw Error('Referencia de equipo desconocida.');
+        // Flechas y virotes se anotaban con el peso del paquete de 20 (1 y 1,5 lb) por pieza.
+        if (x.equipmentId === 'arrow' && x.weight === 1) x.weight = 0.05;
+        if (x.equipmentId === 'crossbow-bolt' && x.weight === 1.5) x.weight = 0.075;
         if (
           x.origins !== undefined &&
           (!Array.isArray(x.origins) ||
