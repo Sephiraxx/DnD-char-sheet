@@ -17,6 +17,32 @@ const AccountUI = (() => {
           ? `hace ${Math.round(min / 60)} h`
           : new Date(iso).toLocaleDateString('es-AR');
   };
+  // Estado de la copia de una ficha, con las mismas palabras en todas las pantallas.
+  function copyLabel(key) {
+    const c = Cloud.copyState(key);
+    const table = c.table ? `En la mesa «${c.table}»` : '';
+    if (c.account === 'email') {
+      const copy = !c.at
+        ? 'Copia en tu cuenta · todavía no se subió'
+        : c.pending
+          ? 'Copia en tu cuenta · cambios por subir'
+          : `Copia en tu cuenta · ${ago(c.at)}`;
+      return {
+        text: table ? `${table} · ${copy[0].toLowerCase() + copy.slice(1)}` : copy,
+        kind: 'cloud',
+      };
+    }
+    if (c.account === 'browser')
+      return {
+        text: `${table ? table + ' · ' : ''}Copia en la nube de este navegador · creá una cuenta para abrirla en otro dispositivo`,
+        kind: 'browser',
+      };
+    return { text: table || 'Solo en este dispositivo', kind: table ? 'table' : 'local' };
+  }
+  const copyTag = key => {
+    const c = copyLabel(key);
+    return `<span class="copy-state copy-${c.kind}">${esc(c.text)}</span>`;
+  };
   const localIds = () =>
     new Set(CharacterStorage.list().map(x => (x.key.startsWith('dnd-character-') ? x.key.slice(14) : 'darien')));
   // Copia en la nube: estado de este dispositivo y fichas que están en la nube pero no acá.
@@ -49,13 +75,13 @@ const AccountUI = (() => {
 
   function card(kind) {
     setTimeout(() => fill(kind));
-    const title = kind === 'restore' ? '¿Ya tenés una ficha en una mesa?' : 'Tu acceso';
+    const title = kind === 'restore' ? '¿Ya tenés una cuenta?' : 'Tu cuenta';
     return `<section class="card account-card section-space" id="account-${kind}"><h2>${title}</h2><div class="account-body"><p class="small muted">Cargando…</p></div></section>`;
   }
   const form = (mode, label, { newPassword = false } = {}) =>
     `<form class="account-form" data-account="${mode}"><div class="form-grid">${mode === 'password' ? '' : `<label class="field">Email<input type="email" name="email" required maxlength="200" autocomplete="email" placeholder="tu@email.com"></label>`}<label class="field">Contraseña<input type="password" name="password" required minlength="6" maxlength="72" autocomplete="${newPassword ? 'new-password' : 'current-password'}"></label>${newPassword && mode !== 'password' ? `<label class="field">Repetí la contraseña<input type="password" name="again" required minlength="6" maxlength="72" autocomplete="new-password"></label>` : ''}</div><div class="actions"><button class="button" type="submit">${label}</button></div><p class="form-error" role="alert"></p></form>`;
   const loginBlock = intro =>
-    `<p>${intro}</p>${form('login', 'Entrar')}<p class="small muted">Si no te acordás de la contraseña, pedile a quien administra la mesa que la reinicie.</p>`;
+    `<p>${intro}</p>${form('login', 'Entrar')}<p class="small muted">Si no te acordás de la contraseña, todavía no hay recuperación por correo: pedile a quien administra la aplicación que la reinicie.</p>`;
 
   // Cuenta nueva: guarda todas las fichas de este dispositivo en ella, sin necesidad de una mesa.
   const fichas = () => {
@@ -74,7 +100,7 @@ const AccountUI = (() => {
       return `${createBlock()}<details class="battle-rule"><summary>Ya tengo cuenta</summary>${loginBlock('Entrá con tu email y contraseña.')}</details>`;
     if (me.is_anonymous)
       return `<p>Tu acceso vive solo en este navegador. Creá una cuenta con email y contraseña: ${fichas()}, junto con tus mesas, para abrir todo en otro dispositivo o recuperarlo si se borran los datos del navegador. No te llega ningún correo.</p>${form('link', 'Crear cuenta y vincular fichas', { newPassword: true })}<details class="battle-rule"><summary>Ya guardé mi acceso en otro dispositivo</summary>${loginBlock('Entrá con ese email y contraseña.')}</details>`;
-    return `<p>Acceso guardado: <b>${esc(me.email)}</b>.</p><p class="small">En otro dispositivo: abrí la aplicación, buscá «¿Ya tenés una ficha en una mesa?» (o «Tu acceso» en la pantalla del DM) y entrá con este email y tu contraseña.</p><details class="battle-rule"><summary>Cambiar contraseña</summary>${form('password', 'Cambiar', { newPassword: true })}</details>`;
+    return `<p>Acceso guardado: <b>${esc(me.email)}</b>.</p><p class="small">En otro dispositivo: abrí la aplicación, tocá «¿Ya tenés una cuenta?» en la portada (o «Tu cuenta» en Personajes o en la pantalla del DM) y entrá con este email y tu contraseña.</p><details class="battle-rule"><summary>Cambiar contraseña</summary>${form('password', 'Cambiar', { newPassword: true })}</details>`;
   }
   async function restoreHtml(me) {
     if (me && !me.is_anonymous) {
@@ -311,5 +337,5 @@ const AccountUI = (() => {
     }
     refill();
   });
-  return { card, refill, sync };
+  return { card, refill, sync, copyLabel, copyTag };
 })();

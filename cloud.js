@@ -503,6 +503,25 @@
       localStorage.setItem(BACKUP_AT, JSON.stringify({ ...backupTimes(), [id]: at }));
     } catch {}
   }
+  // Dónde está guardada una ficha, sin pedir nada a la red: mesa, copia en la cuenta o solo este dispositivo.
+  // «email» es una cuenta que se abre en otro dispositivo; «browser», un acceso anónimo que vive en este navegador.
+  function copyState(key) {
+    const id = key ? localId(key) : '',
+      l = link(key);
+    let account = '';
+    if (hasSession()) {
+      account = 'email';
+      try {
+        if (JSON.parse(localStorage.getItem('dnd-cloud-auth') || 'null')?.user?.is_anonymous) account = 'browser';
+      } catch {}
+    }
+    return {
+      table: l?.campaignName || '',
+      account,
+      at: (id && backupTimes()[id]) || '',
+      pending: !!(id && (dirtySet()[id] || backupQueue.has(id))),
+    };
+  }
   // Fichas cambiadas en este dispositivo desde su última copia (sobrevive a recargar la página).
   const DIRTY = 'dnd-backup-dirty-v1';
   function dirtySet() {
@@ -1194,6 +1213,7 @@
     flushBackups,
     backups,
     backupTimes,
+    copyState,
     restoreBackup,
     deleteBackup,
     hasSession,
