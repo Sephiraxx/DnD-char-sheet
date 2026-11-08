@@ -723,20 +723,30 @@ function transaction() {
         ['1000', 'Platino'],
       ],
       '100',
-    )}</div>${field('Motivo', 'motivo', '', 'text', 'required maxlength="200"')}<p class="small">Se convierte el saldo total a su equivalente en oro, plata y cobre al registrar el movimiento.</p>`,
+    )}</div>${field('Motivo', 'motivo', '', 'text', 'required maxlength="200"')}<p class="small">Las monedas se guardan como son: un ingreso suma esa moneda y un gasto paga con lo que tenés, dando cambio si hace falta romper una moneda grande.</p>`,
     fd => {
-      let value = Number(fd.get('cantidad')) * Number(fd.get('moneda'));
-      if (!Number.isFinite(value) || value <= 0 || Math.abs(value - Math.round(value)) > 0.00001)
+      const amount = Number(fd.get('cantidad')),
+        unit = Number(fd.get('moneda')),
+        coin = { 1: 'cp', 10: 'sp', 50: 'ep', 100: 'gp', 1000: 'pp' }[unit];
+      let value = amount * unit;
+      if (!coin || !Number.isFinite(value) || value <= 0 || Math.abs(value - Math.round(value)) > 0.00001)
         throw Error('El importe debe equivaler a una cantidad entera de cobre.');
       value = Math.round(value);
-      const total =
-        state.gold.cp + 10 * state.gold.sp + 50 * state.gold.ep + 100 * state.gold.gp + 1000 * state.gold.pp;
-      const next = total + (fd.get('tipo') === 'income' ? value : -value);
-      if (next < 0) throw Error('No alcanza el saldo.');
+      // Monedas enteras de la elegida; una fracción («2,5 po») se reparte en oro, plata y cobre.
+      const coins = Number.isInteger(amount)
+        ? { [coin]: amount }
+        : { gp: Math.floor(value / 100), sp: Math.floor((value % 100) / 10), cp: value % 10 };
+      const income = fd.get('tipo') === 'income',
+        next = income
+          ? Object.fromEntries(
+              ['cp', 'sp', 'ep', 'gp', 'pp'].map(k => [k, Math.min(99999999, state.gold[k] + (coins[k] || 0))]),
+            )
+          : PartyView.pay(state.gold, coins);
+      if (!next) throw Error('No alcanza el saldo: tenés ' + PartyView.goldText(state.gold) + '.');
       commit(
-        `${fd.get('tipo') === 'income' ? 'Ingreso' : 'Gasto'}: ${fd.get('cantidad')} ${fd.get('moneda') === '100' ? 'po' : '(moneda elegida)'} · ${fd.get('motivo')}`,
+        `${income ? 'Ingreso' : 'Gasto'}: ${fd.get('cantidad')} ${{ cp: 'pc', sp: 'pp', ep: 'pe', gp: 'po', pp: 'ppt' }[coin]} · ${fd.get('motivo')}`,
         s => {
-          s.gold = { pp: 0, ep: 0, gp: Math.floor(next / 100), sp: Math.floor((next % 100) / 10), cp: next % 10 };
+          s.gold = next;
           s.goldConfirmed = true;
         },
       );
