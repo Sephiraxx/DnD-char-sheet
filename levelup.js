@@ -191,10 +191,12 @@ const LevelUp = (() => {
     host.hidden = false;
     document.body.classList.add('creator-open');
     draw();
+    globalThis.OverlayFocus?.open(host);
   }
   function close() {
     host.hidden = true;
     document.body.classList.remove('creator-open');
+    globalThis.OverlayFocus?.close(host);
   }
 
   // ---------- Dibujo ----------
