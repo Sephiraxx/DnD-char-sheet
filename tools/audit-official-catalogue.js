@@ -28,6 +28,7 @@ for (const f of [
   'monsters-data.js',
   'book-content-data.js',
   'official-content-data.js',
+  'official-monsters-data.js',
 ])
   vm.runInContext(
     fs.readFileSync(

@@ -27,16 +27,24 @@ const MonsterUI = (() => {
       return !sharedOnly && typeof LibraryUI !== 'undefined' ? LibraryUI.attach() : null;
     };
     if (window.MonsterData) return Promise.resolve(lib());
-    return (loading ||= new Promise((ok, fail) => {
-      const s = document.createElement('script');
-      s.src = './monsters-data.js';
-      s.onload = ok;
-      s.onerror = () => {
+    return (loading ||= (window.OfficialContent?.loadMonsters?.() || Promise.resolve()).then(
+      () =>
+        new Promise((ok, fail) => {
+          const s = document.createElement('script');
+          s.src = './monsters-data.js';
+          s.onload = ok;
+          s.onerror = () => {
+            loading = null;
+            fail(Error('No se pudieron cargar los monstruos. Revisá tu conexión.'));
+          };
+          document.head.append(s);
+        }),
+    ))
+      .then(lib)
+      .catch(e => {
         loading = null;
-        fail(Error('No se pudieron cargar los monstruos. Revisá tu conexión.'));
-      };
-      document.head.append(s);
-    })).then(lib);
+        throw e;
+      });
   }
   const byId = id => window.MonsterData?.find(m => m.id === id || m.aliasIds?.includes(id));
   function rollDice(expr) {

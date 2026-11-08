@@ -68,14 +68,7 @@
       if (!target.Catalog.sources.some(([id]) => id === book.sourceKey))
         target.Catalog.sources.push([book.sourceKey, book.title]);
     }
-    const monsters = new Map(
-      (data.completeMonsterReplacement
-        ? []
-        : target.BookContentData.monsters.filter(m => m.bookId !== 'eb3e374f79f75889')
-      ).map(m => [m.id, m]),
-    );
-    for (const monster of data.monsters) monsters.set(monster.id, monster);
-    target.BookContentData.monsters = [...monsters.values()];
+    applyMonsters(target);
     for (const row of data.rules) {
       const previous = ruleTexts.get(row.key);
       if (!previous || rank(row.data) > rank(previous)) ruleTexts.set(row.key, reference(row.data));
@@ -125,9 +118,6 @@
       const spell = target.Catalog.spells.find(s => s.id === id);
       if (spell && book.spellDetails) spell.ritual = Boolean(book.spellDetails.ritual);
     }
-    for (const row of target.SharedReferenceData?.entries || []) entryTexts.set(row.key, reference(row));
-    for (const row of target.SharedReferenceData?.features || [])
-      if (!ruleTexts.has(row.key)) ruleTexts.set(row.key, reference(row));
     const existing = new Map(
       (target.MagicItems?.ITEMS || []).flatMap(it =>
         [it.name, it.english].filter(Boolean).map(n => [normalize(n), it]),
@@ -187,17 +177,77 @@
       if (!previous || rank(row) > rank(previous))
         itemTexts.set(item.id, { ...reference(row), language: row.language });
     }
-    for (const row of target.SharedReferenceData?.entries || [])
-      if (row.key.startsWith('item:')) itemTexts.set(row.key.slice(5), reference(row));
     target.BookContentData.official = {
       ...data.audit,
       rules: ruleTexts.size,
       spellDescriptions: spellTexts.size,
       itemDescriptions: itemTexts.size,
-      creatureEntries: data.monsters.length,
+      creatureEntries: data.monsters?.length || 0,
       officialBooks: data.books,
     };
+    applyTexts(target);
   }
+  // Textos largos de referencia (shared-reference-text.js): la ficha los pide después de mostrarse.
+  let textsApplied = false;
+  function applyTexts(target = root) {
+    const ref = target.SharedReferenceData;
+    if (textsApplied || !applied || !ref?.entries) return;
+    textsApplied = true;
+    for (const row of ref.entries) entryTexts.set(row.key, reference(row));
+    for (const row of ref.features || []) if (!ruleTexts.has(row.key)) ruleTexts.set(row.key, reference(row));
+    for (const row of ref.entries) if (row.key.startsWith('item:')) itemTexts.set(row.key.slice(5), reference(row));
+    const official = target.BookContentData?.official;
+    if (official) Object.assign(official, { rules: ruleTexts.size, itemDescriptions: itemTexts.size });
+    if (typeof target.dispatchEvent === 'function' && typeof Event === 'function')
+      target.dispatchEvent(new Event('reference-texts'));
+  }
+  // Carga diferida de un archivo de datos (una sola vez; si falla, se puede reintentar).
+  const pending = new Map();
+  function script(src, ready, message) {
+    if (ready() || typeof document === 'undefined') return Promise.resolve();
+    if (!pending.has(src))
+      pending.set(
+        src,
+        new Promise((ok, fail) => {
+          const s = document.createElement('script');
+          s.src = src;
+          s.onload = ok;
+          s.onerror = () => {
+            pending.delete(src);
+            fail(Error(message));
+          };
+          document.head.append(s);
+        }),
+      );
+    return pending.get(src);
+  }
+  const loadTexts = () =>
+    script('./shared-reference-text.js', () => textsApplied, 'No se pudieron cargar los textos de los libros.').then(
+      () => applyTexts(),
+    );
+  // Los bloques de criaturas pesan más que todo lo demás junto: van en official-monsters-data.js,
+  // que la ficha y la pantalla del DM cargan recién al abrir el bestiario (el catálogo, al inicio).
+  let monstersApplied = false;
+  function applyMonsters(target = root) {
+    const data = target.OfficialContentData;
+    if (monstersApplied || !applied || !data?.monsters || !target.BookContentData) return;
+    monstersApplied = true;
+    const monsters = new Map(
+      (data.completeMonsterReplacement
+        ? []
+        : target.BookContentData.monsters.filter(m => m.bookId !== 'eb3e374f79f75889')
+      ).map(m => [m.id, m]),
+    );
+    for (const monster of data.monsters) monsters.set(monster.id, monster);
+    target.BookContentData.monsters = [...monsters.values()];
+    if (target.BookContentData.official) target.BookContentData.official.creatureEntries = data.monsters.length;
+  }
+  const loadMonsters = () =>
+    script(
+      './official-monsters-data.js',
+      () => !!root.OfficialContentData?.monsters,
+      'No se pudo cargar el bestiario. Revisá tu conexión.',
+    ).then(() => applyMonsters());
   const esc = s =>
     String(s ?? '').replace(
       /[&<>"']/g,
@@ -217,6 +267,11 @@
   }
   root.OfficialContent = {
     apply,
+    applyMonsters,
+    loadMonsters,
+    applyTexts,
+    loadTexts,
+    textsReady: () => textsApplied,
     ruleTexts,
     spellTexts,
     itemTexts,
@@ -234,5 +289,11 @@
         : '') + html(itemTexts.get(id)),
   };
   if (root.OfficialContentData && root.Catalog && root.ClassData && root.CampaignData) apply();
+  // En el navegador, los textos largos llegan solos cuando la página ya terminó de cargar.
+  if (typeof document !== 'undefined' && typeof root.addEventListener === 'function' && !textsApplied) {
+    const later = () => setTimeout(() => loadTexts().catch(() => {}), 0);
+    if (document.readyState === 'complete') later();
+    else root.addEventListener('load', later, { once: true });
+  }
   if (typeof module !== 'undefined' && module.exports) module.exports = root.OfficialContent;
 })(typeof window !== 'undefined' ? window : globalThis);

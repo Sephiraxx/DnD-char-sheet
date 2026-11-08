@@ -301,6 +301,11 @@ function journal() {
     }</div></section></div>`
   );
 }
+// Los textos de los libros llegan después de mostrar la ficha: se vuelve a dibujar si nadie está escribiendo.
+addEventListener('reference-texts', () => {
+  const typing = document.activeElement?.closest?.('#main input, #main textarea, #main select');
+  if (state && !typing && !$('#modal').open) render();
+});
 function render() {
   const y = scrollY;
   document.body.classList.toggle('no-character', !state);
