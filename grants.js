@@ -1078,6 +1078,13 @@
   function validate(s) {
     if (s.originAuto !== undefined && typeof s.originAuto !== 'boolean')
       throw Error('Confirmación de bonos de origen inválida.');
+    if (
+      s.extrasConfirmed !== undefined &&
+      (!Array.isArray(s.extrasConfirmed) ||
+        s.extrasConfirmed.length > 100 ||
+        s.extrasConfirmed.some(id => typeof id !== 'string' || id.length > 120))
+    )
+      throw Error('Extras confirmados inválidos.');
     if (s.grantChoices === undefined) return;
     if (
       !s.grantChoices ||
@@ -1130,15 +1137,68 @@
           throw Error('Elección de origen inválida.');
     }
   }
+  // Fichas de antes de que los rasgos dieran sus conjuros solos: se agregaban como extras a mano.
+  // Repetidos: extras que ya da un rasgo, y extras que parecen la elección de la raza o el trasfondo
+  // (un truco de mago de alto elfo agregado a mano y otro elegido después en la elección del rasgo).
+  function repeatedExtras(s) {
+    const extras = s.extras || [],
+      out = [];
+    if (!extras.length) return out;
+    const given = new Map(
+      spells(s)
+        .filter(g => g.mode !== 'expanded')
+        .map(g => [g.id, g]),
+    );
+    // Un extra con modo propio (por ejemplo, «sin espacio» que dio el DM) es intencional: se respeta.
+    for (const id of extras)
+      if (given.has(id) && !s.spellModes?.[id]) out.push({ id, kind: 'granted', origin: given.get(id).origin || '' });
+    const ok = new Set(s.extrasConfirmed || []);
+    for (const p of plans(s).filter(p => ['race', 'background'].includes(p.source.kind)))
+      for (const n of p.nodes.filter(n => n.chosen && !n.ritual && n.mode !== 'expanded' && n.count === 1))
+        for (const id of extras)
+          if (!given.has(id) && !ok.has(id) && !out.some(o => o.id === id) && n.candidates.some(sp => sp.id === id))
+            out.push({
+              id,
+              kind: n.selected.length ? 'choice' : 'adopt',
+              key: p.source.key,
+              node: n.id,
+              origin: p.source.name,
+              picked: n.selected,
+            });
+    return out;
+  }
+  // Reemplaza la elección del rasgo por el extra repetido y lo saca de los extras.
+  function adoptExtra(s, key, node, id) {
+    const cur = pick(s, key);
+    s.grantChoices = { ...(s.grantChoices || {}), [key]: { ...cur, spells: { ...(cur.spells || {}), [node]: [id] } } };
+    s.extras = (s.extras || []).filter(x => x !== id);
+  }
   function migrate(s) {
-    if (s.originMagicVersion === 1) return;
-    const legacy = new Set((root.Campaign?.raceSpells(s).spells || []).map(x => x.id));
-    s.extras = (s.extras || []).filter(id => !legacy.has(id) || s.spellModes?.[id]);
-    s.originMagicVersion = 1;
+    if ((s.originMagicVersion || 0) >= 2) return;
+    if (!s.originMagicVersion) {
+      const legacy = new Set((root.Campaign?.raceSpells(s).spells || []).map(x => x.id));
+      s.extras = (s.extras || []).filter(id => !legacy.has(id) || s.spellModes?.[id]);
+    }
+    // v2: los extras que ya da un rasgo se van solos; una elección de raza o trasfondo todavía vacía
+    // toma el extra que coincide. Si ya estaba elegida, la ficha lo muestra en «Tu ficha al día».
+    try {
+      for (const r of repeatedExtras(s))
+        if (r.kind === 'granted') s.extras = s.extras.filter(x => x !== r.id);
+        else if (
+          r.kind === 'adopt' &&
+          !pick(s, r.key).spells?.[r.node]?.length &&
+          // Un conjuro con modo propio del DM se respeta; en un truco el modo no cambia nada.
+          (!s.spellModes?.[r.id] || lookup(r.id)?.level === 0)
+        )
+          adoptExtra(s, r.key, r.node, r.id);
+    } catch {}
+    s.originMagicVersion = 2;
   }
   root.Grants = {
     toolBonus,
     migrate,
+    repeatedExtras,
+    adoptExtra,
     optionPlan,
     optionIds,
     normalSpell,

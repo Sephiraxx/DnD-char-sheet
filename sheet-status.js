@@ -24,13 +24,25 @@ const SheetStatus = (() => {
       'Clase',
       `PG máximos ${d.maxHP}, competencia ${sign(d.prof)}, salvaciones${d.slots.some(Boolean) || d.pact ? ', espacios de conjuro' : ''}, recursos y descansos.`,
     ]);
+    // Cada defensa bajo lo que la da: la raza, o «Anotadas a mano» (Defensas de la ficha).
+    const from = (kind, why) =>
+      [...def[kind]]
+        .filter(([, w]) => w === why)
+        .map(([t]) => Defenses.label(t))
+        .join(', ');
+    const bits = why =>
+      [
+        from('resist', why) ? 'resistencia a ' + from('resist', why) : '',
+        from('immune', why) ? 'inmunidad a ' + from('immune', why) : '',
+        from('vulnerable', why) ? 'vulnerabilidad a ' + from('vulnerable', why) : '',
+      ].filter(Boolean);
     const raceBits = [
       `velocidad ${d.speed} pies`,
       race?.darkvision ? `visión en la oscuridad ${race.darkvision} pies` : '',
-      def.resist.size ? 'resistencia a ' + [...def.resist.keys()].map(Defenses.label).join(', ') : '',
-      def.immune.size ? 'inmunidad a ' + [...def.immune.keys()].map(Defenses.label).join(', ') : '',
+      ...(race ? bits(race.name) : []),
     ].filter(Boolean);
     if (race) out.push([race.name, raceBits.join(' · ') + '.']);
+    if (bits('anotada').length) out.push(['Anotadas a mano', bits('anotada').join(' · ') + '.']);
     const rs = globalThis.Grants
       ? Grants.spells(s)
           .filter(g => g.grantType === 'race' && g.mode !== 'expanded')
@@ -72,6 +84,18 @@ const SheetStatus = (() => {
             'data-id="' + v.classId + '"',
           ),
         });
+    // Extras de fichas viejas que repiten la elección de la raza o el trasfondo.
+    if (globalThis.Grants?.repeatedExtras)
+      for (const r of Grants.repeatedExtras(s).filter(r => r.kind === 'choice')) {
+        const name = id => R.allSpells(s).find(x => x.id === id)?.name || id;
+        out.push({
+          text: `${name(r.id)} está como extra y ${r.origin} ya te da ${r.picked.map(name).join(', ')}. Si era el mismo conjuro agregado a mano, quedate con uno.`,
+          action:
+            button(`Usar ${name(r.id)}`, 'status-extra-adopt', '', `data-id="${esc(r.id)}"`) +
+            button(`Quitar ${name(r.id)}`, 'status-extra-drop', 'secondary', `data-id="${esc(r.id)}"`) +
+            button('Son dos distintos', 'status-extra-keep', 'secondary', `data-id="${esc(r.id)}"`),
+        });
+      }
     const miss = missingRaceSpells(s);
     if (miss.length)
       out.push({
@@ -178,6 +202,21 @@ const SheetStatus = (() => {
             : 'Bendición del artesano: ritual de 1 hora; creá el objeto metálico y agregalo al inventario.',
         );
       },
+      'status-extra-adopt': e => {
+        const r = Grants.repeatedExtras(state).find(r => r.id === e.dataset.id && r.kind === 'choice');
+        if (!r) return;
+        commit('Conjuro de raza elegido', s => Grants.adoptExtra(s, r.key, r.node, r.id));
+        toast('Listo: ahora es el conjuro de tu ' + (r.key.startsWith('race:') ? 'raza' : 'trasfondo') + '.');
+      },
+      'status-extra-drop': e =>
+        commit('Extra repetido quitado', s => {
+          s.extras = s.extras.filter(x => x !== e.dataset.id);
+          if (s.spellModes) delete s.spellModes[e.dataset.id];
+        }),
+      'status-extra-keep': e =>
+        commit('Extra confirmado', s => {
+          s.extrasConfirmed = [...new Set([...(s.extrasConfirmed || []), e.dataset.id])];
+        }),
       'status-race-spells': () => {
         let n = 0;
         commit('Conjuros de raza agregados', s => (n = addRaceSpells(s)));
