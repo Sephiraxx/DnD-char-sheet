@@ -285,10 +285,61 @@ function gear() {
       )}</div><p class="small section-space">Equivalente: ${(total / 100).toLocaleString('es-AR', { maximumFractionDigits: 2 })} po. ${state.goldConfirmed ? '' : 'Confirmá gastos y recompensas.'}</p><div class="actions">${button('Ingreso / gasto', 'gold-transaction', '')}</div></section><section class="card ${state.classId ? 'legacy-only' : ''}"><div class="card-header"><h2>${esc(state.mule.name)}</h2><span class="tag">CA 10</span></div><div class="hp-number" style="font-size:2.8rem">${state.mule.hp ?? '—'}<small> / ${state.mule.max} PG</small></div><p class="small section-space">40 pies · Iniciativa +0 · Mediana<br>Pezuñas +2 · 1d4 + 2 contundente<br>Paso firme: ventaja FUE/DES contra derribo.</p><p class="small">Carga: 420 lb. Con carro: 2.100 lb incluido el carro. El DM maneja su conducta; no es un ataque adicional automático. Un personaje puede ir en el carro; la mula no es de un tamaño mayor que él.</p>${button('Editar mula', 'mule')}</section><section class="card ${state.classId ? 'legacy-only' : ''}"><h2>Comerciante gremial</h2><p class="small">Cuota: 5 po al mes. Herramientas de navegante: competencia confirmada, juego físico por confirmar. No se añadieron raciones, cuerda ni otros objetos que no tuvieras.</p></section></div></div>`
   );
 }
+// ---------- Notas que se guardan solas ----------
+// Mientras escribís, el texto queda como borrador en este dispositivo (sobrevive a cambiar de sección
+// y a recargar). Al dejar de escribir un momento, al cambiar de sección o al salir de la app se guarda
+// en la ficha. Varios guardados seguidos de las mismas notas ocupan una sola línea del historial.
+const AUTOSAVE = { notes: 'Notas de sesión', classNotes: 'Notas de clase' };
+let autosaveTimer = null;
+const draftKey = f => 'dnd-draft-v1:' + KEY + ':' + f;
+function draftOf(f) {
+  try {
+    return KEY ? localStorage.getItem(draftKey(f)) : null;
+  } catch {
+    return null;
+  }
+}
+function noteValue(f) {
+  const d = draftOf(f);
+  return d !== null ? d : state?.[f] || '';
+}
+function noteStatus(f) {
+  const d = draftOf(f);
+  return d !== null && d !== (state?.[f] || '') ? 'Sin guardar…' : 'Se guarda solo mientras escribís.';
+}
+function setNoteStatus(f, text) {
+  const el = document.querySelector(`[data-autosave-status="${f}"]`);
+  if (el) el.textContent = text;
+}
+function flushNotes() {
+  clearTimeout(autosaveTimer);
+  if (!state || !KEY) return;
+  for (const f of Object.keys(AUTOSAVE)) {
+    const d = draftOf(f);
+    if (d === null) continue;
+    if (d !== (state[f] || '')) {
+      const label = AUTOSAVE[f] + ' guardadas';
+      try {
+        commit(label, s => {
+          s[f] = d;
+          const last = s.log[0];
+          if (last?.text === label && Date.now() - new Date(last.date) < 30 * 60000) s.log.shift();
+        });
+      } catch (e) {
+        setNoteStatus(f, 'No se pudo guardar: ' + e.message);
+        continue;
+      }
+    }
+    try {
+      localStorage.removeItem(draftKey(f));
+    } catch {}
+    setNoteStatus(f, 'Guardado.');
+  }
+}
 function journal() {
   return (
     header('El viaje continúa.', 'Notas, compañeros e historial de cambios.', button('Exportar copia', 'backup')) +
-    `<div class="columns"><div class="stack"><section class="card"><h2>Notas de la sesión</h2><label class="field"><span class="visually-hidden">Notas</span><textarea id="journal-notes" style="min-height:230px">${esc(state.notes)}</textarea></label>${button('Guardar notas', 'notes-save', '')}</section>${CompanionsUI.card()}<section class="card"><h2>Progresión registrada</h2>${state.levelHistory.length ? state.levelHistory.map(x => `<div class="feature"><h3>Nivel ${x.level}</h3><p>${esc(x.note)}</p></div>`).join('') : '<p class="muted">Las próximas subidas de nivel quedarán registradas acá.</p>'}</section></div><section class="card"><div class="card-header"><h2>Últimos cambios</h2><button class="text-btn" data-action="undo">Deshacer</button></div><div class="log">${
+    `<div class="columns"><div class="stack"><section class="card"><h2>Notas de la sesión</h2><label class="field"><span class="visually-hidden">Notas</span><textarea id="journal-notes" data-autosave="notes" style="min-height:230px">${esc(noteValue('notes'))}</textarea></label><p class="small muted autosave-status" data-autosave-status="notes" aria-live="polite">${noteStatus('notes')}</p></section>${CompanionsUI.card()}<section class="card"><h2>Progresión registrada</h2>${state.levelHistory.length ? state.levelHistory.map(x => `<div class="feature"><h3>Nivel ${x.level}</h3><p>${esc(x.note)}</p></div>`).join('') : '<p class="muted">Las próximas subidas de nivel quedarán registradas acá.</p>'}</section></div><section class="card"><div class="card-header"><h2>Últimos cambios</h2><button class="text-btn" data-action="undo">Deshacer</button></div><div class="log">${
       state.log.length
         ? state.log
             .slice(0, 40)
@@ -347,6 +398,15 @@ function render() {
     )
     .join('');
   $('#breadcrumb').textContent = navs.find(x => x[0] === view)?.[2] || 'Combate';
+  // Si estabas escribiendo notas, el campo conserva el foco, el cursor y el desplazamiento.
+  const typing = document.activeElement?.dataset?.autosave
+    ? {
+        f: document.activeElement.dataset.autosave,
+        a: document.activeElement.selectionStart,
+        b: document.activeElement.selectionEnd,
+        top: document.activeElement.scrollTop,
+      }
+    : null;
   $('#main').innerHTML =
     (storageIssue ? `<div class="banner"><p>${esc(storageIssue)}</p>${button('Mi ficha', 'settings')}</div>` : '') +
     (view === 'combat'
@@ -371,10 +431,19 @@ function render() {
       }[view] || combat
     )();
   scrollTo(0, y);
+  if (typing) {
+    const el = document.querySelector(`[data-autosave="${typing.f}"]`);
+    if (el) {
+      el.focus({ preventScroll: true });
+      el.setSelectionRange(typing.a, typing.b);
+      el.scrollTop = typing.top;
+    }
+  }
   globalThis.Board?.refresh();
 }
 function go() {
   hideToast();
+  flushNotes();
   view = location.hash.slice(1);
   if (!navs.some(x => x[0] === view)) view = 'combat';
   query = '';
@@ -1106,11 +1175,7 @@ const actions = {
           s.mule = { name: fd.get('nombre'), max, hp: number(fd, 'PG', 0, max), notes: fd.get('notas') };
         }),
     ),
-  'notes-save': () => {
-    const txt = $('#journal-notes').value;
-    commit('Notas de sesión guardadas', s => (s.notes = txt));
-    toast('Notas guardadas.');
-  },
+  'notes-save': () => flushNotes(),
   companion: () =>
     modal(
       'Compañeros y mascotas',
@@ -1217,6 +1282,16 @@ document.addEventListener('click', e => {
   }
 });
 document.addEventListener('input', e => {
+  const f = e.target.dataset?.autosave;
+  if (f && AUTOSAVE[f] && KEY) {
+    try {
+      localStorage.setItem(draftKey(f), e.target.value);
+    } catch {}
+    setNoteStatus(f, 'Sin guardar…');
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(flushNotes, 1500);
+    return;
+  }
   if (e.target.id === 'spell-search') {
     let pos = e.target.selectionStart;
     query = e.target.value;
@@ -1257,6 +1332,8 @@ $('#import-file').addEventListener('change', async e => {
   }
 });
 window.addEventListener('hashchange', go);
+document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && flushNotes());
+window.addEventListener('pagehide', flushNotes);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) hideToast();
 });

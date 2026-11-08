@@ -273,7 +273,7 @@ const PartyUI = (() => {
           )
           .join('') ||
         '<p class="small">Estilos, infusiones, Metamagia, invocaciones y otras elecciones aparecerán acá.</p>'
-      }${button('Editar elecciones', 'class-choices')}</section><section class="card"><h2>Detalles de tus rasgos</h2><p class="small">Anotá decisiones internas del rasgo (enemigo predilecto, terreno, ancestro, formas, objetos infundidos…), requisitos y efectos que debas aplicar. Podés crear recursos o acciones de mesa para llevar sus usos.</p><label class="field">Notas de clase<textarea id="class-notes">${esc(state.classNotes || '')}</textarea></label>${button('Guardar notas', 'class-notes-save', '')}<div class="actions section-space">${button('Añadir rasgo', 'feature-new')}${button('Añadir recurso', 'resource-new')}</div><p class="small section-space"><a href="${classLink(state)}" target="_blank" rel="noopener">Referencia de ${c.name}</a>. Las opciones no incluidas se pueden registrar manualmente. Las reglas opcionales deben acordarse con el DM.</p></section></div></div>`
+      }${button('Editar elecciones', 'class-choices')}</section><section class="card"><h2>Detalles de tus rasgos</h2><p class="small">Anotá decisiones internas del rasgo (enemigo predilecto, terreno, ancestro, formas, objetos infundidos…), requisitos y efectos que debas aplicar. Podés crear recursos o acciones de mesa para llevar sus usos.</p><label class="field">Notas de clase<textarea id="class-notes" data-autosave="classNotes">${esc(typeof noteValue === 'function' ? noteValue('classNotes') : state.classNotes || '')}</textarea></label><p class="small muted autosave-status" data-autosave-status="classNotes" aria-live="polite">${typeof noteStatus === 'function' ? noteStatus('classNotes') : ''}</p><div class="actions section-space">${button('Añadir rasgo', 'feature-new')}${button('Añadir recurso', 'resource-new')}</div><p class="small section-space"><a href="${classLink(state)}" target="_blank" rel="noopener">Referencia de ${c.name}</a>. Las opciones no incluidas se pueden registrar manualmente. Las reglas opcionales deben acordarse con el DM.</p></section></div></div>`
     );
   }
   // Paladín: romper el juramento (pasa a Rompejuramentos) y volver con Expiación.
@@ -383,15 +383,7 @@ const PartyUI = (() => {
         }),
     );
   }
-  function prerequisiteText(p) {
-    return p
-      .map(x =>
-        Object.entries(x)
-          .map(([k, v]) => k + ': ' + (typeof v === 'string' || typeof v === 'number' ? v : JSON.stringify(v)))
-          .join(', '),
-      )
-      .join(' / ');
-  }
+  const prerequisiteText = p => TraitsEs.prereqText(p);
   function levelup() {
     if (R.totalLevel(state) >= 20) throw Error('Ya estás en nivel 20 de personaje.');
     if (typeof LevelUp !== 'undefined') return LevelUp.start();
@@ -1314,10 +1306,7 @@ const PartyUI = (() => {
       'class-resource-edit': e => useResource(e.dataset.id, true),
       'class-rage-end': () => commit('Rabia terminada', s => (s.raging = false)),
       'defenses-edit': defensesEdit,
-      'class-notes-save': () => {
-        const txt = document.getElementById('class-notes').value;
-        commit('Notas de clase guardadas', s => (s.classNotes = txt));
-      },
+      'class-notes-save': () => flushNotes(),
       stats: statsEdit,
       'short-rest': shortRest,
       'party-attack': genericAttack,
