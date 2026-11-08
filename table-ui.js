@@ -651,8 +651,8 @@ const TableUI = (() => {
       'Fin de la sesión ' + (p.n || ''),
       `<p>Jugaron ${min >= 60 ? Math.floor(min / 60) + ' h ' + (min % 60) + ' min' : min + ' min'}.${p.xp ? ' Cada personaje recibe <b>' + PV.esc(p.xp) + ' PX</b>.' : ''}${p.levelUp ? ' <b>El DM habilitó la subida de nivel:</b> usá «Subir de nivel» en Clase.' : ''}</p>${p.notes ? `<blockquote class="session-notes">${PV.esc(p.notes)}</blockquote>` : ''}${
         exposed
-          ? `<div class="banner"><p><b>Guardá tu acceso.</b> Tu ficha en la mesa vive solo en este navegador: si se borran sus datos o cambiás de celular, la perdés. Con un email y una contraseña la recuperás en cualquier dispositivo.</p>${button('Guardar mi acceso ahora', 'session-save-access', '')}</div>`
-          : '<p class="small">Tu acceso está guardado: tu ficha está a salvo.</p>'
+          ? `<div class="banner"><p><b>Creá tu cuenta.</b> Tu ficha en la mesa vive solo en este navegador: si se borran sus datos o cambiás de celular, la perdés. Con un email y una contraseña la recuperás en cualquier dispositivo.</p>${button('Crear mi cuenta ahora', 'session-save-access', '')}</div>`
+          : '<p class="small">Tenés cuenta: tu ficha se copia en ella y la abrís en cualquier dispositivo.</p>'
       }<div class="actions">${button('Descargar copia de mi ficha', 'backup', 'secondary')}</div>`,
     );
   }

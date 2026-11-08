@@ -37,18 +37,48 @@ const PartyUI = (() => {
     }
     modal(
       'Personajes de este dispositivo',
-      `<p>Cada ficha tiene su propio progreso, recursos y equipo. Tus compañeros pueden abrir esta página y crear sus personajes en sus dispositivos.</p><p class="small">Las fichas que están en una mesa se sincronizan con ella y, con tu acceso guardado (Mesa → Tu acceso), se abren en tus otros dispositivos. Las demás quedan en este navegador: usá exportar e importar para trasladarlas.</p><div class="party-list">${items
+      `<p>Cada ficha tiene su propio progreso, recursos y equipo. Tus compañeros pueden abrir esta página y crear sus personajes en sus dispositivos.</p><p class="small">${storageHelp()}</p><div class="party-list">${items
         .map(x => {
           let label = x.name;
           try {
             label = JSON.parse(localStorage.getItem(x.key) || 'null')?.name || label;
           } catch {}
-          return `<div class="list-row"><div class="party-person">${Portrait.savedThumb(x.key, label)}<b>${esc(label)}</b></div><div class="actions">${x.key === KEY ? '<span class="tag">Abierto</span>' : button('Abrir', 'party-open', '', `data-id="${esc(x.id)}"`) + button('Eliminar', 'party-delete', 'danger', `data-id="${esc(x.id)}"`)}</div></div>`;
+          return `<div class="list-row"><div class="party-person">${Portrait.savedThumb(x.key, label)}<div><b>${esc(label)}</b>${copyTag(x.key)}</div></div><div class="actions">${x.key === KEY ? '<span class="tag">Abierto</span>' : button('Abrir', 'party-open', '', `data-id="${esc(x.id)}"`) + button('Eliminar', 'party-delete', 'danger', `data-id="${esc(x.id)}"`)}</div></div>`;
         })
         .join(
           '',
-        )}</div><div class="actions section-space">${button('Crear personaje', 'party-create', '')}${button('Importar como personaje nuevo', 'party-import')}${state ? button('Exportar personaje actual', 'backup') : ''}</div>`,
+        )}</div><div class="actions section-space">${button('Crear personaje', 'party-create', '')}${button('Importar como personaje nuevo', 'party-import')}${state ? button('Exportar personaje actual', 'backup') : ''}${accountReady() ? button('Tu cuenta', 'account') : ''}</div>`,
     );
+  }
+  // ---------- Dónde vive cada ficha ----------
+  const accountReady = () => typeof AccountUI !== 'undefined' && typeof Cloud !== 'undefined' && Cloud.enabled;
+  const copyTag = key => (typeof AccountUI !== 'undefined' ? AccountUI.copyTag(key) : '');
+  // La misma explicación en Personajes, Mi ficha y la portada.
+  const storageHelp = () =>
+    accountReady()
+      ? 'Cada ficha se guarda en este dispositivo. Con una cuenta (email y contraseña), cada cambio se copia solo y la abrís en cualquier dispositivo, esté o no en una mesa. Sin cuenta, exportá la ficha y importala en el otro dispositivo.'
+      : 'Cada ficha se guarda en este dispositivo. Para pasarla a otro, exportala e importala allá.';
+  // «Tu cuenta» fuera de Mesa: en la portada lleva a la tarjeta de abajo; con una ficha abierta, abre un diálogo.
+  function account() {
+    const here = document.getElementById('account-restore');
+    if (here) {
+      const open = document.getElementById('modal');
+      if (open?.open) open.close();
+      const login = here.querySelector('form[data-account="login"]');
+      login?.closest('details')?.setAttribute('open', '');
+      here.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const target = (login || here).querySelector('input') || here.querySelector('h2');
+      if (target?.tagName === 'H2') target.tabIndex = -1;
+      target?.focus({ preventScroll: true });
+      return;
+    }
+    // Sin el formulario del diálogo: las tarjetas de cuenta traen sus propios formularios.
+    const d = document.getElementById('modal');
+    d.classList.remove('learning-modal');
+    if (d.open) d.close();
+    document.getElementById('modal-content').innerHTML =
+      `<div class="modal-head"><h2 id="dialog-title">Tu cuenta</h2><button type="button" class="icon-btn" data-close aria-label="Cerrar">×</button></div><div class="modal-body"><p class="small">${esc(storageHelp())}</p>${AccountUI.card('account')}</div>`;
+    d.showModal();
   }
   // El índice guarda el nombre de cuando se creó la ficha; el actual está en la ficha misma.
   function savedName(x) {
@@ -74,13 +104,13 @@ const PartyUI = (() => {
     }
     // Portada: tres caminos (crear ficha, unirse a una mesa, dirigir) y las fichas guardadas.
     document.getElementById('main').innerHTML =
-      `<section class="welcome-hero"><p class="eyebrow">D&D 5E · REGLAS 2014 · PARA JUGAR EN LA MESA</p><h1>Tu cuaderno de aventura.</h1><p>Fichas completas, tiradas con dados digitales o físicos, y una mesa compartida para que el DM y la party jueguen en vivo.</p></section>
+      `<section class="welcome-hero"><p class="eyebrow">D&D 5E · REGLAS 2014 · PARA JUGAR EN LA MESA</p><h1>Tu cuaderno de aventura.</h1><p>Fichas completas, tiradas con dados digitales o físicos, y una mesa compartida para que el DM y la party jueguen en vivo.</p>${accountReady() ? `<p class="welcome-account"><button type="button" class="text-btn" data-action="account">¿Ya tenés una cuenta? Entrá</button></p>` : ''}</section>
       <div class="paths">
-        <section class="card path-card"><span class="path-icon" aria-hidden="true">✦</span><h2>Creá tu personaje</h2><p>Clase, raza, trasfondo, conjuros y equipo, paso a paso. Se guarda en este dispositivo.</p><div class="actions">${button('Crear personaje', 'party-create', '')}${button('Importar ficha', 'party-import')}</div></section>
+        <section class="card path-card"><span class="path-icon" aria-hidden="true">✦</span><h2>Creá tu personaje</h2><p>Clase, raza, trasfondo, conjuros y equipo, paso a paso. Se guarda en este dispositivo${accountReady() ? ' y, con una cuenta, en la nube' : ''}.</p><div class="actions">${button('Crear personaje', 'party-create', '')}${button('Importar ficha', 'party-import')}</div></section>
         <div id="path-join" class="path-slot"></div>
         <section class="card path-card"><span class="path-icon" aria-hidden="true">⚑</span><h2>Dirigí la partida</h2><p>Creá una mesa, compartí el código y seguí a la party: PG, iniciativa, monstruos, botín y pedidos de tirada.</p><div class="actions"><a class="button secondary" href="./dm.html">Soy el DM</a></div></section>
       </div>
-      ${items.length ? `<section class="card section-space"><h2>Tus fichas</h2><div class="party-list saved-list">${items.map(x => `<div class="list-row"><div class="party-person">${Portrait.savedThumb(x.key, savedName(x))}<b>${esc(savedName(x))}</b></div>${button('Abrir', 'party-open', 'secondary', `data-id="${esc(x.id)}"`)}</div>`).join('')}</div></section>` : ''}
+      ${items.length ? `<section class="card section-space"><h2>Tus fichas</h2><div class="party-list saved-list">${items.map(x => `<div class="list-row"><div class="party-person">${Portrait.savedThumb(x.key, savedName(x))}<div><b>${esc(savedName(x))}</b>${copyTag(x.key)}</div></div>${button('Abrir', 'party-open', 'secondary', `data-id="${esc(x.id)}"`)}</div>`).join('')}</div></section>` : ''}
       ${storageIssue ? `<div class="banner"><p>${esc(storageIssue)}</p>${rawBroken ? button('Descargar datos guardados', 'raw-backup') : ''}</div>` : ''}`;
   }
   function creationSummary(d, nextStep = false) {
@@ -243,7 +273,7 @@ const PartyUI = (() => {
           )
           .join('') ||
         '<p class="small">Estilos, infusiones, Metamagia, invocaciones y otras elecciones aparecerán acá.</p>'
-      }${button('Editar elecciones', 'class-choices')}</section><section class="card"><h2>Detalles de tus rasgos</h2><p class="small">Anotá decisiones internas del rasgo (enemigo predilecto, terreno, ancestro, formas, objetos infundidos…), requisitos y efectos que debas aplicar. Podés crear recursos o acciones de mesa para llevar sus usos.</p><label class="field">Notas de clase<textarea id="class-notes">${esc(state.classNotes || '')}</textarea></label>${button('Guardar notas', 'class-notes-save', '')}<div class="actions section-space">${button('Añadir rasgo', 'feature-new')}${button('Añadir recurso', 'resource-new')}</div><p class="small section-space"><a href="${classLink(state)}" target="_blank" rel="noopener">Referencia de ${c.name}</a>. Las opciones no incluidas se pueden registrar manualmente. Las reglas opcionales deben acordarse con el DM.</p></section></div></div>`
+      }${button('Editar elecciones', 'class-choices')}</section><section class="card"><h2>Detalles de tus rasgos</h2><p class="small">Anotá decisiones internas del rasgo (enemigo predilecto, terreno, ancestro, formas, objetos infundidos…), requisitos y efectos que debas aplicar. Podés crear recursos o acciones de mesa para llevar sus usos.</p><label class="field">Notas de clase<textarea id="class-notes" data-autosave="classNotes">${esc(typeof noteValue === 'function' ? noteValue('classNotes') : state.classNotes || '')}</textarea></label><p class="small muted autosave-status" data-autosave-status="classNotes" aria-live="polite">${typeof noteStatus === 'function' ? noteStatus('classNotes') : ''}</p><div class="actions section-space">${button('Añadir rasgo', 'feature-new')}${button('Añadir recurso', 'resource-new')}</div><p class="small section-space"><a href="${classLink(state)}" target="_blank" rel="noopener">Referencia de ${c.name}</a>. Las opciones no incluidas se pueden registrar manualmente. Las reglas opcionales deben acordarse con el DM.</p></section></div></div>`
     );
   }
   // Paladín: romper el juramento (pasa a Rompejuramentos) y volver con Expiación.
@@ -353,15 +383,7 @@ const PartyUI = (() => {
         }),
     );
   }
-  function prerequisiteText(p) {
-    return p
-      .map(x =>
-        Object.entries(x)
-          .map(([k, v]) => k + ': ' + (typeof v === 'string' || typeof v === 'number' ? v : JSON.stringify(v)))
-          .join(', '),
-      )
-      .join(' / ');
-  }
+  const prerequisiteText = p => TraitsEs.prereqText(p);
   function levelup() {
     if (R.totalLevel(state) >= 20) throw Error('Ya estás en nivel 20 de personaje.');
     if (typeof LevelUp !== 'undefined') return LevelUp.start();
@@ -1241,6 +1263,7 @@ const PartyUI = (() => {
       resources: resourcesEdit,
       'party-feature': e => useFeature(e.dataset.id),
       party: list,
+      account,
       'party-create': () => Creator.start(),
       'party-open': e => CharacterStorage.activate(e.dataset.id),
       'party-delete': e =>
@@ -1283,10 +1306,7 @@ const PartyUI = (() => {
       'class-resource-edit': e => useResource(e.dataset.id, true),
       'class-rage-end': () => commit('Rabia terminada', s => (s.raging = false)),
       'defenses-edit': defensesEdit,
-      'class-notes-save': () => {
-        const txt = document.getElementById('class-notes').value;
-        commit('Notas de clase guardadas', s => (s.classNotes = txt));
-      },
+      'class-notes-save': () => flushNotes(),
       stats: statsEdit,
       'short-rest': shortRest,
       'party-attack': genericAttack,
@@ -1307,6 +1327,9 @@ const PartyUI = (() => {
     decorate,
     welcome,
     list,
+    account,
+    accountReady,
+    storageHelp,
     makeCharacter,
     creationSkillFields,
     classPage,
