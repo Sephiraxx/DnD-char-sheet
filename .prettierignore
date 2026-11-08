@@ -13,7 +13,9 @@ feat-data.js
 book-content-data.js
 
 official-content-data.js
+official-monsters-data.js
 shared-reference-data.js
+shared-reference-text.js
 encounter-tables-data.js
 curated-encounter-data.js
 tools/official-reference-facts.json

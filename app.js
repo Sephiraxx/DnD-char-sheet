@@ -352,6 +352,11 @@ function journal() {
     }</div></section></div>`
   );
 }
+// Los textos de los libros llegan después de mostrar la ficha: se vuelve a dibujar si nadie está escribiendo.
+addEventListener('reference-texts', () => {
+  const typing = document.activeElement?.closest?.('#main input, #main textarea, #main select');
+  if (state && !typing && !$('#modal').open) render();
+});
 // Pie de página: dónde está guardada la ficha abierta (mismas palabras que Personajes y Mi ficha).
 function copyFooter() {
   const el = $('#copy-footer');

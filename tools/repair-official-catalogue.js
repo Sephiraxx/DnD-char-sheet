@@ -430,11 +430,10 @@ if (require.main === module) {
     duplicatesRemoved: report.removedDuplicates.length,
     unresolved: report.unresolved.length,
   };
-  fs.writeFileSync(
-    path.join(root, 'official-content-data.js'),
-    '/* Official 2014 game blocks from the supplied PDFs; identities and numerical fields reviewed against source metadata and documented PDF exceptions. */\n(function(r){r.OfficialContentData=' +
-      JSON.stringify(data) +
-      ';})(typeof window!=="undefined"?window:globalThis);\n',
+  require('./official-data-io.js').write(
+    root,
+    data,
+    'Official 2014 game blocks from the supplied PDFs; identities and numerical fields reviewed against source metadata and documented PDF exceptions.',
   );
   if (process.argv[3]) fs.writeFileSync(process.argv[3], JSON.stringify(report, null, 2));
   console.log(JSON.stringify(data.audit.catalogueReview));

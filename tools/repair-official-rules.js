@@ -282,11 +282,10 @@ data.audit.rulesReview = {
   unresolved: report.unsupported.length,
 };
 if (report.unsupported.length) throw Error('Unreviewed rules remain: ' + JSON.stringify(report.unsupported));
-fs.writeFileSync(
-  path.join(root, 'official-content-data.js'),
-  '/* Reviewed official 2014 game rules from the supplied books. Private PDFs and reference caches are excluded. */\n(function(r){r.OfficialContentData=' +
-    JSON.stringify(data) +
-    ';})(typeof window!=="undefined"?window:globalThis);\n',
+require('./official-data-io.js').write(
+  root,
+  data,
+  'Reviewed official 2014 game rules from the supplied books. Private PDFs and reference caches are excluded.',
 );
 if (process.argv[3]) fs.writeFileSync(process.argv[3], JSON.stringify(report, null, 2));
 console.log(JSON.stringify({ ...data.audit.rulesReview, unsupported: report.unsupported }, null, 2));

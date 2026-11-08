@@ -159,11 +159,10 @@ if (require.main === module) {
   const input = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
   const data = A.ctx.OfficialContentData;
   const { added, report } = recover(data, input);
-  fs.writeFileSync(
-    path.join(root, 'official-content-data.js'),
-    '/* Reviewed official 2014 game blocks from the supplied books and source-matched bestiary references. */\n(function(r){r.OfficialContentData=' +
-      JSON.stringify(data) +
-      ';})(typeof window!=="undefined"?window:globalThis);\n',
+  require('./official-data-io.js').write(
+    root,
+    data,
+    'Reviewed official 2014 game blocks from the supplied books and source-matched bestiary references.',
   );
   fs.writeFileSync(
     path.join(root, 'tools/official-creature-recovery-review.json'),

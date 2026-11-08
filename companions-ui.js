@@ -15,16 +15,24 @@ const CompanionsUI = (() => {
       attach();
       return Promise.resolve();
     }
-    return (loading ||= new Promise((ok, fail) => {
-      const s = document.createElement('script');
-      s.src = './monsters-data.js';
-      s.onload = ok;
-      s.onerror = () => {
+    return (loading ||= (window.OfficialContent?.loadMonsters?.() || Promise.resolve()).then(
+      () =>
+        new Promise((ok, fail) => {
+          const s = document.createElement('script');
+          s.src = './monsters-data.js';
+          s.onload = ok;
+          s.onerror = () => {
+            loading = null;
+            fail(Error('No se pudo cargar el bestiario. Revisá tu conexión.'));
+          };
+          document.head.append(s);
+        }),
+    ))
+      .then(attach)
+      .catch(e => {
         loading = null;
-        fail(Error('No se pudo cargar el bestiario. Revisá tu conexión.'));
-      };
-      document.head.append(s);
-    })).then(attach);
+        throw e;
+      });
   }
   const crText = cr => (cr === 0.125 ? '1/8' : cr === 0.25 ? '1/4' : cr === 0.5 ? '1/2' : String(cr));
 

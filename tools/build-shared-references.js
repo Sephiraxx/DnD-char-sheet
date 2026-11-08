@@ -21,6 +21,7 @@ const g = load([
   'book-content-data.js',
   'book-content.js',
   'official-content-data.js',
+  'official-monsters-data.js',
   'shared-spell-data.js',
   'official-content.js',
 ]);
@@ -374,12 +375,24 @@ const review = {
   sourceAliases: aliases,
   unmatched,
 };
-fs.writeFileSync(
-  path.join(root, 'shared-reference-data.js'),
-  '/* Full references for existing official 2014 options, matched by source. */\n(function(r){r.SharedReferenceData=' +
-    JSON.stringify(output) +
-    ';})(typeof window!=="undefined"?window:globalThis);\n',
-);
+// Los textos largos van aparte (shared-reference-text.js): la ficha se abre sin ellos y los pide después.
+{
+  const { entries: textEntries, features: textFeatures, ...small } = output;
+  const FOOT = ';})(typeof window!=="undefined"?window:globalThis);\n';
+  fs.writeFileSync(
+    path.join(root, 'shared-reference-data.js'),
+    '/* Full references for existing official 2014 options, matched by source. Long texts live in shared-reference-text.js. */\n(function(r){r.SharedReferenceData=' +
+      JSON.stringify(small) +
+      FOOT,
+  );
+  fs.writeFileSync(
+    path.join(root, 'shared-reference-text.js'),
+    '/* Long reference texts (entries and features), split from shared-reference-data.js so sheets open without them. */\n(function(r){var t=' +
+      JSON.stringify({ entries: textEntries, features: textFeatures }) +
+      ';var d=r.SharedReferenceData||(r.SharedReferenceData={});d.entries=t.entries;d.features=t.features;if(r.OfficialContent&&r.OfficialContent.applyTexts)r.OfficialContent.applyTexts()' +
+      FOOT,
+  );
+}
 fs.writeFileSync(path.join(root, 'tools/shared-reference-review.json'), JSON.stringify(review, null, 2) + '\n');
 console.log(
   'References',
