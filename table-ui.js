@@ -532,6 +532,15 @@ const TableUI = (() => {
       else if (ev.kind === 'note' && ev.target_character === l.characterId) toast('Mensaje del DM: ' + ev.payload.text);
       else if (ev.kind === 'area-save' && ev.target_character === l.characterId)
         toast(ev.payload.spell + ' de ' + ev.payload.caster + ': tirá tu salvación.');
+      // Una orden del DM para esta ficha que esta versión no conoce: queda pendiente en la mesa hasta
+      // actualizar la app, que la aplica sola al abrirse.
+      else if (
+        ev.target_character === l.characterId &&
+        !['roll', 'roll-response', 'creature-save', 'creature-save-result'].includes(ev.kind)
+      ) {
+        globalThis.AppUpdates?.check();
+        toast('El DM te mandó algo que esta versión de la app no conoce. Actualizala para recibirlo.');
+      }
       redraw();
       return;
     }

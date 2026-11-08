@@ -105,3 +105,13 @@ test('first installation takes control without reloading an in-progress characte
   assert.equal(a.g.reloads, 0);
   assert.equal(a.messages.length, 0);
 });
+test('una orden del DM que esta versión no conoce busca la actualización y, si ya está lista, la ofrece', async () => {
+  const a = await app();
+  a.g.AppUpdates.check();
+  assert.equal(a.registration.updates, 1);
+  a.install(30);
+  a.click('later');
+  a.registration.waiting = a.registration.installing;
+  a.g.AppUpdates.check();
+  assert.equal(a.bars.filter(b => !b.removed).length, 1, 'vuelve a mostrar «Actualizar»');
+});

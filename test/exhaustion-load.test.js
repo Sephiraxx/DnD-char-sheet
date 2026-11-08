@@ -122,3 +122,45 @@ test('munición: cada disparo gasta una flecha y después del combate se recuper
   assert.equal(s.inventory[1].qty, 1);
   assert.equal(s.ammoUsed, undefined);
 });
+
+test('munición mágica: «Flecha +1» suma su bono y las flechas pesan por pieza', () => {
+  const g = load(),
+    A = g.Attacks,
+    M = g.MagicItems;
+  const magic = M.inventoryRow('ammunition-1', { base: 'arrow', qty: 5 });
+  assert.equal(magic.name, 'Flecha +1');
+  assert.equal(magic.weight, 0.05);
+  assert.equal(A.ammoBonus(magic), 1);
+  const bow = {
+    id: 'bow',
+    equipmentId: 'longbow',
+    name: 'Arco largo',
+    qty: 1,
+    category: 'Armas',
+    weight: 2,
+    location: 'Encima',
+    notes: '',
+  };
+  const s = { inventory: [bow, magic] };
+  assert.equal(A.ammoFor(s, bow).next.id, magic.id);
+  assert.equal(A.spendAmmo(s, bow, magic.id), 'Flecha +1');
+  assert.equal(magic.qty, 4);
+  // Las fichas viejas guardaban 1 lb por flecha (el peso del paquete de 20).
+  const old = g.Rules.validate({
+    ...g.Rules.initial(),
+    name: 'Arquera',
+    inventory: [
+      {
+        id: 'a',
+        equipmentId: 'arrow',
+        name: 'Flecha',
+        qty: 20,
+        category: 'Equipo',
+        weight: 1,
+        location: 'Encima',
+        notes: '',
+      },
+    ],
+  });
+  assert.equal(old.inventory[0].weight, 0.05);
+});

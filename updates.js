@@ -29,8 +29,18 @@
     });
     document.body.append(bar);
   }
+  // Lo usa la mesa cuando el DM manda algo que esta versión no conoce: busca la nueva y la ofrece ya.
+  let registration = null;
+  globalThis.AppUpdates = {
+    check() {
+      if (!registration) return;
+      if (registration.waiting) return offer(registration.waiting);
+      registration.update().catch(() => {});
+    },
+  };
   sw.register('./sw.js')
     .then(reg => {
+      registration = reg;
       if (reg.waiting) offer(reg.waiting);
       reg.addEventListener('updatefound', () => {
         const worker = reg.installing;
