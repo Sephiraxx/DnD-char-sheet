@@ -7,6 +7,7 @@
     "format": "prettier --write . && node tools/stamp-sw.js",
     "stamp": "node tools/stamp-sw.js",
     "check": "prettier --check . && node --test",
+    "browser": "node tools/browser-regressions.js",
     "vendor": "node -e \"require('fs').copyFileSync(require.resolve('@supabase/supabase-js/dist/umd/supabase.js'),'vendor/supabase.js')\""
   },
   "devDependencies": {
