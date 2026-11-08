@@ -244,11 +244,13 @@ const Creator = (() => {
     host.hidden = false;
     document.body.classList.add('creator-open');
     draw();
+    globalThis.OverlayFocus?.open(host);
   }
   function close() {
     save();
     host.hidden = true;
     document.body.classList.remove('creator-open');
+    globalThis.OverlayFocus?.close(host);
   }
 
   // ---------- Pasos visibles ----------
