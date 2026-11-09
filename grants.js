@@ -296,6 +296,26 @@
                   ? { expertise: [{ anyProficientSkill: 2 }], expertiseTools: true }
                   : { expertise: [{ anyProficientSkill: 2 }] },
             });
+      // Clase homebrew con conjuros siempre preparados por nivel (como los de una subclase).
+      const cls = root.Classes.info(v);
+      if (cls?.homebrew && cls.spells?.length)
+        out.push({
+          key: 'class:' + cls.id + ':spells',
+          kind: 'sub',
+          id: cls.id,
+          name: cls.name,
+          source: cls.source,
+          data: {
+            additionalSpells: cls.spells.map(block => ({
+              ...block,
+              ability: block.ability || root.Classes.casting(v).ability,
+              name: cls.name,
+            })),
+          },
+          level: v.level,
+          classId: v.classId,
+          ability: root.Classes.casting(v).ability,
+        });
       if (sub && v.level >= root.Classes.info(v).subclassLevel && sub.spells?.length)
         out.push({
           key: 'sub:' + sub.id,

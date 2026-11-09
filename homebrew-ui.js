@@ -106,16 +106,6 @@ const HomebrewUI = (() => {
   const levels = Array.from({ length: 20 }, (_, i) => [String(i + 1), 'Nivel ' + (i + 1)]);
   // Filas que se repiten (rasgos, acciones…): cada una con sus campos y un botón para quitarla.
   const ROWS = {
-    features: {
-      add: 'Agregar rasgo',
-      fields: r =>
-        `<div class="form-grid hb-row-head">${field('Nivel', select('level', levels, r.level || 1))}${field('Nombre', input('name', r.name, 'maxlength="120"'))}</div>${field('Descripción', area('text', r.text, 3))}`,
-    },
-    prepared: {
-      add: 'Agregar conjuro',
-      fields: r =>
-        `<div class="form-grid hb-row-head">${field('Nivel de clase', select('level', levels, r.level || 3))}${field('Conjuro', `<input name="spell" list="hb-spells" value="${esc(spellName(r.spell))}" maxlength="120" />`)}</div>`,
-    },
     traits: {
       add: 'Agregar rasgo',
       fields: r =>
@@ -129,6 +119,85 @@ const HomebrewUI = (() => {
   function actionFields(r) {
     const dmg = r.dmg?.[0] || [];
     return `${field('Nombre', input('n', r.n, 'maxlength="120"'))}${field('Descripción', area('d', r.d, 2, 3000))}<div class="form-grid">${field('Bonificador de ataque <span class="muted">(opcional)</span>', input('atk', r.atk ?? '', 'type="number" min="-5" max="30"'))}${field('Daño <span class="muted">(opcional)</span>', input('dmg', dmg[0] || '', 'placeholder="2d6+3" maxlength="20"'))}${field('Tipo de daño', select('type', [['', '—'], ...H.DAMAGE.map(d => [d, d])], dmg[1] || ''))}</div>`;
+  }
+  // Filas dentro de un nivel (el nivel lo da el bloque plegable que las contiene).
+  const LEVEL_ROWS = {
+    features: {
+      add: 'Rasgo',
+      fields: r =>
+        `${field('Nombre del rasgo', input('name', r.name, 'maxlength="120"'))}${field('Descripción', area('text', r.text, 3))}`,
+    },
+    unarmed: {
+      add: 'Daño sin armas',
+      fields: r =>
+        `${field('Golpe sin armas: dados de daño desde este nivel', input('dice', r.dice, 'maxlength="8" placeholder="1d6"'))}<p class="small muted">Reemplaza el daño de 1 del golpe sin armas (si tiene Artes marciales, se usa el mayor).</p>`,
+    },
+    prepared: {
+      add: 'Conjuro siempre preparado',
+      fields: r =>
+        field(
+          'Conjuro siempre preparado desde este nivel',
+          `<input name="spell" list="hb-spells" value="${esc(spellName(r.spell))}" maxlength="120" />`,
+        ),
+    },
+    slots: {
+      add: 'Espacios de conjuro',
+      fields: r =>
+        `<div class="form-grid">${field(
+          'Espacios adicionales',
+          select(
+            'count',
+            [1, 2, 3, 4].map(n => [n, '+' + n]),
+            r.count || 1,
+          ),
+        )}${field(
+          'De nivel',
+          select(
+            'slot',
+            [1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => [n, 'Nivel ' + n]),
+            r.slot || 1,
+          ),
+        )}</div>`,
+    },
+  };
+  const levelRow = (list, r = {}) =>
+    `<div class="hb-row" data-list="${list}">${LEVEL_ROWS[list].fields(r)}<button type="button" class="text-btn danger-text" data-hb="row-remove">Quitar</button></div>`;
+  // Un bloque plegable por nivel con sus rasgos y mecánicas; abiertos solo los que tienen algo.
+  function levelBlocks(d, from = 1) {
+    const lists = Object.keys(LEVEL_ROWS);
+    const at = (list, l) => (d[list] || []).filter(r => Number(r.level) === l);
+    return `<fieldset class="hb-levels"><legend>Por nivel</legend><p class="small muted">Lo que la ficha aplica sola al llegar a cada nivel: daño sin armas, conjuros siempre preparados y espacios de conjuro extra. Los rasgos se muestran como texto.</p><div class="actions"><button type="button" class="text-btn" data-hb="levels-open">Abrir todos</button><button type="button" class="text-btn" data-hb="levels-close">Cerrar todos</button></div>${Array.from(
+      { length: 21 - from },
+      (_, i) => i + from,
+    )
+      .map(l => {
+        const rows = lists.flatMap(list => at(list, l).map(r => levelRow(list, r))).join('');
+        return `<details class="hb-level" data-level="${l}" ${rows ? 'open' : ''}><summary>Nivel ${l}<span class="hb-level-count small muted">${levelSummary(d, l)}</span></summary><div class="hb-row-list">${rows}</div><div class="actions hb-level-add">${lists.map(list => `<button type="button" class="button secondary" data-hb="level-add" data-list="${list}">+ ${LEVEL_ROWS[list].add}</button>`).join('')}</div></details>`;
+      })
+      .join('')}</fieldset>`;
+  }
+  function levelSummary(d, l) {
+    const n = list => (d[list] || []).filter(r => Number(r.level) === l).length;
+    return [
+      n('features') && n('features') + (n('features') === 1 ? ' rasgo' : ' rasgos'),
+      n('unarmed') && 'sin armas ' + (d.unarmed || []).find(r => Number(r.level) === l).dice,
+      n('prepared') && n('prepared') + ' conjuro(s)',
+      n('slots') && 'espacios extra',
+    ]
+      .filter(Boolean)
+      .map(x => ' · ' + x)
+      .join('');
+  }
+  // Resumen del bloque leído del formulario (al agregar o quitar filas).
+  function refreshSummary(details) {
+    const l = Number(details.dataset.level);
+    const pick = list =>
+      [...details.querySelectorAll(`.hb-row[data-list="${list}"]`)].map(r => ({
+        level: l,
+        ...Object.fromEntries([...r.querySelectorAll('[name]')].map(i => [i.name, i.value])),
+      }));
+    const d = Object.fromEntries(Object.keys(LEVEL_ROWS).map(k => [k, pick(k)]));
+    details.querySelector('.hb-level-count').textContent = levelSummary(d, l);
   }
   const row = (list, r = {}) =>
     `<div class="hb-row" data-list="${list}">${ROWS[list].fields(r)}<button type="button" class="text-btn danger-text" data-hb="row-remove">Quitar</button></div>`;
@@ -191,13 +260,14 @@ const HomebrewUI = (() => {
           d.progression || 'prepared',
         ),
       )}</div><p class="small muted">Los trucos y conjuros por nivel siguen la tabla de la clase oficial equivalente. La magia de pacto y el tercio de lanzador siempre conocen una cantidad fija.</p></fieldset>
-      ${rowsBlock('features', 'Rasgos de clase', d.features || [], 'Cada rasgo con el nivel en que se obtiene. Los efectos se aplican en la mesa: la ficha muestra el texto.')}`;
+      <fieldset><legend>Golpe sin armas</legend>${checks('unarmedFinesse', [['1', 'Puede usar Destreza en vez de Fuerza (como el monje)']], d.unarmedFinesse ? ['1'] : [])}</fieldset>
+      ${levelBlocks(d)}`;
   }
   function subclassForm(d) {
     return `<div class="form-grid">${field('Clase', select('classId', classOptions(), d.classId || 'fighter'))}${field('Nombre', input('name', d.name, 'maxlength="80" required'))}</div>
       ${field('Descripción breve', area('summary', d.summary, 2, 2000))}
-      ${rowsBlock('features', 'Rasgos de subclase', d.features || [])}
-      ${rowsBlock('prepared', 'Conjuros siempre preparados <span class="muted">(opcional)</span>', d.prepared || [], 'Como los de un dominio o un juramento: se suman a los de la clase al llegar a ese nivel.')}`;
+      <fieldset><legend>Golpe sin armas</legend>${checks('unarmedFinesse', [['1', 'Puede usar Destreza en vez de Fuerza (como el monje)']], d.unarmedFinesse ? ['1'] : [])}</fieldset>
+      ${levelBlocks(d)}`;
   }
   function spellForm(d) {
     const roll = d.roll || '';
@@ -330,10 +400,26 @@ const HomebrewUI = (() => {
       const el = [...form.querySelectorAll(`[name="${name}"]`)].find(x => !x.closest('.hb-row'));
       return el ? el.value : '';
     };
+    // Las filas dentro de un nivel toman el nivel del bloque que las contiene.
     const list = name =>
-      [...form.querySelectorAll(`.hb-row[data-list="${name}"]`)].map(r =>
-        Object.fromEntries([...r.querySelectorAll('[name]')].map(i => [i.name, i.value])),
-      );
+      [...form.querySelectorAll(`.hb-row[data-list="${name}"]`)].map(r => ({
+        ...(r.closest('.hb-level') ? { level: Number(r.closest('.hb-level').dataset.level) } : {}),
+        ...Object.fromEntries([...r.querySelectorAll('[name]')].map(i => [i.name, i.value])),
+      }));
+    const byName = new Map(Catalog.spells.map(s => [s.name.toLowerCase(), s.id]));
+    const levelMechanics = () => ({
+      features: list('features'),
+      unarmed: list('unarmed'),
+      unarmedFinesse: all('unarmedFinesse').includes('1'),
+      slots: list('slots').map(r => ({ ...r, slot: Number(r.slot), count: Number(r.count) })),
+      prepared: list('prepared')
+        .filter(p => String(p.spell).trim())
+        .map(p => {
+          const id = byName.get(String(p.spell).trim().toLowerCase());
+          if (!id) throw Error(`Nivel ${p.level}: no encontré el conjuro «${p.spell}». Elegilo de la lista.`);
+          return { level: p.level, spell: id };
+        }),
+    });
     const d = { id: editing.id };
     if (kind === 'class')
       Object.assign(d, {
@@ -352,22 +438,15 @@ const HomebrewUI = (() => {
         ability: val('ability'),
         spellList: val('spellList'),
         progression: val('progression'),
-        features: list('features'),
+        ...levelMechanics(),
       });
-    if (kind === 'subclass') {
-      const byName = new Map(Catalog.spells.map(s => [s.name.toLowerCase(), s.id]));
+    if (kind === 'subclass')
       Object.assign(d, {
         classId: val('classId'),
         name: val('name'),
         summary: val('summary'),
-        features: list('features'),
-        prepared: list('prepared').map(p => {
-          const id = byName.get(String(p.spell).trim().toLowerCase());
-          if (p.spell && !id) throw Error(`No encontré el conjuro «${p.spell}»: elegilo de la lista.`);
-          return { level: p.level, spell: id || '' };
-        }),
+        ...levelMechanics(),
       });
-    }
     if (kind === 'spell') {
       const flags = all('flags');
       Object.assign(d, {
@@ -531,7 +610,24 @@ const HomebrewUI = (() => {
       box.lastElementChild.querySelector('input, textarea')?.focus();
       return;
     }
-    if (what === 'row-remove') return el.closest('.hb-row').remove();
+    if (what === 'level-add') {
+      const det = el.closest('.hb-level');
+      const box = det.querySelector('.hb-row-list');
+      box.insertAdjacentHTML('beforeend', levelRow(el.dataset.list));
+      box.lastElementChild.querySelector('input, textarea, select')?.focus();
+      return refreshSummary(det);
+    }
+    if (what === 'levels-open' || what === 'levels-close')
+      return el
+        .closest('.hb-levels')
+        .querySelectorAll('.hb-level')
+        .forEach(x => (x.open = what === 'levels-open'));
+    if (what === 'row-remove') {
+      const det = el.closest('.hb-level');
+      el.closest('.hb-row').remove();
+      if (det) refreshSummary(det);
+      return;
+    }
     const entry = H.entry(id);
     if (!entry) return;
     if (what === 'edit') return ($('compendium-detail')?.close(), open(entry.kind, entry.data));
@@ -601,6 +697,10 @@ const HomebrewUI = (() => {
       if (el.dataset?.hb === 'import') importFile(el);
     });
     $('homebrew-editor-form').addEventListener('submit', submit);
+    $('homebrew-editor-form').addEventListener('input', e => {
+      const det = e.target.closest('.hb-level');
+      if (det) refreshSummary(det);
+    });
     $('homebrew-editor-cancel').addEventListener('click', () => $('homebrew-editor').close());
     addEventListener('homebrew-change', panel);
     panel();
