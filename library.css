@@ -192,3 +192,34 @@
   background: var(--panel, var(--bg));
   border-top: 1px solid var(--line);
 }
+
+/* Rasgos por nivel: bloques plegables en el detalle del catálogo y en el editor de homebrew. */
+.feature-level,
+.hb-level {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin: 8px 0;
+  padding: 0 14px;
+}
+.feature-level > summary,
+.hb-level > summary {
+  cursor: pointer;
+  padding: 10px 0;
+  font-weight: 600;
+}
+.feature-level[open] > summary,
+.hb-level[open] > summary {
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 8px;
+}
+.feature-level .feature h3 {
+  margin-top: 8px;
+}
+.hb-level-add {
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+}
+.hb-level-add .button {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}

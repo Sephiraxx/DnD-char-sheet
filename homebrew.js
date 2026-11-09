@@ -164,6 +164,40 @@
     };
   };
   const byLevel = list => list.sort((a, b) => a.level - b.level);
+  // Mecánicas por nivel (clase y subclase): la ficha las aplica sola al llegar a ese nivel.
+  const BARE = /^\d{1,2}d(4|6|8|10|12)$/;
+  const mechanics = d => ({
+    // Daño del golpe sin armas a partir de ese nivel (se usa el mayor alcanzado).
+    unarmed: byLevel(
+      rows(d.unarmed, 20, 'Daño sin armas', (r, i) => {
+        if (!r || !String(r.dice || '').trim()) return null;
+        const v = String(r.dice).replace(/\s+/g, '').toLowerCase();
+        if (!BARE.test(v)) bad(`Daño sin armas ${i + 1}: escribí dados como 1d6 o 2d8.`);
+        return { level: int(r.level, 1, 20, `Nivel del daño sin armas ${i + 1}`), dice: v };
+      }),
+    ),
+    unarmedFinesse: Boolean(d.unarmedFinesse),
+    // Conjuros siempre preparados por nivel de clase.
+    prepared: byLevel(
+      rows(d.prepared, 40, 'Conjuros siempre preparados', (p, i) =>
+        p?.spell
+          ? { level: int(p.level, 1, 20, `Nivel del conjuro ${i + 1}`), spell: text(p.spell, 80, 'el conjuro') }
+          : null,
+      ),
+    ),
+    // Espacios de conjuro adicionales: se suman a los de la tabla desde ese nivel de clase.
+    slots: byLevel(
+      rows(d.slots, 40, 'Espacios adicionales', (r, i) =>
+        r && r.slot !== undefined && r.slot !== ''
+          ? {
+              level: int(r.level, 1, 20, `Nivel de los espacios ${i + 1}`),
+              slot: int(r.slot, 1, 9, `Nivel de espacio ${i + 1}`),
+              count: int(r.count ?? 1, 1, 4, `Cantidad de espacios ${i + 1}`),
+            }
+          : null,
+      ),
+    ),
+  });
 
   function cleanClass(d) {
     const caster = d.caster && CASTERS[d.caster] ? d.caster : '';
@@ -193,6 +227,7 @@
       subclassLevel: int(d.subclassLevel ?? 3, 1, 20, 'Nivel de la subclase'),
       subclassTitle: text(d.subclassTitle, 60, 'el nombre de las subclases'),
       features: byLevel(rows(d.features, 80, 'Rasgos', feature)),
+      ...mechanics(d),
     };
   }
   function cleanSubclass(d) {
@@ -202,14 +237,7 @@
       name: text(d.name, 80, 'el nombre de la subclase', { empty: false }),
       summary: text(d.summary, 2000, 'la descripción'),
       features: byLevel(rows(d.features, 60, 'Rasgos', feature)),
-      // Conjuros siempre preparados que da la subclase, por nivel de clase.
-      prepared: byLevel(
-        rows(d.prepared, 40, 'Conjuros de la subclase', (p, i) =>
-          p?.spell
-            ? { level: int(p.level, 1, 20, `Nivel del conjuro ${i + 1}`), spell: text(p.spell, 80, 'el conjuro') }
-            : null,
-        ),
-      ),
+      ...mechanics(d),
     };
   }
   function cleanSpell(d) {
@@ -358,9 +386,15 @@
       weapons: lines([...x.weapons, ...(x.weaponsOther ? [x.weaponsOther] : [])]),
       tools: x.tools,
       subclassLevel: x.subclassLevel,
+      spells: spellBlocks(x),
       homebrew: { book, data: x },
     };
   }
+  // Conjuros siempre preparados con el formato de las subclases oficiales: { prepared: { "3": [ids] } }.
+  const spellBlocks = x =>
+    x.prepared.length
+      ? [{ prepared: x.prepared.reduce((a, p) => ((a[p.level] = [...(a[p.level] || []), p.spell]), a), {}) }]
+      : [];
   function asSubclass(x, book) {
     return {
       id: x.id,
@@ -374,14 +408,7 @@
       cantrips: null,
       known: null,
       choices: [],
-      // Conjuros siempre preparados por nivel de clase, con el formato de las subclases oficiales.
-      spells: x.prepared.length
-        ? [
-            {
-              prepared: x.prepared.reduce((a, p) => ((a[p.level] = [...(a[p.level] || []), p.spell]), a), {}),
-            },
-          ]
-        : [],
+      spells: spellBlocks(x),
       homebrew: { book, data: x },
     };
   }
@@ -612,7 +639,7 @@
     // Lo que trae una subclase homebrew (conjuros siempre preparados) también viaja con la ficha.
     for (const id of [...ids]) {
       const d = defs.get(id);
-      if (d?.kind === 'subclass') d.data.prepared.forEach(p => add(p.spell));
+      if (d?.kind === 'subclass' || d?.kind === 'class') (d.data.prepared || []).forEach(p => add(p.spell));
       if (d?.kind === 'subclass') add(d.data.classId);
     }
     return ids;
@@ -835,6 +862,16 @@
     refresh: () => reapply(),
     checkSheet,
     def: id => defs.get(id) || null,
+    // Mecánicas activas de una clase o subclase homebrew a un nivel de clase dado.
+    at(data, level) {
+      if (!data) return null;
+      const unarmed = (data.unarmed || []).filter(r => r.level <= level).at(-1)?.dice || '';
+      return {
+        unarmed,
+        unarmedFinesse: Boolean(data.unarmedFinesse),
+        slots: (data.slots || []).filter(r => r.level <= level),
+      };
+    },
     load,
     tables,
     createBook,

@@ -130,16 +130,18 @@
     let ability = cfg.ability;
     if (ability === 'auto') {
       if (w.ranged) ability = 'dex';
-      else if (w.finesse || (ma && (w.monk || item.unarmed))) ability = mods.dex > mods.str ? 'dex' : 'str';
+      else if (w.finesse || (ma && (w.monk || item.unarmed)) || (item.homebrew?.finesse && item.unarmed))
+        ability = mods.dex > mods.str ? 'dex' : 'str';
       else ability = 'str';
     }
     const prof = cfg.proficient === 'auto' ? item.unarmed || proficient(s, w) : cfg.proficient;
     let dice = twoHands && w.versatile ? w.versatile : w.dice;
-    if (ma && (w.monk || item.unarmed)) {
+    if (ma && (w.monk || item.unarmed) && !item.homebrew) {
       const cur = /^1d(\d+)$/.exec(dice);
       if (!cur || Number(cur[1]) < ma) dice = '1d' + ma;
     }
     const notes = [];
+    if (item.homebrew) notes.push(`${item.homebrew.from}: golpe sin armas ${item.homebrew.dice}`);
     let toHit = mods[ability] + (prof ? st.prof : 0) + cfg.magic;
     if (w.ranged && hasStyle(s, 'archery')) {
       toHit += 2;
@@ -189,13 +191,44 @@
     return 1;
   }
 
+  // Daño sin armas de clases o subclases homebrew (por nivel de cada clase): gana el de mayor promedio.
+  const average = d => {
+    const m = /^(\d+)d(\d+)$/.exec(d || '');
+    return m ? (Number(m[1]) * (Number(m[2]) + 1)) / 2 : 1;
+  };
+  function homebrewUnarmed(s) {
+    const H = root.Homebrew,
+      K = C();
+    if (!H || !K?.views) return null;
+    let best = null;
+    for (const v of K.views(s))
+      for (const data of [K.info(v)?.homebrew?.data, K.sub(v)?.homebrew?.data]) {
+        const got = H.at(data, v.level);
+        if (got?.unarmed && (!best || average(got.unarmed) > average(best.dice)))
+          best = {
+            dice: got.unarmed,
+            finesse: got.unarmedFinesse,
+            from: (K.sub(v)?.homebrew?.data === data ? K.sub(v) : K.info(v)).name,
+          };
+      }
+    return best;
+  }
   function unarmed(s) {
-    const ma = martialArtsDie(s);
+    const ma = martialArtsDie(s),
+      hb = homebrewUnarmed(s),
+      useHb = hb && average(hb.dice) >= (ma ? average('1d' + ma) : 1);
     return {
       id: 'unarmed',
       name: 'Golpe sin armas',
       unarmed: true,
-      weapon: { id: 'unarmed', dice: ma ? '1d' + ma : '1', type: 'contundente', monk: true, props: [] },
+      homebrew: useHb ? hb : null,
+      weapon: {
+        id: 'unarmed',
+        dice: useHb ? hb.dice : ma ? '1d' + ma : '1',
+        type: 'contundente',
+        monk: Boolean(ma) || Boolean(useHb && hb.finesse),
+        props: [],
+      },
     };
   }
   function options(s) {

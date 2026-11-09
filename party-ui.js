@@ -232,6 +232,19 @@ const PartyUI = (() => {
     if (d.full) s.hp = R.stats(s).maxHP;
     return R.validate(s);
   }
+  // Mecánicas homebrew de la clase y la subclase que llegan en ese nivel (daño sin armas, conjuros, espacios).
+  function homebrewMechanics(l) {
+    const out = [];
+    for (const data of [C.info(state)?.homebrew?.data, C.sub(state)?.homebrew?.data]) {
+      if (!data) continue;
+      for (const r of data.unarmed || []) if (r.level === l) out.push('golpe sin armas ' + r.dice);
+      for (const r of data.prepared || [])
+        if (r.level === l)
+          out.push((Catalog.spells.find(sp => sp.id === r.spell)?.name || r.spell) + ' siempre preparado');
+      for (const r of data.slots || []) if (r.level === l) out.push(`+${r.count} espacio(s) de nivel ${r.slot}`);
+    }
+    return out.join(' · ');
+  }
   function classPage() {
     const c = C.info(state),
       sc = C.sub(state),
@@ -252,7 +265,8 @@ const PartyUI = (() => {
       )
         .map(l => {
           const fs = C.features({ ...state, level: l }, l).filter(f => f.level === l);
-          return `<details ${l === state.level ? 'open' : ''}><summary>Nivel ${l}${l === state.level ? ' · Actual' : ''}${C.asiLevels(state).includes(l) ? ' · Mejora o dote' : ''}</summary>${fs.map(f => `<div class="feature"><h3>${esc(f.name)}</h3><p class="small">${libraryLink(f.name)}</p><p class="small">${esc(f.source)}${f.children?.length ? ' · ' + f.children.map(esc).join(' · ') : ''}</p>${f.es ? `<p class="small">${esc(f.es)}</p>` : ''}${f.book ? LibraryText.html(f.book, !f.es && l === state.level) : ''}${f.text ? `<details><summary>Texto SRD (inglés)</summary><p class="spell-reference">${esc(f.text)}</p></details>` : f.book ? '' : `<a href="${classLink(state)}" target="_blank" rel="noopener">Consultar el rasgo y sus elecciones</a>`}</div>`).join('') || '<p class="small">Consultá el aumento de recursos y las mejoras de los rasgos previos.</p>'}</details>`;
+          const hbm = homebrewMechanics(l);
+          return `<details ${l === state.level ? 'open' : ''}><summary>Nivel ${l}${l === state.level ? ' · Actual' : ''}${C.asiLevels(state).includes(l) ? ' · Mejora o dote' : ''}</summary>${hbm ? `<p class="small"><b>Se aplica solo:</b> ${esc(hbm)}</p>` : ''}${fs.map(f => `<div class="feature"><h3>${esc(f.name)}</h3><p class="small">${libraryLink(f.name)}</p><p class="small">${esc(f.source)}${f.children?.length ? ' · ' + f.children.map(esc).join(' · ') : ''}</p>${f.es ? `<p class="small">${esc(f.es)}</p>` : ''}${f.book ? LibraryText.html(f.book, !f.es && l === state.level) : ''}${f.text && f.source === 'HB' ? `<p class="small">${esc(f.text)}</p>` : f.text ? `<details><summary>Texto SRD (inglés)</summary><p class="spell-reference">${esc(f.text)}</p></details>` : f.book ? '' : `<a href="${classLink(state)}" target="_blank" rel="noopener">Consultar el rasgo y sus elecciones</a>`}</div>`).join('') || '<p class="small">Consultá el aumento de recursos y las mejoras de los rasgos previos.</p>'}</details>`;
         })
         .join('')}</div></section><div class="stack"><section class="card"><h2>Elecciones registradas</h2>${
         Object.entries(state.classChoices || {})

@@ -144,3 +144,66 @@ test('una clase homebrew se puede elegir al multiclasear', () => {
     true,
   );
 });
+
+test('las mecánicas por nivel siguen a la clase: golpe sin armas, espacios extra y conjuro preparado', () => {
+  const g = load();
+  const H = g.Homebrew;
+  const book = { id: 'b1', title: 'Mi homebrew', mine: true };
+  const c = H.clean('class', {
+    name: 'Puño de savia',
+    die: 10,
+    saves: ['str', 'wis'],
+    caster: '1/2',
+    ability: 'wis',
+    spellList: 'druid',
+    subclassLevel: 3,
+    unarmed: [
+      { level: 5, dice: '1d6' },
+      { level: 10, dice: '1d8' },
+      { level: 15, dice: '2d8' },
+    ],
+    unarmedFinesse: true,
+    prepared: [{ level: 3, spell: 'cure' }],
+    slots: [
+      { level: 5, slot: 1, count: 1 },
+      { level: 9, slot: 3, count: 1 },
+    ],
+  });
+  H.state.books = [book];
+  H.state.entries = [{ kind: 'class', bookId: 'b1', data: c }];
+  H.register(H.state.entries.map(e => ({ ...e, book })));
+  const at = level => {
+    let s = fixture('wizard-3.json');
+    Object.assign(s, {
+      level,
+      classId: c.id,
+      classSubclass: '',
+      known: [],
+      prepared: [],
+      extras: [],
+      classChoices: {},
+      arcanum: {},
+      spellModes: {},
+      customSpells: [],
+      hpBase: 10 * level,
+    });
+    s = g.Rules.validate(s);
+    const p = g.Attacks.profile(
+      s,
+      g.Attacks.options(s).find(x => x.unarmed),
+    );
+    return {
+      slots: JSON.stringify(g.Rules.stats(s).slots),
+      dice: p.dice,
+      ability: p.ability,
+      cure: g.Grants.spells(s).some(x => x.id === 'cure' && x.mode === 'prepared'),
+    };
+  };
+  assert.deepEqual(at(2), { slots: '[2]', dice: '1', ability: 'str', cure: false });
+  assert.deepEqual(at(3), { slots: '[3]', dice: '1', ability: 'str', cure: true });
+  assert.deepEqual(at(5), { slots: '[5,2]', dice: '1d6', ability: 'dex', cure: true });
+  assert.deepEqual(at(9), { slots: '[5,3,3]', dice: '1d6', ability: 'dex', cure: true });
+  assert.equal(at(10).dice, '1d8');
+  assert.deepEqual(at(15), { slots: '[5,3,4,2]', dice: '2d8', ability: 'dex', cure: true });
+  assert.throws(() => H.clean('class', { ...c, unarmed: [{ level: 5, dice: '1d6+2' }] }), /1d6 o 2d8/);
+});

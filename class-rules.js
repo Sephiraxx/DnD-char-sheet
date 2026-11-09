@@ -89,7 +89,24 @@
     const a = ownSlots(w);
     return { level: a.length, max: a[a.length - 1] };
   }
+  // Espacios adicionales de clases y subclases homebrew (por nivel de cada clase), sobre la tabla normal.
+  function extraSlots(s, base) {
+    const H = root.Homebrew;
+    if (!H || s._total) return base;
+    let out = null;
+    for (const v of views(s))
+      for (const data of [info(v)?.homebrew?.data, sub(v)?.homebrew?.data])
+        for (const r of H.at(data, v.level)?.slots || []) {
+          out ||= [...base];
+          while (out.length < r.slot) out.push(0);
+          out[r.slot - 1] += r.count;
+        }
+    return out || base;
+  }
   function slots(s) {
+    return extraSlots(s, tableSlots(s));
+  }
+  function tableSlots(s) {
     if (!mcList(s).length || s._total) return ownSlots(s);
     const casters = spellcasters(s);
     if (!casters.length) return id(s) === 'warlock' ? ownSlots(s) : [];

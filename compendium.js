@@ -343,11 +343,32 @@
     const fullEntry = ['race', 'background', 'class', 'subclass'].includes(x.kind)
       ? OfficialContent.entryHtml(x.kind, x.id)
       : '';
-    const features = (fullEntry ? [] : x.features || [])
-      .map(
-        f =>
-          `<div class="feature"><h3>Nivel ${f.level} · ${esc(f.name)}</h3><p>${esc(f.es || f.text || '')}</p>${OfficialContent.html(OfficialContent.ruleTexts.get(`${x.kind === 'class' ? 'class' : 'sub'}:${x.id}:${f.english || f.name}`))}</div>`,
-      )
+    // Rasgos agrupados por nivel en bloques plegables (con las mecánicas homebrew de ese nivel).
+    const featureHtml = f =>
+      `<div class="feature"><h3>${esc(f.name)}</h3><p>${esc(f.es || f.text || '')}</p>${OfficialContent.html(OfficialContent.ruleTexts.get(`${x.kind === 'class' ? 'class' : 'sub'}:${x.id}:${f.english || f.name}`))}</div>`;
+    const hb = x.homebrew?.data;
+    const mech = l =>
+      hb
+        ? [
+            ...(hb.unarmed || []).filter(r => r.level === l).map(r => `Golpe sin armas: ${r.dice}`),
+            ...(hb.prepared || [])
+              .filter(r => r.level === l)
+              .map(r => `Siempre preparado: ${Catalog.spells.find(sp => sp.id === r.spell)?.name || r.spell}`),
+            ...(hb.slots || []).filter(r => r.level === l).map(r => `+${r.count} espacio(s) de nivel ${r.slot}`),
+          ]
+        : [];
+    const levelsWith = [
+      ...new Set([
+        ...(fullEntry ? [] : x.features || []).map(f => f.level),
+        ...(hb ? [...(hb.unarmed || []), ...(hb.prepared || []), ...(hb.slots || [])].map(r => r.level) : []),
+      ]),
+    ].sort((a, b) => a - b);
+    const features = levelsWith
+      .map((l, i) => {
+        const fs = (fullEntry ? [] : x.features || []).filter(f => f.level === l);
+        const m = mech(l);
+        return `<details class="feature-level" ${i === 0 ? 'open' : ''}><summary>Nivel ${l}<span class="small muted"> · ${[fs.length && fs.map(f => f.name).join(', '), m.length && m.join(' · ')].filter(Boolean).map(esc).join(' · ')}</span></summary>${m.length ? `<p class="small"><b>${esc(m.join(' · '))}</b></p>` : ''}${fs.map(featureHtml).join('')}</details>`;
+      })
       .join('');
     const creature =
       x.kind === 'creature'
