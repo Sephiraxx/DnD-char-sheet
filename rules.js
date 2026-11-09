@@ -338,6 +338,7 @@
   ];
   // Ampliación del catálogo; conserva los identificadores de las fichas anteriores.
   for (const sp of root.Catalog?.spells || []) {
+    if (sp.homebrew) continue; // el homebrew se suma en vivo (allSpells): puede llegar después
     const old = spells.find(x => x.id === sp.id);
     if (old) {
       const spanishText = old.text,
@@ -594,7 +595,7 @@
     );
   }
   function allSpells(s) {
-    return [...spells, ...s.customSpells];
+    return [...spells, ...(root.Catalog?.spells || []).filter(x => x.homebrew), ...s.customSpells];
   }
   function features(s) {
     let l = s.level,
@@ -710,6 +711,11 @@
     const fail = () => {
       throw Error('La copia no es una ficha válida o contiene valores fuera de rango.');
     };
+    // Homebrew que trae la ficha (clases, subclases y conjuros): se suma antes de validar la clase.
+    if (o && typeof o === 'object' && o.homebrew !== undefined) {
+      if (root.Homebrew ? !root.Homebrew.checkSheet(o.homebrew) : !o.homebrew || typeof o.homebrew !== 'object') fail();
+      root.Homebrew?.adopt(o);
+    }
     const int = (v, a, b) => Number.isInteger(v) && v >= a && v <= b;
     const txt = (v, n = 12000) => typeof v === 'string' && v.length <= n;
     const list = (v, n) => Array.isArray(v) && v.length <= n;
@@ -934,6 +940,11 @@
       (c.extraRolls !== undefined && !int(c.extraRolls, 0, 99))
     )
       fail();
+    if (root.Homebrew) {
+      const used = root.Homebrew.snapshot(o);
+      if (used) o.homebrew = used;
+      else delete o.homebrew;
+    }
     return JSON.parse(JSON.stringify(o));
   }
   // ---------- Números de cada conjuro (campo «dice» del catálogo) ----------

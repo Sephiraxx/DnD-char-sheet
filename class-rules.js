@@ -200,7 +200,11 @@
       cantrips: cast.cantrips,
       prepared:
         cast.type === 'prepared' || cast.type === 'book'
-          ? Math.max(1, m[cast.ability] + (['artificer', 'paladin'].includes(id(s)) ? Math.floor(l / 2) : l))
+          ? Math.max(
+              1,
+              m[cast.ability] +
+                (['artificer', 'paladin'].includes(id(s)) || /\/\s*2/.test(c.prepared || '') ? Math.floor(l / 2) : l),
+            )
           : 0,
       initiative: R()
         .initiativeParts(s)
@@ -223,6 +227,9 @@
     const lists = sp.classes || D.spellClasses[sp.id] || spellClassesByToken.get(spellToken(sp.id)) || [];
     if (id(s) === 'bard') return sp.bard && (!sp.optionalBard || s.progression.expanded);
     if (['fighter', 'rogue'].includes(id(s)) && casting(s).caster) return lists.includes('wizard');
+    // Clase homebrew: sus conjuros propios y, si eligió una, la lista de una clase oficial.
+    const own = info(s)?.homebrew?.data?.spellList;
+    if (own && own !== 'own' && lists.includes(own)) return true;
     return lists.includes(id(s));
   }
   function lookupSpell(s, t) {
@@ -958,7 +965,10 @@
       })
       .join(' / ');
   }
-  const meetsPrereq = (s, cid) => (PREREQ[cid] || []).some(group => group.every(a => s.abilities[a] >= 13));
+  // Clase homebrew: 13 en su característica de lanzamiento o, si no lanza, en la de su primera salvación.
+  const prereqOf = cid =>
+    PREREQ[cid] || (D.classes[cid]?.homebrew ? [[D.classes[cid].ability || D.classes[cid].saves[0]]] : []);
+  const meetsPrereq = (s, cid) => prereqOf(cid).some(group => group.every(a => s.abilities[a] >= 13));
   root.Classes = {
     totalLevel,
     views,
@@ -971,6 +981,7 @@
     levelUpSecondary,
     meetsPrereq,
     PREREQ,
+    prereqOf,
     id,
     info,
     sub,

@@ -1,0 +1,146 @@
+// Homebrew en las fichas: una clase propia lanza conjuros con su progresión, su subclase da conjuros
+// preparados, y la ficha lleva una copia para abrirse igual en otro dispositivo o en la pantalla del DM.
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { load, fixture } = require('./load');
+
+function setup() {
+  const g = load();
+  const H = g.Homebrew;
+  const book = { id: 'b1', title: 'Mi homebrew', mine: true };
+  const c = H.clean('class', {
+    name: 'Hojarasca',
+    die: 10,
+    saves: ['str', 'wis'],
+    skills: { count: 2, from: ['nature', 'survival'] },
+    armor: ['light', 'medium', 'shield'],
+    weapons: ['simple', 'martial'],
+    caster: '1/2',
+    ability: 'wis',
+    spellList: 'druid',
+    progression: 'prepared',
+    subclassLevel: 3,
+    features: [{ level: 1, name: 'Savia', text: 'Recuperás vida.' }],
+  });
+  const sp = H.clean('spell', {
+    name: 'Espina de savia',
+    level: 1,
+    school: 'Transmutación',
+    time: 'Acción',
+    range: '60 pies',
+    components: ['V', 'S'],
+    duration: 'Instantáneo',
+    classes: [c.id],
+    text: 'Una espina.',
+    roll: 'ranged',
+    damage: '2d8',
+    damageType: 'perforante',
+    scale: '1d8',
+  });
+  const sub = H.clean('subclass', {
+    classId: c.id,
+    name: 'Círculo del musgo',
+    features: [{ level: 3, name: 'Musgo', text: 'Crece.' }],
+    prepared: [
+      { level: 3, spell: sp.id },
+      { level: 3, spell: 'cure' },
+    ],
+  });
+  H.state.books = [book];
+  H.state.entries = [
+    { kind: 'class', bookId: 'b1', data: c },
+    { kind: 'subclass', bookId: 'b1', data: sub },
+    { kind: 'spell', bookId: 'b1', data: sp },
+  ];
+  H.register(H.state.entries.map(e => ({ ...e, book })));
+  let s = fixture('wizard-3.json');
+  Object.assign(s, {
+    classId: c.id,
+    classSubclass: sub.id,
+    known: [],
+    prepared: [],
+    extras: [],
+    classChoices: {},
+    arcanum: {},
+    spellModes: {},
+    customSpells: [],
+  });
+  s = g.Rules.validate(s);
+  return { g, c, sp, sub, s };
+}
+
+test('una clase homebrew medio lanzadora tiene espacios, prepara la mitad y aprende de su lista', () => {
+  const { g, sp, s } = setup();
+  const st = g.Rules.stats(s);
+  assert.equal(st.hitDie, 10);
+  assert.deepEqual([...st.slots], [3]);
+  assert.equal(st.prepared, 2); // SAB 16 (+3) + mitad del nivel 3 (1)… mínimo según la ficha
+  const all = g.Rules.allSpells(s);
+  assert.equal(g.Classes.member(sp, s), true);
+  assert.equal(
+    g.Classes.member(
+      all.find(x => x.english === 'Goodberry'),
+      s,
+    ),
+    true,
+    'lista de druida',
+  );
+  assert.equal(
+    g.Classes.member(
+      all.find(x => x.english === 'Magic Missile'),
+      s,
+    ),
+    false,
+  );
+});
+
+test('la subclase homebrew da sus conjuros siempre preparados', () => {
+  const { g, sp, s } = setup();
+  const got = g.Grants.spells(s).map(x => [x.id, x.mode]);
+  assert.deepEqual(JSON.parse(JSON.stringify(got)), [
+    [sp.id, 'prepared'],
+    ['cure', 'prepared'],
+  ]);
+  assert.equal(g.Classes.spellCounts(s).automaticPrepared, 2);
+});
+
+test('la ficha lleva una copia de su homebrew y se abre sin la cuenta', () => {
+  const { c, sp, sub, s } = setup();
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(Object.fromEntries(Object.entries(s.homebrew).map(([k, v]) => [k, v.map(x => x.id)])))),
+    {
+      class: [c.id],
+      subclass: [sub.id],
+      spell: [sp.id],
+    },
+  );
+  const fresh = load();
+  const again = fresh.Rules.validate(JSON.parse(JSON.stringify(s)));
+  assert.equal(fresh.ClassData.classes[c.id].name, 'Hojarasca');
+  assert.ok(fresh.Rules.allSpells(again).some(x => x.id === sp.id));
+  assert.deepEqual([...fresh.Rules.stats(again).slots], [3]);
+});
+
+test('una ficha sin homebrew no gana el campo, y uno inválido se rechaza', () => {
+  const g = load();
+  const plain = g.Rules.validate(fixture('wizard-3.json'));
+  assert.equal(plain.homebrew, undefined);
+  assert.throws(
+    () => g.Rules.validate({ ...fixture('wizard-3.json'), homebrew: { race: [] } }),
+    /no es una ficha válida/,
+  );
+  assert.throws(() => g.Rules.validate({ ...fixture('wizard-3.json'), homebrew: 'x' }), /no es una ficha válida/);
+});
+
+test('una clase homebrew se puede elegir al multiclasear', () => {
+  const { g, c } = setup();
+  assert.deepEqual(JSON.parse(JSON.stringify(g.Classes.prereqOf(c.id))), [['wis']]);
+  assert.equal(g.Classes.meetsPrereq({ abilities: { wis: 13 } }, c.id), true);
+  assert.equal(
+    g.Campaign.enabled(
+      { campaignSources: ['PHB'] },
+      g.ClassData.subclasses.find(x => x.classId === c.id),
+    ),
+    true,
+  );
+});

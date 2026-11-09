@@ -353,6 +353,15 @@ function journal() {
   );
 }
 // Los textos de los libros llegan después de mostrar la ficha: se vuelve a dibujar si nadie está escribiendo.
+// Homebrew de la cuenta (y de las mesas que lo comparten): llega después de abrir y se vuelve a dibujar.
+addEventListener('homebrew-change', () => {
+  const typing = document.activeElement?.closest?.('#main input, #main textarea, #main select');
+  if (state && !typing && !$('#modal').open) render();
+});
+setTimeout(() => {
+  if (globalThis.Homebrew && typeof Cloud !== 'undefined' && Cloud.enabled && Cloud.hasSession())
+    Homebrew.load().catch(() => {});
+}, 0);
 addEventListener('reference-texts', () => {
   const typing = document.activeElement?.closest?.('#main input, #main textarea, #main select');
   if (state && !typing && !$('#modal').open) render();

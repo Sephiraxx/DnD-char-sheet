@@ -26,6 +26,7 @@ const LOGIC = [
   'official-content.js',
   'content-index.js',
   'equipment-data.js',
+  'homebrew.js',
   'equipment.js',
   'class-rules.js',
   'party-store.js',
