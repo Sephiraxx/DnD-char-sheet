@@ -186,6 +186,10 @@
       ability,
       // Conjuros que puede aprender: la lista de una clase oficial o solo los homebrew que la marquen.
       spellList: caster ? text(d.spellList, 40, 'la lista de conjuros') || 'own' : '',
+      // Prepara cada día (como el clérigo) o conoce una cantidad fija (como el hechicero).
+      // El pacto y el tercio de lanzador siempre conocen.
+      progression:
+        caster && !['pact', '1/3'].includes(caster) && d.progression !== 'known' ? 'prepared' : caster ? 'known' : '',
       subclassLevel: int(d.subclassLevel ?? 3, 1, 20, 'Nivel de la subclase'),
       subclassTitle: text(d.subclassTitle, 60, 'el nombre de las subclases'),
       features: byLevel(rows(d.features, 80, 'Rasgos', feature)),
@@ -313,7 +317,30 @@
   // ---------- Al catálogo de la página ----------
   // Forma que usan el resto de los módulos (ClassData, Catalog, MonsterData), sin perder los datos originales.
   const lines = list => list.join('\n');
-  function asClass(x, book) {
+  // Tablas de trucos y conjuros conocidos copiadas de una clase oficial con el mismo tipo de lanzamiento.
+  const TEMPLATE = {
+    'full:prepared': 'cleric',
+    'full:known': 'sorcerer',
+    '1/2:prepared': 'paladin',
+    '1/2:known': 'ranger',
+    'pact:known': 'warlock',
+  };
+  function progressionOf(x, target) {
+    if (!x.caster) return { prepared: null, cantrips: null, known: null };
+    const D = target.ClassData;
+    const t =
+      x.caster === '1/3'
+        ? D?.subclasses.find(s => s.id === 'fighter-eldritch-knight')
+        : D?.classes[TEMPLATE[x.caster + ':' + x.progression]];
+    return {
+      // Fórmula como la de 5etools: la mitad del nivel para los medio lanzadores.
+      prepared:
+        x.progression === 'prepared' ? `<$level$>${x.caster === '1/2' ? ' / 2' : ''} + <$${x.ability}_mod$>` : null,
+      cantrips: t?.cantrips ? [...t.cantrips] : null,
+      known: x.progression === 'known' && t?.known ? [...t.known] : null,
+    };
+  }
+  function asClass(x, book, target = root) {
     return {
       id: x.id,
       name: x.name,
@@ -323,9 +350,7 @@
       saves: x.saves,
       ability: x.ability,
       caster: x.caster || null,
-      prepared: null,
-      cantrips: null,
-      known: null,
+      ...progressionOf(x, target),
       features: x.features.map(f => ({ ...f, source: 'HB', optional: false, children: [], english: '' })),
       choices: [],
       skills: { count: x.skills.count, from: x.skills.from },
@@ -349,7 +374,14 @@
       cantrips: null,
       known: null,
       choices: [],
-      spells: [],
+      // Conjuros siempre preparados por nivel de clase, con el formato de las subclases oficiales.
+      spells: x.prepared.length
+        ? [
+            {
+              prepared: x.prepared.reduce((a, p) => ((a[p.level] = [...(a[p.level] || []), p.spell]), a), {}),
+            },
+          ]
+        : [],
       homebrew: { book, data: x },
     };
   }
@@ -410,6 +442,7 @@
 
   // Lo registrado la última vez, para poder sacarlo antes de volver a sumar (al editar o borrar).
   let registered = [];
+  const defs = new Map(); // id → { kind, data, book }: lo que está disponible ahora
   function unregister(target) {
     const ids = new Set(registered);
     const D = target.ClassData,
@@ -417,6 +450,7 @@
     if (D) {
       for (const id of ids) {
         if (D.classes[id]?.homebrew) delete D.classes[id];
+        if (target.EquipmentData?.classes?.[id]?.homebrew) delete target.EquipmentData.classes[id];
         if (D.spellClasses?.[id]) delete D.spellClasses[id];
       }
       D.subclasses = D.subclasses.filter(s => !ids.has(s.id));
@@ -424,6 +458,7 @@
     if (C) C.spells = C.spells.filter(s => !ids.has(s.id));
     if (target.MonsterData) target.MonsterData = target.MonsterData.filter(m => !ids.has(m.id));
     registered = [];
+    defs.clear();
   }
   // entries: [{ kind, data, book: {id, title, mine, shared} }]
   function register(entries, target = root) {
@@ -434,12 +469,21 @@
     for (const e of entries) {
       let x;
       try {
-        x = AS[e.kind](clean(e.kind, e.data), e.book);
+        x = AS[e.kind](clean(e.kind, e.data), e.book, target);
       } catch {
         continue; // un dato roto (de otra versión o editado a mano) no rompe la página
       }
-      if (e.kind === 'class' && D && !D.classes[x.id]) D.classes[x.id] = x;
-      else if (e.kind === 'subclass' && D) {
+      if (e.kind === 'class' && D && !D.classes[x.id]) {
+        D.classes[x.id] = x;
+        // Equipo inicial: sin paquetes (se anota a mano) y con sus competencias de armadura.
+        if (target.EquipmentData?.classes && !target.EquipmentData.classes[x.id])
+          target.EquipmentData.classes[x.id] = {
+            groups: [],
+            armor: [...x.homebrew.data.armor],
+            goldAlternative: '',
+            homebrew: true,
+          };
+      } else if (e.kind === 'subclass' && D) {
         if (!D.classes[x.classId]) continue; // su clase no está disponible acá
         D.subclasses.push(x);
       } else if (e.kind === 'spell' && C) {
@@ -449,6 +493,7 @@
       } else if (e.kind === 'creature' && target.MonsterData && !target.MonsterData.some(m => m.id === x.id))
         target.MonsterData.push(x);
       registered.push(x.id);
+      defs.set(x.id, { kind: e.kind, data: x.homebrew.data, book: e.book });
       out[e.kind].push(x);
     }
     state.registered = out;
@@ -498,11 +543,90 @@
   function apply(v, target = root) {
     state.books = v.books;
     state.entries = v.entries;
-    const books = new Map(v.books.map(b => [b.id, b]));
+    reapply(target);
+  }
+  // Lo de la cuenta tiene prioridad; lo que solo viene dentro de una ficha completa lo demás.
+  const SHEET_BOOK = { id: 'sheet', title: 'Incluido en la ficha', mine: false, sheet: true };
+  function reapply(target = root) {
+    const books = new Map(state.books.map(b => [b.id, b]));
+    const own = state.entries.filter(e => books.has(e.bookId)).map(e => ({ ...e, book: books.get(e.bookId) }));
+    const ids = new Set(own.map(e => e.data.id));
+    const extra = [...embedded.values()].filter(e => !ids.has(e.data.id)).map(e => ({ ...e, book: SHEET_BOOK }));
+    // Las clases primero: las subclases y los conjuros las buscan.
+    const order = { class: 0, subclass: 1, spell: 2, creature: 3 };
     register(
-      v.entries.filter(e => books.has(e.bookId)).map(e => ({ ...e, book: books.get(e.bookId) })),
+      [...own, ...extra].sort((a, b) => order[a.kind] - order[b.kind]),
       target,
     );
+  }
+
+  // ---------- Dentro de cada ficha ----------
+  // Una ficha guarda una copia de lo homebrew que usa (s.homebrew), para abrirse igual en otro dispositivo,
+  // en la pantalla del DM o si la colección deja de estar compartida.
+  const embedded = new Map(); // id → { kind, data }
+  const SHEET_KINDS = ['class', 'subclass', 'spell'];
+  function checkSheet(h) {
+    if (h === undefined) return true;
+    if (!h || typeof h !== 'object' || Array.isArray(h)) return false;
+    if (Object.keys(h).some(k => !SHEET_KINDS.includes(k))) return false;
+    if (SHEET_KINDS.some(k => h[k] !== undefined && (!Array.isArray(h[k]) || h[k].length > 60))) return false;
+    return JSON.stringify(h).length <= 400000;
+  }
+  function adopt(o, target = root) {
+    const h = o?.homebrew;
+    if (!h || !checkSheet(h)) return false;
+    let changed = false;
+    for (const kind of SHEET_KINDS)
+      for (const raw of h[kind] || []) {
+        let data;
+        try {
+          data = clean(kind, raw);
+        } catch {
+          continue;
+        }
+        if (!isId(raw?.id, kind)) continue;
+        const prev = embedded.get(data.id);
+        if (prev && JSON.stringify(prev.data) === JSON.stringify(data)) continue;
+        embedded.set(data.id, { kind, data });
+        changed = true;
+      }
+    if (changed) reapply(target);
+    return changed;
+  }
+  const HB = /^hb-(cl|sc|sp)-/;
+  function referenced(o) {
+    const ids = new Set();
+    const add = v => typeof v === 'string' && HB.test(v) && ids.add(v);
+    add(o.classId);
+    add(o.classSubclass);
+    for (const k of ['known', 'prepared', 'extras', 'secretKnown']) (o[k] || []).forEach(add);
+    for (const mc of Array.isArray(o.multiclass) ? o.multiclass : []) {
+      add(mc?.classId);
+      add(mc?.subclass);
+      (mc?.spells || []).forEach(add);
+      (mc?.prepared || []).forEach(add);
+    }
+    // Lo que trae una subclase homebrew (conjuros siempre preparados) también viaja con la ficha.
+    for (const id of [...ids]) {
+      const d = defs.get(id);
+      if (d?.kind === 'subclass') d.data.prepared.forEach(p => add(p.spell));
+      if (d?.kind === 'subclass') add(d.data.classId);
+    }
+    return ids;
+  }
+  function snapshot(o) {
+    const out = {};
+    for (const id of referenced(o)) {
+      const d = defs.get(id) || embedded.get(id);
+      if (!d) continue;
+      (out[d.kind] ||= []).push(d.data);
+    }
+    // Lo que no está disponible en esta página se conserva tal como vino.
+    for (const kind of SHEET_KINDS)
+      for (const raw of o.homebrew?.[kind] || [])
+        if (raw?.id && referenced(o).has(raw.id) && !defs.has(raw.id) && !(out[kind] || []).some(x => x.id === raw.id))
+          (out[kind] ||= []).push(raw);
+    return Object.keys(out).length ? out : undefined;
   }
   // Lo que hay en la cuenta: colecciones propias y compartidas, con sus entradas.
   async function load() {
@@ -702,6 +826,10 @@
     newId,
     isId,
     register,
+    adopt,
+    snapshot,
+    checkSheet,
+    def: id => defs.get(id) || null,
     load,
     tables,
     createBook,

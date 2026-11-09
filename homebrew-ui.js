@@ -180,7 +180,17 @@ const HomebrewUI = (() => {
           Object.entries(H.CASTERS).map(([k, v]) => [k, v.label]),
           d.caster || '',
         ),
-      )}${field('Característica', select('ability', [['', '—'], ...H.ABILITIES.map(k => [k, H.ABILITY_ES[k]])], d.ability || ''))}${field('Qué conjuros puede aprender', select('spellList', [['own', 'Solo los homebrew que marquen esta clase'], ...officialCasters], d.spellList || 'own'))}</div></fieldset>
+      )}${field('Característica', select('ability', [['', '—'], ...H.ABILITIES.map(k => [k, H.ABILITY_ES[k]])], d.ability || ''))}${field('Qué conjuros puede aprender', select('spellList', [['own', 'Solo los homebrew que marquen esta clase'], ...officialCasters], d.spellList || 'own'))}${field(
+        'Cómo los elige',
+        select(
+          'progression',
+          [
+            ['prepared', 'Prepara cada día (como el clérigo o el paladín)'],
+            ['known', 'Conoce una cantidad fija (como el hechicero o el explorador)'],
+          ],
+          d.progression || 'prepared',
+        ),
+      )}</div><p class="small muted">Los trucos y conjuros por nivel siguen la tabla de la clase oficial equivalente. La magia de pacto y el tercio de lanzador siempre conocen una cantidad fija.</p></fieldset>
       ${rowsBlock('features', 'Rasgos de clase', d.features || [], 'Cada rasgo con el nivel en que se obtiene. Los efectos se aplican en la mesa: la ficha muestra el texto.')}`;
   }
   function subclassForm(d) {
@@ -341,6 +351,7 @@ const HomebrewUI = (() => {
         caster: val('caster'),
         ability: val('ability'),
         spellList: val('spellList'),
+        progression: val('progression'),
         features: list('features'),
       });
     if (kind === 'subclass') {

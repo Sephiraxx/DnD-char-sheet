@@ -19,7 +19,10 @@ const MulticlassUI = (() => {
     warlock: 'Armadura ligera y armas simples.',
     wizard: 'Ninguna.',
   };
-  const prereqText = cid => C.PREREQ[cid].map(g => g.map(a => Rules.attrs[a] + ' 13').join(' y ')).join(' o ');
+  const prereqText = cid =>
+    C.prereqOf(cid)
+      .map(g => g.map(a => Rules.attrs[a] + ' 13').join(' y '))
+      .join(' o ');
 
   function label(s, withSub = false) {
     return s.classId ? C.label(s, withSub) : 'Bardo ' + s.level;

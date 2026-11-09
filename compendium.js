@@ -246,12 +246,12 @@
       )}${p('Herramientas', d.tools)}${p(
         'Conjuros',
         d.caster
-          ? `${Homebrew.CASTERS[d.caster]?.label}; usa ${ABIL[d.ability]}; ${list ? 'aprende de la lista de ' + list : 'aprende los conjuros homebrew que la marquen'}`
+          ? `${Homebrew.CASTERS[d.caster]?.label}; usa ${ABIL[d.ability]}; ${d.progression === 'known' ? 'conoce una cantidad fija' : 'prepara cada día'}; ${list ? 'aprende de la lista de ' + list : 'aprende los conjuros homebrew que la marquen'}`
           : '',
-      )}${p('Subclase', `al nivel ${d.subclassLevel}${d.subclassTitle ? ' (' + d.subclassTitle + ')' : ''}`)}`;
+      )}${p('Subclase', `al nivel ${d.subclassLevel}${d.subclassTitle ? ' (' + d.subclassTitle + ')' : ''}`)}<p class="small">Disponible en Crear personaje, al subir de nivel y al multiclasear (requisito: 13 en ${ABIL[d.ability || d.saves[0]]}).</p>`;
     }
     if (x.kind === 'subclass')
-      return `${d.summary ? '<p>' + esc(d.summary) + '</p>' : ''}${
+      return `${d.summary ? '<p>' + esc(d.summary) + '</p>' : ''}<p class="small">Se elige al subir de nivel con ${esc(ClassData.classes[d.classId]?.name || 'su clase')}.</p>${
         d.prepared.length
           ? `<p><b>Conjuros siempre preparados:</b> ${d.prepared
               .map(r => `nivel ${r.level}: ${esc(Catalog.spells.find(s => s.id === r.spell)?.name || r.spell)}`)

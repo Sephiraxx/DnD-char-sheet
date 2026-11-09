@@ -15,6 +15,7 @@ const Campaign = (() => {
       ([id]) => typeof OfficialContent === 'undefined' || OfficialContent.selectableSource(id),
     );
   const enabled = (s, x) =>
+    Boolean(x.homebrew) ||
     (!x.sourceKey && !x.sources && !Catalog.sources.some(([id]) => id === x.source)) ||
     x.sourceKey === 'DM' ||
     (typeof ContentIndex === 'undefined' ? x.sources || [x.sourceKey || x.source] : ContentIndex.sources(x)).some(k =>
