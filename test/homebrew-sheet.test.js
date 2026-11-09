@@ -273,3 +273,19 @@ test('una dote homebrew aplica sus efectos, da conjuros y viaja con la ficha', (
     /no es una ficha válida/,
   );
 });
+
+test('cada dote se describe como una elección: qué hace, qué aplica la ficha y su requisito', () => {
+  const g = load();
+  const alert = g.FeatFX.describe('alert', g.Rules.validate(fixture('wizard-3.json')));
+  assert.equal(alert.name, 'Alerta');
+  assert.match(alert.brief, /iniciativa/);
+  assert.equal(alert.auto.join(), '+5 a la iniciativa');
+  const H = g.Homebrew;
+  const f = H.clean('feat', { name: 'Savia', text: 'Brotás.', prerequisite: 'Nivel 4', hp: 1 });
+  H.register([{ kind: 'feat', data: f, book: { id: 'b', title: 'HB', mine: true } }]);
+  const d = g.FeatFX.describe(f.id, g.Rules.validate(fixture('wizard-3.json')));
+  assert.equal(d.brief, 'Brotás.');
+  assert.equal(d.prereq, 'Nivel 4');
+  assert.equal(d.manual.length, 0, 'la descripción no se repite como «en la mesa»');
+  assert.equal(d.auto.join(), '+1 PG máximos por nivel');
+});

@@ -2080,3 +2080,15 @@ button.cc-stat {
 .page-footer .copy-state {
   display: inline;
 }
+
+/* Dotes en «Elecciones registradas»: cada una se abre para ver qué hace. */
+.feat-choice {
+  border-top: 1px solid var(--line);
+  padding: 8px 0;
+}
+.feat-choice > summary {
+  cursor: pointer;
+}
+.feat-choice[open] > summary {
+  margin-bottom: 6px;
+}
