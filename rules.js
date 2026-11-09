@@ -907,7 +907,14 @@
       !list(pc.sources, 60) ||
       pc.sources.some(x => !txt(x, 50)) ||
       !list(pc.learnedFeats, 50) ||
-      pc.learnedFeats.some(x => !txt(x, 100))
+      pc.learnedFeats.some(x => !txt(x, 100)) ||
+      // Dotes adicionales (las que da el DM fuera de una mejora): también están en learnedFeats.
+      (pc.bonusFeats !== undefined &&
+        (!list(pc.bonusFeats, 20) ||
+          pc.bonusFeats.some(x => !txt(x, 100)) ||
+          pc.bonusFeats.some(
+            x => pc.bonusFeats.filter(y => y === x).length > pc.learnedFeats.filter(y => y === x).length,
+          )))
     )
       fail();
     for (const key of ['expanded', 'versatility', 'magical', 'feats']) if (typeof pc[key] !== 'boolean') fail();

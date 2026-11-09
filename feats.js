@@ -307,7 +307,10 @@
     if (e.armor?.length) out.push('Competencia con ' + e.armor.map(k => ARMOR[k]).join(' y '));
     if (e.resist?.length) out.push('Resistencia a ' + e.resist.map(t => root.Defenses?.label?.(t) || t).join(' y '));
     if (e.concentration) out.push('Ventaja en salvaciones de concentración');
-    if (e.res) out.push(`${e.res[0]}: ${e.res[1]} uso(s) por descanso ${e.res[2] === 'short' ? 'corto' : 'largo'}`);
+    if (e.res)
+      out.push(
+        `${e.res[0]}: ${e.res[1] === 'prof' ? 'tantos usos como tu bono de competencia' : e.res[1] + ' uso(s)'} por descanso ${e.res[2] === 'short' ? 'corto' : 'largo'}`,
+      );
     const picked = choiceOf(s, id);
     if (e.skills && picked.skills?.length) out.push('Competencia en ' + picked.skills.map(skillName).join(', '));
     else if (e.skills?.fixed) out.push('Competencia en ' + e.skills.fixed.map(skillName).join(', '));

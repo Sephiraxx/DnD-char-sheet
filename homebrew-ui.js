@@ -67,13 +67,14 @@ const HomebrewUI = (() => {
         ['class', 'clase', 'clases'],
         ['subclass', 'subclase', 'subclases'],
         ['spell', 'conjuro', 'conjuros'],
+        ['feat', 'dote', 'dotes'],
         ['creature', 'criatura', 'criaturas'],
       ]
         .map(([k, one, many]) => (b.counts?.[k] ? `${b.counts[k]} ${b.counts[k] === 1 ? one : many}` : ''))
         .filter(Boolean)
         .join(' · ') || 'vacía';
     const tables = H.state.tables;
-    box.innerHTML = `<div class="card-header"><h2>Homebrew</h2><div class="actions">${['class', 'subclass', 'spell', 'creature'].map(k => `<button type="button" class="button${k === 'class' ? '' : ' secondary'}" data-hb="new" data-kind="${k}" ${books.length ? '' : 'disabled'}>${k === 'creature' ? 'Nueva' : k === 'subclass' ? 'Nueva' : k === 'spell' ? 'Nuevo' : 'Nueva'} ${H.LABEL[k].toLowerCase()}</button>`).join('')}</div></div>
+    box.innerHTML = `<div class="card-header"><h2>Homebrew</h2><div class="actions">${['class', 'subclass', 'spell', 'feat', 'creature'].map(k => `<button type="button" class="button${k === 'class' ? '' : ' secondary'}" data-hb="new" data-kind="${k}" ${books.length ? '' : 'disabled'}>${k === 'spell' ? 'Nuevo' : 'Nueva'} ${H.LABEL[k].toLowerCase()}</button>`).join('')}</div></div>
       <p class="small muted">Lo que crees se guarda en tu cuenta. Compartí una colección con una mesa para que sus jugadores vean las clases, subclases y conjuros; las criaturas quedan solo para vos. En el catálogo, elegí «Homebrew» en Libro / fuente para ver solo lo tuyo.</p>
       ${anon ? '<p class="small"><b>Tu acceso es solo de este navegador.</b> Creá una cuenta con email en <a href="./">Personajes → Tu cuenta</a> para no perder tu homebrew si se borran los datos del navegador.</p>' : ''}
       ${H.state.error ? `<p class="small hb-error">${esc(H.state.error)}</p>` : ''}
@@ -358,7 +359,101 @@ const HomebrewUI = (() => {
       ${rowsBlock('reactions', 'Reacciones', d.reactions || [])}
       ${rowsBlock('legendary', 'Acciones legendarias', d.legendary || [])}`;
   }
-  const FORMS = { class: classForm, subclass: subclassForm, spell: spellForm, creature: creatureForm };
+  // Habilidades con los ids de la ficha (las dotes usan los mismos que Rules.skills).
+  const FEAT_SKILLS = [
+    ['acrobatics', 'Acrobacias'],
+    ['athletics', 'Atletismo'],
+    ['arcana', 'Conocimiento arcano'],
+    ['deception', 'Engaño'],
+    ['history', 'Historia'],
+    ['performance', 'Interpretación'],
+    ['intimidation', 'Intimidación'],
+    ['investigation', 'Investigación'],
+    ['sleight', 'Juego de manos'],
+    ['medicine', 'Medicina'],
+    ['nature', 'Naturaleza'],
+    ['perception', 'Percepción'],
+    ['insight', 'Perspicacia'],
+    ['persuasion', 'Persuasión'],
+    ['religion', 'Religión'],
+    ['stealth', 'Sigilo'],
+    ['survival', 'Supervivencia'],
+    ['animal', 'Trato con animales'],
+  ];
+  const RESIST_ES = [
+    ['acid', 'ácido'],
+    ['bludgeoning', 'contundente'],
+    ['cold', 'frío'],
+    ['fire', 'fuego'],
+    ['force', 'fuerza'],
+    ['lightning', 'relámpago'],
+    ['necrotic', 'necrótico'],
+    ['piercing', 'perforante'],
+    ['poison', 'veneno'],
+    ['psychic', 'psíquico'],
+    ['radiant', 'radiante'],
+    ['slashing', 'cortante'],
+    ['thunder', 'trueno'],
+  ];
+  ROWS.featSpells = {
+    add: 'Agregar conjuro',
+    fields: r =>
+      `<div class="form-grid hb-row-head">${field('Conjuro', `<input name="spell" list="hb-spells" value="${esc(spellName(r.spell))}" maxlength="120" />`)}${field(
+        'Cómo lo tiene',
+        select(
+          'mode',
+          [
+            ['known', 'Lo conoce (truco o siempre disponible)'],
+            ['daily', 'Una vez por descanso largo sin espacio'],
+          ],
+          r.mode || 'known',
+        ),
+      )}</div>`,
+  };
+  function featForm(d) {
+    const abil = H.ABILITIES.map(k => [k, H.ABILITY_ES[k]]);
+    return `${field('Nombre', input('name', d.name, 'maxlength="100" required'))}
+      <div class="form-grid">${field('Requisito <span class="muted">(opcional, como se lee)</span>', input('prerequisite', d.prerequisite, 'maxlength="200" placeholder="Fuerza 13 o más, nivel 4…"'))}${checks('repeatable', [['1', 'Se puede elegir más de una vez']], d.repeatable ? ['1'] : [])}</div>
+      ${field('Descripción', area('text', d.text, 5, 6000))}
+      <fieldset><legend>Lo que la ficha aplica sola</legend>
+        <div class="form-grid">${field('+1 fijo a', select('abilityFixed', [['', '—'], ...abil], d.abilityFixed || ''))}${field('PG máximos extra por nivel', input('hp', d.hp || 0, 'type="number" min="0" max="5"'))}${field('Iniciativa', input('init', d.init || 0, 'type="number" min="0" max="10"'))}${field('Velocidad (pies)', input('speed', d.speed || 0, 'type="number" min="0" max="30" step="5"'))}${field('Percepción e Investigación pasivas', input('passive', d.passive || 0, 'type="number" min="0" max="10"'))}</div>
+        <p class="small">O +1 a elección entre <span class="muted">(si marcás alguna, reemplaza al +1 fijo)</span></p>${checks('abilityChoice', abil, d.abilityChoice || [])}
+        ${checks('saveProf', [['1', 'Competencia en la salvación de la característica elegida (como Resiliente)']], d.saveProf ? ['1'] : [])}
+        ${checks('concentration', [['1', 'Ventaja en salvaciones de concentración']], d.concentration ? ['1'] : [])}
+        <p class="small">Competencia con armadura</p>${checks(
+          'armor',
+          H.ARMOR.map(k => [k, ARMOR_ES[k]]),
+          d.armor || [],
+        )}
+        <p class="small">Resistencia a daño</p>${checks('resist', RESIST_ES, d.resist || [])}
+      </fieldset>
+      <fieldset><legend>Habilidades</legend><p class="small">Competencias fijas</p>${checks('skillsFixed', FEAT_SKILLS, d.skillsFixed || [])}<div class="form-grid">${field('O elegir cuántas', input('skillsChoose', d.skillsChoose || 0, 'type="number" min="0" max="6"'))}${field('Pericias a elegir', input('expertise', d.expertise || 0, 'type="number" min="0" max="2"'))}</div><p class="small muted">Para «elegir», marcá abajo de cuáles (sin marcar: cualquiera).</p>${checks('skillsFrom', FEAT_SKILLS, d.skillsFrom || [])}</fieldset>
+      <fieldset><legend>Recurso con usos <span class="muted">(opcional)</span></legend><div class="form-grid">${field('Nombre', input('resName', d.resource?.name, 'maxlength="80" placeholder="Suerte"'))}${field('Usos', select('resUses', [['prof', 'Bono de competencia'], ...[1, 2, 3, 4, 5].map(n => [n, String(n)])], d.resource?.uses ?? 1))}${field(
+        'Se recupera con',
+        select(
+          'resReset',
+          [
+            ['long', 'Descanso largo'],
+            ['short', 'Descanso corto'],
+          ],
+          d.resource?.reset || 'long',
+        ),
+      )}</div>${field('Qué hace', input('resText', d.resource?.text, 'maxlength="600"'))}</fieldset>
+      ${rowsBlock('featSpells', 'Conjuros que da <span class="muted">(opcional)</span>', d.spells || [])}
+      ${field(
+        'Característica para esos conjuros',
+        select(
+          'spellAbility',
+          [
+            ['int', 'Inteligencia'],
+            ['wis', 'Sabiduría'],
+            ['cha', 'Carisma'],
+          ],
+          d.spellAbility || 'int',
+        ),
+      )}`;
+  }
+  const FORMS = { class: classForm, subclass: subclassForm, spell: spellForm, feat: featForm, creature: creatureForm };
 
   function open(kind, data = {}, { bookId, copy = false } = {}) {
     const books = mine();
@@ -471,6 +566,43 @@ const HomebrewUI = (() => {
         scale: val('scale'),
       });
     }
+    if (kind === 'feat')
+      Object.assign(d, {
+        name: val('name'),
+        prerequisite: val('prerequisite'),
+        repeatable: all('repeatable').includes('1'),
+        text: val('text'),
+        abilityFixed: val('abilityFixed'),
+        abilityChoice: all('abilityChoice'),
+        saveProf: all('saveProf').includes('1'),
+        concentration: all('concentration').includes('1'),
+        hp: Number(val('hp')),
+        init: Number(val('init')),
+        speed: Number(val('speed')),
+        passive: Number(val('passive')),
+        armor: all('armor'),
+        resist: all('resist'),
+        skillsFixed: all('skillsFixed'),
+        skillsChoose: Number(val('skillsChoose')),
+        skillsFrom: all('skillsFrom'),
+        expertise: Number(val('expertise')),
+        resource: val('resName')
+          ? {
+              name: val('resName'),
+              uses: val('resUses') === 'prof' ? 'prof' : Number(val('resUses')),
+              reset: val('resReset'),
+              text: val('resText'),
+            }
+          : null,
+        spells: list('featSpells')
+          .filter(r => String(r.spell).trim())
+          .map(r => {
+            const id = byName.get(String(r.spell).trim().toLowerCase());
+            if (!id) throw Error(`No encontré el conjuro «${r.spell}». Elegilo de la lista.`);
+            return { spell: id, mode: r.mode };
+          }),
+        spellAbility: val('spellAbility'),
+      });
     if (kind === 'creature') {
       const acts = name =>
         list(name).map(a => ({
