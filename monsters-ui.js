@@ -24,7 +24,16 @@ const MonsterUI = (() => {
         const ids = new Set(window.MonsterData.map(m => m.id));
         window.MonsterData.push(...window.BookContentData.monsters.filter(m => !ids.has(m.id)));
       }
-      return !sharedOnly && typeof LibraryUI !== 'undefined' ? LibraryUI.attach() : null;
+      return Promise.all([!sharedOnly && typeof LibraryUI !== 'undefined' ? LibraryUI.attach() : null, homebrew()]);
+    };
+    // Criaturas homebrew de la cuenta: se suman al bestiario con su colección.
+    const homebrew = () => {
+      const H = window.Homebrew;
+      if (!H) return null;
+      if (!H.state.loaded && typeof Cloud !== 'undefined' && Cloud.enabled && Cloud.hasSession())
+        return H.load().catch(() => {});
+      H.refresh();
+      return null;
     };
     if (window.MonsterData) return Promise.resolve(lib());
     return (loading ||= (window.OfficialContent?.loadMonsters?.() || Promise.resolve()).then(
@@ -449,7 +458,7 @@ const MonsterUI = (() => {
       ${m.summon ? `<p class="small section-space"><b>Criatura invocada o compañero:</b> sin desafío propio.${m.acNote ? ' CA: ' + esc(m.acNote) + '.' : ''}${m.hpNote ? ' PG: ' + esc(m.hpNote) + '.' : ''} Ajustá la CA y los PG al agregarla.</p>` : ''}
       ${m.variantNote ? `<p class="small">${esc(m.variantNote)}</p>` : ''}
       ${m.rulesLanguage === 'en' ? '<p class="small">Las reglas especiales conservan su texto de referencia en inglés.</p>' : ''}
-      <p class="small muted section-space">${m.bundled ? `Catálogo compartido: ${esc(m.source)}, PDF p. ${m.page}. Estadísticas básicas y daño base; otros poderes, alcances y efectos requieren consultar la fuente.` : m.book ? `De tu biblioteca: ${esc(m.book)}${m.page ? ', pág. ' + m.page : ''}.${m.issues ? ' Datos incompletos: ' + esc(m.issues.join(', ')) + '.' : ''}` : 'Basado en el SRD 5.1 (CC-BY-4.0), traducido al español.'}</p>`;
+      <p class="small muted section-space">${m.bundled ? `Catálogo compartido: ${esc(m.source)}, PDF p. ${m.page}. Estadísticas básicas y daño base; otros poderes, alcances y efectos requieren consultar la fuente.` : m.homebrew ? `Homebrew: ${esc(m.book)}. Lo creaste en el catálogo; editalo ahí.` : m.book ? `De tu biblioteca: ${esc(m.book)}${m.page ? ', pág. ' + m.page : ''}.${m.issues ? ' Datos incompletos: ' + esc(m.issues.join(', ')) + '.' : ''}` : 'Basado en el SRD 5.1 (CC-BY-4.0), traducido al español.'}</p>`;
   }
   async function view(id) {
     await load();

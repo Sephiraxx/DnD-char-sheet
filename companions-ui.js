@@ -10,6 +10,8 @@ const CompanionsUI = (() => {
         const ids = new Set(window.MonsterData.map(m => m.id));
         window.MonsterData.push(...window.BookContentData.monsters.filter(m => !ids.has(m.id)));
       }
+      // Tus criaturas homebrew (por ejemplo, un familiar o una bestia propia para Forma salvaje).
+      window.Homebrew?.refresh();
     };
     if (window.MonsterData) {
       attach();
