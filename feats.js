@@ -490,7 +490,31 @@
       throw Error('Las elecciones de Iniciado de Strixhaven no son válidas.');
   }
 
+  // Qué hace una dote, en español y con lo que la ficha aplica sola: para mostrarla como una elección de clase.
+  // Devuelve { name, brief, auto, manual, prereq, homebrew }.
+  function describe(id, s) {
+    const f = feat(id),
+      hb = f?.homebrew?.data;
+    const brief = hb ? hb.text : root.TraitsEs?.brief('feat:' + id) || '';
+    const prereq = f?.prerequisite
+      ? typeof f.prerequisite === 'string'
+        ? f.prerequisite
+        : root.TraitsEs?.prereqText(f.prerequisite) || ''
+      : '';
+    return {
+      id,
+      name: f?.name || id,
+      brief,
+      auto: autoList(id, s),
+      // Lo manual sin repetir la descripción (en las homebrew, el texto ya va arriba).
+      manual: manualList(id).filter(m => m !== brief && !(brief && m === 'Revisá el texto de la dote en su libro.')),
+      prereq,
+      homebrew: Boolean(hb),
+    };
+  }
+
   root.FeatFX = {
+    describe,
     STRIXHAVEN,
     strixhaven,
     configureStrixhaven,

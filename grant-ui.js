@@ -84,6 +84,16 @@ const GrantUI = (() => {
       p.optionPlan
     );
   }
+  // Una dote como una elección de clase: qué hace, qué aplica la ficha y qué queda para la mesa.
+  function featInfo(s, id) {
+    const d = FeatFX.describe(id, s);
+    const origin = (s.progression?.bonusFeats || []).includes(id)
+      ? 'Dote adicional'
+      : (s.progression?.learnedFeats || []).includes(id)
+        ? 'Elegida al subir de nivel'
+        : 'De tu origen';
+    return `<p class="small muted">${esc(origin)}${d.prereq ? ' · Requisito: ' + esc(d.prereq) : ''}${d.homebrew ? ' · Homebrew' : ''}</p>${d.brief ? `<p>${esc(d.brief)}</p>` : ''}${d.auto.length ? `<p class="small"><b>La ficha lo aplica sola:</b> ${esc(d.auto.join(' · '))}.</p>` : ''}${d.manual.length ? `<p class="small"><b>En la mesa:</b> ${esc(d.manual.join(' '))}</p>` : ''}${typeof OfficialContent !== 'undefined' ? OfficialContent.html(OfficialContent.ruleTexts.get('feat:' + id)) : ''}${typeof LibraryText !== 'undefined' ? LibraryText.html(LibraryText.feat(id)) : ''}`;
+  }
   function card(s, spellsOnly = false) {
     const plans = Grants.plans(s).filter(
         p => p.source.id !== 'strixhaven-initiate' && relevant(p) && (!spellsOnly || p.profile.groups.length),
@@ -96,7 +106,7 @@ const GrantUI = (() => {
         const status = pending(s, p),
           list = Grants.spells(s).filter(g => g.sourceKey === p.source.key && g.mode !== 'expanded'),
           profs = p.proficiencies.selected;
-        return `<details class="section-space" ${status ? 'open' : ''}><summary><b>${esc(p.source.name)}</b> · ${status ? 'Faltan elecciones' : 'Ver beneficios'}</summary><div class="section-space">${p.featPlan?.selected.length ? `<p><b>Dotes:</b> ${p.featPlan.selected.map(id => esc(featName(id))).join(', ')}.</p>` : ''}${list.length ? `<p><b>Conjuros:</b> ${[...new Set(list.map(g => spellName(g.id)))].map(esc).join(', ')}.</p>` : ''}${[
+        return `<details class="section-space" ${status ? 'open' : ''}><summary><b>${esc(p.source.name)}</b> · ${status ? 'Faltan elecciones' : p.source.kind === 'feat' ? 'Qué hace' : 'Ver beneficios'}</summary><div class="section-space">${p.source.kind === 'feat' ? featInfo(s, p.source.id) : ''}${p.featPlan?.selected.length ? `<p><b>Dotes:</b> ${p.featPlan.selected.map(id => esc(featName(id))).join(', ')}.</p>` : ''}${list.length ? `<p><b>Conjuros:</b> ${[...new Set(list.map(g => spellName(g.id)))].map(esc).join(', ')}.</p>` : ''}${[
           'skill',
           'expertise',
           'tool',
@@ -412,5 +422,5 @@ const GrantUI = (() => {
         }),
     });
   }
-  return { card, configure, install, pending };
+  return { card, configure, install, pending, featInfo };
 })();
