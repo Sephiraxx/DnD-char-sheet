@@ -323,11 +323,11 @@ const LevelUp = (() => {
     return `${tabs}<div class="creator-search"><input type="search" name="q" value="${esc(q)}" placeholder="Buscar dote" aria-label="Buscar dote"></div><div class="creator-grid small-cards">${list
       .map(
         f =>
-          `<button type="button" class="creator-card ${d.feat === f.id ? 'selected' : ''}" data-lv="feat" data-id="${f.id}" aria-pressed="${d.feat === f.id}"><span class="creator-card-title">${esc(f.name)}</span><span class="creator-meta">${esc(f.sourceKey)}${f.prerequisite ? ' · Requisito: ' + esc(TraitsEs.prereq(f.prerequisite)) : ''}</span>${fx()?.summary(f.id) ? `<span class="creator-brief">${esc(fx().summary(f.id))}</span>` : ''}</button>`,
+          `<button type="button" class="creator-card ${d.feat === f.id ? 'selected' : ''}" data-lv="feat" data-id="${f.id}" aria-pressed="${d.feat === f.id}"><span class="creator-card-title">${esc(f.name)}</span><span class="creator-meta">${esc(f.sourceKey)}${f.prerequisite ? ' · Requisito: ' + esc(TraitsEs.prereq(f.prerequisite)) : ''}</span>${(b => (b ? `<span class="creator-brief">${esc(b.length > 200 ? b.slice(0, 199) + '…' : b)}</span>` : ''))(fx()?.describe?.(f.id, base).brief || fx()?.summary(f.id) || '')}${fx()?.describe && fx().describe(f.id, base).brief && fx().summary(f.id) ? `<span class="creator-meta">${esc(fx().summary(f.id))}</span>` : ''}</button>`,
       )
       .join(
         '',
-      )}</div>${chosen ? `<section class="card creator-detail"><h3>${esc(chosen.name)}</h3>${TraitsEs.brief('feat:' + chosen.id) ? `<p>${esc(TraitsEs.brief('feat:' + chosen.id))}</p>` : ''}${typeof LibraryText !== 'undefined' ? LibraryText.html(LibraryText.feat(chosen.id), true) : ''}${featDetail(chosen.id)}<label class="field">Tus elecciones y notas de la dote<textarea name="featNotes" maxlength="1000" placeholder="Por ejemplo: +1 a Destreza; trucos elegidos…">${esc(d.featNotes)}</textarea></label></section>` : ''}`;
+      )}</div>${chosen ? `<section class="card creator-detail"><h3>${esc(chosen.name)}</h3>${(b => (b ? `<p>${esc(b)}</p>` : ''))(fx()?.describe?.(chosen.id, base).brief || TraitsEs.brief('feat:' + chosen.id))}${typeof LibraryText !== 'undefined' ? LibraryText.html(LibraryText.feat(chosen.id), true) : ''}${featDetail(chosen.id)}<label class="field">Tus elecciones y notas de la dote<textarea name="featNotes" maxlength="1000" placeholder="Por ejemplo: +1 a Destreza; trucos elegidos…">${esc(d.featNotes)}</textarea></label></section>` : ''}`;
   }
 
   // Lo que hace la dote, lo que se elige ahora y lo que queda a cargo del jugador.

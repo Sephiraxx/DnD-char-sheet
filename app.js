@@ -433,7 +433,7 @@ function render() {
         gear,
         character,
         traits: () =>
-          header('Tus rasgos.', Classes.label(state, true), button('Agregar dote', 'feat-add')) +
+          header('Tus rasgos.', Classes.label(state, true), button('Dotes', 'feat-add')) +
           PartyUI.strixhavenCard(state) +
           GrantUI.card(state) +
           Campaign.traitsCard(state) +
