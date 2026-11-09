@@ -282,7 +282,8 @@ const LibraryUI = (() => {
       const ids = new Set(window.MonsterData.map(m => m.id));
       for (const r of rows) {
         const m = r.data;
-        if (!m?.id || ids.has(m.id)) continue;
+        // Las criaturas homebrew las suma homebrew.js, con su colección.
+        if (!m?.id || ids.has(m.id) || /^hb-cr-/.test(m.id)) continue;
         window.MonsterData.push({
           ...m,
           traits: m.traits || [],

@@ -456,7 +456,10 @@
       D.subclasses = D.subclasses.filter(s => !ids.has(s.id));
     }
     if (C) C.spells = C.spells.filter(s => !ids.has(s.id));
-    if (target.MonsterData) target.MonsterData = target.MonsterData.filter(m => !ids.has(m.id));
+    // En el mismo arreglo: la pantalla del DM y los compañeros guardan referencias a MonsterData.
+    if (target.MonsterData)
+      for (let i = target.MonsterData.length - 1; i >= 0; i--)
+        if (ids.has(target.MonsterData[i].id)) target.MonsterData.splice(i, 1);
     registered = [];
     defs.clear();
   }
@@ -828,6 +831,8 @@
     register,
     adopt,
     snapshot,
+    // Vuelve a sumar todo (por ejemplo, cuando el bestiario termina de cargar y ya hay MonsterData).
+    refresh: () => reapply(),
     checkSheet,
     def: id => defs.get(id) || null,
     load,

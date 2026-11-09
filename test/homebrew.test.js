@@ -228,3 +228,25 @@ test('el catálogo carga el homebrew y la migración agrega los tipos nuevos', (
   const sw = fs.readFileSync(path.join(__dirname, '../sw.js'), 'utf8');
   for (const f of ['homebrew.js', 'homebrew-ui.js']) assert.match(sw, new RegExp(`'\\./${f}'`));
 });
+
+test('las criaturas llegan cuando carga el bestiario, sin duplicarse ni cambiar el arreglo', () => {
+  const g = world();
+  const H = g.Homebrew;
+  delete g.MonsterData;
+  const cr = H.clean('creature', { name: 'Lobo de musgo', size: 'Mediano', type: 'bestia', ac: 13, hp: 11, cr: 0.25 });
+  H.state.books = [{ id: 'b1', title: 'Mi homebrew', mine: true }];
+  H.state.entries = [{ kind: 'creature', bookId: 'b1', data: cr }];
+  H.refresh(); // todavía sin bestiario: no pasa nada
+  const list = [{ id: 'goblin' }];
+  g.MonsterData = list;
+  H.refresh();
+  H.refresh();
+  assert.equal(g.MonsterData, list, 'mismo arreglo: la pantalla del DM guarda la referencia');
+  assert.deepEqual(
+    list.map(m => m.id),
+    ['goblin', cr.id],
+  );
+  assert.equal(list[1].book, 'Mi homebrew');
+  const lib = fs.readFileSync(path.join(__dirname, '../library-ui.js'), 'utf8');
+  assert.match(lib, /\/\^hb-cr-\/\.test\(m\.id\)/);
+});
