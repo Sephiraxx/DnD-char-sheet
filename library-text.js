@@ -33,6 +33,7 @@ const LibraryText = (() => {
         const next = shared();
         for (const r of rows) {
           const d = r.data || {};
+          if (/^hb-/.test(r.key || '')) continue; // las dotes homebrew las maneja homebrew.js
           if (typeof d.text !== 'string' || !d.text) continue;
           const prev = next.get(r.key);
           // El mismo rasgo en dos textos: primero el que está en español; entre iguales, el más completo.

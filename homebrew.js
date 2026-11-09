@@ -8,10 +8,10 @@
   'use strict';
   const CACHE = 'dnd-homebrew-cache-v1';
   // Tipo de la interfaz → tipo en library_entries.
-  const DB_KIND = { class: 'class', subclass: 'subclass', spell: 'spell', creature: 'monster' };
-  const UI_KIND = { class: 'class', subclass: 'subclass', spell: 'spell', monster: 'creature' };
+  const DB_KIND = { class: 'class', subclass: 'subclass', spell: 'spell', feat: 'feat', creature: 'monster' };
+  const UI_KIND = { class: 'class', subclass: 'subclass', spell: 'spell', feat: 'feat', monster: 'creature' };
   const KINDS = Object.keys(DB_KIND);
-  const LABEL = { class: 'Clase', subclass: 'Subclase', spell: 'Conjuro', creature: 'Criatura' };
+  const LABEL = { class: 'Clase', subclass: 'Subclase', spell: 'Conjuro', feat: 'Dote', creature: 'Criatura' };
   const ABILITIES = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
   const ABILITY_ES = {
     str: 'Fuerza',
@@ -146,9 +146,9 @@
     return s;
   };
   // Prefijo por tipo: un id de clase nunca se confunde con uno de criatura.
-  const PREFIX = { class: 'cl', subclass: 'sc', spell: 'sp', creature: 'cr' };
+  const PREFIX = { class: 'cl', subclass: 'sc', spell: 'sp', feat: 'ft', creature: 'cr' };
   const isId = (id, kind) =>
-    /^hb-(cl|sc|sp|cr)-[a-z0-9]{6,20}$/.test(String(id || '')) && (!kind || id.slice(3, 5) === PREFIX[kind]);
+    /^hb-(cl|sc|sp|ft|cr)-[a-z0-9]{6,20}$/.test(String(id || '')) && (!kind || id.slice(3, 5) === PREFIX[kind]);
   const newId = kind =>
     'hb-' +
     PREFIX[kind] +
@@ -332,7 +332,92 @@
       legendary: rows(d.legendary, 10, 'Acciones legendarias', named('la acción legendaria', 10)),
     };
   }
-  const CLEAN = { class: cleanClass, subclass: cleanSubclass, spell: cleanSpell, creature: cleanCreature };
+  // Ids de habilidades como los usa la ficha (Rules.skills).
+  const SKILL_IDS = [
+    'acrobatics',
+    'athletics',
+    'arcana',
+    'deception',
+    'history',
+    'performance',
+    'intimidation',
+    'investigation',
+    'sleight',
+    'medicine',
+    'nature',
+    'perception',
+    'insight',
+    'persuasion',
+    'religion',
+    'stealth',
+    'survival',
+    'animal',
+  ];
+  const RESIST = [
+    'acid',
+    'bludgeoning',
+    'cold',
+    'fire',
+    'force',
+    'lightning',
+    'necrotic',
+    'piercing',
+    'poison',
+    'psychic',
+    'radiant',
+    'slashing',
+    'thunder',
+  ];
+  function cleanFeat(d) {
+    const abilityChoice = subset(d.abilityChoice, ABILITIES);
+    const abilityFixed = ABILITIES.includes(d.abilityFixed) && !abilityChoice.length ? d.abilityFixed : '';
+    const resource =
+      d.resource && String(d.resource.name || '').trim()
+        ? {
+            name: text(d.resource.name, 80, 'el nombre del recurso', { empty: false }),
+            uses: d.resource.uses === 'prof' ? 'prof' : int(d.resource.uses ?? 1, 1, 10, 'Usos del recurso'),
+            reset: d.resource.reset === 'short' ? 'short' : 'long',
+            text: text(d.resource.text, 600, 'la descripción del recurso'),
+          }
+        : null;
+    return {
+      id: d.id,
+      name: text(d.name, 100, 'el nombre de la dote', { empty: false }),
+      prerequisite: text(d.prerequisite, 200, 'el requisito'),
+      repeatable: Boolean(d.repeatable),
+      text: text(d.text, 6000, 'la descripción', { empty: false }),
+      // +1 fijo a una característica, o +1 a una a elección entre varias.
+      abilityFixed,
+      abilityChoice,
+      saveProf: Boolean(d.saveProf) && abilityChoice.length > 0,
+      hp: int(d.hp ?? 0, 0, 5, 'PG por nivel'),
+      init: int(d.init ?? 0, 0, 10, 'Iniciativa'),
+      speed: int(d.speed ?? 0, 0, 30, 'Velocidad'),
+      passive: int(d.passive ?? 0, 0, 10, 'Pasivas'),
+      armor: subset(d.armor, ARMOR),
+      resist: subset(d.resist, RESIST),
+      concentration: Boolean(d.concentration),
+      skillsFixed: subset(d.skillsFixed, SKILL_IDS),
+      skillsChoose: int(d.skillsChoose ?? 0, 0, 6, 'Habilidades a elegir'),
+      skillsFrom: subset(d.skillsFrom, SKILL_IDS),
+      expertise: int(d.expertise ?? 0, 0, 2, 'Pericias'),
+      resource,
+      // Conjuros que da: conocidos (siempre disponibles) o una vez por descanso largo sin espacio.
+      spells: rows(d.spells, 10, 'Conjuros de la dote', (r, i) =>
+        r?.spell
+          ? { spell: text(r.spell, 80, `el conjuro ${i + 1}`), mode: r.mode === 'daily' ? 'daily' : 'known' }
+          : null,
+      ),
+      spellAbility: ['int', 'wis', 'cha'].includes(d.spellAbility) ? d.spellAbility : 'int',
+    };
+  }
+  const CLEAN = {
+    class: cleanClass,
+    subclass: cleanSubclass,
+    spell: cleanSpell,
+    feat: cleanFeat,
+    creature: cleanCreature,
+  };
   function clean(kind, data) {
     if (!CLEAN[kind]) bad('Tipo de homebrew desconocido.');
     const d = data && typeof data === 'object' ? data : {};
@@ -465,7 +550,51 @@
       homebrew: { book, data: x },
     };
   }
-  const AS = { class: asClass, subclass: asSubclass, spell: asSpell, creature: asCreature };
+  // Dote: entra al catálogo de dotes y sus efectos en FeatData (lo que la ficha calcula) y GrantData (conjuros).
+  function asFeat(x, book) {
+    return {
+      id: x.id,
+      name: x.name,
+      source: 'Homebrew',
+      sourceKey: 'HB',
+      prerequisite: x.prerequisite,
+      repeatable: x.repeatable,
+      english: '',
+      homebrew: { book, data: x },
+    };
+  }
+  function featEffects(x) {
+    const e = { manual: x.text };
+    if (x.abilityFixed) e.ability = { fixed: { [x.abilityFixed]: 1 } };
+    else if (x.abilityChoice.length) e.ability = { from: [...x.abilityChoice], n: 1 };
+    if (x.saveProf) e.save = 'ability';
+    for (const k of ['hp', 'init', 'speed', 'passive']) if (x[k]) e[k] = x[k];
+    if (x.armor.length) e.armor = [...x.armor];
+    if (x.resist.length) e.resist = [...x.resist];
+    if (x.concentration) e.concentration = true;
+    if (x.skillsFixed.length) e.skills = { fixed: [...x.skillsFixed] };
+    else if (x.skillsChoose)
+      e.skills = { n: x.skillsChoose, ...(x.skillsFrom.length ? { from: [...x.skillsFrom] } : { any: true }) };
+    if (x.expertise) e.expertise = x.expertise;
+    if (x.resource) e.res = [x.resource.name, x.resource.uses, x.resource.reset, x.resource.text, 'manual'];
+    return e;
+  }
+  function featGrants(x) {
+    if (!x.spells.length) return null;
+    const known = x.spells.filter(r => r.mode === 'known').map(r => r.spell),
+      daily = x.spells.filter(r => r.mode === 'daily').map(r => r.spell);
+    return {
+      additionalSpells: [
+        {
+          name: x.name,
+          ability: x.spellAbility,
+          ...(known.length ? { known: { _: known } } : {}),
+          ...(daily.length ? { innate: { _: { daily: { 1: daily } } } } : {}),
+        },
+      ],
+    };
+  }
+  const AS = { feat: asFeat, class: asClass, subclass: asSubclass, spell: asSpell, creature: asCreature };
 
   // Lo registrado la última vez, para poder sacarlo antes de volver a sumar (al editar o borrar).
   let registered = [];
@@ -483,6 +612,11 @@
       D.subclasses = D.subclasses.filter(s => !ids.has(s.id));
     }
     if (C) C.spells = C.spells.filter(s => !ids.has(s.id));
+    if (C?.feats) C.feats = C.feats.filter(f => !ids.has(f.id));
+    for (const id of ids) {
+      if (target.FeatData?.[id]) delete target.FeatData[id];
+      if (target.GrantData?.feats?.[id]) delete target.GrantData.feats[id];
+    }
     // En el mismo arreglo: la pantalla del DM y los compañeros guardan referencias a MonsterData.
     if (target.MonsterData)
       for (let i = target.MonsterData.length - 1; i >= 0; i--)
@@ -495,7 +629,7 @@
     unregister(target);
     const D = target.ClassData,
       C = target.Catalog;
-    const out = { class: [], subclass: [], spell: [], creature: [] };
+    const out = { class: [], subclass: [], spell: [], feat: [], creature: [] };
     for (const e of entries) {
       let x;
       try {
@@ -520,6 +654,12 @@
         if (C.spells.some(s => s.id === x.id)) continue;
         C.spells.push(x);
         if (D?.spellClasses) D.spellClasses[x.id] = [...x.classes];
+      } else if (e.kind === 'feat' && C?.feats) {
+        if (C.feats.some(f => f.id === x.id)) continue;
+        C.feats.push(x);
+        if (target.FeatData) target.FeatData[x.id] = featEffects(x.homebrew.data);
+        const g = featGrants(x.homebrew.data);
+        if (g && target.GrantData?.feats) target.GrantData.feats[x.id] = g;
       } else if (e.kind === 'creature' && target.MonsterData && !target.MonsterData.some(m => m.id === x.id))
         target.MonsterData.push(x);
       registered.push(x.id);
@@ -583,7 +723,7 @@
     const ids = new Set(own.map(e => e.data.id));
     const extra = [...embedded.values()].filter(e => !ids.has(e.data.id)).map(e => ({ ...e, book: SHEET_BOOK }));
     // Las clases primero: las subclases y los conjuros las buscan.
-    const order = { class: 0, subclass: 1, spell: 2, creature: 3 };
+    const order = { class: 0, subclass: 1, spell: 2, feat: 3, creature: 4 };
     register(
       [...own, ...extra].sort((a, b) => order[a.kind] - order[b.kind]),
       target,
@@ -594,7 +734,7 @@
   // Una ficha guarda una copia de lo homebrew que usa (s.homebrew), para abrirse igual en otro dispositivo,
   // en la pantalla del DM o si la colección deja de estar compartida.
   const embedded = new Map(); // id → { kind, data }
-  const SHEET_KINDS = ['class', 'subclass', 'spell'];
+  const SHEET_KINDS = ['class', 'subclass', 'spell', 'feat'];
   function checkSheet(h) {
     if (h === undefined) return true;
     if (!h || typeof h !== 'object' || Array.isArray(h)) return false;
@@ -623,13 +763,14 @@
     if (changed) reapply(target);
     return changed;
   }
-  const HB = /^hb-(cl|sc|sp)-/;
+  const HB = /^hb-(cl|sc|sp|ft)-/;
   function referenced(o) {
     const ids = new Set();
     const add = v => typeof v === 'string' && HB.test(v) && ids.add(v);
     add(o.classId);
     add(o.classSubclass);
     for (const k of ['known', 'prepared', 'extras', 'secretKnown']) (o[k] || []).forEach(add);
+    (o.progression?.learnedFeats || []).forEach(add);
     for (const mc of Array.isArray(o.multiclass) ? o.multiclass : []) {
       add(mc?.classId);
       add(mc?.subclass);
@@ -641,6 +782,7 @@
       const d = defs.get(id);
       if (d?.kind === 'subclass' || d?.kind === 'class') (d.data.prepared || []).forEach(p => add(p.spell));
       if (d?.kind === 'subclass') add(d.data.classId);
+      if (d?.kind === 'feat') (d.data.spells || []).forEach(r => add(r.spell));
     }
     return ids;
   }

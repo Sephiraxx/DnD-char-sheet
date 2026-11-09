@@ -207,3 +207,69 @@ test('las mecánicas por nivel siguen a la clase: golpe sin armas, espacios extr
   assert.deepEqual(at(15), { slots: '[5,3,4,2]', dice: '2d8', ability: 'dex', cure: true });
   assert.throws(() => H.clean('class', { ...c, unarmed: [{ level: 5, dice: '1d6+2' }] }), /1d6 o 2d8/);
 });
+
+test('una dote homebrew aplica sus efectos, da conjuros y viaja con la ficha', () => {
+  const g = load();
+  const H = g.Homebrew;
+  const book = { id: 'b1', title: 'Mi homebrew', mine: true };
+  const f = H.clean('feat', {
+    name: 'Savia viva',
+    text: 'Tu sangre es savia.',
+    prerequisite: 'Sabiduría 13',
+    abilityChoice: ['con', 'wis'],
+    saveProf: true,
+    hp: 1,
+    init: 2,
+    speed: 5,
+    resist: ['poison'],
+    skillsChoose: 1,
+    skillsFrom: ['nature', 'survival'],
+    resource: { name: 'Brote', uses: 'prof', reset: 'long', text: 'Curás 1d8.' },
+    spells: [
+      { spell: 'cure', mode: 'daily' },
+      { spell: 'druidcraft', mode: 'known' },
+    ],
+    spellAbility: 'wis',
+  });
+  H.state.books = [book];
+  H.state.entries = [{ kind: 'feat', bookId: 'b1', data: f }];
+  H.register(H.state.entries.map(e => ({ ...e, book })));
+  assert.ok(g.Catalog.feats.some(x => x.id === f.id && x.homebrew));
+  assert.equal(
+    g.Campaign.enabled(
+      { campaignSources: ['PHB'] },
+      g.Catalog.feats.find(x => x.id === f.id),
+    ),
+    true,
+  );
+  let s = g.Rules.validate(fixture('wizard-3.json'));
+  const before = g.Rules.stats(s);
+  assert.throws(() => g.FeatFX.checkPicks(f.id, s, {}), /característica/);
+  s.progression.learnedFeats.push(f.id);
+  s.progression.bonusFeats = [f.id];
+  g.FeatFX.onGain(s, f.id, { ability: 'wis', skills: ['nature'] });
+  s = g.Rules.validate(s);
+  const st = g.Rules.stats(s);
+  assert.equal(st.maxHP - before.maxHP, 3, '+1 PG por nivel a nivel 3');
+  assert.equal(st.initiative - before.initiative, 2);
+  assert.equal(st.speed - before.speed, 5);
+  assert.ok(s.proficiencies.includes('nature'));
+  assert.deepEqual([...g.FeatFX.saves(s)], ['wis']);
+  assert.equal(g.FeatFX.resources(s)[0].max, 2);
+  assert.equal(
+    g.Grants.spells(s)
+      .map(x => x.id + ':' + Boolean(x.freeResource))
+      .sort()
+      .join(),
+    'cure:true,druidcraft:false',
+  );
+  assert.equal(Object.keys(s.homebrew).join(), 'feat');
+  const fresh = load();
+  const again = fresh.Rules.validate(JSON.parse(JSON.stringify(s)));
+  assert.equal(fresh.Rules.stats(again).maxHP, st.maxHP);
+  // Las dotes adicionales tienen que estar entre las aprendidas.
+  assert.throws(
+    () => g.Rules.validate({ ...s, progression: { ...s.progression, bonusFeats: ['alert'] } }),
+    /no es una ficha válida/,
+  );
+});

@@ -258,6 +258,29 @@
               .join(' · ')}</p>`
           : ''
       }`;
+    if (x.kind === 'feat') {
+      const ab = k => ABIL[k];
+      const auto = [
+        d.abilityFixed && '+1 ' + ab(d.abilityFixed),
+        d.abilityChoice.length && '+1 a ' + d.abilityChoice.map(ab).join(' o '),
+        d.saveProf && 'competencia en esa salvación',
+        d.hp && `+${d.hp} PG por nivel`,
+        d.init && `+${d.init} iniciativa`,
+        d.speed && `+${d.speed} pies de velocidad`,
+        d.passive && `+${d.passive} a las pasivas`,
+        d.armor.length && 'armadura: ' + d.armor.length + ' tipo(s)',
+        d.resist.length && 'resistencia a ' + d.resist.length + ' tipo(s) de daño',
+        d.concentration && 'ventaja en concentración',
+        d.skillsFixed.length && d.skillsFixed.length + ' habilidad(es) fija(s)',
+        d.skillsChoose && `elige ${d.skillsChoose} habilidad(es)`,
+        d.expertise && `${d.expertise} pericia(s)`,
+        d.resource &&
+          `${d.resource.name}: ${d.resource.uses === 'prof' ? 'bono de competencia' : d.resource.uses} uso(s)`,
+        d.spells.length &&
+          'conjuros: ' + d.spells.map(r => Catalog.spells.find(sp => sp.id === r.spell)?.name || r.spell).join(', '),
+      ].filter(Boolean);
+      return `<p class="library-text">${esc(d.text)}</p>${d.prerequisite ? '<p><b>Requisito:</b> ' + esc(d.prerequisite) + '</p>' : ''}${auto.length ? '<p><b>Se aplica solo:</b> ' + esc(auto.join(' · ')) + '.</p>' : ''}<p class="small">Disponible al subir de nivel («Mejora o dote») y en Rasgos → Agregar dote.</p>`;
+    }
     if (x.kind === 'spell')
       return `<p class="small">${esc(x.level ? 'Nivel ' + x.level : 'Truco')} · ${esc(x.school)}${x.ritual ? ' · ritual' : ''}${x.concentration ? ' · concentración' : ''}${
         d.classes.length
@@ -408,7 +431,7 @@
         ? `<p>${esc(x.text || x.brief || '')}</p><p class="small">${esc(x.components)} · ${esc(x.duration)}${x.materialEs ? ' · ' + esc(x.materialEs) : ''}</p>${x.higher ? '<p><b>A niveles superiores.</b> ' + esc(x.higher) + '</p>' : ''}${x.homebrew ? '' : OfficialContent.spellHtml(x.id) + '<p class="small">Disponible en el selector de conjuros de las clases y libros correspondientes, o como Extra del DM.</p>'}`
         : '';
     const rule =
-      x.kind === 'feat' || x.kind === 'option'
+      (x.kind === 'feat' && !x.homebrew) || x.kind === 'option'
         ? (x.kind === 'feat' ? TraitsEs.brief('feat:' + x.id) : TraitsEs.option(x)).replace(
             /^(.+)$/,
             s => `<p>${esc(s)}</p>`,

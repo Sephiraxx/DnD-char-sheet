@@ -111,7 +111,7 @@ const GrantUI = (() => {
           })
           .join(
             '',
-          )}${button(status ? 'Completar elecciones' : 'Revisar elecciones', 'grant-config', 'secondary', `data-key="${esc(p.source.key)}"`)}</div></details>`;
+          )}${button(status ? 'Completar elecciones' : 'Revisar elecciones', 'grant-config', 'secondary', `data-key="${esc(p.source.key)}"`)}${p.source.kind === 'feat' && (s.progression?.bonusFeats || []).includes(p.source.id) ? button('Quitar dote adicional', 'feat-remove', 'secondary danger-text', `data-id="${esc(p.source.id)}"`) : ''}</div></details>`;
       })
       .join('');
     const bonus = Grants.originFeats(s)
@@ -246,8 +246,124 @@ const GrantUI = (() => {
     };
     draw();
   }
+  // ---------- Dotes adicionales (fuera de una mejora de característica) ----------
+  // Una dote que da el DM, una recompensa o un rasgo homebrew: se elige de la lista (oficiales y homebrew),
+  // se aplican sus efectos como al subir de nivel y queda marcada como adicional para poder quitarla.
+  const SKILL = id => Rules.skills.find(x => x[0] === id)?.[1] || id;
+  function addFeat() {
+    const taken = new Set(state.progression?.learnedFeats || []);
+    const list = Catalog.feats
+      .filter(f => Campaign.enabled(state, f) && (!taken.has(f.id) || f.repeatable))
+      .sort((a, b) => a.name.localeCompare(b.name, 'es'));
+    const opt = f =>
+      `<option value="${esc(f.id)}">${esc(f.name)}${f.prerequisite ? ' · requisito: ' + esc(typeof f.prerequisite === 'string' ? f.prerequisite : TraitsEs.prereqText(f.prerequisite)) : ''}</option>`;
+    const own = list.filter(f => f.homebrew),
+      official = list.filter(f => !f.homebrew);
+    modal(
+      'Agregar dote',
+      `<p class="small">Para una dote que no viene de subir de nivel: la que da el DM, una recompensa o un rasgo. Al subir de nivel, la dote se elige en el paso «Mejora o dote».</p><label class="field">Dote<select name="feat" required><option value="">Elegí una dote…</option>${own.length ? `<optgroup label="Homebrew">${own.map(opt).join('')}</optgroup>` : ''}<optgroup label="Libros habilitados">${official.map(opt).join('')}</optgroup></select></label><label class="field">Motivo <span class="muted">(opcional)</span><input name="note" maxlength="200" placeholder="Recompensa del DM, rasgo de la campaña…" /></label><p class="small muted">Revisá que cumplas el requisito con tu DM.</p>`,
+      fd => {
+        const id = String(fd.get('feat') || '');
+        if (!list.some(f => f.id === id)) throw Error('Elegí una dote.');
+        const note = String(fd.get('note') || '').trim();
+        const nd = FeatFX.needs(id, state);
+        if (Object.keys(nd).length) {
+          setTimeout(() => featPicks(id, note), 0);
+          return;
+        }
+        applyFeat(id, {}, note);
+      },
+      'Siguiente',
+    );
+  }
+  function featPicks(id, note) {
+    const f = Catalog.feats.find(x => x.id === id),
+      nd = FeatFX.needs(id, state);
+    const auto = FeatFX.autoList(id, state),
+      manual = FeatFX.manualList(id);
+    const prof = new Set(state.proficiencies || []);
+    modal(
+      f.name,
+      `${auto.length ? `<p><b>Se aplica solo:</b> ${esc(auto.join(' · '))}.</p>` : ''}${manual.length ? `<p class="small">${esc(manual.join(' '))}</p>` : ''}${
+        nd.ability
+          ? `<label class="field">Característica que sube +1<select name="ability" required><option value="">Elegí…</option>${nd.ability.map(k => `<option value="${k}">${esc(Rules.attrs[k])} (${state.abilities[k]})</option>`).join('')}</select></label>`
+          : ''
+      }${
+        nd.skills
+          ? `<fieldset><legend>Elegí ${nd.skills.n} habilidad(es)</legend><div class="hb-checks">${nd.skills.from.map(k => `<label class="check"><input type="checkbox" name="skills" value="${k}" /> ${esc(SKILL(k))}</label>`).join('')}</div></fieldset>`
+          : ''
+      }${
+        nd.expertise
+          ? `<label class="field">Pericia en<select name="expertise" required><option value="">Elegí…</option>${Rules.skills
+              .filter(([k]) => !(state.expertise || []).includes(k))
+              .map(
+                ([k, n]) =>
+                  `<option value="${k}">${esc(n)}${prof.has(k) ? '' : ' (con la competencia que elijas arriba)'}</option>`,
+              )
+              .join('')}</select></label>`
+          : ''
+      }`,
+      fd =>
+        applyFeat(
+          id,
+          {
+            ability: String(fd.get('ability') || '') || undefined,
+            skills: fd.getAll('skills').map(String),
+            expertise: fd.get('expertise') ? [String(fd.get('expertise'))] : [],
+          },
+          note,
+        ),
+      'Agregar dote',
+    );
+  }
+  function applyFeat(id, picks, note) {
+    const f = Catalog.feats.find(x => x.id === id);
+    FeatFX.checkPicks(id, state, picks);
+    commit('Dote adicional: ' + f.name, s => {
+      s.progression.learnedFeats.push(id);
+      s.progression.bonusFeats = [...(s.progression.bonusFeats || []), id];
+      FeatFX.onGain(s, id, picks);
+      s.features.push({ name: f.name, text: 'Dote: adicional' + (note ? ' · ' + note : '') });
+    });
+    toast(`Agregaste ${f.name}.`);
+  }
+  // Quitar una dote adicional: deshace lo que aplicó al ganarla (características, habilidades y pericias).
+  function removeFeat(id) {
+    const f = Catalog.feats.find(x => x.id === id);
+    const name = f?.name || id;
+    confirmAction(
+      'Quitar dote adicional',
+      `Se quita ${name} y lo que sumó al ganarla (características, habilidades y pericias que eligió). Revisá después tus competencias si alguna venía también de otro lado.`,
+      () =>
+        commit('Dote adicional quitada: ' + name, s => {
+          const drop = (arr, v) => {
+            const i = arr.lastIndexOf(v);
+            if (i >= 0) arr.splice(i, 1);
+          };
+          drop(s.progression.learnedFeats, id);
+          drop(s.progression.bonusFeats, id);
+          if (!s.progression.bonusFeats.length) delete s.progression.bonusFeats;
+          const e = FeatData[id] || {},
+            pick = s.progression.featChoices?.[id] || {};
+          if (!s.progression.learnedFeats.includes(id)) {
+            for (const [k, v] of Object.entries(e.ability?.fixed || {}))
+              s.abilities[k] = Math.max(1, s.abilities[k] - v);
+            if (pick.ability) s.abilities[pick.ability] = Math.max(1, s.abilities[pick.ability] - 1);
+            const sk = new Set([...(e.skills?.fixed || []), ...(pick.skills || [])]);
+            s.proficiencies = (s.proficiencies || []).filter(k => !sk.has(k));
+            s.expertise = (s.expertise || []).filter(k => !(pick.expertise || []).includes(k) && !sk.has(k));
+            if (s.progression.featChoices) delete s.progression.featChoices[id];
+          }
+          const i = s.features.findIndex(x => x.name === name && /^Dote: adicional/.test(x.text || ''));
+          if (i >= 0) s.features.splice(i, 1);
+        }),
+      'Quitar',
+    );
+  }
   function install() {
     Object.assign(actions, {
+      'feat-add': addFeat,
+      'feat-remove': el => removeFeat(el.dataset.id),
       'grant-tool': () => {
         const tools = Grants.proficiencies(state, 'tool');
         if (!tools.length) throw Error('Completá tus competencias con herramientas.');
