@@ -23,7 +23,8 @@ const LibraryUI = (() => {
   async function loadBooks() {
     try {
       myId = (await Cloud.user()).id;
-      books = await Cloud.libraryBooks();
+      // Las colecciones de homebrew se manejan en el catálogo (compendium.html), no acá.
+      books = (await Cloud.libraryBooks()).filter(b => !b.homebrew);
       loadError = '';
     } catch (e) {
       books = [];

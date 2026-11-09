@@ -1153,7 +1153,25 @@
     return out;
   }
 
+  async function deleteLibraryEntry(bookId, kind, key) {
+    const c = await api();
+    check(await c.from('library_entries').delete().eq('book_id', bookId).eq('kind', kind).eq('key', key));
+  }
+  // Mesas de las que esta cuenta es parte (como DM o jugador), para compartir una colección.
+  async function myTables() {
+    const me = await currentUser();
+    if (!me) return [];
+    const rows = check(
+      await (await api()).from('members').select('campaign_id, role, campaigns(name)').eq('user_id', me.id),
+    );
+    return rows
+      .map(r => ({ id: r.campaign_id, name: r.campaigns?.name || 'Mesa', role: r.role }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  }
+
   root.Cloud = {
+    deleteLibraryEntry,
+    myTables,
     libraryBooks,
     saveLibraryBook,
     updateLibraryBook,
