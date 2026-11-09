@@ -25,6 +25,10 @@
     <script src="./official-content.js" defer></script>
     <script src="./content-index.js" defer></script>
     <script src="./monsters-data.js" defer></script>
+    <script src="./config.js" defer></script>
+    <script src="./cloud.js" defer></script>
+    <script src="./homebrew.js" defer></script>
+    <script src="./homebrew-ui.js" defer></script>
     <script src="./compendium.js" defer></script>
     <script src="./updates.js" defer></script>
   </head>
@@ -44,7 +48,7 @@
       <main id="main" tabindex="-1">
         <section class="library-intro">
           <h1>Las opciones de tu próxima aventura</h1>
-          <p>Clases, subclases, conjuros, objetos y criaturas para tus partidas.</p>
+          <p>Clases, subclases, conjuros, objetos y criaturas para tus partidas, y el homebrew que crees.</p>
           <p id="compendium-counts" class="small" role="status"></p>
         </section>
         <section class="card library-search" aria-label="Buscar contenido">
@@ -74,6 +78,7 @@
               <label class="field"
                 >Libro / fuente<select id="compendium-source">
                   <option value="">Todos los libros</option>
+                  <option value="homebrew">Homebrew</option>
                 </select></label
               >
             </div>
@@ -86,6 +91,7 @@
             2014.
           </p>
         </section>
+        <section class="card homebrew-panel" id="homebrew-panel" aria-label="Homebrew"></section>
         <p id="compendium-status" role="status" aria-live="polite"></p>
         <section class="library-results" id="compendium-results" aria-label="Opciones del catálogo"></section>
         <div class="actions library-more">
@@ -116,6 +122,18 @@
         <button class="icon-btn" id="compendium-close" aria-label="Cerrar detalles">×</button>
       </div>
       <div class="library-reader-body" id="compendium-detail-body"></div>
+    </dialog>
+    <dialog id="homebrew-editor" class="homebrew-editor" aria-labelledby="homebrew-editor-title">
+      <form id="homebrew-editor-form" novalidate>
+        <div class="modal-head">
+          <h2 id="homebrew-editor-title">Homebrew</h2>
+          <button class="icon-btn" type="button" id="homebrew-editor-cancel" aria-label="Cerrar sin guardar">×</button>
+        </div>
+        <div class="library-reader-body" id="homebrew-editor-body"></div>
+        <div class="actions homebrew-editor-foot">
+          <button class="button" type="submit" id="homebrew-editor-save">Guardar</button>
+        </div>
+      </form>
     </dialog>
     <noscript>Activá JavaScript para consultar el catálogo.</noscript>
   </body>

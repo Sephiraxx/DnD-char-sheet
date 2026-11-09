@@ -885,6 +885,14 @@ create policy library_entries_write on public.library_entries for all
   using (owner_id = auth.uid())
   with check (owner_id = auth.uid() and exists (select 1 from public.library_books b where b.id = book_id and b.owner_id = auth.uid()));
 
+-- ---------- Homebrew (migraciones 012 y 015) ----------
+-- Una colección de homebrew es un libro marcado; guarda clases, subclases, conjuros y criaturas.
+alter table public.library_books add column if not exists homebrew boolean not null default false;
+alter table public.library_entries drop constraint if exists library_entries_kind_check;
+alter table public.library_entries
+  add constraint library_entries_kind_check
+  check (kind in ('monster', 'spell', 'item', 'feature', 'feat', 'class', 'subclass'));
+
 -- Que la API vea la función nueva sin esperar.
 notify pgrst, 'reload schema';
 

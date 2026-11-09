@@ -31,7 +31,8 @@
   const bookSources = new Map(
     [...BookContentData.books, ...OfficialContentData.books].map(b => [b.id, b.sourceKey || 'WOTC-' + b.id]),
   );
-  const rows = [
+  // Se vuelve a armar cuando cambia el homebrew (crear, editar, borrar o llegar de la cuenta).
+  const buildRows = () => [
     ...Object.values(ClassData.classes).map(x => ({ ...x, kind: 'class' })),
     ...ClassData.subclasses.map(x => ({ ...x, kind: 'subclass' })),
     ...Catalog.spells.map(x => ({ ...x, kind: 'spell' })),
@@ -46,16 +47,22 @@
     ...ClassData.options.map(x => ({ ...x, kind: 'option' })),
     ...MagicItems.ITEMS.map(x => ({ ...x, sourceKey: x.sourceKey || 'DMG', kind: 'item' })),
   ];
-  const rowSources = x => ContentIndex.sources(x);
+  let rows = buildRows();
+  // El homebrew no se mezcla con las ediciones oficiales: su fuente es «Homebrew» y su colección.
+  const rowSources = x => (x.homebrew ? ['homebrew', 'hb:' + x.homebrew.book?.id] : ContentIndex.sources(x));
   const dedupe = items =>
-    [...new Set(items.map(x => x.kind))].flatMap(kind =>
-      ContentIndex.list(
-        kind,
-        items.filter(x => x.kind === kind),
-      ),
-    );
+    [...new Set(items.filter(x => !x.homebrew).map(x => x.kind))]
+      .flatMap(kind =>
+        ContentIndex.list(
+          kind,
+          items.filter(x => x.kind === kind && !x.homebrew),
+        ),
+      )
+      .concat(items.filter(x => x.homebrew));
   const sourceLabel = x =>
-    [...new Set(rowSources(x).map(ContentIndex.canonicalSource))].map(s => sources[s] || s).join(' / ');
+    x.homebrew
+      ? 'Homebrew · ' + (x.homebrew.book?.title || '')
+      : [...new Set(rowSources(x).map(ContentIndex.canonicalSource))].map(s => sources[s] || s).join(' / ');
   const params = new URLSearchParams(location.search);
   $('compendium-q').value = (params.get('q') || '').slice(0, 200);
   $('compendium-source').innerHTML += Object.entries(sources)
@@ -64,10 +71,26 @@
     .join('');
   const requestedSource = ContentIndex.canonicalSource(bookSources.get(params.get('book')) || params.get('book'));
   if (sources[requestedSource]) $('compendium-source').value = requestedSource;
+  // Colecciones de homebrew como fuentes: «Homebrew» (todo) y cada colección.
+  function homebrewSources() {
+    const select = $('compendium-source');
+    const keep = select.value || params.get('book') || '';
+    select.querySelector('optgroup[data-homebrew]')?.remove();
+    const books = Homebrew.state.books;
+    if (books.length)
+      select
+        .querySelector('option[value="homebrew"]')
+        .insertAdjacentHTML(
+          'afterend',
+          `<optgroup label="Colecciones de homebrew" data-homebrew>${books.map(b => `<option value="hb:${esc(b.id)}">${esc(b.title)}</option>`).join('')}</optgroup>`,
+        );
+    if (keep === 'homebrew' || select.querySelector(`option[value="${CSS.escape(keep)}"]`)) select.value = keep;
+  }
+  homebrewSources();
   if (labels[params.get('kind')]) $('compendium-kind').value = params.get('kind');
   // ---------- Filtros por tipo ----------
   // Conjuros: nivel y clase. Criaturas: VD y tipo. Objetos: rareza. Todo queda en la dirección.
-  const CLASS_NAMES = Object.fromEntries(Object.values(ClassData.classes).map(c => [c.id, c.name]));
+  const classNames = () => Object.fromEntries(Object.values(ClassData.classes).map(c => [c.id, c.name]));
   const spellToken = t =>
     String(t)
       .split(/[|#]/)[0]
@@ -108,7 +131,7 @@
         pick(
           'Clase',
           'cls',
-          Object.entries(CLASS_NAMES)
+          Object.entries(classNames())
             .filter(([id]) => rows.some(x => x.kind === 'spell' && classesOf(x).includes(id)))
             .sort((a, b) => a[1].localeCompare(b[1], 'es')),
         )
@@ -171,11 +194,11 @@
     const url = location.pathname + (q.toString() ? '?' + q : '');
     if (url !== location.pathname + location.search) history.replaceState(null, '', url);
   }
-  const counts = dedupe(rows).reduce((a, x) => ((a[x.kind] = (a[x.kind] || 0) + 1), a), {});
+  const counts = dedupe(rows.filter(x => !x.homebrew)).reduce((a, x) => ((a[x.kind] = (a[x.kind] || 0) + 1), a), {});
   $('compendium-counts').textContent =
     `${counts.class} clases · ${counts.subclass} subclases · ${counts.spell} conjuros · ${counts.item} objetos mágicos · ${counts.creature} entradas únicas de criaturas`;
   $('compendium-coverage').textContent =
-    `Esta ampliación revisó ${OfficialContentData.books.length} libros oficiales de las reglas de 2014, incluidos los PDFs escaneados. Añade ${BookContentData.official.rules} textos de rasgos, dotes y opciones de clase, ${BookContentData.official.spellDescriptions} descripciones de conjuros, ${BookContentData.official.itemDescriptions} descripciones de objetos y ${OfficialContentData.monsters.length} bloques de criaturas. Se excluyen homebrew y las demás ediciones. Los bloques que no superaron la validación no se publican como criaturas nuevas.`;
+    `Esta ampliación revisó ${OfficialContentData.books.length} libros oficiales de las reglas de 2014, incluidos los PDFs escaneados. Añade ${BookContentData.official.rules} textos de rasgos, dotes y opciones de clase, ${BookContentData.official.spellDescriptions} descripciones de conjuros, ${BookContentData.official.itemDescriptions} descripciones de objetos y ${OfficialContentData.monsters.length} bloques de criaturas. El homebrew de cada cuenta aparece aparte, con la fuente «Homebrew». Se excluyen las demás ediciones. Los bloques que no superaron la validación no se publican como criaturas nuevas.`;
   $('compendium-books').innerHTML = OfficialContentData.books
     .map(b => {
       const c = b.counts;
@@ -190,7 +213,7 @@
       : x.kind === 'spell'
         ? `${x.level ? 'Nivel ' + x.level : 'Truco'} · ${x.time} · ${x.range}`
         : x.kind === 'subclass'
-          ? ClassData.classes[x.classId].name
+          ? ClassData.classes[x.classId]?.name || 'Clase no disponible'
           : x.kind === 'class'
             ? `Dado de golpe d${x.die}`
             : x.kind === 'item'
@@ -198,6 +221,57 @@
               : TraitsEs.prereqText(x.prerequisite)
                 ? 'Requisito: ' + TraitsEs.prereqText(x.prerequisite)
                 : '';
+  // Lo propio de una clase, subclase o conjuro homebrew (lo oficial lo muestra el texto del libro).
+  const ABIL = {
+    str: 'Fuerza',
+    dex: 'Destreza',
+    con: 'Constitución',
+    int: 'Inteligencia',
+    wis: 'Sabiduría',
+    cha: 'Carisma',
+  };
+  function homebrewDetail(x) {
+    const d = x.homebrew.data;
+    const p = (label, value) => (value ? `<p><b>${label}:</b> ${esc(value)}</p>` : '');
+    if (x.kind === 'class') {
+      const list = d.spellList && d.spellList !== 'own' ? ClassData.classes[d.spellList]?.name : '';
+      return `${d.summary ? '<p>' + esc(d.summary) + '</p>' : ''}${p('Dado de golpe', 'd' + d.die)}${p('Salvaciones', d.saves.map(k => ABIL[k]).join(' y '))}${p(
+        'Habilidades',
+        `elige ${d.skills.count}${d.skills.from.length < 18 ? ' entre ' + d.skills.from.length + ' opciones' : ' (cualquiera)'}`,
+      )}${p('Armadura', d.armor.map(a => ({ light: 'ligera', medium: 'intermedia', heavy: 'pesada', shield: 'escudos' })[a]).join(', '))}${p(
+        'Armas',
+        [...d.weapons.map(w => (w === 'simple' ? 'sencillas' : 'marciales')), d.weaponsOther]
+          .filter(Boolean)
+          .join(', '),
+      )}${p('Herramientas', d.tools)}${p(
+        'Conjuros',
+        d.caster
+          ? `${Homebrew.CASTERS[d.caster]?.label}; usa ${ABIL[d.ability]}; ${list ? 'aprende de la lista de ' + list : 'aprende los conjuros homebrew que la marquen'}`
+          : '',
+      )}${p('Subclase', `al nivel ${d.subclassLevel}${d.subclassTitle ? ' (' + d.subclassTitle + ')' : ''}`)}`;
+    }
+    if (x.kind === 'subclass')
+      return `${d.summary ? '<p>' + esc(d.summary) + '</p>' : ''}${
+        d.prepared.length
+          ? `<p><b>Conjuros siempre preparados:</b> ${d.prepared
+              .map(r => `nivel ${r.level}: ${esc(Catalog.spells.find(s => s.id === r.spell)?.name || r.spell)}`)
+              .join(' · ')}</p>`
+          : ''
+      }`;
+    if (x.kind === 'spell')
+      return `<p class="small">${esc(x.level ? 'Nivel ' + x.level : 'Truco')} · ${esc(x.school)}${x.ritual ? ' · ritual' : ''}${x.concentration ? ' · concentración' : ''}${
+        d.classes.length
+          ? ' · ' +
+            esc(
+              d.classes
+                .map(c => ClassData.classes[c]?.name)
+                .filter(Boolean)
+                .join(', '),
+            )
+          : ''
+      }</p>`;
+    return '';
+  }
   const PAGE = 60;
   let limit = PAGE;
   function draw(more = false) {
@@ -306,11 +380,11 @@
             )
             .join(
               '',
-            )}${x.rulesLanguage === 'en' ? '<p class="small">Las reglas especiales conservan su texto de referencia en inglés.</p>' : ''}<p class="small">Disponible en Agregar criaturas del DM. ${x.referenceOnlyActions ? 'Esta entrada anterior incluye estadísticas básicas; los efectos adicionales requieren consultar el libro.' : 'Los dados y ataques compatibles se resuelven en combate; los demás efectos se consultan en el bloque.'}</p>`
+            )}${x.rulesLanguage === 'en' ? '<p class="small">Las reglas especiales conservan su texto de referencia en inglés.</p>' : ''}${x.homebrew ? '' : `<p class="small">Disponible en Agregar criaturas del DM. ${x.referenceOnlyActions ? 'Esta entrada anterior incluye estadísticas básicas; los efectos adicionales requieren consultar el libro.' : 'Los dados y ataques compatibles se resuelven en combate; los demás efectos se consultan en el bloque.'}</p>`}`
         : '';
     const spell =
       x.kind === 'spell'
-        ? `<p>${esc(x.text || x.brief || '')}</p><p class="small">${esc(x.components)} · ${esc(x.duration)}${x.materialEs ? ' · ' + esc(x.materialEs) : ''}</p>${OfficialContent.spellHtml(x.id)}<p class="small">Disponible en el selector de conjuros de las clases y libros correspondientes, o como Extra del DM.</p>`
+        ? `<p>${esc(x.text || x.brief || '')}</p><p class="small">${esc(x.components)} · ${esc(x.duration)}${x.materialEs ? ' · ' + esc(x.materialEs) : ''}</p>${x.higher ? '<p><b>A niveles superiores.</b> ' + esc(x.higher) + '</p>' : ''}${x.homebrew ? '' : OfficialContent.spellHtml(x.id) + '<p class="small">Disponible en el selector de conjuros de las clases y libros correspondientes, o como Extra del DM.</p>'}`
         : '';
     const rule =
       x.kind === 'feat' || x.kind === 'option'
@@ -323,10 +397,25 @@
       x.kind === 'item'
         ? `<p>${esc(x.note || '')}</p>${OfficialContent.itemHtml(x.id)}<p class="small">Disponible en Equipo → Objetos mágicos. Los efectos especiales se aplican en la mesa.</p>`
         : '';
+    const homebrew = x.homebrew ? homebrewDetail(x) : '';
     $('compendium-detail-body').innerHTML =
-      `<p class="small muted">${esc(sourceLabel(x))}${x.page || x.pdfPage ? (x.pdfPage || ['creature', 'item'].includes(x.kind) ? ' · PDF p. ' : ' · ed. inglesa p. ') + (x.pdfPage || x.page) : ''}</p>${spell}${creature}${features}${fullEntry}${rule}${item}${!spell && !creature && !features && !fullEntry && !rule && !item ? '<p>Esta opción está incluida en el creador al habilitar su fuente.</p>' : ''}`;
+      `${homebrew}<p class="small muted">${esc(sourceLabel(x))}${x.page || x.pdfPage ? (x.pdfPage || ['creature', 'item'].includes(x.kind) ? ' · PDF p. ' : ' · ed. inglesa p. ') + (x.pdfPage || x.page) : ''}</p>${spell}${creature}${features}${fullEntry}${rule}${item}${x.homebrew ? HomebrewUI.detailActions(x) : ''}${!homebrew && !spell && !creature && !features && !fullEntry && !rule && !item ? '<p>Esta opción está incluida en el creador al habilitar su fuente.</p>' : ''}`;
     $('compendium-detail').showModal();
   });
   $('compendium-close').addEventListener('click', () => $('compendium-detail').close());
+  addEventListener('homebrew-change', () => {
+    rows = buildRows();
+    homebrewSources();
+    $('compendium-extra').dataset.kind = '';
+    draw();
+  });
+  // Al guardar algo nuevo, el catálogo muestra el homebrew de ese tipo para encontrarlo enseguida.
+  document.addEventListener('homebrew-saved', e => {
+    $('compendium-kind').value = e.detail.kind;
+    $('compendium-source').value = 'homebrew';
+    $('compendium-q').value = '';
+    draw();
+  });
+  HomebrewUI.init();
   draw();
 })();
