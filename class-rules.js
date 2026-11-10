@@ -242,7 +242,12 @@
     if (!root.Grants && sp.level === 0 && (s.classChoices?.['Pact Boon'] || []).includes('pact-of-the-tome-PHB'))
       return true;
     const lists = sp.classes || D.spellClasses[sp.id] || spellClassesByToken.get(spellToken(sp.id)) || [];
-    if (id(s) === 'bard') return sp.bard && (!sp.optionalBard || s.progression.expanded);
+    // Conjuros adicionales del bardo (rasgo opcional de Tasha): entran cuando Tasha está habilitado en la ficha.
+    if (id(s) === 'bard')
+      return (
+        sp.bard &&
+        (!sp.optionalBard || s.progression.expanded || !root.Campaign || root.Campaign.enabled(s, { sourceKey: 'TCE' }))
+      );
     if (['fighter', 'rogue'].includes(id(s)) && casting(s).caster) return lists.includes('wizard');
     // Clase homebrew: sus conjuros propios y, si eligió una, la lista de una clase oficial.
     const own = info(s)?.homebrew?.data?.spellList;
