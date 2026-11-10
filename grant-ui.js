@@ -260,71 +260,161 @@ const GrantUI = (() => {
   // Una dote que da el DM, una recompensa o un rasgo homebrew: se elige de la lista (oficiales y homebrew),
   // se aplican sus efectos como al subir de nivel y queda marcada como adicional para poder quitarla.
   const SKILL = id => Rules.skills.find(x => x[0] === id)?.[1] || id;
+  // Pantalla completa con tarjetas, como el selector de conjuros: cada dote dice qué hace antes de elegirla.
+  let featHost = null,
+    featQuery = '',
+    featScope = 'available',
+    featOpen = '';
+  const canonText = v =>
+    String(v || '')
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase();
+  const originOf = (s, id) =>
+    (s.progression?.bonusFeats || []).includes(id)
+      ? 'Dote adicional'
+      : (s.progression?.learnedFeats || []).includes(id)
+        ? 'Elegida al subir de nivel'
+        : Grants.originFeats(s).includes(id)
+          ? 'De tu origen'
+          : '';
   function addFeat() {
-    const taken = new Set(state.progression?.learnedFeats || []);
-    const list = Catalog.feats
-      .filter(f => Campaign.enabled(state, f) && (!taken.has(f.id) || f.repeatable))
-      .sort((a, b) => a.name.localeCompare(b.name, 'es'));
-    const opt = f =>
-      `<option value="${esc(f.id)}">${esc(f.name)}${f.prerequisite ? ' · requisito: ' + esc(typeof f.prerequisite === 'string' ? f.prerequisite : TraitsEs.prereqText(f.prerequisite)) : ''}</option>`;
-    const own = list.filter(f => f.homebrew),
-      official = list.filter(f => !f.homebrew);
-    modal(
-      'Agregar dote',
-      `<p class="small">Para una dote que no viene de subir de nivel: la que da el DM, una recompensa o un rasgo. Al subir de nivel, la dote se elige en el paso «Mejora o dote».</p><label class="field">Dote<select name="feat" required><option value="">Elegí una dote…</option>${own.length ? `<optgroup label="Homebrew">${own.map(opt).join('')}</optgroup>` : ''}<optgroup label="Libros habilitados">${official.map(opt).join('')}</optgroup></select></label><label class="field">Motivo <span class="muted">(opcional)</span><input name="note" maxlength="200" placeholder="Recompensa del DM, rasgo de la campaña…" /></label><p class="small muted">Revisá que cumplas el requisito con tu DM.</p>`,
-      fd => {
-        const id = String(fd.get('feat') || '');
-        if (!list.some(f => f.id === id)) throw Error('Elegí una dote.');
-        const note = String(fd.get('note') || '').trim();
-        const nd = FeatFX.needs(id, state);
-        if (Object.keys(nd).length) {
-          setTimeout(() => featPicks(id, note), 0);
-          return;
-        }
-        applyFeat(id, {}, note);
-      },
-      'Siguiente',
-    );
+    featQuery = '';
+    featScope = 'available';
+    featOpen = '';
+    if (!featHost) {
+      featHost = document.createElement('div');
+      featHost.id = 'featbook';
+      featHost.className = 'creator-host';
+      featHost.setAttribute('role', 'dialog');
+      featHost.setAttribute('aria-modal', 'true');
+      featHost.setAttribute('aria-label', 'Dotes');
+      document.body.append(featHost);
+      featHost.addEventListener('click', featClick);
+      featHost.addEventListener('input', e => {
+        if (e.target.name !== 'fq') return;
+        featQuery = e.target.value;
+        const pos = e.target.selectionStart;
+        drawFeats();
+        const q = featHost.querySelector('[name=fq]');
+        q?.focus();
+        q?.setSelectionRange(pos, pos);
+      });
+      featHost.addEventListener('keydown', e => e.key === 'Escape' && closeFeats());
+    }
+    document.getElementById('modal')?.open && document.getElementById('modal').close();
+    featHost.hidden = false;
+    document.body.classList.add('creator-open');
+    drawFeats();
+    globalThis.OverlayFocus?.open(featHost);
   }
-  function featPicks(id, note) {
-    const f = Catalog.feats.find(x => x.id === id),
-      nd = FeatFX.needs(id, state);
-    const auto = FeatFX.autoList(id, state),
-      manual = FeatFX.manualList(id);
-    const prof = new Set(state.proficiencies || []);
-    modal(
-      f.name,
-      `${auto.length ? `<p><b>Se aplica solo:</b> ${esc(auto.join(' · '))}.</p>` : ''}${manual.length ? `<p class="small">${esc(manual.join(' '))}</p>` : ''}${
-        nd.ability
-          ? `<label class="field">Característica que sube +1<select name="ability" required><option value="">Elegí…</option>${nd.ability.map(k => `<option value="${k}">${esc(Rules.attrs[k])} (${state.abilities[k]})</option>`).join('')}</select></label>`
+  function closeFeats() {
+    if (!featHost) return;
+    featHost.hidden = true;
+    document.body.classList.remove('creator-open');
+    globalThis.OverlayFocus?.close(featHost);
+  }
+  function drawFeats() {
+    const s = state,
+      have = new Set(Grants.feats(s)),
+      top = featHost.querySelector('.creator-body')?.scrollTop || 0;
+    const list = Catalog.feats
+      .filter(f => {
+        if (featScope === 'mine') return have.has(f.id);
+        if (featScope === 'homebrew') return f.homebrew;
+        return Campaign.enabled(s, f) || have.has(f.id);
+      })
+      .filter(f => {
+        if (!featQuery) return true;
+        const d = FeatFX.describe(f.id, s);
+        return canonText(f.name + ' ' + (f.english || '') + ' ' + d.brief).includes(canonText(featQuery));
+      })
+      .sort((a, b) => Number(have.has(b.id)) - Number(have.has(a.id)) || a.name.localeCompare(b.name, 'es'));
+    const count = label => [...have].filter(id => originOf(s, id) === label).length;
+    const meters = [
+      ['Elegidas al subir de nivel', count('Elegida al subir de nivel')],
+      ['Adicionales', count('Dote adicional')],
+      ['De tu origen', count('De tu origen')],
+    ]
+      .filter(([, n]) => n)
+      .map(([l, n]) => `<span class="tag">${l} <b>${n}</b></span>`)
+      .join('');
+    const chip = (v, label) =>
+      `<button type="button" class="chip ${featScope === v ? 'selected' : ''}" data-fb="scope" data-v="${v}" aria-pressed="${featScope === v}">${label}</button>`;
+    const card = f => {
+      const d = FeatFX.describe(f.id, s),
+        mine = have.has(f.id),
+        origin = mine ? originOf(s, f.id) : '',
+        open = featOpen === f.id;
+      const head = `<span class="creator-card-title">${esc(f.name)}</span><span class="creator-meta">${esc(f.homebrew ? 'Homebrew' : f.sourceKey || '')}${d.prereq ? ' · Requisito: ' + esc(d.prereq) : ''}${f.repeatable ? ' · Repetible' : ''}</span>${origin ? `<span class="tag spell-status">${esc(origin)}</span>` : ''}`;
+      const brief = d.brief || d.auto.join(' · ');
+      if (!open)
+        return `<button type="button" class="creator-card ${mine ? 'selected' : ''}" data-fb="open" data-id="${esc(f.id)}" aria-expanded="false">${head}<span class="creator-brief">${esc(brief.length > 220 ? brief.slice(0, 219) + '…' : brief)}</span></button>`;
+      const can = (!mine || f.repeatable) && Campaign.enabled(s, f);
+      return `<div class="creator-card selected spell-open"><button type="button" class="spell-open-head" data-fb="open" data-id="${esc(f.id)}" aria-expanded="true">${head}</button>${featInfo(s, f.id).replace(/^<p class="small muted">[^<]*<\/p>/, '')}${can ? picksForm(f.id) : ''}${
+        (s.progression?.bonusFeats || []).includes(f.id)
+          ? `<div class="actions"><button type="button" class="button secondary danger-text" data-fb="remove" data-id="${esc(f.id)}">Quitar dote adicional</button></div>`
           : ''
-      }${
-        nd.skills
-          ? `<fieldset><legend>Elegí ${nd.skills.n} habilidad(es)</legend><div class="hb-checks">${nd.skills.from.map(k => `<label class="check"><input type="checkbox" name="skills" value="${k}" /> ${esc(SKILL(k))}</label>`).join('')}</div></fieldset>`
-          : ''
-      }${
-        nd.expertise
-          ? `<label class="field">Pericia en<select name="expertise" required><option value="">Elegí…</option>${Rules.skills
-              .filter(([k]) => !(state.expertise || []).includes(k))
-              .map(
-                ([k, n]) =>
-                  `<option value="${k}">${esc(n)}${prof.has(k) ? '' : ' (con la competencia que elijas arriba)'}</option>`,
-              )
-              .join('')}</select></label>`
-          : ''
-      }`,
-      fd =>
+      }</div>`;
+    };
+    featHost.innerHTML = `<div class="creator-shell"><header class="creator-head"><div><p class="eyebrow">DOTES · ${esc(Classes.label(s)).toUpperCase()}</p><h1>Tus dotes</h1></div><div class="actions"><button type="button" class="button secondary" data-fb="close">Cerrar</button></div></header><div class="creator-rail spell-meters">${meters || '<span class="small muted">Todavía no tenés dotes.</span>'}</div><div class="creator-body"><div id="featbook-error" class="creator-error" role="alert"></div><div class="creator-search"><input type="search" name="fq" value="${esc(featQuery)}" placeholder="Buscar por nombre o por lo que hace" aria-label="Buscar dote"></div><div class="chips spell-filter">${chip('available', 'Libros habilitados')}${chip('mine', 'Mis dotes')}${Catalog.feats.some(f => f.homebrew) ? chip('homebrew', 'Homebrew') : ''}</div><p class="small">${list.length} dotes. Tocá una para ver qué hace. Al subir de nivel, la dote se elige en «Mejora o dote»; acá podés sumar una adicional (la que da el DM, una recompensa o un rasgo).</p><div class="creator-grid small-cards">${list.map(card).join('') || '<p class="muted">Ninguna dote coincide.</p>'}</div></div><footer class="creator-foot"><p class="creator-summary">${esc(s.name)}: revisá los requisitos con tu DM.</p><div class="actions"><button type="button" class="button" data-fb="close">Listo</button></div></footer></div>`;
+    const b = featHost.querySelector('.creator-body');
+    if (b) b.scrollTop = top;
+  }
+  // Lo que hay que elegir al sumarla (característica, habilidades, pericia) y un motivo, dentro de la tarjeta.
+  function picksForm(id) {
+    const nd = FeatFX.needs(id, state),
+      prof = new Set(state.proficiencies || []);
+    return `<form class="feat-picks" data-feat="${esc(id)}">${
+      nd.ability
+        ? `<label class="field">Característica que sube +1<select name="ability"><option value="">Elegí…</option>${nd.ability.map(k => `<option value="${k}">${esc(Rules.attrs[k])} (${state.abilities[k]})</option>`).join('')}</select></label>`
+        : ''
+    }${
+      nd.skills
+        ? `<fieldset><legend>Elegí ${nd.skills.n} habilidad(es)</legend><div class="hb-checks">${nd.skills.from.map(k => `<label class="check"><input type="checkbox" name="skills" value="${k}" /> ${esc(SKILL(k))}</label>`).join('')}</div></fieldset>`
+        : ''
+    }${
+      nd.expertise
+        ? `<label class="field">Pericia en<select name="expertise"><option value="">Elegí…</option>${Rules.skills
+            .filter(([k]) => !(state.expertise || []).includes(k))
+            .map(
+              ([k, n]) =>
+                `<option value="${k}">${esc(n)}${prof.has(k) ? '' : ' (con la competencia que elijas arriba)'}</option>`,
+            )
+            .join('')}</select></label>`
+        : ''
+    }<label class="field">Motivo <span class="muted">(opcional)</span><input name="note" maxlength="200" placeholder="Recompensa del DM, rasgo de la campaña…" /></label><div class="actions"><button type="button" class="button" data-fb="add" data-id="${esc(id)}">Agregar como dote adicional</button></div></form>`;
+  }
+  function featClick(e) {
+    const t = e.target.closest('[data-fb]');
+    if (!t || t.disabled) return;
+    const a = t.dataset.fb,
+      err = featHost.querySelector('#featbook-error');
+    try {
+      if (a === 'close') return closeFeats();
+      if (a === 'scope') featScope = t.dataset.v;
+      if (a === 'open') featOpen = featOpen === t.dataset.id ? '' : t.dataset.id;
+      if (a === 'add') {
+        const form = t.closest('form');
+        const fd = new FormData(form);
         applyFeat(
-          id,
+          t.dataset.id,
           {
             ability: String(fd.get('ability') || '') || undefined,
             skills: fd.getAll('skills').map(String),
             expertise: fd.get('expertise') ? [String(fd.get('expertise'))] : [],
           },
-          note,
-        ),
-      'Agregar dote',
-    );
+          String(fd.get('note') || '').trim(),
+        );
+      }
+      if (a === 'remove') return removeFeat(t.dataset.id, () => !featHost.hidden && drawFeats());
+      drawFeats();
+    } catch (x) {
+      if (err) {
+        err.textContent = x.message;
+        err.scrollIntoView({ block: 'nearest' });
+      }
+    }
   }
   function applyFeat(id, picks, note) {
     const f = Catalog.feats.find(x => x.id === id);
@@ -338,7 +428,7 @@ const GrantUI = (() => {
     toast(`Agregaste ${f.name}.`);
   }
   // Quitar una dote adicional: deshace lo que aplicó al ganarla (características, habilidades y pericias).
-  function removeFeat(id) {
+  function removeFeat(id, after) {
     const f = Catalog.feats.find(x => x.id === id);
     const name = f?.name || id;
     confirmAction(
@@ -366,6 +456,7 @@ const GrantUI = (() => {
           }
           const i = s.features.findIndex(x => x.name === name && /^Dote: adicional/.test(x.text || ''));
           if (i >= 0) s.features.splice(i, 1);
+          setTimeout(() => after?.(), 0);
         }),
       'Quitar',
     );

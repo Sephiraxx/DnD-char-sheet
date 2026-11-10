@@ -4,7 +4,8 @@ body.creator-open {
 }
 #creator,
 #levelup,
-#spellbook {
+#spellbook,
+#featbook {
   position: fixed;
   inset: 0;
   z-index: 60;
@@ -13,7 +14,8 @@ body.creator-open {
 }
 #creator[hidden],
 #levelup[hidden],
-#spellbook[hidden] {
+#spellbook[hidden],
+#featbook[hidden] {
   display: none;
 }
 .creator-shell {
@@ -359,4 +361,11 @@ label.field.key-ability {
   gap: 4px;
   cursor: pointer;
   width: 100%;
+}
+
+/* Elecciones de una dote dentro de su tarjeta (selector de dotes). */
+.feat-picks {
+  border-top: 1px solid var(--line);
+  margin-top: 10px;
+  padding-top: 10px;
 }

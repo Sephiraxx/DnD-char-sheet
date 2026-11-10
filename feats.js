@@ -498,7 +498,7 @@
     const brief = hb ? hb.text : root.TraitsEs?.brief('feat:' + id) || '';
     const prereq = f?.prerequisite
       ? typeof f.prerequisite === 'string'
-        ? f.prerequisite
+        ? root.TraitsEs?.prereq(f.prerequisite) || f.prerequisite
         : root.TraitsEs?.prereqText(f.prerequisite) || ''
       : '';
     return {
