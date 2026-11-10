@@ -122,6 +122,7 @@ const Creator = (() => {
       classId: '',
       level: t?.settings.startLevel || 1,
       campaignSources: t ? t.settings.sources.slice() : Campaign.selected(state).slice(),
+      tableName: t?.name || '',
       raceId: '',
       backgroundId: '',
       race: '',

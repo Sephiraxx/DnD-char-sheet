@@ -185,6 +185,13 @@ const PartyUI = (() => {
     s.background = Campaign.background(s)?.name || d.background;
     s.campaignSources = Campaign.selected(d).slice();
     s.progression.sources = s.campaignSources.slice();
+    // Con qué libros se creó: se ve en el Diario aunque después cambien.
+    s.createdWith = {
+      date: new Date().toISOString(),
+      sources: s.campaignSources.slice(),
+      level: Number(d.level) || 1,
+      ...(d.tableName ? { table: String(d.tableName).slice(0, 100) } : {}),
+    };
     s.languages = d.languages;
     s.abilities = Object.fromEntries(Object.entries(d.abilities).map(([k, v]) => [k, Number(v)]));
     s.proficiencies = CreationSkills.total(d);
