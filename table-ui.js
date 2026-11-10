@@ -186,9 +186,11 @@ const TableUI = (() => {
   // Libros y reglas de la mesa aplicados a una ficha que se une.
   function applySettings(settings) {
     if (!settings?.sources?.length) return;
+    const before = Campaign.selected(state).slice();
     commit('Libros de la mesa aplicados', s => {
       s.campaignSources = settings.sources.slice();
       s.progression.sources = settings.sources.slice();
+      Campaign.recordBooks(s, before, 'mesa');
     });
   }
 

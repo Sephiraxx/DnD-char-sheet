@@ -302,6 +302,21 @@ const Campaign = (() => {
         }),
     );
   }
+  // ---------- Libros de cada ficha ----------
+  // Con qué libros se creó (s.createdWith) y cada cambio posterior (s.booksHistory), para verlo en el Diario.
+  const title = id =>
+    availableSources().find(([k]) => k === id)?.[1] || Catalog.sources.find(([k]) => k === id)?.[1] || id;
+  function recordBooks(s, before, by) {
+    const now = selected(s).filter(id => availableSources().some(([k]) => k === id)),
+      prev = before.filter(id => availableSources().some(([k]) => k === id));
+    const added = now.filter(id => !prev.includes(id)),
+      removed = prev.filter(id => !now.includes(id));
+    if (!added.length && !removed.length) return '';
+    s.booksHistory = [{ date: new Date().toISOString(), added, removed, by }, ...(s.booksHistory || [])].slice(0, 30);
+    return [added.length && '+ ' + added.map(title).join(', '), removed.length && '− ' + removed.map(title).join(', ')]
+      .filter(Boolean)
+      .join(' · ');
+  }
   function sourceDialog() {
     modal(
       'Libros habilitados',
@@ -310,9 +325,15 @@ const Campaign = (() => {
       fd => {
         const list = fd.getAll('campaignSource');
         if (!list.includes('PHB')) throw Error('Mantené habilitado el Manual del Jugador 2014.');
-        commit('Libros de campaña actualizados', s => {
+        const before = selected(state).slice();
+        // El registro dice qué cambió: «Libros habilitados: + Xanathar · − Tasha».
+        const preview = clone(state);
+        preview.campaignSources = list;
+        const change = recordBooks(preview, before, 'ficha');
+        commit(change ? 'Libros habilitados: ' + change : 'Libros de campaña actualizados', s => {
           s.campaignSources = list;
           s.progression.sources = list;
+          recordBooks(s, before, 'ficha');
         });
       },
     );
@@ -643,6 +664,37 @@ const Campaign = (() => {
         s.campaignSources.some(k => !Catalog.sources.some(([id]) => id === k)))
     )
       throw Error('Fuentes de campaña inválidas.');
+    const books = list =>
+      Array.isArray(list) && list.length <= 60 && list.every(k => typeof k === 'string' && k.length <= 50);
+    const c = s.createdWith;
+    if (
+      c !== undefined &&
+      (!c ||
+        typeof c !== 'object' ||
+        !books(c.sources) ||
+        typeof c.date !== 'string' ||
+        c.date.length > 40 ||
+        !Number.isInteger(c.level) ||
+        c.level < 1 ||
+        c.level > 20 ||
+        (c.table !== undefined && (typeof c.table !== 'string' || c.table.length > 100)))
+    )
+      throw Error('Registro de creación inválido.');
+    if (
+      s.booksHistory !== undefined &&
+      (!Array.isArray(s.booksHistory) ||
+        s.booksHistory.length > 30 ||
+        s.booksHistory.some(
+          h =>
+            !h ||
+            typeof h.date !== 'string' ||
+            h.date.length > 40 ||
+            !books(h.added) ||
+            !books(h.removed) ||
+            !['ficha', 'mesa'].includes(h.by),
+        ))
+    )
+      throw Error('Historial de libros inválido.');
     for (const [key, list] of [
       ['raceId', D.races],
       ['backgroundId', D.backgrounds],
@@ -650,6 +702,94 @@ const Campaign = (() => {
       if (s[key] !== undefined && (typeof s[key] !== 'string' || (s[key] && !list.some(x => x.id === s[key]))))
         throw Error('Selección de raza o trasfondo inválida.');
   }
+  // Qué habilita cada libro para esta ficha: subclases de su clase, razas, trasfondos, dotes y conjuros.
+  function allowedByBook(s) {
+    const canon = id => (typeof ContentIndex === 'undefined' ? id : ContentIndex.canonicalSource(id));
+    const srcOf = x => [x.sourceKey, ...(x.sources || []), x.source].filter(Boolean).map(canon);
+    const classId = typeof Classes !== 'undefined' ? Classes.id(s) : s.classId;
+    const kinds = [
+      ['Subclases de tu clase', ClassData.subclasses.filter(x => x.classId === classId && !x.homebrew)],
+      ['Razas', D.races],
+      ['Trasfondos', D.backgrounds],
+      ['Dotes', Catalog.feats.filter(x => !x.homebrew)],
+      // Solo los de su lista de clase: es lo que puede aprender sin pedirlo como Extra del DM.
+      [
+        'Conjuros de tu clase',
+        Catalog.spells.filter(
+          x => !x.homebrew && (typeof Classes === 'undefined' || !s.classId || Classes.member(x, s)),
+        ),
+      ],
+    ];
+    return selected(s)
+      .filter(id => availableSources().some(([k]) => k === id))
+      .map(id => ({
+        id,
+        title: title(id),
+        kinds: kinds
+          .map(([label, rows]) => {
+            const names = [
+              ...new Set(rows.filter(x => srcOf(x)[0] === id || (!srcOf(x).length && id === 'PHB')).map(x => x.name)),
+            ].sort((a, b) => a.localeCompare(b, 'es'));
+            return { label, names };
+          })
+          .filter(k => k.names.length),
+      }));
+  }
+  function booksCard(s) {
+    const date = d => new Date(d).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const names = ids => ids.map(id => esc(title(id))).join(', ');
+    const chips = ids =>
+      `<div class="chips books-chips">${ids.map(id => `<span class="tag">${esc(title(id))}</span>`).join('')}</div>`;
+    const now = selected(s).filter(id => availableSources().some(([k]) => k === id));
+    const c = s.createdWith;
+    const since = c
+      ? [
+          now.filter(id => !c.sources.includes(id)).length &&
+            'agregados desde entonces: ' + names(now.filter(id => !c.sources.includes(id))),
+          c.sources.filter(id => !now.includes(id)).length &&
+            'quitados: ' + names(c.sources.filter(id => !now.includes(id))),
+        ].filter(Boolean)
+      : [];
+    const table = typeof Cloud !== 'undefined' && Cloud.link?.(KEYOF(s))?.campaignName;
+    const hb = s.homebrew || {};
+    const used = [
+      ...(hb.class || []).map(x => 'clase ' + x.name),
+      ...(hb.subclass || []).map(x => 'subclase ' + x.name),
+      ...(hb.spell || []).map(x => 'conjuro ' + x.name),
+      ...(hb.feat || []).map(x => 'dote ' + x.name),
+    ];
+    const books = allowedByBook(s);
+    const total = label => books.reduce((n, b) => n + (b.kinds.find(k => k.label === label)?.names.length || 0), 0);
+    const history = (s.booksHistory || []).slice(0, 8);
+    return `<section class="card books-card"><div class="card-header"><h2>Libros y reglas de la ficha</h2>${typeof button === 'function' ? button('Cambiar libros', 'campaign-sources') : ''}</div>
+      ${
+        c
+          ? `<p><b>Creada</b> el ${esc(date(c.date))}${c.level > 1 ? ` en nivel ${c.level}` : ''}${c.table ? ` para la mesa «${esc(c.table)}»` : ''}, con ${c.sources.length} libro(s)${since.length ? ':' : ' (los mismos que tiene ahora).'}</p>${since.length ? chips(c.sources) : ''}`
+          : '<p class="small muted">Esta ficha se creó antes de que se guardara con qué libros: desde ahora queda registrado cada cambio.</p>'
+      }
+      <p><b>Habilitados ahora</b> (${now.length})${since.length ? ` <span class="small">· ${since.join(' · ')}</span>` : ''}</p>${chips(now)}
+      ${table ? `<p class="small">Está en la mesa «${esc(table)}»: al unirse tomó los libros que eligió el DM.</p>` : ''}
+      <p><b>Reglas opcionales:</b> rasgos opcionales de clase de Tasha ${s.optionalClassFeatures ? '<b>activados</b>' : 'desactivados'} <span class="small muted">(se cambian en Clase → Subclase y Pericias)</span>.</p>
+      ${used.length ? `<p><b>Homebrew que usa:</b> ${esc(used.join(', '))}.</p>` : ''}
+      <h3 class="section-space">Qué permite cada libro</h3><p class="small">En total: ${total('Subclases de tu clase')} subclases de su clase, ${total('Razas')} razas, ${total('Trasfondos')} trasfondos, ${total('Dotes')} dotes y ${total('Conjuros de tu clase')} conjuros de su lista. Lo que no está habilitado se puede sumar igual como Extra del DM.</p>
+      <div class="books-list">${books
+        .map(
+          b =>
+            `<details><summary><b>${esc(b.title)}</b><span class="small muted"> · ${b.kinds.map(k => k.names.length + ' ' + k.label.toLowerCase().replace(' de tu clase', '')).join(' · ') || 'reglas generales'}</span></summary>${b.kinds.map(k => (k.names.length > 15 ? `<details class="books-kind"><summary class="small"><b>${esc(k.label)}</b> (${k.names.length})</summary><p class="small">${esc(k.names.join(', '))}.</p></details>` : `<p class="small"><b>${esc(k.label)}:</b> ${esc(k.names.join(', '))}.</p>`)).join('')}</details>`,
+        )
+        .join('')}</div>
+      ${
+        history.length
+          ? `<h3 class="section-space">Cambios de libros</h3>${history
+              .map(
+                h =>
+                  `<div class="log-item"><time>${esc(new Date(h.date).toLocaleString('es-AR'))}</time><p>${h.by === 'mesa' ? 'La mesa aplicó sus libros: ' : ''}${[h.added.length && '+ ' + names(h.added), h.removed.length && '− ' + names(h.removed)].filter(Boolean).join(' · ')}</p></div>`,
+              )
+              .join('')}`
+          : ''
+      }</section>`;
+  }
+  const KEYOF = () => (typeof KEY !== 'undefined' ? KEY : '');
   function install() {
     Object.assign(actions, {
       'campaign-sources': sourceDialog,
@@ -719,6 +859,9 @@ const Campaign = (() => {
   return {
     facts,
     selected,
+    booksCard,
+    allowedByBook,
+    recordBooks,
     availableSources,
     enabled,
     race,

@@ -2092,3 +2092,25 @@ button.cc-stat {
 .feat-choice[open] > summary {
   margin-bottom: 6px;
 }
+
+/* Diario → Libros y reglas de la ficha */
+.books-card .card-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+.books-list details {
+  border-top: 1px solid var(--line);
+  padding: 8px 0;
+}
+.books-list summary {
+  cursor: pointer;
+}
+.books-chips {
+  margin: 6px 0 12px;
+}
+.books-kind {
+  margin: 4px 0;
+}
