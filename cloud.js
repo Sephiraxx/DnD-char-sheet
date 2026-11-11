@@ -327,6 +327,8 @@
       abilities: cleanAbilityRules(x?.abilities),
       session: cleanSession(x?.session),
       log: Array.isArray(x?.log) ? x.log.map(cleanLog).filter(Boolean).slice(-200) : [],
+      // Misiones, calendario y tiempo entre aventuras (chronicle.js).
+      ...(root.Chronicle ? root.Chronicle.clean(x) : { quests: [], calendar: null, downtime: [] }),
     };
   }
   // Sesiones: la que está en curso y el registro de las terminadas.
@@ -366,7 +368,13 @@
   }
   async function updateSettings(id, settings) {
     const clean = cleanSettings(settings);
-    const rows = check(await (await api()).from('campaigns').update({ settings: clean }).eq('id', id).select('id'));
+    const res = await (await api()).from('campaigns').update({ settings: clean }).eq('id', id).select('id');
+    // Sin la migración 016 los ajustes no pueden pasar de 8 KB: misiones, calendario y actividades ocupan más.
+    if (res.error && /campaigns_settings_check/.test(res.error.message || ''))
+      throw Error(
+        'La mesa ya no tiene lugar para guardar más. Corré la migración 016 en Supabase (amplía el espacio de misiones y calendario) o borrá misiones viejas.',
+      );
+    const rows = check(res);
     if (!rows.length) throw Error('Solo el DM de la mesa puede cambiar sus ajustes.');
     return clean;
   }

@@ -21,6 +21,30 @@ const TableExtras = (() => {
   const charName = id => ctx.party?.characters?.find(c => c.id === id)?.name || 'otra ficha';
 
   // ---------- Jugador ----------
+  // Fecha del mundo y misiones que el DM comparte (chronicle.js).
+  function chronicleHtml(party) {
+    if (typeof Chronicle === 'undefined') return '';
+    const st = Cloud.cleanSettings(party.campaign?.settings || {}),
+      c = st.calendar,
+      quests = st.quests.filter(q => q.shared),
+      active = quests.filter(q => q.status === 'active'),
+      closed = quests.filter(q => q.status !== 'active');
+    if (!c && !quests.length) return '';
+    const row = q =>
+      `<div class="list-row quest ${q.status}"><div><b>${esc(q.title)}</b>${q.status === 'active' ? '' : ` <span class="chip">${Chronicle.STATUS[q.status]}</span>`}${q.giver ? `<p class="small muted">Encargo de ${esc(q.giver)}</p>` : ''}${q.text ? `<p class="small">${esc(q.text)}</p>` : ''}${q.reward ? `<p class="small"><b>Recompensa:</b> ${esc(q.reward)}</p>` : ''}</div></div>`;
+    return `<section class="card section-space chronicle-card"><div class="card-header"><h2>Crónica</h2></div>${
+      c
+        ? `<p class="chron-date"><b>${esc(Chronicle.dateText(c))}</b></p>${c.notes
+            .filter(n => n.year === c.year && n.day === c.day)
+            .map(n => `<p class="small">📌 ${esc(n.text)}</p>`)
+            .join('')}`
+        : ''
+    }${
+      quests.length
+        ? `<h3>Misiones</h3><div class="party-list">${active.map(row).join('') || '<p class="small muted">Sin misiones en curso.</p>'}</div>${closed.length ? `<details class="battle-rule"><summary>Terminadas (${closed.length})</summary><div class="party-list">${closed.map(row).join('')}</div></details>` : ''}`
+        : ''
+    }</section>`;
+  }
   function playerHtml(party, characterId) {
     ctx = { ...ctx, party };
     const loot = party.loot || [],
@@ -52,7 +76,7 @@ const TableExtras = (() => {
             '',
           )}${items.length ? `<h3 class="section-space">Objetos</h3>${items.map(x => hbRow(x, 'Agregar a mi inventario')).join('')}` : ''}${spells.length ? `<h3 class="section-space">Conjuros</h3>${spells.map(x => hbRow(x, 'Agregar a mi ficha', characterId)).join('')}` : ''}</section>`
       : '';
-    return lootCard + hbCard;
+    return chronicleHtml(party) + lootCard + hbCard;
   }
   function hbRow(x, label) {
     const d = x.data || {};

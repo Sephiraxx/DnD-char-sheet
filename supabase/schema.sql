@@ -9,7 +9,7 @@ create table if not exists public.campaigns (
   code text not null unique,
   dm_id uuid not null default auth.uid() references auth.users on delete cascade,
   -- Ajustes del DM: { sources: [...], startLevel, rules }
-  settings jsonb not null default '{}'::jsonb check (octet_length(settings::text) <= 8000),
+  settings jsonb not null default '{}'::jsonb constraint campaigns_settings_check check (octet_length(settings::text) <= 120000),
   created_at timestamptz not null default now()
 );
 
