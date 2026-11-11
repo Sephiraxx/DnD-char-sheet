@@ -126,8 +126,11 @@ test('all 200 new outcomes roll correctly, retain creature quantities, and pass 
 });
 
 test('the new tables are included with the DM UI and its offline assets', () => {
-  const dm = fs.readFileSync(path.join(__dirname, '../dm.html'), 'utf8');
-  assert.ok(dm.indexOf('curated-encounter-data.js') > dm.indexOf('encounter-tables-data.js'));
-  assert.ok(dm.indexOf('curated-encounter-data.js') < dm.indexOf('encounter-generator-ui.js'));
+  // The DM page loads the generator; the generator fetches the tables on demand, official ones first.
+  const dm = fs.readFileSync(path.join(__dirname, '../dm.html'), 'utf8'),
+    ui = fs.readFileSync(path.join(__dirname, '../encounter-generator-ui.js'), 'utf8');
+  assert.ok(dm.includes('./encounter-generator-ui.js'));
+  assert.ok(ui.indexOf('./curated-encounter-data.js') > ui.indexOf('./encounter-tables-data.js'));
+  assert.ok(ui.indexOf('./encounter-tables-data.js') > 0);
   assert.match(fs.readFileSync(path.join(__dirname, '../sw.js'), 'utf8'), /\.\/curated-encounter-data\.js/);
 });

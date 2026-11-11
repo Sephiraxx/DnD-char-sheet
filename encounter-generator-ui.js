@@ -1,8 +1,31 @@
 /* DM-only preview. Saving prepares a local encounter; launching remains a separate action. */
 const EncounterGeneratorUI = (() => {
   'use strict';
-  const D = EncounterTablesData,
-    G = EncounterGenerator;
+  const G = EncounterGenerator;
+  // Las tablas pesan 740 KB: se piden recién al abrir el generador (primero las oficiales, después las propias).
+  let D = globalThis.EncounterTablesData || null,
+    loading = null;
+  const script = src =>
+    new Promise((ok, fail) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = ok;
+      s.onerror = () => fail(Error('No se pudieron cargar las tablas de encuentros. Revisá tu conexión.'));
+      document.head.append(s);
+    });
+  function loadTables() {
+    if (D) return Promise.resolve();
+    loading ||= script('./encounter-tables-data.js')
+      .then(() => script('./curated-encounter-data.js'))
+      .then(() => {
+        D = globalThis.EncounterTablesData;
+      })
+      .catch(err => {
+        loading = null;
+        throw err;
+      });
+    return loading;
+  }
   let session = null;
   const el = id => document.getElementById(id);
   const table = () => D.tables.find(t => t.id === session?.tableId);
@@ -25,6 +48,7 @@ const EncounterGeneratorUI = (() => {
     return `<section class="card section-space"><div class="card-header"><h2>Generador de encuentros</h2>${button('Generar encuentro', 'encgen-open')}</div><p>Elegí un entorno y tirá en las tablas publicadas o en las tablas propias con criaturas oficiales de 2014. Podés consultar y copiar los resultados sin abrir una mesa.</p></section>`;
   }
   async function open(target = null) {
+    await loadTables();
     await MonsterUI.load({ sharedOnly: true });
     if (target && !Encounters.get(target)) throw Error('Ese encuentro ya no está.');
     let groupId = 'XGE-forest';

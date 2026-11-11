@@ -225,8 +225,10 @@ test('narrative drafts, old encounters and campaign boundaries survive preparati
 test('generator is a DM tool and all required assets are cached for offline use', () => {
   const dm = fs.readFileSync(path.join(__dirname, '../dm.html'), 'utf8'),
     sw = fs.readFileSync(path.join(__dirname, '../sw.js'), 'utf8');
+  // The tables are fetched when the generator opens, so the DM page itself only carries the code.
+  const ui = fs.readFileSync(path.join(__dirname, '../encounter-generator-ui.js'), 'utf8');
   for (const file of ['encounter-generator.js', 'encounter-generator-ui.js', 'encounter-tables-data.js']) {
-    assert.ok(dm.includes('./' + file));
+    assert.ok((file.endsWith('-data.js') ? ui : dm).includes('./' + file));
     assert.ok(sw.includes('./' + file));
     assert.ok(!fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8').includes('./' + file));
   }

@@ -15,7 +15,12 @@
   let applied = false;
   const adventureSources = new Set(),
     adventureTitles = new Set();
-  const rank = row => (row.language === 'es' ? 10000 : 0) + Math.min(8000, (row.text || row.data?.text || '').length);
+  // textLen: largo del texto cuando todavía no llegó (official-text-data.js se carga después).
+  const rank = row =>
+    (row.language === 'es' ? 10000 : 0) +
+    Math.min(8000, row.text || row.data?.text ? (row.text || row.data.text).length : row.textLen || 0);
+  // De qué fila del libro salió cada texto de conjuro elegido, para completarlo cuando llega.
+  const spellRows = new Map();
   const reference = row => ({
     name: row.name,
     text: row.text,
@@ -69,18 +74,21 @@
         target.Catalog.sources.push([book.sourceKey, book.title]);
     }
     applyMonsters(target);
-    for (const row of data.rules) {
-      const previous = ruleTexts.get(row.key);
-      if (!previous || rank(row.data) > rank(previous)) ruleTexts.set(row.key, reference(row.data));
-    }
     for (const row of data.spells) {
       const id = row.canonicalId;
       if (!id) continue; // Unmatched names stay in the conversion audit until class membership is verified.
       const previous = spellTexts.get(id);
       const primarySource = target.Catalog.spells.find(spell => spell.id === id)?.sourceKey;
       const spellRank = spell => rank(spell) + (spell.sourceKey === primarySource ? 100000 : 0);
-      if (!previous || spellRank(row) > spellRank(previous))
-        spellTexts.set(id, { ...reference(row), higher: row.higher || '', language: row.language });
+      if (!previous || spellRank(row) > spellRank(previous)) {
+        spellTexts.set(id, {
+          ...reference(row),
+          higher: row.higher || '',
+          language: row.language,
+          textLen: row.textLen,
+        });
+        spellRows.set(id, row);
+      }
     }
     // These references were supplied directly, rather than extracted from the PDF allowlist.
     for (const row of target.SharedSpellData || []) {
@@ -101,6 +109,7 @@
         attackKind: row.attackKind || [],
       });
       target.ClassData.spellClasses[canonicalId] = [...row.classes];
+      spellRows.delete(canonicalId);
       spellTexts.set(canonicalId, {
         ...reference({
           ...row,
@@ -185,13 +194,39 @@
       creatureEntries: data.monsters?.length || 0,
       officialBooks: data.books,
     };
+    applyLongTexts(target);
     applyTexts(target);
+  }
+  // Textos de reglas y de conjuros (official-text-data.js): en la ficha llegan después de mostrarse.
+  let longApplied = false;
+  function applyLongTexts(target = root) {
+    const data = target.OfficialContentData;
+    if (longApplied || !applied || !data?.rules) return;
+    longApplied = true;
+    for (const row of data.rules) {
+      const previous = ruleTexts.get(row.key);
+      if (!previous || rank(row.data) > rank(previous)) ruleTexts.set(row.key, reference(row.data));
+    }
+    for (const [id, row] of spellRows) {
+      const entry = spellTexts.get(id);
+      if (entry)
+        Object.assign(entry, {
+          text: row.text,
+          higher: row.higher || '',
+          originalText: row.originalText,
+          originalHigher: row.originalHigher,
+        });
+    }
+    if (target.BookContentData?.official) target.BookContentData.official.rules = ruleTexts.size;
+    applyTexts(target);
+    if (typeof target.dispatchEvent === 'function' && typeof Event === 'function')
+      target.dispatchEvent(new Event('reference-texts'));
   }
   // Textos largos de referencia (shared-reference-text.js): la ficha los pide después de mostrarse.
   let textsApplied = false;
   function applyTexts(target = root) {
     const ref = target.SharedReferenceData;
-    if (textsApplied || !applied || !ref?.entries) return;
+    if (textsApplied || !applied || !longApplied || !ref?.entries) return;
     textsApplied = true;
     for (const row of ref.entries) entryTexts.set(row.key, reference(row));
     for (const row of ref.features || []) if (!ruleTexts.has(row.key)) ruleTexts.set(row.key, reference(row));
@@ -222,9 +257,12 @@
     return pending.get(src);
   }
   const loadTexts = () =>
-    script('./shared-reference-text.js', () => textsApplied, 'No se pudieron cargar los textos de los libros.').then(
-      () => applyTexts(),
-    );
+    script('./official-text-data.js', () => longApplied, 'No se pudieron cargar los textos de los libros.')
+      .then(() => applyLongTexts())
+      .then(() =>
+        script('./shared-reference-text.js', () => textsApplied, 'No se pudieron cargar los textos de los libros.'),
+      )
+      .then(() => applyTexts());
   // Los bloques de criaturas pesan más que todo lo demás junto: van en official-monsters-data.js,
   // que la ficha y la pantalla del DM cargan recién al abrir el bestiario (el catálogo, al inicio).
   let monstersApplied = false;
@@ -263,14 +301,17 @@
     const original = row.originalText
       ? `<details><summary>Texto original en inglés</summary><p class="small library-text">${esc(row.originalText)}${row.originalHigher ? '\n\nAt Higher Levels: ' + esc(row.originalHigher) : ''}</p></details>`
       : '';
-    return `<details class="library-feature"><summary>Reglas del libro · ${esc(row.book)}${location}${row.rulesLanguage === 'en' ? ' · texto en inglés' : ''}</summary>${spellHeader}${row.variantNote ? '<p class="small">' + esc(row.variantNote) + '</p>' : ''}${row.variants ? '<p class="small">' + row.variants.map(v => esc(v.name) + ' · ' + esc(v.rarity)).join('<br>') + '</p>' : ''}${row.attunementRequirement ? '<p class="small">Sintonización: ' + esc(row.attunementRequirement) + '</p>' : ''}<p class="small library-text">${esc(row.text)}${row.higher ? '\n\nA niveles superiores: ' + esc(row.higher) : ''}</p>${original}</details>`;
+    return `<details class="library-feature"><summary>Reglas del libro · ${esc(row.book)}${location}${row.rulesLanguage === 'en' ? ' · texto en inglés' : ''}</summary>${spellHeader}${row.variantNote ? '<p class="small">' + esc(row.variantNote) + '</p>' : ''}${row.variants ? '<p class="small">' + row.variants.map(v => esc(v.name) + ' · ' + esc(v.rarity)).join('<br>') + '</p>' : ''}${row.attunementRequirement ? '<p class="small">Sintonización: ' + esc(row.attunementRequirement) + '</p>' : ''}<p class="small library-text">${row.text === undefined ? 'Cargando el texto del libro…' : esc(row.text)}${row.higher ? '\n\nA niveles superiores: ' + esc(row.higher) : ''}</p>${original}</details>`;
   }
   root.OfficialContent = {
     apply,
     applyMonsters,
     loadMonsters,
     applyTexts,
+    applyLongTexts,
     loadTexts,
+    // Promesa que se cumple cuando los textos de los libros ya están (para quien los necesita, como las tablas).
+    ready: () => (longApplied && textsApplied ? Promise.resolve() : loadTexts()),
     textsReady: () => textsApplied,
     ruleTexts,
     spellTexts,
