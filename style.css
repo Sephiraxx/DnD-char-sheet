@@ -2105,3 +2105,12 @@ dialog::backdrop {
     display: none;
   }
 }
+/* Personalidad e historia */
+.persona-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.persona-chips {
+  max-height: 14rem;
+  overflow: auto;
+}

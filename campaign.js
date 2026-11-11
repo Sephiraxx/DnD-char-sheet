@@ -98,6 +98,28 @@ const Campaign = (() => {
     'forgery kit': 'útiles de falsificación',
     'herbalism kit': 'útiles de herborista',
     'musical instrument': 'instrumento musical',
+    "cobbler's tools": 'herramientas de zapatero',
+    "glassblower's tools": 'herramientas de soplador de vidrio',
+    "jeweler's tools": 'herramientas de joyero',
+    "leatherworker's tools": 'herramientas de peletero',
+    "painter's supplies": 'materiales de pintor',
+    "potter's tools": 'herramientas de alfarero',
+    "weaver's tools": 'herramientas de tejedor',
+    "woodcarver's tools": 'herramientas de tallador de madera',
+    bagpipes: 'gaita',
+    drum: 'tambor',
+    dulcimer: 'dulcémele',
+    flute: 'flauta',
+    lute: 'laúd',
+    lyre: 'lira',
+    horn: 'cuerno',
+    'pan flute': 'flauta de pan',
+    shawm: 'chirimía',
+    viol: 'viola',
+    'dice set': 'juego de dados',
+    'dragonchess set': 'ajedrez dragón',
+    'playing card set': 'juego de cartas',
+    'three-dragon ante set': 'apuesta de los tres dragones',
     'gaming set': 'juego',
     'vehicles (land)': 'vehículos terrestres',
     'vehicles (water)': 'vehículos acuáticos',
@@ -462,6 +484,10 @@ const Campaign = (() => {
           );
         }
         let extra = {};
+        if (owner === 'sorcerer-wild-magic' && en === 'Wild Magic')
+          extra = { actions: [['Tirar oleada (d100)', 'wild-surge', 'data-table="sorcerer"']] };
+        if (owner === 'barbarian-path-of-wild-magic' && en === 'Path of Wild Magic')
+          extra = { actions: [['Tirar magia salvaje (d8)', 'wild-surge', 'data-table="barbarian"']] };
         if (owner === 'cleric-forge-domain' && en === "Channel Divinity: Artisan's Blessing") {
           extra = { actions: [['Usar (gasta Canalizar divinidad)', 'trait-channel', 'data-what="artisan"']] };
           text =

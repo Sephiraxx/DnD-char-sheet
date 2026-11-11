@@ -38,6 +38,8 @@ const LOGIC = [
   'grant-data.js',
   'grants.js',
   'defenses.js',
+  'persona.js',
+  'surge.js',
   'creation-skills.js',
 ];
 

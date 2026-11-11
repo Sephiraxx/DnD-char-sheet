@@ -830,7 +830,7 @@ const Creator = (() => {
     finalAbilities();
     const hp = suggestedHp();
     if (!d.hp) d.hp = hp;
-    return `<div class="form-grid">${field('Nombre del personaje', 'name', d.name, 'text', 'maxlength="100" autocomplete="off"')}${field('Idiomas', 'languages', d.languages, 'text', 'maxlength="500" placeholder="Común, Élfico"')}</div>${languageHint()}<h3 class="section-space">Puntos de golpe y velocidad</h3><p class="small">Sugeridos: ${hp} (máximo del dado en nivel 1${d.level > 1 ? ' y el promedio en los siguientes' : ''}, más Constitución). Si tu mesa tira los PG, escribí el resultado. La Dureza enana y la Resistencia dracónica no van acá: la ficha las suma sola.</p><div class="form-grid">${field('PG máximos', 'hp', d.hp, 'number', 'min="1" max="2000" inputmode="numeric"')}${field('Velocidad (pies)', 'speed', d.speed, 'number', 'min="0" max="500" inputmode="numeric"')}</div><label class="check"><input type="checkbox" name="full" ${d.full ? 'checked' : ''}>Empezar con PG, espacios y recursos completos</label>`;
+    return `<div class="form-grid">${field('Nombre del personaje', 'name', d.name, 'text', 'maxlength="100" autocomplete="off"')}${field('Idiomas', 'languages', d.languages, 'text', 'maxlength="500" placeholder="Común, Élfico"')}</div>${languageHint()}<h3 class="section-space">Puntos de golpe y velocidad</h3><p class="small">Sugeridos: ${hp} (máximo del dado en nivel 1${d.level > 1 ? ' y el promedio en los siguientes' : ''}, más Constitución). Si tu mesa tira los PG, escribí el resultado. La Dureza enana y la Resistencia dracónica no van acá: la ficha las suma sola.</p><div class="form-grid">${field('PG máximos', 'hp', d.hp, 'number', 'min="1" max="2000" inputmode="numeric"')}${field('Velocidad (pies)', 'speed', d.speed, 'number', 'min="0" max="500" inputmode="numeric"')}</div><label class="check"><input type="checkbox" name="full" ${d.full ? 'checked' : ''}>Empezar con PG, espacios y recursos completos</label>${Persona.creatorFields(d)}`;
   }
 
   // ---------- 9. Revisión ----------
@@ -979,6 +979,7 @@ const Creator = (() => {
       d.hp = fd.get('hp');
       d.speed = fd.get('speed');
       d.full = fd.has('full');
+      Persona.collectCreator(fd, d);
     }
   }
   function go(i) {
@@ -1123,7 +1124,9 @@ const Creator = (() => {
           'gold',
           'tableCode',
           'tableDisplay',
-        ].includes(n)
+        ].includes(n) &&
+        !n.startsWith('persona.') &&
+        !n.startsWith('extra.')
       )
         draw();
       host.querySelector(`[name="${CSS.escape(n)}"]`)?.focus({ preventScroll: true });

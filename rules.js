@@ -746,6 +746,7 @@
     if (root.Equipment) root.Equipment.validate(o);
     if (root.Metamagic) root.Metamagic.validate(o);
     if (root.Cannon) root.Cannon.validate(o);
+    if (root.Persona) root.Persona.validate(o);
     if (
       o.dmCommandsApplied !== undefined &&
       (!Array.isArray(o.dmCommandsApplied) ||

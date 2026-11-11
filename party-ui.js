@@ -193,6 +193,7 @@ const PartyUI = (() => {
       ...(d.tableName ? { table: String(d.tableName).slice(0, 100) } : {}),
     };
     s.languages = d.languages;
+    Persona.apply(s, d);
     s.abilities = Object.fromEntries(Object.entries(d.abilities).map(([k, v]) => [k, Number(v)]));
     s.proficiencies = CreationSkills.total(d);
     s.expertise = [];
@@ -509,7 +510,7 @@ const PartyUI = (() => {
         )
         .join(
           '',
-        )}<p class="small section-space">Competencia de clase: ${c.saves.map(k => R.attrs[k]).join(', ')}.</p></section></div></div>${EquipmentUI.panel(state)}${defensesCard()}${Campaign.sheetOrigins()}<section class="card section-space"><h2>Rasgos y notas</h2>${state.features
+        )}<p class="small section-space">Competencia de clase: ${c.saves.map(k => R.attrs[k]).join(', ')}.</p></section></div></div>${EquipmentUI.panel(state)}${defensesCard()}${Campaign.sheetOrigins()}${Persona.card(state)}<section class="card section-space"><h2>Rasgos y notas</h2>${state.features
         .map(x => `<div class="feature"><h3>${esc(x.name)}</h3><p>${esc(x.text)}</p>${featBook(x)}</div>`)
         .join(
           '',

@@ -168,7 +168,7 @@ const PrintSheet = (() => {
       d = R.stats(s);
     return `<div class="ps-page">${header(s, d)}<div class="ps-grid"><div>${section('Características', abilities(s))}${section('Habilidades', skills(s))}</div><div>${section('Combate', combat(s, d))}${section('Ataques', attacks(s))}${section('Competencias', proficiencies(s))}${section('Rasgos y dotes', features(s))}</div></div></div>${
       spells(s) ? `<div class="ps-page">${section('Conjuros', spells(s))}</div>` : ''
-    }<div class="ps-page">${section('Equipo', gear(s))}${section('Compañeros', companions(s))}${s.notes ? section('Notas', `<p class="ps-line ps-notes">${e(s.notes)}</p>`) : ''}<p class="ps-note">Cuaderno de aventura · ${e(new Date().toLocaleDateString('es-AR'))}</p></div>`;
+    }<div class="ps-page">${section('Equipo', gear(s))}${section('Compañeros', companions(s))}${section('Personalidad e historia', Persona.printHtml(s))}${s.notes ? section('Notas', `<p class="ps-line ps-notes">${e(s.notes)}</p>`) : ''}<p class="ps-note">Cuaderno de aventura · ${e(new Date().toLocaleDateString('es-AR'))}</p></div>`;
   }
   function open() {
     let el = document.getElementById('print-sheet');

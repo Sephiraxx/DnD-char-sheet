@@ -9,7 +9,28 @@
     mount: 'Montura',
     pet: 'Mascota',
     ally: 'Aliado',
+    sidekick: 'Secuaz',
   };
+  // Secuaces de Tasha: una criatura de VD 1/2 o menos que gana niveles en una de tres clases.
+  const SIDEKICKS = { warrior: 'Guerrero', expert: 'Experto', spellcaster: 'Lanzador de conjuros' };
+  const SIDEKICK_ASI = {
+    warrior: [4, 8, 12, 14, 16, 19],
+    expert: [4, 8, 10, 12, 16, 19],
+    spellcaster: [4, 8, 12, 16, 18],
+  };
+  function sidekick(c) {
+    if (c?.kind !== 'sidekick' || !c.side) return null;
+    const level = c.side.level,
+      asi = SIDEKICK_ASI[c.side.cls] || [];
+    return {
+      cls: c.side.cls,
+      className: SIDEKICKS[c.side.cls],
+      level,
+      prof: 2 + Math.floor((level - 1) / 4),
+      nextAsi: asi.find(l => l > level) || null,
+      asiNow: asi.includes(level),
+    };
+  }
   const uid = () => 'cmp-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const speedEs = t =>
     String(t || '')
@@ -210,6 +231,11 @@
       )
         bad();
       if (full && (!txt(c.id, 100) || !Object.hasOwn(KINDS, c.kind) || !txt(c.notes || '', 2000))) bad();
+      if (
+        c.side !== undefined &&
+        (!c.side || typeof c.side !== 'object' || !Object.hasOwn(SIDEKICKS, c.side.cls) || !int(c.side.level, 1, 20))
+      )
+        bad();
       if (c.ab !== undefined && (!Array.isArray(c.ab) || c.ab.length !== 6 || c.ab.some(v => !int(v, 1, 30)))) bad();
       for (const k of ['skills', 'saves'])
         if (
@@ -230,6 +256,8 @@
 
   root.Companions = {
     KINDS,
+    SIDEKICKS,
+    sidekick,
     uid,
     speedEs,
     attacksOf,
