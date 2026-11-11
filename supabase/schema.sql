@@ -790,6 +790,8 @@ end $$;
 -- ---------- Encuentros preparados en el tablero (migración 010) ----------
 -- «enc:<encuentro>:<criatura>»: ficha preparada. Al lanzar el encuentro se vincula con su criatura del combate.
 alter table public.map_tokens add column if not exists stage text check (stage is null or char_length(stage) <= 120);
+-- Altura sobre el suelo, en pies (migración 016).
+alter table public.map_tokens add column if not exists elev int not null default 0 check (elev between -1000 and 10000);
 create index if not exists map_tokens_stage on public.map_tokens (campaign_id, stage) where stage is not null;
 
 -- Si la criatura sale del combate, la ficha preparada vuelve a esperar (no se borra).
