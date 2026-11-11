@@ -283,12 +283,14 @@ function draw() {
     ${savesCard()}
     ${initiativeCard(t)}
     ${typeof Encounters !== 'undefined' ? Encounters.card() : ''}
+    ${typeof DmTools !== 'undefined' ? DmTools.tools() : ''}
   </div><div class="stack dm-side">
     ${typeof Sessions !== 'undefined' ? Sessions.card() : ''}
     ${typeof LibraryUI !== 'undefined' ? LibraryUI.card() : ''}
-    ${typeof DmTools !== 'undefined' ? DmTools.card() : ''}
-    ${TableExtras.dmHtml(party)}
     <section class="card"><div class="card-header"><h2>Notas del DM</h2></div><label class="field"><span class="visually-hidden">Notas privadas</span><textarea id="dm-notes" style="min-height:160px" placeholder="Solo se guardan en este dispositivo.">${esc(localStorage.getItem(notesKey()) || '')}</textarea></label></section>
+  </div><div class="stack dm-wide">
+    ${typeof DmTools !== 'undefined' ? DmTools.chronicle() : ''}
+    <div class="dm-pair">${TableExtras.dmHtml(party)}</div>
   </div></div>`;
   globalThis.Board?.refresh();
 }

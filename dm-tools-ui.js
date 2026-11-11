@@ -377,11 +377,14 @@ const DmTools = (() => {
       `<b>${esc(m.effects[a[0] % m.effects.length])}</b> <span class="muted">(${m.length})</span>`;
   }
 
-  function card() {
+  // Crónica: tarjeta ancha de la columna principal (fecha, misiones y actividades lado a lado).
+  function chronicle() {
     const st = settings();
-    return `<section class="card chronicle-card"><div class="card-header"><h2>Crónica</h2></div>${calendarHtml(st)}${questsHtml(st)}${downtimeHtml(st)}</section>
-    <section class="card"><div class="card-header"><h2>Tesoro y tienda</h2></div><div class="actions">${button('Generar tesoro', 'treasure', '')}${button('Tienda y precios', 'shop')}</div></section>
-    <section class="card"><div class="card-header"><h2>Referencia rápida</h2></div><div class="actions">${Object.entries(
+    return `<section class="card chronicle-card"><div class="card-header"><h2>Crónica</h2></div><div class="chronicle-grid"><div><div class="card-header chron-sub"><h3>Fecha del mundo</h3></div>${calendarHtml(st)}</div><div>${questsHtml(st)}</div><div>${downtimeHtml(st)}</div></div></section>`;
+  }
+  // Tesoro, tienda y referencia: una sola tarjeta compacta junto al combate.
+  function tools() {
+    return `<section class="card dm-toolbox"><div class="card-header"><h2>Herramientas</h2></div><div class="actions">${button('Generar tesoro', 'treasure', '')}${button('Tienda y precios', 'shop')}</div><p class="eyebrow">REFERENCIA RÁPIDA</p><div class="actions">${Object.entries(
       REF_TITLES,
     )
       .map(([k, t]) => button(t, 'dm-ref', 'secondary', `data-ref="${k}"`))
@@ -405,5 +408,5 @@ const DmTools = (() => {
     'dm-ref': el => modal(REF_TITLES[el.dataset.ref], REFS[el.dataset.ref](), null),
     'madness-roll': madnessRoll,
   });
-  return { card };
+  return { chronicle, tools };
 })();
