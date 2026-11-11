@@ -60,3 +60,36 @@ test('los textos de los libros llegan después y quedan igual que cargados al in
   assert.match(html('compendium.html'), /shared-reference-text\.js/);
   assert.match(html('sw.js'), /'\.\/shared-reference-text\.js'/);
 });
+
+test('la ficha, el DM y el tablero abren sin los textos de reglas y conjuros; el catálogo los trae', () => {
+  for (const f of ['index.html', 'dm.html', 'board.html']) assert.doesNotMatch(html(f), /official-text-data\.js/, f);
+  const c = html('compendium.html');
+  assert.ok(c.indexOf('official-text-data.js') > c.indexOf('official-content-data.js'));
+  assert.ok(c.indexOf('official-text-data.js') < c.indexOf('official-content.js'));
+  assert.match(html('sw.js'), /'\.\/official-text-data\.js'/);
+  assert.ok(fs.statSync(path.join(ROOT, 'official-content-data.js')).size < 1.5e6);
+  assert.doesNotMatch(html('dm.html'), /encounter-tables-data\.js/);
+});
+
+test('los textos de reglas y conjuros, cargados después y en cualquier orden, quedan igual', () => {
+  const late = ['official-text-data.js', 'shared-reference-text.js'],
+    eager = load(),
+    snap = c =>
+      JSON.stringify([
+        [...c.OfficialContent.ruleTexts].sort((a, b) => (a[0] < b[0] ? -1 : 1)),
+        [...c.OfficialContent.spellTexts].sort((a, b) => (a[0] < b[0] ? -1 : 1)),
+        c.Catalog.spells.map(s => [s.id, s.ritual]),
+        c.BookContentData.official.rules,
+      ]),
+    want = snap(eager);
+  for (const order of [late, late.slice().reverse()]) {
+    const lazy = load(LOGIC.filter(f => !late.includes(f)));
+    // Antes de llegar: los conjuros ya están elegidos, sin texto; las reglas, vacías.
+    assert.equal(lazy.OfficialContent.spellTexts.size, eager.OfficialContent.spellTexts.size);
+    assert.equal(lazy.OfficialContent.ruleTexts.size, 0);
+    for (const f of order) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), lazy);
+    assert.equal(snap(lazy), want);
+    lazy.OfficialContent.applyLongTexts();
+    assert.equal(snap(lazy), want);
+  }
+});

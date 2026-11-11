@@ -19,6 +19,7 @@ const LOGIC = [
   'book-content-data.js',
   'book-content.js',
   'official-content-data.js',
+  'official-text-data.js',
   'official-monsters-data.js',
   'shared-spell-data.js',
   'shared-reference-data.js',
@@ -38,6 +39,11 @@ const LOGIC = [
   'grant-data.js',
   'grants.js',
   'defenses.js',
+  'persona.js',
+  'surge.js',
+  'chronicle.js',
+  'shop.js',
+  'dm-reference.js',
   'creation-skills.js',
 ];
 

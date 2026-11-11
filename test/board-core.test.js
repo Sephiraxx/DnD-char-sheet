@@ -236,3 +236,53 @@ test('movimiento del turno: costo, terreno difícil, límite y volver atrás', (
   assert.equal(r.used, 0, 'volver al inicio devuelve el movimiento');
   assert.equal(r.pts.length, 1);
 });
+
+test('áreas de efecto: esfera, cono, línea y cubo cubren las casillas esperadas', () => {
+  const g = B.normGrid({ cols: 20, rows: 20 });
+  // Radio de 20 pies desde una intersección: 4 casillas hacia cada lado.
+  const circle = B.templateCells(g, { kind: 'circle', x: 10, y: 10, feet: 20 });
+  assert.equal(circle.length, 52);
+  assert.ok(circle.every(([x, y]) => Math.hypot(x + 0.5 - 10, y + 0.5 - 10) <= 4));
+  // Cono de 15 pies hacia la derecha: se abre, no toca detrás del origen.
+  const cone = B.templateCells(g, { kind: 'cone', x: 10, y: 10.5, dir: 0, feet: 15 });
+  assert.ok(cone.every(([x]) => x >= 10 && x <= 12));
+  assert.ok(cone.some(([x, y]) => x === 12 && y === 9) && cone.some(([x, y]) => x === 12 && y === 11));
+  // Línea de 30 × 5 pies: seis casillas en fila.
+  assert.deepEqual(
+    B.templateCells(g, { kind: 'line', x: 10, y: 10.5, dir: 0, feet: 30, width: 5 }),
+    [10, 11, 12, 13, 14, 15].map(x => [x, 10]),
+  );
+  assert.equal(B.templateCells(g, { kind: 'cube', x: 10, y: 10, dir: 0, feet: 10 }).length, 4);
+  const hits = B.templateHits(g, { kind: 'circle', x: 10, y: 10, feet: 10 }, [
+    { name: 'a', x: 9, y: 9, size: 1 },
+    { name: 'b', x: 15, y: 15, size: 1 },
+    { name: 'grande', x: 12, y: 9, size: 2 },
+  ]);
+  assert.deepEqual(
+    hits.map(t => t.name),
+    ['a'],
+  );
+});
+
+test('línea de visión: los muros tapan, las aberturas dejan ver y la oscuridad limita el alcance', () => {
+  const g = B.normGrid({ cols: 20, rows: 12 });
+  let t = '.'.repeat(240).split('');
+  for (let y = 0; y < 12; y++) if (y !== 5) t[y * 20 + 10] = '#';
+  t = t.join('');
+  const v = B.visibleCells(g, t, [], [{ x: 5.5, y: 5.5, range: Infinity }]),
+    at = (x, y) => v[y * 20 + x];
+  assert.equal(at(3, 2), 1); // mismo cuarto
+  assert.equal(at(10, 2), 1); // la cara del muro se ve
+  assert.equal(at(15, 5), 1); // por la abertura
+  assert.equal(at(15, 1), 0); // detrás del muro
+  // Pared importada (segmento) entre el observador y el fondo.
+  const w = B.visibleCells(g, '.'.repeat(240), [[8, 0, 8, 12, 0]], [{ x: 5.5, y: 5.5, range: Infinity }]);
+  assert.equal(w[5 * 20 + 7], 1);
+  assert.equal(w[5 * 20 + 9], 0);
+  // A oscuras: solo hasta el alcance.
+  const d = B.visibleCells(g, '.'.repeat(240), [], [{ x: 5.5, y: 5.5, range: 2 }]);
+  assert.equal(d[5 * 20 + 7], 1);
+  assert.equal(d[5 * 20 + 9], 0);
+  assert.equal(B.normGrid({ vision: { los: true, light: 9999 } }).vision.light, 600);
+  assert.equal(B.distance3d({ x: 0, y: 0, size: 1, elev: 30 }, { x: 2, y: 0, size: 1 }), 30);
+});

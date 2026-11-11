@@ -67,8 +67,34 @@ const CompanionsUI = (() => {
       )
       .join('');
   }
+  function sideLine(c) {
+    const k = K.sidekick(c);
+    return k
+      ? `<p class="small"><b>${esc(k.className)} de nivel ${k.level}</b> · competencia +${k.prof}${k.asiNow ? ' · en este nivel mejora una característica' : k.nextAsi ? ' · mejora de característica al nivel ' + k.nextAsi : ''}</p>`
+      : '';
+  }
+  // Secuaz: al subir de nivel gana un Dado de Golpe (según su tamaño) y los rasgos de su clase en el libro de Tasha.
+  function sideLevel(id) {
+    const c = state.companions.find(x => x.id === id),
+      k = K.sidekick(c);
+    if (!k || k.level >= 20) throw Error('Ese secuaz no puede subir más.');
+    modal(
+      `${c.name}: nivel ${k.level + 1}`,
+      `<p class="small">Sumá un Dado de Golpe del tamaño de la criatura (d6 Pequeña, d8 Mediana, d10 Grande) más su modificador de Constitución. Los rasgos del nivel están en el Caldero de Tasha.</p>${field('PG que gana', 'gain', 5, 'number', 'min="1" max="40" required')}`,
+      fd => {
+        const gain = Math.max(1, Math.min(40, Math.trunc(Number(fd.get('gain')) || 1)));
+        commit(`${c.name} sube a nivel ${k.level + 1}`, s => {
+          const x = s.companions.find(y => y.id === id);
+          x.side.level++;
+          x.maxHp = Math.min(9999, x.maxHp + gain);
+          x.hp = Math.min(x.maxHp, x.hp + gain);
+        });
+      },
+      'Subir de nivel',
+    );
+  }
   function block(c, { combat = false } = {}) {
-    return `<article class="cmp ${c.hp === 0 ? 'down' : ''}"><div class="cmp-head"><div><p class="eyebrow">${esc(K.KINDS[c.kind] || 'Compañero')}</p><h3>${esc(c.name)}</h3></div><div class="cmp-stats"><button type="button" class="cc-stat cmp-hp" data-action="cmp-hp" data-id="${esc(c.id)}"><b>${c.hp}<small>/${c.maxHp}</small></b><span>PG</span></button><div class="cc-stat"><b>${c.ac}</b><span>CA</span></div></div></div>${c.speed ? `<p class="small muted">${esc(c.speed)}</p>` : ''}${attackButtons('cmp', c.id, c.attacks)}${!combat && c.notes ? `<p class="small">${esc(c.notes)}</p>` : ''}${combat ? '' : `<div class="actions">${button('Editar', 'cmp-edit', 'secondary', `data-id="${esc(c.id)}"`)}${button('Quitar', 'cmp-remove', 'secondary', `data-id="${esc(c.id)}"`)}</div>`}</article>`;
+    return `<article class="cmp ${c.hp === 0 ? 'down' : ''}"><div class="cmp-head"><div><p class="eyebrow">${esc(K.KINDS[c.kind] || 'Compañero')}</p><h3>${esc(c.name)}</h3></div><div class="cmp-stats"><button type="button" class="cc-stat cmp-hp" data-action="cmp-hp" data-id="${esc(c.id)}"><b>${c.hp}<small>/${c.maxHp}</small></b><span>PG</span></button><div class="cc-stat"><b>${c.ac}</b><span>CA</span></div></div></div>${sideLine(c)}${c.speed ? `<p class="small muted">${esc(c.speed)}</p>` : ''}${attackButtons('cmp', c.id, c.attacks)}${!combat && c.notes ? `<p class="small">${esc(c.notes)}</p>` : ''}${combat ? '' : `<div class="actions">${K.sidekick(c) && c.side.level < 20 ? button('Subir de nivel', 'cmp-side-level', 'secondary', `data-id="${esc(c.id)}"`) : ''}${button('Editar', 'cmp-edit', 'secondary', `data-id="${esc(c.id)}"`)}${button('Quitar', 'cmp-remove', 'secondary', `data-id="${esc(c.id)}"`)}</div>`}</article>`;
   }
   // Tarjeta de Diario.
   function card() {
@@ -152,7 +178,7 @@ const CompanionsUI = (() => {
     const atk = c?.attacks?.[0];
     modal(
       c ? 'Editar compañero' : 'Compañero propio',
-      `${field('Nombre', 'name', c?.name || '', 'text', 'required maxlength="100"')}<div class="form-grid">${select('Tipo', 'kind', Object.entries(K.KINDS), c?.kind || 'familiar')}${field('CA', 'ac', c?.ac ?? 12, 'number', 'min="0" max="40" required')}${field('PG máximos', 'maxHp', c?.maxHp ?? 5, 'number', 'min="1" max="9999" required')}${field('Velocidad', 'speed', c?.speed || '30 pies', 'text', 'maxlength="100"')}${field('Ataque principal', 'atkName', atk?.name || '', 'text', 'maxlength="60" placeholder="Mordisco"')}${field('Bono de ataque', 'atkBonus', atk?.bonus ?? 4, 'number', 'min="-10" max="30"')}${field('Daño', 'atkDamage', atk?.damage || '', 'text', 'maxlength="60" placeholder="1d6+2 perforante"')}</div><label class="field">Notas<textarea name="notes" maxlength="2000">${esc(c?.notes || '')}</textarea></label>`,
+      `${field('Nombre', 'name', c?.name || '', 'text', 'required maxlength="100"')}<div class="form-grid">${select('Tipo', 'kind', Object.entries(K.KINDS), c?.kind || 'familiar')}${select('Clase de secuaz (solo secuaces)', 'sideCls', [['', 'No es secuaz'], ...Object.entries(K.SIDEKICKS)], c?.side?.cls || '')}${field('Nivel de secuaz', 'sideLevel', c?.side?.level ?? 1, 'number', 'min="1" max="20"')}${field('CA', 'ac', c?.ac ?? 12, 'number', 'min="0" max="40" required')}${field('PG máximos', 'maxHp', c?.maxHp ?? 5, 'number', 'min="1" max="9999" required')}${field('Velocidad', 'speed', c?.speed || '30 pies', 'text', 'maxlength="100"')}${field('Ataque principal', 'atkName', atk?.name || '', 'text', 'maxlength="60" placeholder="Mordisco"')}${field('Bono de ataque', 'atkBonus', atk?.bonus ?? 4, 'number', 'min="-10" max="30"')}${field('Daño', 'atkDamage', atk?.damage || '', 'text', 'maxlength="60" placeholder="1d6+2 perforante"')}</div><label class="field">Notas<textarea name="notes" maxlength="2000">${esc(c?.notes || '')}</textarea></label>`,
       fd => {
         const num = (k, a, b) => Math.max(a, Math.min(b, Math.trunc(Number(fd.get(k)) || 0)));
         const name = String(fd.get('name')).trim(),
@@ -178,6 +204,12 @@ const CompanionsUI = (() => {
           attacks: c ? [...attack, ...c.attacks.slice(1)] : attack,
           notes: String(fd.get('notes') || '').trim(),
         };
+        delete next.side;
+        if (next.kind === 'sidekick')
+          next.side = {
+            cls: Object.hasOwn(K.SIDEKICKS, fd.get('sideCls')) ? String(fd.get('sideCls')) : 'warrior',
+            level: num('sideLevel', 1, 20),
+          };
         commit((c ? 'Compañero editado: ' : 'Compañero: ') + name, s => {
           s.companions = c ? s.companions.map(x => (x.id === c.id ? next : x)) : [...(s.companions || []), next];
         });
@@ -222,6 +254,7 @@ const CompanionsUI = (() => {
       'cmp-pick': e => addFromMonster(e.dataset.id),
       'cmp-custom': () => edit(''),
       'cmp-edit': e => edit(e.dataset.id),
+      'cmp-side-level': e => sideLevel(e.dataset.id),
       'cmp-remove': e => {
         const c = state.companions.find(x => x.id === e.dataset.id);
         commit('Compañero quitado: ' + c.name, s => (s.companions = s.companions.filter(x => x.id !== c.id)));

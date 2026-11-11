@@ -40,6 +40,13 @@
       show: g.show !== false,
       color: typeof g.color === 'string' && /^#[0-9a-f]{6}$/i.test(g.color) ? g.color : '#000000',
       opacity: Math.max(0, Math.min(1, g.opacity ?? 0.35)),
+      // Visión: los = los jugadores solo ven lo que sus personajes tienen a la vista; dark = mapa a oscuras
+      // (se ve hasta la luz que lleva la party, o hasta la visión en la oscuridad de cada uno).
+      vision: {
+        los: g.vision?.los === true,
+        dark: g.vision?.dark === true,
+        light: Math.max(0, Math.min(600, Math.round(Number(g.vision?.light ?? 40)) || 0)),
+      },
     };
   }
   const inside = (g, x, y) => x >= 0 && y >= 0 && x < g.cols && y < g.rows;
@@ -479,6 +486,145 @@
     pathCost,
     moveTo,
   };
+  // ---------- Áreas de efecto ----------
+  // Plantilla: { kind: 'circle' | 'cone' | 'line' | 'cube', x, y (origen, en casillas), dir (radianes), feet, width (pies, líneas) }.
+  // Devuelve las casillas cuyo centro queda dentro. El cono mide tan ancho como largo (53° de apertura).
+  const SHAPES = { circle: 'Esfera o radio', cone: 'Cono', line: 'Línea', cube: 'Cubo' };
+  const CONE_HALF = Math.atan(0.5);
+  function templateCells(g, t) {
+    const len = Math.max(0, t.feet / g.feet),
+      out = [];
+    if (!len) return out;
+    const cos = Math.cos(t.dir || 0),
+      sin = Math.sin(t.dir || 0),
+      half = Math.max(g.feet, t.width || g.feet) / g.feet / 2,
+      x0 = Math.max(0, Math.floor(t.x - len - 1)),
+      x1 = Math.min(g.cols - 1, Math.ceil(t.x + len + 1)),
+      y0 = Math.max(0, Math.floor(t.y - len - 1)),
+      y1 = Math.min(g.rows - 1, Math.ceil(t.y + len + 1)),
+      eps = 1e-6;
+    for (let y = y0; y <= y1; y++)
+      for (let x = x0; x <= x1; x++) {
+        const dx = x + 0.5 - t.x,
+          dy = y + 0.5 - t.y,
+          along = dx * cos + dy * sin, // distancia a lo largo de la dirección
+          side = Math.abs(-dx * sin + dy * cos), // distancia hacia el costado
+          dist = Math.hypot(dx, dy);
+        let hit = false;
+        if (t.kind === 'circle') hit = dist <= len + eps;
+        else if (t.kind === 'cone') hit = along > eps && dist <= len + eps && side <= along * Math.tan(CONE_HALF) + eps;
+        else if (t.kind === 'line') hit = along > -eps && along <= len + eps && side <= half + eps;
+        else if (t.kind === 'cube') hit = along > -eps && along <= len + eps && side <= len / 2 + eps;
+        if (hit) out.push([x, y]);
+      }
+    return out;
+  }
+  // Contorno de la plantilla, en casillas, para dibujarla.
+  function templateOutline(g, t) {
+    const len = t.feet / g.feet,
+      cos = Math.cos(t.dir || 0),
+      sin = Math.sin(t.dir || 0),
+      at = (a, s) => [t.x + a * cos - s * sin, t.y + a * sin + s * cos];
+    if (t.kind === 'circle')
+      return Array.from({ length: 48 }, (_, i) => [
+        t.x + len * Math.cos((i * Math.PI) / 24),
+        t.y + len * Math.sin((i * Math.PI) / 24),
+      ]);
+    if (t.kind === 'cone') {
+      const pts = [[t.x, t.y]];
+      for (let i = 0; i <= 12; i++) {
+        const a = (t.dir || 0) - CONE_HALF + (i * 2 * CONE_HALF) / 12;
+        pts.push([t.x + len * Math.cos(a), t.y + len * Math.sin(a)]);
+      }
+      return pts;
+    }
+    const half = t.kind === 'cube' ? len / 2 : Math.max(g.feet, t.width || g.feet) / g.feet / 2;
+    return [at(0, -half), at(len, -half), at(len, half), at(0, half)];
+  }
+  // Fichas tocadas por la plantilla (alguna de sus casillas cae dentro).
+  function templateHits(g, t, tokens) {
+    const set = new Set(templateCells(g, t).map(([x, y]) => x + ',' + y));
+    return tokens.filter(k => {
+      const n = Math.max(1, Math.round(k.size || 1));
+      for (let dy = 0; dy < n; dy++)
+        for (let dx = 0; dx < n; dx++) if (set.has(Math.round(k.x) + dx + ',' + (Math.round(k.y) + dy))) return true;
+      return false;
+    });
+  }
+
+  // ---------- Línea de visión ----------
+  // Segmentos que tapan la vista: paredes importadas y los bordes de las casillas de muro, roca o puerta.
+  function sightBlockers(g, terrain = '', walls = []) {
+    const segs = walls.map(w => [w[0], w[1], w[2], w[3]]);
+    const solid = (x, y) => inside(g, x, y) && !!terrainType(terrain[y * g.cols + x] || '.').blocks;
+    for (let y = 0; y < g.rows; y++)
+      for (let x = 0; x < g.cols; x++) {
+        if (!solid(x, y)) continue;
+        if (!solid(x, y - 1)) segs.push([x, y, x + 1, y]);
+        if (!solid(x, y + 1)) segs.push([x, y + 1, x + 1, y + 1]);
+        if (!solid(x - 1, y)) segs.push([x, y, x, y + 1]);
+        if (!solid(x + 1, y)) segs.push([x + 1, y, x + 1, y + 1]);
+      }
+    return segs;
+  }
+  // Casillas visibles desde los observadores [{ x, y (centro, en casillas), range (casillas; Infinity = sin límite) }].
+  // Un muro se ve (su cara), pero no lo que hay detrás.
+  function visibleCells(g, terrain, walls, viewers) {
+    const vis = new Uint8Array(g.cols * g.rows),
+      segs = sightBlockers(g, terrain, walls);
+    for (const v of viewers) {
+      const r = Number.isFinite(v.range) ? v.range : Math.max(g.cols, g.rows) * 2,
+        x0 = Math.max(0, Math.floor(v.x - r)),
+        x1 = Math.min(g.cols - 1, Math.ceil(v.x + r)),
+        y0 = Math.max(0, Math.floor(v.y - r)),
+        y1 = Math.min(g.rows - 1, Math.ceil(v.y + r));
+      // Solo los segmentos cercanos al observador.
+      const near = segs.filter(
+        s =>
+          Math.max(s[0], s[2]) >= x0 - 1 &&
+          Math.min(s[0], s[2]) <= x1 + 2 &&
+          Math.max(s[1], s[3]) >= y0 - 1 &&
+          Math.min(s[1], s[3]) <= y1 + 2,
+      );
+      for (let y = y0; y <= y1; y++)
+        for (let x = x0; x <= x1; x++) {
+          const i = y * g.cols + x;
+          if (vis[i]) continue;
+          const cx = x + 0.5,
+            cy = y + 0.5;
+          if (Math.hypot(cx - v.x, cy - v.y) > r + 0.5) continue;
+          // Una casilla abierta se ve si se ve su centro; un muro, si se ve alguna de sus caras.
+          const targets = terrainType(terrain[i] || '.').blocks
+            ? [
+                [cx - 0.51, cy],
+                [cx + 0.51, cy],
+                [cx, cy - 0.51],
+                [cx, cy + 0.51],
+              ]
+            : [[cx, cy]];
+          let blocked = true;
+          for (const [tx, ty] of targets) {
+            let hit = false;
+            for (const s of near)
+              if (crosses(v.x, v.y, tx, ty, s[0], s[1], s[2], s[3])) {
+                hit = true;
+                break;
+              }
+            if (!hit) {
+              blocked = false;
+              break;
+            }
+          }
+          if (!blocked) vis[i] = 1;
+        }
+    }
+    return vis;
+  }
+  // Distancia en pies contando la altura (misma regla que las diagonales: vale el tramo más largo).
+  const distance3d = (a, b, feetPerSquare = 5) =>
+    Math.max(gap(a, b) * feetPerSquare, Math.abs((a.elev || 0) - (b.elev || 0)));
+
+  Object.assign(api, { SHAPES, templateCells, templateOutline, templateHits, sightBlockers, visibleCells, distance3d });
   if (typeof module !== 'undefined') module.exports = api;
   root.BoardCore = api;
 })(typeof window !== 'undefined' ? window : globalThis);

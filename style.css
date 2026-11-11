@@ -2105,3 +2105,61 @@ dialog::backdrop {
     display: none;
   }
 }
+/* Personalidad e historia */
+.persona-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.persona-chips {
+  max-height: 14rem;
+  overflow: auto;
+}
+/* Crónica, tesoro, tienda y referencia del DM */
+.chron-date {
+  font-size: 1.1rem;
+}
+.chron-sub {
+  margin-top: 1rem;
+}
+.chron-sub h3 {
+  margin: 0;
+}
+.quest.done b,
+.quest.failed b {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+.chronicle-card progress {
+  width: 100%;
+  height: 0.5rem;
+}
+.shop-list {
+  max-height: 50vh;
+  overflow: auto;
+}
+.shop-price {
+  white-space: nowrap;
+  font-weight: 600;
+}
+.table-scroll {
+  overflow-x: auto;
+}
+.ref-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.ref-table th,
+.ref-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+}
+.chronicle-card .chip {
+  display: inline-block;
+  white-space: nowrap;
+}
+.chronicle-card .list-row {
+  flex-wrap: wrap;
+}

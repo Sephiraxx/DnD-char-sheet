@@ -1267,6 +1267,8 @@ if (typeof Metamagic !== 'undefined') Metamagic.install(actions);
 if (typeof Cannon !== 'undefined') Cannon.install(actions);
 CompanionsUI.install();
 PrintSheet.install();
+Persona.install();
+Surge.install();
 document.addEventListener('click', e => {
   if (e.target.closest('[data-close]')) {
     $('#modal').close();

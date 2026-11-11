@@ -43,6 +43,8 @@
     drag: null,
     remote: new Map(), // arrastres de otros: id → {x, y}
     pings: [],
+    templates: [], // áreas de efecto a la vista (no se guardan: viajan por el canal en vivo)
+    area: { kind: 'circle', feet: 20, width: 5 },
     channel: null,
     follow: TV,
     pending: {},
@@ -184,6 +186,7 @@
 
   async function openMap(id) {
     S.mapId = id;
+    S.templates = [];
     S.sel = null;
     S.fitted = false;
     S.touched = false;
@@ -396,6 +399,9 @@
     if (m.t === 'drop') S.remote.delete(m.id);
     if (m.t === 'moved') setTimeout(() => onMoved(m), 300); // espera que llegue la posición final
     if (m.t === 'ping' && m.map === S.mapId) addPing(m.x, m.y, m.color, m.name);
+    if (m.t === 'tpl' && m.map === S.mapId && m.tpl) addTemplate(m.tpl);
+    if (m.t === 'tpl-clear' && m.map === S.mapId)
+      S.templates = S.templates.filter(t => (m.all ? false : t.by !== m.by));
     if (m.t === 'refresh' && !S.isDM) reload();
     if (m.t === 'view' && S.follow && m.map === S.mapId) fitRect(m.x, m.y, m.w, m.h);
     S.dirty = true;
@@ -470,6 +476,12 @@
     S.dirty = true;
   }
   const toWorld = (sx, sy) => ({ x: (sx - S.view.x) / S.view.s, y: (sy - S.view.y) / S.view.s });
+  // Posición en casillas, con decimales.
+  const toCellF = w => {
+    const o = origin(),
+      c = cellPx();
+    return { x: (w.x - o.x) / c, y: (w.y - o.y) / c };
+  };
   const toCell = w => {
     const o = origin(),
       c = cellPx();
@@ -550,15 +562,17 @@
     return img.complete && img.naturalWidth ? img : null;
   }
   function visibleTokens() {
-    const mine = myCharacters();
+    const mine = myCharacters(),
+      bits = playerView() ? seen() : null;
     return mapTokens().filter(t => {
       if (!playerView()) return true;
       if (t.hidden) return false;
-      if (!S.fogOn || mine.includes(t.character_id)) return true;
-      // En la niebla no se ven las fichas (salvo las propias).
+      if (mine.includes(t.character_id) || t.kind === 'pc') return true;
+      // En la niebla, o fuera de la vista de la party, no se ven las fichas.
       const c = Math.round(t.x + (t.size - 1) / 2),
         r = Math.round(t.y + (t.size - 1) / 2);
-      return BC.isRevealed(S.grid, S.fog, c, r);
+      if (!isSeen(bits, c, r)) return false;
+      return !S.fogOn || BC.isRevealed(S.grid, S.fog, c, r);
     });
   }
   function draw() {
@@ -571,7 +585,7 @@
       o = origin(),
       g = S.grid;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = playerView() && S.fogOn ? '#05090b' : '#071014';
+    ctx.fillStyle = playerView() && (S.fogOn || S.grid.vision?.los) ? '#05090b' : '#071014';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (!S.mapId) return requestAnimationFrame(draw);
     ctx.setTransform(dpr * S.view.s, 0, 0, dpr * S.view.s, dpr * S.view.x, dpr * S.view.y);
@@ -620,6 +634,9 @@
         ctx.stroke();
       }
     }
+    // Áreas de efecto (debajo de las fichas)
+    for (const t of S.templates) drawTemplate(t);
+    if (S.drag?.area) drawTemplate({ ...S.drag.area, ...whoAmI() }, true);
     // Fichas
     const list = visibleTokens().sort((a, b) => (a.kind === 'object' ? -1 : 0) - (b.kind === 'object' ? -1 : 0));
     for (const t of list) drawToken(t);
@@ -636,6 +653,24 @@
       ctx.fill();
       // Fuera de la cuadrícula también se cubre para los jugadores.
       if (playerView() && S.img) {
+        ctx.fillRect(-w, -h, w * 3, h + o.y);
+        ctx.fillRect(-w, o.y + g.rows * c, w * 3, h * 2);
+        ctx.fillRect(-w, 0, w + o.x, h);
+        ctx.fillRect(o.x + g.cols * c, 0, w * 2, h);
+      }
+    }
+    // Línea de visión: lo que la party no tiene a la vista (opaco para jugadores, velado para el DM).
+    const bits = seen();
+    if (bits) {
+      const solid = playerView(),
+        pad = solid ? 0.5 : 0;
+      ctx.fillStyle = solid ? '#05090b' : 'rgba(5,9,11,0.45)';
+      ctx.beginPath();
+      for (let y = y0; y <= y1; y++)
+        for (let x = x0; x <= x1; x++)
+          if (!bits[y * g.cols + x]) ctx.rect(o.x + x * c - pad, o.y + y * c - pad, c + pad * 2, c + pad * 2);
+      ctx.fill();
+      if (solid && S.img && !S.fogOn) {
         ctx.fillRect(-w, -h, w * 3, h + o.y);
         ctx.fillRect(-w, o.y + g.rows * c, w * 3, h * 2);
         ctx.fillRect(-w, 0, w + o.x, h);
@@ -837,6 +872,18 @@
       ctx.arc(cx + rad * 0.75 - i * c * 0.14, cy - rad * 0.8, c * 0.07, 0, Math.PI * 2);
       ctx.fill();
     });
+    // Altura: etiqueta abajo a la izquierda.
+    if (t.elev) {
+      const txt = (t.elev > 0 ? '↑' : '↓') + Math.abs(t.elev);
+      ctx.font = `700 ${c * 0.2}px Inter, system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const wE = ctx.measureText(txt).width + c * 0.1;
+      ctx.fillStyle = '#12324a';
+      ctx.fillRect(cx - rad, cy + rad * 0.45, wE, c * 0.26);
+      ctx.fillStyle = '#cfe9ff';
+      ctx.fillText(txt, cx - rad + wE / 2, cy + rad * 0.45 + c * 0.13);
+    }
     // Nombre debajo cuando hay espacio.
     if (S.view.s * c > 34) {
       ctx.font = `600 ${c * 0.2}px Inter, system-ui, sans-serif`;
@@ -1037,7 +1084,12 @@
       }, 550);
     } else if (tool === 'ruler') S.drag = { ruler: { a: cell, b: cell } };
     else if (tool === 'ping') ping(w);
-    else if (tool === 'fog' && S.isDM) {
+    else if (tool === 'area') {
+      const f = toCellF(w);
+      // El origen se apoya en una intersección de la cuadrícula (o en el centro de una casilla, lo más cercano).
+      const snap = v => Math.round(v * 2) / 2;
+      S.drag = { area: { ...S.area, x: snap(f.x), y: snap(f.y), dir: 0 } };
+    } else if (tool === 'fog' && S.isDM) {
       if (S.fogMode === 'room') revealRoom(cell);
       else if (S.fogMode === 'rect' || S.fogMode === 'rect-hide') S.drag = { rect: { a: cell, b: cell }, fog: true };
       else {
@@ -1089,7 +1141,10 @@
       trackPath(d);
       sendDrag(d.token);
     } else if (d.ruler) d.ruler.b = cell;
-    else if (d.rect) d.rect.b = cell;
+    else if (d.area) {
+      const f = toCellF(w);
+      if (Math.hypot(f.x - d.area.x, f.y - d.area.y) > 0.3) d.area.dir = Math.atan2(f.y - d.area.y, f.x - d.area.x);
+    } else if (d.rect) d.rect.b = cell;
     else if (d.brush) S.tool === 'fog' ? fogBrush(cell) : paintBrush(cell);
     S.dirty = true;
   });
@@ -1107,6 +1162,7 @@
       d.free = e.shiftKey || e.altKey;
       dropToken(d);
     } else if (d?.pan && !press?.moved) tapToken(d.tap);
+    else if (d?.area) placeTemplate(d.area);
     else if (d?.rect && d.fog) {
       const cells = BC.rect(d.rect.a.x, d.rect.a.y, d.rect.b.x, d.rect.b.y);
       S.fog = BC.setFog(S.grid, S.fog, cells, S.fogMode === 'rect');
@@ -1194,6 +1250,129 @@
     }
     pick();
   }
+  // ---------- Áreas de efecto ----------
+  const whoAmI = () => {
+    const me = (S.party?.characters || []).find(c => c.owner_id === S.me?.id);
+    return S.isDM && !TV
+      ? { by: 'dm', name: 'DM', color: '#e0be80' }
+      : { by: S.me?.id || 'yo', name: me?.name || '', color: me ? BC.colorFor(me.id, 'pc') : '#7fd1c1' };
+  };
+  function cleanTemplate(t) {
+    if (!t || !Object.hasOwn(BC.SHAPES, t.kind)) return null;
+    const n = (v, min, max, def) => (Number.isFinite(Number(v)) ? Math.max(min, Math.min(max, Number(v))) : def);
+    return {
+      id: String(t.id || '').slice(0, 40) || Math.random().toString(36).slice(2),
+      kind: t.kind,
+      x: n(t.x, -50, 1000, 0),
+      y: n(t.y, -50, 1000, 0),
+      dir: n(t.dir, -7, 7, 0),
+      feet: n(t.feet, 5, 600, 20),
+      width: n(t.width, 5, 100, 5),
+      by: String(t.by || '').slice(0, 60),
+      name: String(t.name || '').slice(0, 60),
+      color: /^#[0-9a-f]{6}$/i.test(t.color) ? t.color : '#e0be80',
+    };
+  }
+  function addTemplate(raw) {
+    const t = cleanTemplate(raw);
+    if (!t) return;
+    S.templates = [...S.templates.filter(x => x.id !== t.id), t].slice(-12);
+    S.dirty = true;
+    if (S.tool === 'area') panel();
+  }
+  function placeTemplate(a) {
+    const t = cleanTemplate({
+      ...a,
+      ...whoAmI(),
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    });
+    addTemplate(t);
+    S.channel?.send({ t: 'tpl', map: S.mapId, tpl: t });
+    const hit = BC.templateHits(
+      S.grid,
+      t,
+      visibleTokens().filter(k => k.kind !== 'object'),
+    );
+    hint(hit.length ? 'En el área: ' + hit.map(k => k.name).join(', ') + '.' : 'Nadie queda dentro del área.');
+  }
+  function clearTemplates(all) {
+    const by = whoAmI().by;
+    S.templates = all ? [] : S.templates.filter(t => t.by !== by);
+    S.channel?.send({ t: 'tpl-clear', map: S.mapId, by, all: !!all });
+    S.dirty = true;
+  }
+  function drawTemplate(t, preview = false) {
+    const c = cellPx(),
+      o = origin();
+    ctx.save();
+    ctx.fillStyle = hexA(t.color || '#e0be80', preview ? 0.22 : 0.3);
+    ctx.beginPath();
+    for (const [x, y] of BC.templateCells(S.grid, t)) ctx.rect(o.x + x * c, o.y + y * c, c, c);
+    ctx.fill();
+    const pts = BC.templateOutline(S.grid, t);
+    ctx.strokeStyle = t.color || '#e0be80';
+    ctx.lineWidth = 2.5 / S.view.s;
+    if (preview) ctx.setLineDash([8 / S.view.s, 6 / S.view.s]);
+    ctx.beginPath();
+    pts.forEach(([x, y], i) => ctx[i ? 'lineTo' : 'moveTo'](o.x + x * c, o.y + y * c));
+    ctx.closePath();
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Origen y etiqueta.
+    ctx.fillStyle = t.color || '#e0be80';
+    ctx.beginPath();
+    ctx.arc(o.x + t.x * c, o.y + t.y * c, 4 / S.view.s, 0, Math.PI * 2);
+    ctx.fill();
+    const label = `${BC.SHAPES[t.kind].split(' ')[0]} ${t.feet} pies${t.name ? ' · ' + t.name : ''}`;
+    ctx.font = `600 ${13 / S.view.s}px Inter, system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    const wTxt = ctx.measureText(label).width,
+      pad = 4 / S.view.s;
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(o.x + t.x * c - wTxt / 2 - pad, o.y + t.y * c - 24 / S.view.s, wTxt + pad * 2, 17 / S.view.s);
+    ctx.fillStyle = '#f1f1e8';
+    ctx.fillText(label, o.x + t.x * c, o.y + t.y * c - 9 / S.view.s);
+    ctx.restore();
+  }
+
+  // ---------- Visión: lo que los personajes tienen a la vista ----------
+  let sight = { key: '', terrain: null, walls: null, bits: null };
+  function darkvision(t) {
+    const row = (S.party?.characters || []).find(c => c.id === t.character_id);
+    try {
+      return Number(globalThis.Campaign?.race?.(row?.data)?.darkvision) || 0;
+    } catch {
+      return 0;
+    }
+  }
+  // Casillas que ve la party (null si el mapa no usa línea de visión).
+  function seen() {
+    const v = S.grid.vision;
+    if (!v?.los) return null;
+    const viewers = mapTokens()
+      .filter(t => t.kind === 'pc' && !t.hidden)
+      .map(t => ({
+        x: t.x + (t.size || 1) / 2,
+        y: t.y + (t.size || 1) / 2,
+        range: v.dark ? Math.max(v.light, darkvision(t)) / S.grid.feet : Infinity,
+      }));
+    const key =
+      S.mapId +
+      '|' +
+      S.grid.cols +
+      'x' +
+      S.grid.rows +
+      '|' +
+      JSON.stringify(v) +
+      '|' +
+      viewers.map(p => `${p.x},${p.y},${p.range}`).join(';');
+    if (sight.key !== key || sight.terrain !== S.terrain || sight.walls !== S.walls)
+      sight = { key, terrain: S.terrain, walls: S.walls, bits: BC.visibleCells(S.grid, S.terrain, S.walls, viewers) };
+    return sight.bits;
+  }
+  const isSeen = (bits, x, y) => !bits || (BC.inside(S.grid, x, y) && bits[y * S.grid.cols + x] === 1);
+
   function ping(w) {
     const me = (S.party?.characters || []).find(c => c.owner_id === S.me?.id);
     const name = S.isDM && !TV ? 'DM' : me?.name || '';
@@ -1281,7 +1460,7 @@
       combatantId: t.combatant_id || null,
       characterId: t.character_id || null,
       name: t.name,
-      distance: BC.distanceFt(me, t, feet),
+      distance: Math.max(BC.distanceFt(me, t, feet), Math.abs((me.elev || 0) - (t.elev || 0))),
       adjacent: BC.gap(me, t) === 1,
       flank: !!ally,
       flankWith: ally?.name || '',
@@ -1478,6 +1657,7 @@
       t('move', '✋', 'Mover') +
       t('ruler', '📏', 'Medir') +
       t('ping', '📍', 'Señalar') +
+      (S.mapId ? t('area', '💥', 'Área') : '') +
       (S.isDM && S.mapId && !S.asPlayer
         ? t('fog', '🌫', 'Niebla') +
           t('paint', '🧱', 'Terreno') +
@@ -1491,6 +1671,7 @@
           : 'Arrastrá tu ficha. Mantené apretado para señalar.',
         ruler: 'Arrastrá para medir en pies.',
         ping: 'Tocá el mapa para señalar un lugar a todos.',
+        area: 'Elegí forma y tamaño. Tocá para una esfera; arrastrá desde el origen para apuntar un cono, línea o cubo.',
         fog: 'Pintá para revelar u ocultar. «Sala» revela un cuarto entero hasta sus muros.',
         paint: 'Elegí un terreno y pintá. «Sala» traza muros alrededor y rellena el piso.',
         tokens: 'Tocá una ficha para editarla.',
@@ -1542,10 +1723,40 @@
           .join('') || '<p class="small muted">Sin fichas en este mapa.</p>'
       }</div>`;
     }
+    if (S.tool === 'area') {
+      const mine = S.templates.filter(t => t.by === whoAmI().by).length;
+      html = `<div class="chips">${Object.entries(BC.SHAPES)
+        .map(([v, l]) => chip('area-kind', v, l, S.area.kind === v))
+        .join(
+          '',
+        )}</div><div class="chips"><span class="small muted">${S.area.kind === 'circle' ? 'Radio' : S.area.kind === 'cube' ? 'Lado' : 'Largo'} (pies)</span>${[
+        5, 10, 15, 20, 30, 40, 60, 90, 120,
+      ]
+        .map(n => chip('area-feet', n, n, S.area.feet === n))
+        .join(
+          '',
+        )}</div>${S.area.kind === 'line' ? `<div class="chips"><span class="small muted">Ancho</span>${[5, 10, 15].map(n => chip('area-width', n, n, S.area.width === n)).join('')}</div>` : ''}<div class="actions">${mine ? button('Borrar las mías', 'area-clear') : ''}${S.isDM && !S.asPlayer && S.templates.length ? button('Borrar todas', 'area-clear', 'secondary', 'data-all="1"') : ''}</div>${
+        S.templates.length
+          ? `<p class="small muted">${S.templates
+              .map(t => {
+                const hit = BC.templateHits(
+                  S.grid,
+                  t,
+                  visibleTokens().filter(k => k.kind !== 'object'),
+                );
+                return `${esc(BC.SHAPES[t.kind].split(' ')[0])} de ${t.feet} pies${t.name ? ' (' + esc(t.name) + ')' : ''}: ${hit.length ? esc(hit.map(k => k.name).join(', ')) : 'nadie'}`;
+              })
+              .join('<br>')}</p>`
+          : ''
+      }`;
+    }
     if (S.tool === 'enc' && S.isDM) html = encounterPanel();
     el.hidden = !html;
     // Plegable: el panel no tapa el mapa mientras pintás.
-    const title = { fog: 'Niebla', paint: 'Terreno', tokens: 'Fichas', enc: 'Encuentros preparados' }[S.tool] || '';
+    const title =
+      { fog: 'Niebla', paint: 'Terreno', tokens: 'Fichas', enc: 'Encuentros preparados', area: 'Área de efecto' }[
+        S.tool
+      ] || '';
     el.classList.toggle('min', S.panelMin);
     el.innerHTML = html
       ? `<div class="board-panel-head"><b>${title}</b><button type="button" class="icon-btn" data-action="bd-panel-min" aria-expanded="${!S.panelMin}" aria-label="${S.panelMin ? 'Mostrar opciones' : 'Plegar opciones'}">${S.panelMin ? '▴' : '▾'}</button></div>${S.panelMin ? '' : html}`
@@ -1562,6 +1773,10 @@
       dm = S.isDM && !S.asPlayer;
     el.hidden = false;
     el.innerHTML = `<div class="board-card-head"><i style="background:${esc(t.color || '#888')}">${esc(t.label)}</i><div><b>${esc(t.name)}</b><p class="small muted">${t.stage && !t.combatant_id ? 'Preparada · ' + esc(prepared().find(e => t.stage.startsWith('enc:' + e.id + ':'))?.name || 'encuentro') + ' · ' : ''}${{ pc: 'Personaje', monster: 'Criatura', npc: 'PNJ', object: 'Objeto' }[t.kind]}${d.status ? ' · ' + esc(d.status) : ''}${d.conditions.length ? ' · ' + esc(d.conditions.join(', ')) : ''}</p>${t.id === S.target ? `<p class="small board-target-line">🎯 ${targetLine(combatContext())}</p>` : ''}</div><button type="button" class="icon-btn" data-action="bd-deselect" aria-label="Cerrar">×</button></div>${
+      canMove(t) && t.kind !== 'object'
+        ? `<div class="actions">${button(t.elev ? `Altura: ${t.elev} pies` : 'Altura', 'token-elev', 'secondary', `data-id="${t.id}"`)}</div>`
+        : ''
+    }${
       dm
         ? `<div class="actions">${button(t.hidden ? 'Mostrar' : 'Ocultar', 'token-hide', 'secondary', `data-id="${t.id}"`)}${button('Tamaño −', 'token-size', 'secondary', `data-id="${t.id}" data-d="-1"`)}${button('Tamaño +', 'token-size', 'secondary', `data-id="${t.id}" data-d="1"`)}${button('Editar', 'token-edit', 'secondary', `data-id="${t.id}"`)}${button('Quitar', 'token-remove', 'danger', `data-id="${t.id}"`)}</div>`
         : ''
@@ -1610,6 +1825,11 @@
       else if (a === 'maps') return mapsDialog();
       else if (a === 'tv') return tvDialog();
       else if (a === 'go-live') await goLive(S.mapId);
+      else if (a === 'area-kind') S.area.kind = el.dataset.v;
+      else if (a === 'area-feet') S.area.feet = Number(el.dataset.v);
+      else if (a === 'area-width') S.area.width = Number(el.dataset.v);
+      else if (a === 'area-clear') clearTemplates(!!el.dataset.all);
+      else if (a === 'token-elev') return elevDialog(S.tokens.find(t => t.id === el.dataset.id));
       else if (a === 'fog-mode') S.fogMode = el.dataset.v;
       else if (a === 'radius') S.radius = Number(el.dataset.v);
       else if (a === 'fog-all' || a === 'fog-none') {
@@ -1939,7 +2159,7 @@
         m.image_path
           ? `<p class="small">Hacé coincidir la cuadrícula con la del dibujo: primero el tamaño de la casilla, después el desfase. Se ve en vivo detrás de esta ventana.</p><div class="form-grid">${field('Tamaño de casilla (px)', 'size', +g.size.toFixed(2), 'number', 'min="8" max="1000" step="0.1" data-live')}${field('Desfase X (px)', 'ox', +g.ox.toFixed(1), 'number', 'step="0.5" data-live')}${field('Desfase Y (px)', 'oy', +g.oy.toFixed(1), 'number', 'step="0.5" data-live')}</div><div class="form-grid">${field('Columnas', 'cols', g.cols, 'number', 'min="1" max="200" data-live')}${field('Filas', 'rows', g.rows, 'number', 'min="1" max="200" data-live')}</div><div class="actions">${button('Calcular columnas y filas', 'grid-auto')}</div>`
           : `<div class="form-grid">${field('Columnas', 'cols', g.cols, 'number', 'min="1" max="200"')}${field('Filas', 'rows', g.rows, 'number', 'min="1" max="200"')}</div>`
-      }<div class="form-grid">${field('Pies por casilla', 'feet', g.feet, 'number', 'min="1" max="100"')}<label class="field">Color de la cuadrícula<input type="color" name="color" value="${esc(g.color)}" data-live></label>${field('Opacidad', 'opacity', g.opacity, 'range', 'min="0" max="1" step="0.05" data-live')}</div><label class="check"><input type="checkbox" name="show" ${g.show ? 'checked' : ''} data-live>Mostrar cuadrícula</label>`,
+      }<div class="form-grid">${field('Pies por casilla', 'feet', g.feet, 'number', 'min="1" max="100"')}<label class="field">Color de la cuadrícula<input type="color" name="color" value="${esc(g.color)}" data-live></label>${field('Opacidad', 'opacity', g.opacity, 'range', 'min="0" max="1" step="0.05" data-live')}</div><label class="check"><input type="checkbox" name="show" ${g.show ? 'checked' : ''} data-live>Mostrar cuadrícula</label><fieldset class="skill-choice"><legend>Visión de los jugadores</legend><input type="hidden" name="visionForm" value="1"><label class="check"><input type="checkbox" name="los" ${g.vision.los ? 'checked' : ''}>Solo ven lo que sus personajes tienen a la vista (muros, rocas, puertas y paredes importadas tapan)</label><label class="check"><input type="checkbox" name="dark" ${g.vision.dark ? 'checked' : ''}>Mapa a oscuras: se ve hasta la luz que llevan, o hasta la visión en la oscuridad de cada uno</label>${field('Luz que lleva la party (pies)', 'light', g.vision.light, 'number', 'min="0" max="600" step="5"')}<p class="small muted">Se combina con la niebla manual. Como la niebla, se dibuja en el dispositivo de cada jugador.</p></fieldset>`,
       async fd => {
         const grid = readGrid(fd, g);
         // Cambiar columnas o filas reacomoda terreno y niebla.
@@ -1990,6 +2210,7 @@
       color: fd.get('color') || g.color,
       opacity: Number(fd.get('opacity') ?? g.opacity),
       show: fd.has('show'),
+      vision: fd.has('visionForm') ? { los: fd.has('los'), dark: fd.has('dark'), light: fd.get('light') } : g.vision,
     });
   }
   function resizeCells(m, from, to) {
@@ -2007,6 +2228,27 @@
   }
 
   // ---------- Fichas a mano: PNJ y objetos ----------
+  // Altura sobre el suelo (vuelo, cornisas, pozos): cuenta para la distancia al objetivo.
+  function elevDialog(t) {
+    if (!t) return;
+    modal(
+      'Altura de ' + t.name,
+      `${field('Pies sobre el suelo (negativo: bajo el nivel)', 'elev', t.elev || 0, 'number', 'min="-1000" max="10000" step="5" required')}<p class="small">La distancia al objetivo usa el tramo más largo entre el recorrido en el mapa y la diferencia de altura.</p>`,
+      async fd => {
+        const elev = Math.max(-1000, Math.min(10000, Math.round(Number(fd.get('elev')) || 0)));
+        try {
+          await patchToken(t, { elev });
+        } catch (err) {
+          if (/elev/.test(err.message))
+            throw Error(
+              'Falta ejecutar supabase/migrations/016_campaign_chronicle.sql en Supabase para guardar alturas.',
+            );
+          throw err;
+        }
+        ui();
+      },
+    );
+  }
   function tokenDialog(t, kind = t?.kind) {
     const isNew = !t;
     modal(

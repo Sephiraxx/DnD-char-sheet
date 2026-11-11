@@ -1002,12 +1002,14 @@
     return { fixed: unique(fixed), groups, variants, selected: unique([...fixed, ...groups.flatMap(g => g.selected)]) };
   }
   function proficiencies(s, kind) {
-    return unique(
-      sources(s)
+    // s.extraProfs: idiomas y herramientas que la ficha anota aparte (clase, DM, entrenamiento).
+    return unique([
+      ...sources(s)
         .flatMap(src => profPlan(s, src).selected)
         .filter(x => x.startsWith(kind + ':'))
         .map(x => x.slice(kind.length + 1)),
-    );
+      ...(Array.isArray(s.extraProfs?.[kind]) ? s.extraProfs[kind] : []),
+    ]);
   }
   function abilityBonuses(s) {
     if (!s.originAuto) return {};
@@ -1242,5 +1244,6 @@
     pick,
     lookup,
     matches,
+    LISTS: { languages, standard, tools, artisan, instruments, games },
   };
 })(typeof window !== 'undefined' ? window : globalThis);
