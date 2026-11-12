@@ -653,6 +653,7 @@
     // Áreas de efecto (debajo de las fichas)
     for (const t of S.templates) drawTemplate(t);
     if (S.drag?.area) drawTemplate({ ...S.drag.area, ...whoAmI() }, true);
+    drawLights();
     // Fichas
     const list = visibleTokens().sort((a, b) => (a.kind === 'object' ? -1 : 0) - (b.kind === 'object' ? -1 : 0));
     for (const t of list) drawToken(t);
@@ -921,7 +922,7 @@
     ctx.arc(cx, cy, rad, 0, Math.PI * 2);
     ctx.stroke();
     // Criatura preparada (todavía no está en combate): anillo punteado.
-    if (t.stage && !t.combatant_id) {
+    if (t.stage?.startsWith('enc:') && !t.combatant_id) {
       ctx.save();
       ctx.setLineDash([c * 0.12, c * 0.08]);
       ctx.lineWidth = 3 * (c / 70);
@@ -1435,16 +1436,28 @@
     }
   }
   // Casillas que ve la party (null si el mapa no usa línea de visión).
-  function seen() {
-    const v = S.grid.vision;
-    if (!v?.los) return null;
-    const viewers = mapTokens()
-      .filter(t => t.kind === 'pc' && !t.hidden)
+  // Fichas que dan luz en este mapa: [{ x, y (centro, en casillas), range (casillas), feet }].
+  function lightSources() {
+    return mapTokens()
+      .filter(t => !t.hidden && BC.lightFeet(t.stage))
       .map(t => ({
         x: t.x + (t.size || 1) / 2,
         y: t.y + (t.size || 1) / 2,
-        range: v.dark ? Math.max(v.light, darkvision(t)) / S.grid.feet : Infinity,
+        feet: BC.lightFeet(t.stage),
+        range: BC.lightFeet(t.stage) / S.grid.feet,
       }));
+  }
+  function seen() {
+    const v = S.grid.vision;
+    if (!v?.los) return null;
+    const lights = v.dark ? lightSources() : [],
+      viewers = mapTokens()
+        .filter(t => t.kind === 'pc' && !t.hidden)
+        .map(t => ({
+          x: t.x + (t.size || 1) / 2,
+          y: t.y + (t.size || 1) / 2,
+          range: v.dark ? Math.max(v.light, darkvision(t), BC.lightFeet(t.stage)) / S.grid.feet : Infinity,
+        }));
     const key =
       S.mapId +
       '|' +
@@ -1454,10 +1467,52 @@
       '|' +
       JSON.stringify(v) +
       '|' +
-      viewers.map(p => `${p.x},${p.y},${p.range}`).join(';');
+      viewers.map(p => `${p.x},${p.y},${p.range}`).join(';') +
+      '|' +
+      lights.map(p => `${p.x},${p.y},${p.range}`).join(';');
     if (sight.key !== key || sight.terrain !== S.terrain || sight.walls !== S.walls)
-      sight = { key, terrain: S.terrain, walls: S.walls, bits: BC.visibleCells(S.grid, S.terrain, S.walls, viewers) };
+      sight = { key, terrain: S.terrain, walls: S.walls, bits: BC.sight(S.grid, S.terrain, S.walls, viewers, lights) };
     return sight.bits;
+  }
+  // Resplandor cálido alrededor de cada luz, solo sobre las casillas que realmente alumbra.
+  const glowCache = new Map();
+  function drawLights() {
+    const lights = lightSources();
+    if (!lights.length) return;
+    const c = cellPx(),
+      o = origin(),
+      g = S.grid;
+    if (glowCache.size > 60) glowCache.clear();
+    for (const l of lights) {
+      const key = `${S.mapId}|${l.x},${l.y},${l.range}|${g.cols}x${g.rows}`;
+      let hit = glowCache.get(key);
+      if (!hit || hit.terrain !== S.terrain || hit.walls !== S.walls) {
+        hit = { terrain: S.terrain, walls: S.walls, bits: BC.visibleCells(g, S.terrain, S.walls, [l]) };
+        glowCache.set(key, hit);
+      }
+      const R = Math.ceil(l.range) + 1,
+        x0 = Math.max(0, Math.floor(l.x - R)),
+        x1 = Math.min(g.cols - 1, Math.ceil(l.x + R)),
+        y0 = Math.max(0, Math.floor(l.y - R)),
+        y1 = Math.min(g.rows - 1, Math.ceil(l.y + R));
+      ctx.save();
+      ctx.beginPath();
+      for (let y = y0; y <= y1; y++)
+        for (let x = x0; x <= x1; x++)
+          if (hit.bits[y * g.cols + x]) ctx.rect(o.x + x * c, o.y + y * c, c + 0.5, c + 0.5);
+      ctx.clip();
+      const cx = o.x + l.x * c,
+        cy = o.y + l.y * c,
+        rad = (l.range + 0.5) * c,
+        gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+      gr.addColorStop(0, 'rgba(255,214,130,0.42)');
+      gr.addColorStop(0.5, 'rgba(255,180,90,0.2)');
+      gr.addColorStop(1, 'rgba(255,160,70,0)');
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = gr;
+      ctx.fillRect(cx - rad, cy - rad, rad * 2, rad * 2);
+      ctx.restore();
+    }
   }
   const isSeen = (bits, x, y) => !bits || (BC.inside(S.grid, x, y) && bits[y * S.grid.cols + x] === 1);
 
@@ -1802,7 +1857,7 @@
         )}</div>${S.paintMode === 'brush' ? `<div class="chips"><span class="small muted">Pincel</span>${sizes}</div>` : ''}${S.walls.length ? `<label class="check"><input type="checkbox" data-action="bd-walls" ${S.showWalls ? 'checked' : ''}>Ver paredes importadas (${S.walls.length})</label>` : ''}`;
     } else if (S.tool === 'tokens' && S.isDM) {
       const list = mapTokens().sort((a, b) => a.name.localeCompare(b.name, 'es'));
-      html = `<div class="actions">${button('+ PNJ', 'token-new', '', 'data-kind="npc"')}${button('+ Objeto', 'token-new', 'secondary', 'data-kind="object"')}${S.mapId === activeId() ? button('Traer a la party', 'ensure') : ''}</div><div class="board-token-list">${
+      html = `<div class="actions">${button('+ PNJ', 'token-new', '', 'data-kind="npc"')}${button('+ Objeto', 'token-new', 'secondary', 'data-kind="object"')}${button('+ Antorcha', 'light-new', 'secondary', 'data-light="torch"')}${button('+ Farol', 'light-new', 'secondary', 'data-light="lantern"')}${button('+ Fogata', 'light-new', 'secondary', 'data-light="campfire"')}${S.mapId === activeId() ? button('Traer a la party', 'ensure') : ''}</div><div class="board-token-list">${
         list
           .map(
             t =>
@@ -1863,6 +1918,10 @@
     el.innerHTML = `<div class="board-card-head"><i style="background:${esc(t.color || '#888')}">${esc(t.label)}</i><div><b>${esc(t.name)}</b><p class="small muted">${t.stage && !t.combatant_id ? 'Preparada · ' + esc(prepared().find(e => t.stage.startsWith('enc:' + e.id + ':'))?.name || 'encuentro') + ' · ' : ''}${{ pc: 'Personaje', monster: 'Criatura', npc: 'PNJ', object: 'Objeto' }[t.kind]}${d.status ? ' · ' + esc(d.status) : ''}${d.conditions.length ? ' · ' + esc(d.conditions.join(', ')) : ''}</p>${t.id === S.target ? `<p class="small board-target-line">🎯 ${targetLine(combatContext())}</p>` : ''}</div><button type="button" class="icon-btn" data-action="bd-deselect" aria-label="Cerrar">×</button></div>${
       canMove(t) && t.kind !== 'object'
         ? `<div class="actions">${button(t.elev ? `Altura: ${t.elev} pies` : 'Altura', 'token-elev', 'secondary', `data-id="${t.id}"`)}</div>`
+        : ''
+    }${
+      dm && t.kind !== 'monster'
+        ? `<div class="actions">${button(BC.lightFeet(t.stage) ? `Luz: ${BC.lightFeet(t.stage)} pies` : 'Luz', 'token-light', 'secondary', `data-id="${t.id}"`)}</div>`
         : ''
     }${
       dm
@@ -1929,6 +1988,8 @@
       else if (a === 'deselect') S.sel = null;
       else if (a === 'ensure') await ensureTokens();
       else if (a === 'token-new') return tokenDialog(null, el.dataset.kind);
+      else if (a === 'light-new') await addLight(el.dataset.light);
+      else if (a === 'token-light') return lightDialog(S.tokens.find(t => t.id === el.dataset.id));
       else if (a === 'token-edit') return tokenDialog(S.tokens.find(t => t.id === el.dataset.id));
       else if (a === 'token-hide') {
         const t = S.tokens.find(x => x.id === el.dataset.id);
@@ -2334,7 +2395,7 @@
         m.image_path
           ? `<p class="small">Hacé coincidir la cuadrícula con la del dibujo: primero el tamaño de la casilla, después el desfase. Se ve en vivo detrás de esta ventana.</p><div class="form-grid">${field('Tamaño de casilla (px)', 'size', +g.size.toFixed(2), 'number', 'min="8" max="1000" step="0.1" data-live')}${field('Desfase X (px)', 'ox', +g.ox.toFixed(1), 'number', 'step="0.5" data-live')}${field('Desfase Y (px)', 'oy', +g.oy.toFixed(1), 'number', 'step="0.5" data-live')}</div><div class="form-grid">${field('Columnas', 'cols', g.cols, 'number', 'min="1" max="200" data-live')}${field('Filas', 'rows', g.rows, 'number', 'min="1" max="200" data-live')}</div><div class="actions">${button('Calcular columnas y filas', 'grid-auto')}</div>`
           : `<div class="form-grid">${field('Columnas', 'cols', g.cols, 'number', 'min="1" max="200"')}${field('Filas', 'rows', g.rows, 'number', 'min="1" max="200"')}</div>`
-      }<div class="form-grid">${field('Pies por casilla', 'feet', g.feet, 'number', 'min="1" max="100"')}<label class="field">Color de la cuadrícula<input type="color" name="color" value="${esc(g.color)}" data-live></label>${field('Opacidad', 'opacity', g.opacity, 'range', 'min="0" max="1" step="0.05" data-live')}</div><label class="check"><input type="checkbox" name="show" ${g.show ? 'checked' : ''} data-live>Mostrar cuadrícula</label><fieldset class="skill-choice"><legend>Visión de los jugadores</legend><input type="hidden" name="visionForm" value="1"><label class="check"><input type="checkbox" name="los" ${g.vision.los ? 'checked' : ''}>Solo ven lo que sus personajes tienen a la vista (muros, rocas, puertas y paredes importadas tapan)</label><label class="check"><input type="checkbox" name="dark" ${g.vision.dark ? 'checked' : ''}>Mapa a oscuras: se ve hasta la luz que llevan, o hasta la visión en la oscuridad de cada uno</label>${field('Luz que lleva la party (pies)', 'light', g.vision.light, 'number', 'min="0" max="600" step="5"')}<p class="small muted">Se combina con la niebla manual. Como la niebla, se dibuja en el dispositivo de cada jugador.</p></fieldset>`,
+      }<div class="form-grid">${field('Pies por casilla', 'feet', g.feet, 'number', 'min="1" max="100"')}<label class="field">Color de la cuadrícula<input type="color" name="color" value="${esc(g.color)}" data-live></label>${field('Opacidad', 'opacity', g.opacity, 'range', 'min="0" max="1" step="0.05" data-live')}</div><label class="check"><input type="checkbox" name="show" ${g.show ? 'checked' : ''} data-live>Mostrar cuadrícula</label><fieldset class="skill-choice"><legend>Visión de los jugadores</legend><input type="hidden" name="visionForm" value="1"><label class="check"><input type="checkbox" name="los" ${g.vision.los ? 'checked' : ''}>Solo ven lo que sus personajes tienen a la vista (muros, rocas, puertas y paredes importadas tapan)</label><label class="check"><input type="checkbox" name="dark" ${g.vision.dark ? 'checked' : ''}>Mapa a oscuras: se ve hasta la luz que llevan o su visión en la oscuridad, y lo que alumbren las antorchas, faroles y fogatas que pongas</label>${field('Luz que lleva la party (pies)', 'light', g.vision.light, 'number', 'min="0" max="600" step="5"')}<p class="small muted">Se combina con la niebla manual. Como la niebla, se dibuja en el dispositivo de cada jugador.</p></fieldset>`,
       async fd => {
         const grid = readGrid(fd, g);
         // Cambiar columnas o filas reacomoda terreno y niebla.
@@ -2420,6 +2481,42 @@
             );
           throw err;
         }
+        ui();
+      },
+    );
+  }
+  // Una antorcha, farol o fogata suelta en el mapa: un objeto que ilumina.
+  async function addLight(id) {
+    const def = BC.LIGHTS.find(l => l[0] === id);
+    if (!def) return;
+    const r = canvas.getBoundingClientRect(),
+      p = BC.freeSpot(S.grid, mapTokens(), toCell(toWorld(r.width / 2, r.height / 2)), S.terrain),
+      [row] = await Cloud.addTokens([
+        tokenRow(
+          { kind: 'object', name: def[1], label: def[3], color: '#3a2a12', stage: 'light:' + def[2], ...p },
+          S.mapId,
+        ),
+      ]);
+    addLocal([row]);
+    S.sel = row.id;
+    toast(
+      `${def[1]} colocada: ilumina ${def[2]} pies.${S.grid.vision?.dark ? '' : ' Para que importe, activá «Mapa a oscuras» en los ajustes del mapa.'}`,
+    );
+  }
+  // Cualquier ficha puede llevar una luz (la antorcha del guerrero, el conjuro del mago).
+  function lightDialog(t) {
+    if (!t) return;
+    const cur = BC.lightFeet(t.stage);
+    modal(
+      'Luz de ' + t.name,
+      `<label class="field">Qué lleva<select name="feet"><option value="0">Sin luz</option>${BC.LIGHTS.map(
+        ([, n, f]) => `<option value="${f}" ${f === cur ? 'selected' : ''}>${esc(n)} · ${f} pies</option>`,
+      ).join(
+        '',
+      )}</select></label>${field('O un radio a medida (pies)', 'custom', BC.LIGHTS.some(l => l[2] === cur) ? '' : cur || '', 'number', 'min="5" max="300" step="5"')}<p class="small">En un mapa a oscuras, los jugadores ven lo que esta luz alumbra si lo tienen a la vista. El radio cuenta la luz brillante más la tenue.</p>`,
+      async fd => {
+        const feet = Math.max(0, Math.min(300, Math.round(Number(fd.get('custom')) || Number(fd.get('feet')) || 0)));
+        await patchToken(t, { stage: feet ? 'light:' + feet : null });
         ui();
       },
     );

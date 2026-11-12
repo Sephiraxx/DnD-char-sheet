@@ -620,11 +620,51 @@
     }
     return vis;
   }
+  // ---------- Fuentes de luz ----------
+  // Una ficha ilumina si su campo `stage` dice «light:<pies>» (antorcha 40, farol 60…).
+  const LIGHTS = [
+    ['candle', 'Vela', 10, '🕯️'],
+    ['torch', 'Antorcha', 40, '🔥'],
+    ['lantern', 'Farol', 60, '🏮'],
+    ['campfire', 'Fogata', 40, '🔥'],
+    ['spell', 'Conjuro de luz', 40, '✨'],
+    ['daylight', 'Luz del día', 120, '☀️'],
+  ];
+  function lightFeet(stage) {
+    const m = /^light:(\d{1,3})$/.exec(String(stage || ''));
+    return m ? Math.max(0, Math.min(300, Number(m[1]))) : 0;
+  }
+  // Lo que se ve en un mapa a oscuras: lo que cada observador tiene a su alcance, más lo que alguna luz
+  // ilumina y el observador tiene a la vista (por lejos que esté). viewers y lights: [{ x, y, range }] en casillas.
+  function sight(g, terrain, walls, viewers, lights) {
+    const near = visibleCells(g, terrain, walls, viewers);
+    if (!lights.length || !viewers.length) return near;
+    const lit = visibleCells(g, terrain, walls, lights),
+      far = visibleCells(
+        g,
+        terrain,
+        walls,
+        viewers.map(v => ({ ...v, range: Infinity })),
+      );
+    for (let i = 0; i < near.length; i++) if (!near[i] && lit[i] && far[i]) near[i] = 1;
+    return near;
+  }
   // Distancia en pies contando la altura (misma regla que las diagonales: vale el tramo más largo).
   const distance3d = (a, b, feetPerSquare = 5) =>
     Math.max(gap(a, b) * feetPerSquare, Math.abs((a.elev || 0) - (b.elev || 0)));
 
-  Object.assign(api, { SHAPES, templateCells, templateOutline, templateHits, sightBlockers, visibleCells, distance3d });
+  Object.assign(api, {
+    LIGHTS,
+    lightFeet,
+    sight,
+    SHAPES,
+    templateCells,
+    templateOutline,
+    templateHits,
+    sightBlockers,
+    visibleCells,
+    distance3d,
+  });
   if (typeof module !== 'undefined') module.exports = api;
   root.BoardCore = api;
 })(typeof window !== 'undefined' ? window : globalThis);
