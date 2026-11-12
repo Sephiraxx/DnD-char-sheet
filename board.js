@@ -503,7 +503,17 @@
   // ---------- Dibujo ----------
   function info(t) {
     // Datos vivos de la ficha: PG, estados, retrato, turno.
-    const out = { ring: null, dead: false, conditions: [], portrait: '', turn: false, status: '', speed: 30 };
+    const out = {
+      ring: null,
+      dead: false,
+      conditions: [],
+      portrait: '',
+      turn: false,
+      status: '',
+      speed: 30,
+      cls: '',
+      color: '',
+    };
     const enc = S.party?.encounter,
       current = enc?.active ? (S.party.combatants || []).find(c => c.id === enc.current_id) : null;
     if (t.character_id) {
@@ -514,6 +524,8 @@
           out.ring = x.maxHP ? Math.max(0, Math.min(1, (x.hp ?? x.maxHP) / x.maxHP)) : null;
           out.conditions = x.conditions;
           out.portrait = x.portrait;
+          out.cls = x.cls || '';
+          out.color = x.color || '';
           out.speed = x.speed || 30;
           out.status = x.hp != null ? `${x.hp}/${x.maxHP} PG` : '';
           out.dead = x.hp === 0;
@@ -641,6 +653,7 @@
     // Áreas de efecto (debajo de las fichas)
     for (const t of S.templates) drawTemplate(t);
     if (S.drag?.area) drawTemplate({ ...S.drag.area, ...whoAmI() }, true);
+    drawLights();
     // Fichas
     const list = visibleTokens().sort((a, b) => (a.kind === 'object' ? -1 : 0) - (b.kind === 'object' ? -1 : 0));
     for (const t of list) drawToken(t);
@@ -812,6 +825,20 @@
       S.drag?.token?.id === t.id ? S.drag.token : S.drag?.group?.find(k => k.id === t.id) || S.remote.get(t.id) || t;
     return { x: r.x, y: r.y };
   }
+  // Aclara (k > 0) u oscurece (k < 0) un color #rrggbb.
+  function shade(hex, k) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return hex;
+    const n = parseInt(m[1], 16),
+      f = v => Math.round(k > 0 ? v + (255 - v) * k : v * (1 + k));
+    return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
+  }
+  function luminance(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return 0.5;
+    const n = parseInt(m[1], 16);
+    return (0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+  }
   function drawToken(t) {
     const c = cellPx(),
       o = origin(),
@@ -835,9 +862,15 @@
     ctx.ellipse(cx + c * 0.04, cy + c * 0.07, rad * 1.02, rad * 0.98, 0, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(0,0,0,0.38)';
     ctx.fill();
+    // Disco con luz arriba a la izquierda; el color elegido para la ficha del personaje pisa al del token.
+    const base = d.color || t.color || BC.colorFor(t.id, t.kind),
+      disc = ctx.createRadialGradient(cx - rad * 0.35, cy - rad * 0.4, rad * 0.1, cx, cy, rad * 1.05);
+    disc.addColorStop(0, shade(base, 0.35));
+    disc.addColorStop(0.55, base);
+    disc.addColorStop(1, shade(base, -0.4));
     ctx.beginPath();
     ctx.arc(cx, cy, rad, 0, Math.PI * 2);
-    ctx.fillStyle = t.color || BC.colorFor(t.id, t.kind);
+    ctx.fillStyle = disc;
     ctx.fill();
     // Aro claro arriba y oscuro abajo: borde con volumen.
     const rim = ctx.createLinearGradient(cx, cy - rad, cx, cy + rad);
@@ -856,11 +889,31 @@
       ctx.drawImage(img, cx - (img.width * k) / 2, cy - (img.height * k) / 2, img.width * k, img.height * k);
       ctx.restore();
     } else {
-      ctx.fillStyle = t.kind === 'monster' ? '#fff' : '#10252a';
-      ctx.font = `700 ${Math.max(8, rad * (String(t.label).length > 2 ? 0.62 : 0.8))}px Inter, system-ui, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(t.label || BC.initials(t.name), cx, cy + rad * 0.04);
+      // Sin retrato: el emblema de la clase (personajes) o del tipo de criatura, y la etiqueta encima.
+      const G = globalThis.Sigils,
+        pc = t.kind === 'pc',
+        dark = luminance(base) > 0.45,
+        ink = dark ? '#10252a' : '#ffffff',
+        glyph = !G || t.kind === 'object' ? '' : pc ? (G.has(d.cls) ? d.cls : '') : G.forName(t.name),
+        label = t.label || BC.initials(t.name);
+      // Anillo interior, como el canto de una moneda.
+      ctx.beginPath();
+      ctx.arc(cx, cy, rad * 0.86, 0, Math.PI * 2);
+      ctx.strokeStyle = dark ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = c * 0.018;
+      ctx.stroke();
+      const drawn =
+        glyph && G.draw(ctx, glyph, cx, cy - (pc ? 0 : rad * 0.06), rad * (pc ? 1.25 : 1.35), ink, pc ? 0.92 : 0.42);
+      if (!(drawn && pc)) {
+        ctx.font = `800 ${Math.max(8, rad * (String(label).length > 2 ? 0.6 : 0.78))}px Inter, system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.lineWidth = c * 0.05;
+        ctx.strokeStyle = dark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.55)';
+        ctx.strokeText(label, cx, cy + rad * 0.04);
+        ctx.fillStyle = ink;
+        ctx.fillText(label, cx, cy + rad * 0.04);
+      }
     }
     // Borde: blanco; seleccionado: dorado.
     ctx.lineWidth = (S.sel === t.id ? 4 : 2) * (c / 70);
@@ -869,7 +922,7 @@
     ctx.arc(cx, cy, rad, 0, Math.PI * 2);
     ctx.stroke();
     // Criatura preparada (todavía no está en combate): anillo punteado.
-    if (t.stage && !t.combatant_id) {
+    if (t.stage?.startsWith('enc:') && !t.combatant_id) {
       ctx.save();
       ctx.setLineDash([c * 0.12, c * 0.08]);
       ctx.lineWidth = 3 * (c / 70);
@@ -1383,16 +1436,28 @@
     }
   }
   // Casillas que ve la party (null si el mapa no usa línea de visión).
-  function seen() {
-    const v = S.grid.vision;
-    if (!v?.los) return null;
-    const viewers = mapTokens()
-      .filter(t => t.kind === 'pc' && !t.hidden)
+  // Fichas que dan luz en este mapa: [{ x, y (centro, en casillas), range (casillas), feet }].
+  function lightSources() {
+    return mapTokens()
+      .filter(t => !t.hidden && BC.lightFeet(t.stage))
       .map(t => ({
         x: t.x + (t.size || 1) / 2,
         y: t.y + (t.size || 1) / 2,
-        range: v.dark ? Math.max(v.light, darkvision(t)) / S.grid.feet : Infinity,
+        feet: BC.lightFeet(t.stage),
+        range: BC.lightFeet(t.stage) / S.grid.feet,
       }));
+  }
+  function seen() {
+    const v = S.grid.vision;
+    if (!v?.los) return null;
+    const lights = v.dark ? lightSources() : [],
+      viewers = mapTokens()
+        .filter(t => t.kind === 'pc' && !t.hidden)
+        .map(t => ({
+          x: t.x + (t.size || 1) / 2,
+          y: t.y + (t.size || 1) / 2,
+          range: v.dark ? Math.max(v.light, darkvision(t), BC.lightFeet(t.stage)) / S.grid.feet : Infinity,
+        }));
     const key =
       S.mapId +
       '|' +
@@ -1402,10 +1467,52 @@
       '|' +
       JSON.stringify(v) +
       '|' +
-      viewers.map(p => `${p.x},${p.y},${p.range}`).join(';');
+      viewers.map(p => `${p.x},${p.y},${p.range}`).join(';') +
+      '|' +
+      lights.map(p => `${p.x},${p.y},${p.range}`).join(';');
     if (sight.key !== key || sight.terrain !== S.terrain || sight.walls !== S.walls)
-      sight = { key, terrain: S.terrain, walls: S.walls, bits: BC.visibleCells(S.grid, S.terrain, S.walls, viewers) };
+      sight = { key, terrain: S.terrain, walls: S.walls, bits: BC.sight(S.grid, S.terrain, S.walls, viewers, lights) };
     return sight.bits;
+  }
+  // Resplandor cálido alrededor de cada luz, solo sobre las casillas que realmente alumbra.
+  const glowCache = new Map();
+  function drawLights() {
+    const lights = lightSources();
+    if (!lights.length) return;
+    const c = cellPx(),
+      o = origin(),
+      g = S.grid;
+    if (glowCache.size > 60) glowCache.clear();
+    for (const l of lights) {
+      const key = `${S.mapId}|${l.x},${l.y},${l.range}|${g.cols}x${g.rows}`;
+      let hit = glowCache.get(key);
+      if (!hit || hit.terrain !== S.terrain || hit.walls !== S.walls) {
+        hit = { terrain: S.terrain, walls: S.walls, bits: BC.visibleCells(g, S.terrain, S.walls, [l]) };
+        glowCache.set(key, hit);
+      }
+      const R = Math.ceil(l.range) + 1,
+        x0 = Math.max(0, Math.floor(l.x - R)),
+        x1 = Math.min(g.cols - 1, Math.ceil(l.x + R)),
+        y0 = Math.max(0, Math.floor(l.y - R)),
+        y1 = Math.min(g.rows - 1, Math.ceil(l.y + R));
+      ctx.save();
+      ctx.beginPath();
+      for (let y = y0; y <= y1; y++)
+        for (let x = x0; x <= x1; x++)
+          if (hit.bits[y * g.cols + x]) ctx.rect(o.x + x * c, o.y + y * c, c + 0.5, c + 0.5);
+      ctx.clip();
+      const cx = o.x + l.x * c,
+        cy = o.y + l.y * c,
+        rad = (l.range + 0.5) * c,
+        gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+      gr.addColorStop(0, 'rgba(255,214,130,0.42)');
+      gr.addColorStop(0.5, 'rgba(255,180,90,0.2)');
+      gr.addColorStop(1, 'rgba(255,160,70,0)');
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = gr;
+      ctx.fillRect(cx - rad, cy - rad, rad * 2, rad * 2);
+      ctx.restore();
+    }
   }
   const isSeen = (bits, x, y) => !bits || (BC.inside(S.grid, x, y) && bits[y * S.grid.cols + x] === 1);
 
@@ -1750,7 +1857,7 @@
         )}</div>${S.paintMode === 'brush' ? `<div class="chips"><span class="small muted">Pincel</span>${sizes}</div>` : ''}${S.walls.length ? `<label class="check"><input type="checkbox" data-action="bd-walls" ${S.showWalls ? 'checked' : ''}>Ver paredes importadas (${S.walls.length})</label>` : ''}`;
     } else if (S.tool === 'tokens' && S.isDM) {
       const list = mapTokens().sort((a, b) => a.name.localeCompare(b.name, 'es'));
-      html = `<div class="actions">${button('+ PNJ', 'token-new', '', 'data-kind="npc"')}${button('+ Objeto', 'token-new', 'secondary', 'data-kind="object"')}${S.mapId === activeId() ? button('Traer a la party', 'ensure') : ''}</div><div class="board-token-list">${
+      html = `<div class="actions">${button('+ PNJ', 'token-new', '', 'data-kind="npc"')}${button('+ Objeto', 'token-new', 'secondary', 'data-kind="object"')}${button('+ Antorcha', 'light-new', 'secondary', 'data-light="torch"')}${button('+ Farol', 'light-new', 'secondary', 'data-light="lantern"')}${button('+ Fogata', 'light-new', 'secondary', 'data-light="campfire"')}${S.mapId === activeId() ? button('Traer a la party', 'ensure') : ''}</div><div class="board-token-list">${
         list
           .map(
             t =>
@@ -1811,6 +1918,10 @@
     el.innerHTML = `<div class="board-card-head"><i style="background:${esc(t.color || '#888')}">${esc(t.label)}</i><div><b>${esc(t.name)}</b><p class="small muted">${t.stage && !t.combatant_id ? 'Preparada · ' + esc(prepared().find(e => t.stage.startsWith('enc:' + e.id + ':'))?.name || 'encuentro') + ' · ' : ''}${{ pc: 'Personaje', monster: 'Criatura', npc: 'PNJ', object: 'Objeto' }[t.kind]}${d.status ? ' · ' + esc(d.status) : ''}${d.conditions.length ? ' · ' + esc(d.conditions.join(', ')) : ''}</p>${t.id === S.target ? `<p class="small board-target-line">🎯 ${targetLine(combatContext())}</p>` : ''}</div><button type="button" class="icon-btn" data-action="bd-deselect" aria-label="Cerrar">×</button></div>${
       canMove(t) && t.kind !== 'object'
         ? `<div class="actions">${button(t.elev ? `Altura: ${t.elev} pies` : 'Altura', 'token-elev', 'secondary', `data-id="${t.id}"`)}</div>`
+        : ''
+    }${
+      dm && t.kind !== 'monster'
+        ? `<div class="actions">${button(BC.lightFeet(t.stage) ? `Luz: ${BC.lightFeet(t.stage)} pies` : 'Luz', 'token-light', 'secondary', `data-id="${t.id}"`)}</div>`
         : ''
     }${
       dm
@@ -1877,6 +1988,8 @@
       else if (a === 'deselect') S.sel = null;
       else if (a === 'ensure') await ensureTokens();
       else if (a === 'token-new') return tokenDialog(null, el.dataset.kind);
+      else if (a === 'light-new') await addLight(el.dataset.light);
+      else if (a === 'token-light') return lightDialog(S.tokens.find(t => t.id === el.dataset.id));
       else if (a === 'token-edit') return tokenDialog(S.tokens.find(t => t.id === el.dataset.id));
       else if (a === 'token-hide') {
         const t = S.tokens.find(x => x.id === el.dataset.id);
@@ -2103,6 +2216,7 @@
   const genState = { type: 'trail', size: 'medium', map: null };
   function genDialog() {
     const G = globalThis.BoardGen,
+      encounters = prepared().filter(e => e.monsters?.length && e.monsters.every(x => x.uid)),
       roll = () => (genState.map = G.generate(genState.type, { size: genState.size })),
       chips = (name, list, cur) =>
         `<div class="chips gen-chips" role="radiogroup">${list
@@ -2118,7 +2232,14 @@
         'size',
         Object.entries(G.SIZES).map(([k, v]) => [k, `${v[0]} · ${v[1]}×${v[2]}`]),
         genState.size,
-      )}<div class="actions">${button('🎲 Otra versión', 'gen-roll', 'secondary')}</div><div class="gen-preview"><canvas id="gen-canvas" aria-label="Vista previa del mapa"></canvas></div>${field('Nombre', 'name', '', 'text', 'maxlength="100" required')}`,
+      )}<div class="actions">${button('🎲 Otra versión', 'gen-roll', 'secondary')}</div><div class="gen-preview"><canvas id="gen-canvas" aria-label="Vista previa del mapa"></canvas></div>${field('Nombre', 'name', '', 'text', 'maxlength="100" required')}${
+        encounters.length
+          ? `<label class="field">Colocar un encuentro preparado<select name="enc"><option value="">Ninguno</option>${encounters
+              .map(e => `<option value="${esc(e.id)}">${esc(e.name)} (${(e.monsters || []).length})</option>`)
+              .join('')}</select></label>` +
+            '<p class="small muted">Las criaturas quedan ocultas en el mapa nuevo hasta que lances el encuentro.</p>'
+          : ''
+      }`,
       async fd => {
         const m = genState.map,
           grid = BC.normGrid({ cols: m.cols, rows: m.rows, size: CELL }),
@@ -2132,7 +2253,11 @@
         S.maps = [...S.maps, made];
         await openMap(made.id);
         if (!activeId()) await goLive(made.id);
-        toast('Mapa generado. Retocalo con «Terreno» si hace falta.');
+        const enc = String(fd.get('enc') || '');
+        if (enc) {
+          await placeEncounter(enc);
+          toast('Mapa generado y encuentro colocado. Acomodá las criaturas con «Encuentros».');
+        } else toast('Mapa generado. Retocalo con «Terreno» si hace falta.');
       },
       'Crear mapa',
     );
@@ -2270,7 +2395,7 @@
         m.image_path
           ? `<p class="small">Hacé coincidir la cuadrícula con la del dibujo: primero el tamaño de la casilla, después el desfase. Se ve en vivo detrás de esta ventana.</p><div class="form-grid">${field('Tamaño de casilla (px)', 'size', +g.size.toFixed(2), 'number', 'min="8" max="1000" step="0.1" data-live')}${field('Desfase X (px)', 'ox', +g.ox.toFixed(1), 'number', 'step="0.5" data-live')}${field('Desfase Y (px)', 'oy', +g.oy.toFixed(1), 'number', 'step="0.5" data-live')}</div><div class="form-grid">${field('Columnas', 'cols', g.cols, 'number', 'min="1" max="200" data-live')}${field('Filas', 'rows', g.rows, 'number', 'min="1" max="200" data-live')}</div><div class="actions">${button('Calcular columnas y filas', 'grid-auto')}</div>`
           : `<div class="form-grid">${field('Columnas', 'cols', g.cols, 'number', 'min="1" max="200"')}${field('Filas', 'rows', g.rows, 'number', 'min="1" max="200"')}</div>`
-      }<div class="form-grid">${field('Pies por casilla', 'feet', g.feet, 'number', 'min="1" max="100"')}<label class="field">Color de la cuadrícula<input type="color" name="color" value="${esc(g.color)}" data-live></label>${field('Opacidad', 'opacity', g.opacity, 'range', 'min="0" max="1" step="0.05" data-live')}</div><label class="check"><input type="checkbox" name="show" ${g.show ? 'checked' : ''} data-live>Mostrar cuadrícula</label><fieldset class="skill-choice"><legend>Visión de los jugadores</legend><input type="hidden" name="visionForm" value="1"><label class="check"><input type="checkbox" name="los" ${g.vision.los ? 'checked' : ''}>Solo ven lo que sus personajes tienen a la vista (muros, rocas, puertas y paredes importadas tapan)</label><label class="check"><input type="checkbox" name="dark" ${g.vision.dark ? 'checked' : ''}>Mapa a oscuras: se ve hasta la luz que llevan, o hasta la visión en la oscuridad de cada uno</label>${field('Luz que lleva la party (pies)', 'light', g.vision.light, 'number', 'min="0" max="600" step="5"')}<p class="small muted">Se combina con la niebla manual. Como la niebla, se dibuja en el dispositivo de cada jugador.</p></fieldset>`,
+      }<div class="form-grid">${field('Pies por casilla', 'feet', g.feet, 'number', 'min="1" max="100"')}<label class="field">Color de la cuadrícula<input type="color" name="color" value="${esc(g.color)}" data-live></label>${field('Opacidad', 'opacity', g.opacity, 'range', 'min="0" max="1" step="0.05" data-live')}</div><label class="check"><input type="checkbox" name="show" ${g.show ? 'checked' : ''} data-live>Mostrar cuadrícula</label><fieldset class="skill-choice"><legend>Visión de los jugadores</legend><input type="hidden" name="visionForm" value="1"><label class="check"><input type="checkbox" name="los" ${g.vision.los ? 'checked' : ''}>Solo ven lo que sus personajes tienen a la vista (muros, rocas, puertas y paredes importadas tapan)</label><label class="check"><input type="checkbox" name="dark" ${g.vision.dark ? 'checked' : ''}>Mapa a oscuras: se ve hasta la luz que llevan o su visión en la oscuridad, y lo que alumbren las antorchas, faroles y fogatas que pongas</label>${field('Luz que lleva la party (pies)', 'light', g.vision.light, 'number', 'min="0" max="600" step="5"')}<p class="small muted">Se combina con la niebla manual. Como la niebla, se dibuja en el dispositivo de cada jugador.</p></fieldset>`,
       async fd => {
         const grid = readGrid(fd, g);
         // Cambiar columnas o filas reacomoda terreno y niebla.
@@ -2356,6 +2481,42 @@
             );
           throw err;
         }
+        ui();
+      },
+    );
+  }
+  // Una antorcha, farol o fogata suelta en el mapa: un objeto que ilumina.
+  async function addLight(id) {
+    const def = BC.LIGHTS.find(l => l[0] === id);
+    if (!def) return;
+    const r = canvas.getBoundingClientRect(),
+      p = BC.freeSpot(S.grid, mapTokens(), toCell(toWorld(r.width / 2, r.height / 2)), S.terrain),
+      [row] = await Cloud.addTokens([
+        tokenRow(
+          { kind: 'object', name: def[1], label: def[3], color: '#3a2a12', stage: 'light:' + def[2], ...p },
+          S.mapId,
+        ),
+      ]);
+    addLocal([row]);
+    S.sel = row.id;
+    toast(
+      `${def[1]} colocada: ilumina ${def[2]} pies.${S.grid.vision?.dark ? '' : ' Para que importe, activá «Mapa a oscuras» en los ajustes del mapa.'}`,
+    );
+  }
+  // Cualquier ficha puede llevar una luz (la antorcha del guerrero, el conjuro del mago).
+  function lightDialog(t) {
+    if (!t) return;
+    const cur = BC.lightFeet(t.stage);
+    modal(
+      'Luz de ' + t.name,
+      `<label class="field">Qué lleva<select name="feet"><option value="0">Sin luz</option>${BC.LIGHTS.map(
+        ([, n, f]) => `<option value="${f}" ${f === cur ? 'selected' : ''}>${esc(n)} · ${f} pies</option>`,
+      ).join(
+        '',
+      )}</select></label>${field('O un radio a medida (pies)', 'custom', BC.LIGHTS.some(l => l[2] === cur) ? '' : cur || '', 'number', 'min="5" max="300" step="5"')}<p class="small">En un mapa a oscuras, los jugadores ven lo que esta luz alumbra si lo tienen a la vista. El radio cuenta la luz brillante más la tenue.</p>`,
+      async fd => {
+        const feet = Math.max(0, Math.min(300, Math.round(Number(fd.get('custom')) || Number(fd.get('feet')) || 0)));
+        await patchToken(t, { stage: feet ? 'light:' + feet : null });
         ui();
       },
     );

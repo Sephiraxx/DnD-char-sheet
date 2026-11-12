@@ -41,6 +41,7 @@ const LOGIC = [
   'defenses.js',
   'persona.js',
   'surge.js',
+  'interop.js',
   'chronicle.js',
   'shop.js',
   'dm-reference.js',

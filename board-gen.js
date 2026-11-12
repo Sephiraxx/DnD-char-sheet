@@ -16,6 +16,9 @@
     ['dungeon', 'Mazmorra', 'Salas de piedra unidas por pasillos y puertas.'],
     ['ruins', 'Ruinas', 'Restos de edificios a cielo abierto, comidos por el pasto.'],
     ['tavern', 'Taberna', 'Un edificio con salón, habitaciones y la calle al frente.'],
+    ['village', 'Aldea', 'Un cruce de caminos con casas, una plaza y un pozo.'],
+    ['castle', 'Castillo', 'Muralla con torres, foso, patio de armas y la torre del homenaje.'],
+    ['ship', 'Barco', 'La cubierta de un velero en mar abierto, con camarote y bodega.'],
   ];
   const SIZES = {
     small: ['Chico', 20, 14],
@@ -403,32 +406,228 @@
     },
     tavern(m) {
       m.fill('g');
-      // La calle abajo y el edificio ocupando el resto.
+      // La calle abajo y el edificio ocupando el resto (después se espeja al azar).
       for (let y = m.rows - 3; y < m.rows; y++) for (let x = 0; x < m.cols; x++) m.set(x, y, 'a');
-      const x0 = 2,
-        y0 = 1,
-        x1 = m.cols - 3,
+      const x0 = m.int(1, 3),
+        y0 = m.int(1, 2),
+        x1 = m.cols - 1 - m.int(1, 3),
         y1 = m.rows - 5;
       for (let y = y0; y <= y1; y++)
         for (let x = x0; x <= x1; x++) m.set(x, y, x === x0 || y === y0 || x === x1 || y === y1 ? '#' : 'm');
-      // Una pared a lo ancho separa el salón (abajo) de las habitaciones (arriba), que se dividen entre sí.
-      const split = y0 + Math.max(4, Math.round((y1 - y0) * 0.4));
-      for (let x = x0 + 1; x < x1; x++) m.set(x, split, '#');
-      const roomsN = Math.max(2, Math.round((x1 - x0) / 8)),
-        step = (x1 - x0) / roomsN;
-      for (let i = 0; i < roomsN; i++) {
-        const left = Math.round(x0 + i * step),
-          right = Math.round(x0 + (i + 1) * step);
-        if (i) for (let y = y0 + 1; y < split; y++) m.set(left, y, '#');
-        m.set(m.int(left + 1, right - 1), split, 'D');
+      if (m.R() < 0.5) {
+        // Habitaciones arriba, salón abajo.
+        const split = y0 + Math.max(4, Math.round((y1 - y0) * (0.35 + m.R() * 0.12)));
+        for (let x = x0 + 1; x < x1; x++) m.set(x, split, '#');
+        const roomsN = Math.max(2, Math.round((x1 - x0) / m.int(6, 9))),
+          step = (x1 - x0) / roomsN;
+        for (let i = 0; i < roomsN; i++) {
+          const left = Math.round(x0 + i * step),
+            right = Math.round(x0 + (i + 1) * step);
+          if (i) for (let y = y0 + 1; y < split; y++) m.set(left, y, '#');
+          m.set(m.int(left + 1, right - 1), split, 'D');
+        }
+        for (let x = x0 + 2; x < x0 + Math.min(8, Math.round((x1 - x0) / 2)); x++) m.set(x, split + 2, 'd');
+        for (let y = split + 1; y < Math.min(y1, split + 4); y++) for (let x = x1 - 4; x < x1; x++) m.set(x, y, 'f');
+      } else {
+        // Habitaciones a un costado, salón al otro, con un pasillo de puertas.
+        const split = x0 + Math.max(5, Math.round((x1 - x0) * (0.3 + m.R() * 0.12)));
+        for (let y = y0 + 1; y < y1; y++) m.set(split, y, '#');
+        const roomsN = Math.max(2, Math.round((y1 - y0) / m.int(4, 6))),
+          step = (y1 - y0) / roomsN;
+        for (let i = 0; i < roomsN; i++) {
+          const top = Math.round(y0 + i * step),
+            bottom = Math.round(y0 + (i + 1) * step);
+          if (i) for (let x = x0 + 1; x < split; x++) m.set(x, top, '#');
+          m.set(split, m.int(top + 1, bottom - 1), 'D');
+        }
+        // Barra en L y cocina al fondo.
+        for (let y = y0 + 2; y < y0 + Math.min(6, y1 - y0 - 2); y++) m.set(x1 - 3, y, 'd');
+        for (let y = y0 + 1; y < y0 + 4; y++) for (let x = x1 - 2; x < x1; x++) m.set(x, y, 'f');
       }
-      // Entrada, cocina de piedra en un rincón del salón y la barra (escombros hacen de mobiliario).
-      m.set(m.int(x0 + 3, x1 - 3), y1, 'D');
-      for (let y = split + 1; y < Math.min(y1, split + 4); y++) for (let x = x1 - 4; x < x1; x++) m.set(x, y, 'f');
-      for (let x = x0 + 2; x < x0 + Math.min(8, Math.round((x1 - x0) / 2)); x++) m.set(x, split + 2, 'd');
-      m.scatter('t', 0.25, (c, x) => c === 'g' && (x < 2 || x > m.cols - 3));
+      // Mesas sueltas en el salón, a veces la trampilla del sótano, y la entrada.
+      m.scatter('d', 0.035, (c, x, y) => c === 'm' && !m.near(x, y, ['#', 'D', 'd', 'f']));
+      if (m.R() < 0.4) {
+        const spots = [];
+        m.each((x, y, c) => c === 'm' && !m.near(x, y, ['#', 'D', 'd']) && spots.push([x, y]));
+        if (spots.length) m.set(...spots[m.int(0, spots.length - 1)], 'p');
+      }
+      const doors = [];
+      for (let x = x0 + 2; x < x1 - 1; x++) if (m.get(x, y1 - 1) === 'm') doors.push(x);
+      m.set(doors.length ? doors[m.int(0, doors.length - 1)] : x0 + 3, y1, 'D');
+      m.scatter('t', 0.25, (c, x) => c === 'g' && (x < x0 || x > x1));
+      if (m.R() < 0.5) mirror(m, true);
+      if (m.R() < 0.5) mirror(m, false);
+    },
+    village(m) {
+      m.fill('g');
+      // Dos caminos que se cruzan en una plaza empedrada con su pozo.
+      const h = m.meander(m.cols, m.rows, 120, 0.1),
+        v = m.meander(m.rows, m.cols, 121, 0.1);
+      m.band(h, 2, 'a', true);
+      m.band(v, 2, 'a', false);
+      const px = v[Math.min(m.rows - 1, h[Math.floor(m.cols / 2)])],
+        py = h[Math.min(m.cols - 1, px)];
+      for (let y = py - 2; y <= py + 3; y++)
+        for (let x = px - 3; x <= px + 3; x++) if (m.inside(x, y)) m.set(x, y, 'f');
+      m.set(px, py, 'w');
+      // Casas: paredes, piso de madera y una puerta hacia el camino más cercano.
+      const houses = [];
+      for (let tries = 0; tries < 300 && houses.length < Math.round((m.cols * m.rows) / 85); tries++) {
+        const w = m.int(4, 7),
+          hh = m.int(4, 6),
+          x = m.int(1, m.cols - w - 1),
+          y = m.int(1, m.rows - hh - 1);
+        let clear = x >= 1 && y >= 1;
+        for (let j = y - 1; clear && j <= y + hh; j++)
+          for (let i = x - 1; i <= x + w; i++) if (m.get(i, j) !== 'g') clear = false;
+        if (!clear) continue;
+        // Tiene que quedar cerca de un camino.
+        let close = false;
+        for (let j = y - 3; j <= y + hh + 2; j++)
+          for (let i = x - 3; i <= x + w + 2; i++) if (m.get(i, j) === 'a' || m.get(i, j) === 'f') close = true;
+        if (!close) continue;
+        houses.push({ x, y, w, h: hh });
+        for (let j = y; j < y + hh; j++)
+          for (let i = x; i < x + w; i++)
+            m.set(i, j, i === x || j === y || i === x + w - 1 || j === y + hh - 1 ? '#' : 'm');
+      }
+      for (const r of houses) {
+        // Puerta en el lado que mira al camino más cercano, y un senderito hasta él.
+        const sides = [
+          [r.x + m.int(1, r.w - 2), r.y, 0, -1],
+          [r.x + m.int(1, r.w - 2), r.y + r.h - 1, 0, 1],
+          [r.x, r.y + m.int(1, r.h - 2), -1, 0],
+          [r.x + r.w - 1, r.y + m.int(1, r.h - 2), 1, 0],
+        ]
+          .map(([dx, dy, sx, sy]) => {
+            let n = 1;
+            while (n < 12 && m.get(dx + sx * n, dy + sy * n) === 'g') n++;
+            const hit = m.get(dx + sx * n, dy + sy * n);
+            return { dx, dy, sx, sy, n: hit === 'a' || hit === 'f' ? n : 99 };
+          })
+          .sort((a, b) => a.n - b.n)[0];
+        m.set(sides.dx, sides.dy, 'D');
+        if (sides.n < 99)
+          for (let n = 1; n < sides.n; n++) m.set(sides.dx + sides.sx * n, sides.dy + sides.sy * n, 'a');
+      }
+      forest(m, 0.62, 5);
+      m.scatter('d', 0.01, c => c === 'g');
+    },
+    castle(m) {
+      m.fill('g');
+      forest(m, 0.66, 6);
+      // Foso, muralla y patio.
+      const mx0 = 1,
+        my0 = 1,
+        mx1 = m.cols - 2,
+        my1 = m.rows - 2,
+        x0 = mx0 + 2,
+        y0 = my0 + 2,
+        x1 = mx1 - 2,
+        y1 = my1 - 2;
+      for (let y = my0; y <= my1; y++) for (let x = mx0; x <= mx1; x++) m.set(x, y, 'w');
+      for (let y = y0; y <= y1; y++)
+        for (let x = x0; x <= x1; x++) m.set(x, y, x === x0 || y === y0 || x === x1 || y === y1 ? '#' : 'a');
+      m.each((x, y, c) => {
+        if (c === 'a' && m.noise(x, y, 4, 130) > 0.62) m.set(x, y, 'g');
+      });
+      // Torres en las esquinas: macizas por fuera, con un cuarto adentro.
+      for (const [tx, ty] of [
+        [x0, y0],
+        [x1 - 2, y0],
+        [x0, y1 - 2],
+        [x1 - 2, y1 - 2],
+      ]) {
+        for (let y = ty - 1; y <= ty + 3; y++)
+          for (let x = tx - 1; x <= tx + 3; x++) if (x >= mx0 && y >= my0 && x <= mx1 && y <= my1) m.set(x, y, '#');
+        m.set(tx + 1, ty + 1, 'f');
+        const ix = tx === x0 ? tx + 3 : tx - 1,
+          iy = ty + 1;
+        m.set(ix, iy, 'D');
+      }
+      // Puerta principal abajo, con su puente sobre el foso y el camino que llega.
+      const gate = m.int(x0 + 5, x1 - 6);
+      for (let d = 0; d < 2; d++) {
+        m.set(gate + d, y1, 'D');
+        for (let y = y1 + 1; y <= my1; y++) m.set(gate + d, y, 'm');
+        for (let y = my1 + 1; y < m.rows; y++) m.set(gate + d, y, 'a');
+        for (let y = y1 - 3; y < y1; y++) m.set(gate + d, y, 'a');
+      }
+      // Torre del homenaje contra la muralla del fondo, con salón de piedra y una cámara.
+      const kw = Math.max(7, Math.round((x1 - x0) * 0.4)),
+        kh = Math.max(5, Math.round((y1 - y0) * 0.4)),
+        kx = m.int(x0 + 4, Math.max(x0 + 4, x1 - kw - 4)),
+        ky = y0 + 2;
+      for (let y = ky; y < ky + kh; y++)
+        for (let x = kx; x < kx + kw; x++)
+          m.set(x, y, x === kx || y === ky || x === kx + kw - 1 || y === ky + kh - 1 ? '#' : 'f');
+      const wall = kx + Math.round(kw * 0.62);
+      for (let y = ky + 1; y < ky + kh - 1; y++) m.set(wall, y, '#');
+      m.set(wall, ky + m.int(1, kh - 2), 'D');
+      m.set(kx + m.int(1, Math.max(1, wall - kx - 1)), ky + kh - 1, 'D');
+      // Establo de madera y pozo en el patio.
+      const sx = kx > (x0 + x1) / 2 ? x0 + 4 : x1 - 7,
+        sy = y1 - 4;
+      for (let y = sy; y < sy + 2; y++)
+        for (let x = sx; x < sx + 4; x++) if (m.get(x, y) === 'a' || m.get(x, y) === 'g') m.set(x, y, 'm');
+      const spots = [];
+      m.each(
+        (x, y, c) =>
+          (c === 'a' || c === 'g') && x > x0 + 4 && x < x1 - 4 && y > ky + kh + 1 && y < y1 - 5 && spots.push([x, y]),
+      );
+      if (spots.length) m.set(...spots[m.int(0, spots.length - 1)], 'w');
+      m.scatter('d', 0.02, c => c === 'a');
+    },
+    ship(m) {
+      m.fill('W');
+      m.each((x, y) => {
+        if (m.noise(x, y, 5, 140) > 0.7) m.set(x, y, 'w');
+      });
+      // Casco: ancho al centro, popa recta a la izquierda y proa en punta a la derecha (después se espeja al azar).
+      const cy = (m.rows - 1) / 2,
+        left = 2,
+        right = m.cols - 3,
+        half = Math.min(Math.floor(m.rows / 2) - 2, Math.max(3, Math.round(m.cols / 7))),
+        deck = (x, y) => {
+          if (x < left || x > right) return false;
+          const t = (x - left) / (right - left),
+            w =
+              t < 0.12
+                ? half * (0.75 + t * 2)
+                : t > 0.6
+                  ? half * Math.sqrt(Math.max(0, 1 - ((t - 0.6) / 0.4) ** 2))
+                  : half;
+          return Math.abs(y - cy) <= w + 0.01;
+        };
+      m.each((x, y) => {
+        if (!deck(x, y)) return;
+        const edge = !deck(x - 1, y) || !deck(x + 1, y) || !deck(x, y - 1) || !deck(x, y + 1);
+        m.set(x, y, edge ? '#' : 'm');
+      });
+      // Camarote de popa, con su puerta.
+      const cabin = left + Math.max(4, Math.round((right - left) * 0.2));
+      for (let y = 0; y < m.rows; y++) if (m.get(cabin, y) === 'm') m.set(cabin, y, '#');
+      m.set(cabin, Math.round(cy) + m.int(-1, 1), 'D');
+      // Mástiles, la escotilla de la bodega y carga en cubierta.
+      for (const t of [0.42, 0.68]) m.set(Math.round(left + (right - left) * t), Math.round(cy), '#');
+      const hx = Math.round(left + (right - left) * 0.55);
+      for (let d = 0; d < 2; d++) if (m.get(hx + d, Math.round(cy) + 2) === 'm') m.set(hx + d, Math.round(cy) + 2, 'p');
+      m.scatter('d', 0.05, (c, x, y) => c === 'm' && x > cabin + 1 && !m.near(x, y, ['D', 'p']));
+      // Un bote amarrado al costado.
+      const bx = Math.round(left + (right - left) * 0.3),
+        by = Math.round(cy) + half + 2;
+      if (by + 1 < m.rows) for (let x = bx; x < bx + 3; x++) m.set(x, by, 'm');
+      if (m.R() < 0.5) mirror(m, true);
+      if (m.R() < 0.5) mirror(m, false);
     },
   };
+  // Espeja el mapa de izquierda a derecha (o de arriba abajo).
+  function mirror(m, horizontal) {
+    const copy = m.cells.slice();
+    for (let y = 0; y < m.rows; y++)
+      for (let x = 0; x < m.cols; x++)
+        m.cells[y * m.cols + x] = copy[(horizontal ? y : m.rows - 1 - y) * m.cols + (horizontal ? m.cols - 1 - x : x)];
+  }
 
   // Genera un mapa: { type, name, cols, rows, seed, terrain } (terrain: una letra por casilla, por filas).
   function generate(type, { size = 'medium', cols, rows, seed } = {}) {

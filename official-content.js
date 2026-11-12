@@ -20,7 +20,8 @@
     (row.language === 'es' ? 10000 : 0) +
     Math.min(8000, row.text || row.data?.text ? (row.text || row.data.text).length : row.textLen || 0);
   // De qué fila del libro salió cada texto de conjuro elegido, para completarlo cuando llega.
-  const spellRows = new Map();
+  const spellRows = new Map(),
+    itemRows = new Map();
   const reference = row => ({
     name: row.name,
     text: row.text,
@@ -153,13 +154,21 @@
           sourceKey: row.sourceKey,
           source: row.book,
           bookId: row.bookId,
-          note: (target.MagicItems.ownText ? target.MagicItems.ownText(row.text) : row.text).slice(0, 480),
+          // pre: lo que se deduce del texto, ya calculado al armar los datos (el texto llega después).
+          note: row.pre
+            ? row.pre.note
+            : (target.MagicItems.ownText ? target.MagicItems.ownText(row.text) : row.text).slice(0, 480),
           manualEffects: true,
         };
-        const count = /(?:tiene|has|contiene|dispone de)\s+(\d{1,2})\s+(?:cargas|charges)\b/i.exec(row.text);
-        if (count && Number(count[1]) > 0) item.charges = { max: Number(count[1]), regain: '0' };
+        if (row.pre) {
+          if (row.pre.charges) item.charges = { ...row.pre.charges };
+        } else {
+          const count = /(?:tiene|has|contiene|dispone de)\s+(\d{1,2})\s+(?:cargas|charges)\b/i.exec(row.text);
+          if (count && Number(count[1]) > 0) item.charges = { max: Number(count[1]), regain: '0' };
+        }
         // Bonos que la ficha sabe aplicar, leídos del texto (+N, CA, salvaciones, resistencias, curación…).
-        if (target.MagicItems.derive) Object.assign(item, target.MagicItems.derive(item, row));
+        if (row.pre) Object.assign(item, JSON.parse(JSON.stringify(row.pre.derived)));
+        else if (target.MagicItems.derive) Object.assign(item, target.MagicItems.derive(item, row));
         // Texto del libro en inglés: nombre y resumen en español (traits-es-data.js); el libro sigue en el desplegable.
         const es = target.TraitsEs?.item(id);
         if (es) {
@@ -183,8 +192,10 @@
         item.rarity = row.rarity;
       }
       const previous = itemTexts.get(item.id);
-      if (!previous || rank(row) > rank(previous))
-        itemTexts.set(item.id, { ...reference(row), language: row.language });
+      if (!previous || rank(row) > rank(previous)) {
+        itemTexts.set(item.id, { ...reference(row), language: row.language, textLen: row.textLen });
+        itemRows.set(item.id, row);
+      }
     }
     target.BookContentData.official = {
       ...data.audit,
@@ -216,6 +227,10 @@
           originalText: row.originalText,
           originalHigher: row.originalHigher,
         });
+    }
+    for (const [id, row] of itemRows) {
+      const entry = itemTexts.get(id);
+      if (entry) Object.assign(entry, { text: row.text, originalText: row.originalText });
     }
     if (target.BookContentData?.official) target.BookContentData.official.rules = ruleTexts.size;
     applyTexts(target);

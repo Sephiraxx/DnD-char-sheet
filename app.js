@@ -338,7 +338,11 @@ function flushNotes() {
 }
 function journal() {
   return (
-    header('El viaje continúa.', 'Notas, compañeros e historial de cambios.', button('Exportar copia', 'backup')) +
+    header(
+      'El viaje continúa.',
+      'Notas, compañeros e historial de cambios.',
+      button('Exportar copia', 'backup') + button('A Foundry o Roll20', 'interop-export', 'secondary'),
+    ) +
     `<div class="columns"><div class="stack">${Campaign.booksCard(state)}<section class="card"><h2>Notas de la sesión</h2><label class="field"><span class="visually-hidden">Notas</span><textarea id="journal-notes" data-autosave="notes" style="min-height:230px">${esc(noteValue('notes'))}</textarea></label><p class="small muted autosave-status" data-autosave-status="notes" aria-live="polite">${noteStatus('notes')}</p></section>${CompanionsUI.card()}<section class="card"><h2>Progresión registrada</h2>${state.levelHistory.length ? state.levelHistory.map(x => `<div class="feature"><h3>Nivel ${x.level}</h3><p>${esc(x.note)}</p></div>`).join('') : '<p class="muted">Las próximas subidas de nivel quedarán registradas acá.</p>'}</section></div><section class="card"><div class="card-header"><h2>Últimos cambios</h2><button class="text-btn" data-action="undo">Deshacer</button></div><div class="log">${
       state.log.length
         ? state.log
@@ -1286,6 +1290,7 @@ CompanionsUI.install();
 PrintSheet.install();
 Persona.install();
 Surge.install();
+InteropUI.install();
 document.addEventListener('click', e => {
   if (e.target.closest('[data-close]')) {
     $('#modal').close();

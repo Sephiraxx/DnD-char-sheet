@@ -113,6 +113,12 @@ const Creator = (() => {
   const table = () => window.Cloud?.pendingTable?.() || null;
   const cls = () => D.classes[d.classId];
 
+  // Aviso de una importación: lo que entró solo y lo que hay que completar a mano.
+  function importedBanner() {
+    const n = ui.imported;
+    return `<details class="banner import-notes" ${step === 0 ? 'open' : ''}><summary><b>Importado de D&D Beyond</b> · ${n.matched.length} datos traídos, ${n.missing.length} para revisar</summary>${n.matched.length ? `<p class="small"><b>Ya está:</b> ${n.matched.map(esc).join(' · ')}</p>` : ''}${n.missing.length ? `<p class="small"><b>Para completar en los pasos:</b></p><ul class="small">${n.missing.map(m => `<li>${esc(m)}</li>`).join('')}</ul>` : ''}</details>`;
+  }
+
   // ---------- Borrador ----------
   function fresh() {
     const t = table(),
@@ -216,6 +222,17 @@ const Creator = (() => {
       seen = Math.max(step, saved.seen || 0);
       ui.resumed = true;
     } else restart();
+    open();
+  }
+  // Arranca con un borrador ya armado (importación): mismas pantallas, con el aviso de qué falta completar.
+  function startWith(partial, notes) {
+    editing = false;
+    restart();
+    d = { ...d, ...partial, base: { ...d.base, ...(partial.base || {}) } };
+    const r = rules();
+    if (!r.methods.includes(d.method)) d.method = fresh().method;
+    ui.imported = notes || null;
+    save();
     open();
   }
   function restart() {
@@ -371,7 +388,7 @@ const Creator = (() => {
         return `<button type="button" class="creator-step ${state}" data-cr="go" data-i="${i}" ${i > seen ? 'disabled' : ''}>${i < step || (i <= seen && i !== step) ? '✓ ' : i + 1 + ' · '}${esc(stepLabel(sid, label))}</button>`;
       })
       .join('');
-    host.innerHTML = `<div class="creator-shell"><header class="creator-head"><div><p class="eyebrow">${editing ? 'CAMBIAR ORIGEN' : 'CREAR PERSONAJE'} · PASO ${step + 1} DE ${list.length}</p><h1>${esc(title(id))}</h1></div><div class="actions">${editing ? '' : btn('Empezar de nuevo', 'restart', 'secondary')}${btn('Salir', 'close', 'secondary')}</div></header><nav class="creator-rail" aria-label="Pasos">${rail}</nav><form class="creator-body" id="creator-form" novalidate>${ui.resumed ? '<div class="banner"><p>Retomaste tu borrador guardado en este dispositivo.</p></div>' : ''}${step === 0 && !editing ? tablePanel() : ''}<div id="creator-error" class="creator-error" role="alert"></div>${body(id)}</form><footer class="creator-foot"><p class="creator-summary">${summary()}</p><div class="actions">${step ? btn('Atrás', 'back', 'secondary') : ''}${btn(id === 'review' ? 'Crear personaje' : id === 'origins' ? 'Guardar cambios' : 'Siguiente', 'next')}</div></footer></div>`;
+    host.innerHTML = `<div class="creator-shell"><header class="creator-head"><div><p class="eyebrow">${editing ? 'CAMBIAR ORIGEN' : 'CREAR PERSONAJE'} · PASO ${step + 1} DE ${list.length}</p><h1>${esc(title(id))}</h1></div><div class="actions">${editing ? '' : btn('Empezar de nuevo', 'restart', 'secondary')}${btn('Salir', 'close', 'secondary')}</div></header><nav class="creator-rail" aria-label="Pasos">${rail}</nav><form class="creator-body" id="creator-form" novalidate>${ui.resumed ? '<div class="banner"><p>Retomaste tu borrador guardado en este dispositivo.</p></div>' : ''}${ui.imported ? importedBanner() : ''}${step === 0 && !editing ? tablePanel() : ''}<div id="creator-error" class="creator-error" role="alert"></div>${body(id)}</form><footer class="creator-foot"><p class="creator-summary">${summary()}</p><div class="actions">${step ? btn('Atrás', 'back', 'secondary') : ''}${btn(id === 'review' ? 'Crear personaje' : id === 'origins' ? 'Guardar cambios' : 'Siguiente', 'next')}</div></footer></div>`;
     const b = host.querySelector('.creator-body');
     if (b) b.scrollTop = top;
   }
@@ -1144,5 +1161,5 @@ const Creator = (() => {
     q?.setSelectionRange(pos, pos);
   }
 
-  return { start, close, editOrigins };
+  return { start, startWith, close, editOrigins };
 })();

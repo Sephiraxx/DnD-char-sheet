@@ -286,3 +286,28 @@ test('línea de visión: los muros tapan, las aberturas dejan ver y la oscuridad
   assert.equal(B.normGrid({ vision: { los: true, light: 9999 } }).vision.light, 600);
   assert.equal(B.distance3d({ x: 0, y: 0, size: 1, elev: 30 }, { x: 2, y: 0, size: 1 }), 30);
 });
+
+test('luces: en un mapa a oscuras se ve lo que una antorcha alumbra, si está a la vista', () => {
+  const g = B.normGrid({ cols: 30, rows: 10 }),
+    open = '.'.repeat(300),
+    viewer = [{ x: 2.5, y: 5.5, range: 2 }],
+    torch = [{ x: 20.5, y: 5.5, range: 3 }];
+  assert.equal(B.lightFeet('light:40'), 40);
+  assert.equal(B.lightFeet('enc:a:b'), 0);
+  assert.equal(B.lightFeet('light:9999'), 0);
+  const dark = B.sight(g, open, [], viewer, []),
+    lit = B.sight(g, open, [], viewer, torch),
+    at = (bits, x, y) => bits[y * 30 + x];
+  assert.equal(at(dark, 20, 5), 0);
+  assert.equal(at(lit, 20, 5), 1); // la antorcha lejana se ve
+  assert.equal(at(lit, 22, 5), 1);
+  assert.equal(at(lit, 10, 5), 0); // el tramo oscuro del medio, no
+  assert.equal(at(lit, 3, 5), 1); // lo cercano sigue viéndose
+  // Con un muro entre el observador y la antorcha, su luz no se ve.
+  const wall = B.sight(g, open, [[12, 0, 12, 10, 0]], viewer, torch);
+  assert.equal(at(wall, 20, 5), 0);
+  // Y la luz no atraviesa muros: detrás de una pared pegada a la antorcha queda oscuro.
+  const behind = B.sight(g, open, [[22, 0, 22, 10, 0]], viewer, torch);
+  assert.equal(at(behind, 21, 5), 1);
+  assert.equal(at(behind, 22, 5), 0);
+});
