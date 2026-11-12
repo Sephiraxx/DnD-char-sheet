@@ -602,15 +602,19 @@
       ctx.fillStyle = '#1d2a2e';
       ctx.fillRect(0, 0, w, h);
     }
-    // Terreno
-    for (let y = y0; y <= y1; y++)
-      for (let x = x0; x <= x1; x++) {
-        const code = S.terrain[y * g.cols + x];
-        if (code && code !== '.') drawCell(code, o.x + x * c, o.y + y * c, c, x, y);
-      }
+    // Terreno: en los mapas pintados, una ilustración guardada en un lienzo aparte (board-art.js);
+    // sobre una imagen, solo marcas semitransparentes.
+    const art = S.img ? null : terrainArt();
+    if (art) ctx.drawImage(art, 0, 0, art.width, art.height, o.x, o.y, g.cols * c, g.rows * c);
+    else
+      for (let y = y0; y <= y1; y++)
+        for (let x = x0; x <= x1; x++) {
+          const code = S.terrain[y * g.cols + x];
+          if (code && code !== '.') drawCell(code, o.x + x * c, o.y + y * c, c, x, y);
+        }
     // Cuadrícula
     if (g.show) {
-      ctx.strokeStyle = S.img ? hexA(g.color, g.opacity) : 'rgba(255,255,255,0.12)';
+      ctx.strokeStyle = S.img ? hexA(g.color, g.opacity) : art ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.12)';
       ctx.lineWidth = 1 / S.view.s;
       ctx.beginPath();
       for (let x = x0; x <= x1 + 1; x++) {
@@ -701,6 +705,26 @@
     const n = parseInt(hex.slice(1), 16);
     return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
   };
+  // Ilustración del terreno pintado: se arma una vez y, al pintar, se rehace solo la parte que cambió.
+  const artCache = { canvas: null, terrain: null, cols: 0, rows: 0, tile: 0 };
+  function terrainArt() {
+    const A = globalThis.BoardArt,
+      g = S.grid;
+    if (!A) return null;
+    const tile = A.tileFor(g);
+    if (!artCache.canvas || artCache.cols !== g.cols || artCache.rows !== g.rows || artCache.tile !== tile) {
+      artCache.canvas ||= document.createElement('canvas');
+      artCache.canvas.width = g.cols * tile;
+      artCache.canvas.height = g.rows * tile;
+      Object.assign(artCache, { cols: g.cols, rows: g.rows, tile, terrain: null });
+    }
+    if (artCache.terrain !== S.terrain) {
+      const region = artCache.terrain === null ? undefined : A.changed(g, artCache.terrain, S.terrain);
+      if (region !== null) A.paint(artCache.canvas.getContext('2d'), g, S.terrain, tile, region);
+      artCache.terrain = S.terrain;
+    }
+    return artCache.canvas;
+  }
   function drawCell(code, px, py, c, x, y) {
     const t = BC.terrainType(code);
     ctx.globalAlpha = S.img ? 0.6 : 1;
@@ -806,10 +830,22 @@
       ctx.fillStyle = 'rgba(224,190,128,0.35)';
       ctx.fill();
     }
+    // Sombra bajo la ficha, para que se despegue del mapa.
+    ctx.beginPath();
+    ctx.ellipse(cx + c * 0.04, cy + c * 0.07, rad * 1.02, rad * 0.98, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.38)';
+    ctx.fill();
     ctx.beginPath();
     ctx.arc(cx, cy, rad, 0, Math.PI * 2);
     ctx.fillStyle = t.color || BC.colorFor(t.id, t.kind);
     ctx.fill();
+    // Aro claro arriba y oscuro abajo: borde con volumen.
+    const rim = ctx.createLinearGradient(cx, cy - rad, cx, cy + rad);
+    rim.addColorStop(0, 'rgba(255,255,255,0.55)');
+    rim.addColorStop(1, 'rgba(0,0,0,0.45)');
+    ctx.strokeStyle = rim;
+    ctx.lineWidth = c * 0.035;
+    ctx.stroke();
     const img = portraitImg(d.portrait);
     if (img) {
       ctx.save();
