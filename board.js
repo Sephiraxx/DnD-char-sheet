@@ -503,7 +503,17 @@
   // ---------- Dibujo ----------
   function info(t) {
     // Datos vivos de la ficha: PG, estados, retrato, turno.
-    const out = { ring: null, dead: false, conditions: [], portrait: '', turn: false, status: '', speed: 30 };
+    const out = {
+      ring: null,
+      dead: false,
+      conditions: [],
+      portrait: '',
+      turn: false,
+      status: '',
+      speed: 30,
+      cls: '',
+      color: '',
+    };
     const enc = S.party?.encounter,
       current = enc?.active ? (S.party.combatants || []).find(c => c.id === enc.current_id) : null;
     if (t.character_id) {
@@ -514,6 +524,8 @@
           out.ring = x.maxHP ? Math.max(0, Math.min(1, (x.hp ?? x.maxHP) / x.maxHP)) : null;
           out.conditions = x.conditions;
           out.portrait = x.portrait;
+          out.cls = x.cls || '';
+          out.color = x.color || '';
           out.speed = x.speed || 30;
           out.status = x.hp != null ? `${x.hp}/${x.maxHP} PG` : '';
           out.dead = x.hp === 0;
@@ -812,6 +824,20 @@
       S.drag?.token?.id === t.id ? S.drag.token : S.drag?.group?.find(k => k.id === t.id) || S.remote.get(t.id) || t;
     return { x: r.x, y: r.y };
   }
+  // Aclara (k > 0) u oscurece (k < 0) un color #rrggbb.
+  function shade(hex, k) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return hex;
+    const n = parseInt(m[1], 16),
+      f = v => Math.round(k > 0 ? v + (255 - v) * k : v * (1 + k));
+    return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
+  }
+  function luminance(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return 0.5;
+    const n = parseInt(m[1], 16);
+    return (0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+  }
   function drawToken(t) {
     const c = cellPx(),
       o = origin(),
@@ -835,9 +861,15 @@
     ctx.ellipse(cx + c * 0.04, cy + c * 0.07, rad * 1.02, rad * 0.98, 0, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(0,0,0,0.38)';
     ctx.fill();
+    // Disco con luz arriba a la izquierda; el color elegido para la ficha del personaje pisa al del token.
+    const base = d.color || t.color || BC.colorFor(t.id, t.kind),
+      disc = ctx.createRadialGradient(cx - rad * 0.35, cy - rad * 0.4, rad * 0.1, cx, cy, rad * 1.05);
+    disc.addColorStop(0, shade(base, 0.35));
+    disc.addColorStop(0.55, base);
+    disc.addColorStop(1, shade(base, -0.4));
     ctx.beginPath();
     ctx.arc(cx, cy, rad, 0, Math.PI * 2);
-    ctx.fillStyle = t.color || BC.colorFor(t.id, t.kind);
+    ctx.fillStyle = disc;
     ctx.fill();
     // Aro claro arriba y oscuro abajo: borde con volumen.
     const rim = ctx.createLinearGradient(cx, cy - rad, cx, cy + rad);
@@ -856,11 +888,31 @@
       ctx.drawImage(img, cx - (img.width * k) / 2, cy - (img.height * k) / 2, img.width * k, img.height * k);
       ctx.restore();
     } else {
-      ctx.fillStyle = t.kind === 'monster' ? '#fff' : '#10252a';
-      ctx.font = `700 ${Math.max(8, rad * (String(t.label).length > 2 ? 0.62 : 0.8))}px Inter, system-ui, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(t.label || BC.initials(t.name), cx, cy + rad * 0.04);
+      // Sin retrato: el emblema de la clase (personajes) o del tipo de criatura, y la etiqueta encima.
+      const G = globalThis.Sigils,
+        pc = t.kind === 'pc',
+        dark = luminance(base) > 0.45,
+        ink = dark ? '#10252a' : '#ffffff',
+        glyph = !G || t.kind === 'object' ? '' : pc ? (G.has(d.cls) ? d.cls : '') : G.forName(t.name),
+        label = t.label || BC.initials(t.name);
+      // Anillo interior, como el canto de una moneda.
+      ctx.beginPath();
+      ctx.arc(cx, cy, rad * 0.86, 0, Math.PI * 2);
+      ctx.strokeStyle = dark ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = c * 0.018;
+      ctx.stroke();
+      const drawn =
+        glyph && G.draw(ctx, glyph, cx, cy - (pc ? 0 : rad * 0.06), rad * (pc ? 1.25 : 1.35), ink, pc ? 0.92 : 0.42);
+      if (!(drawn && pc)) {
+        ctx.font = `800 ${Math.max(8, rad * (String(label).length > 2 ? 0.6 : 0.78))}px Inter, system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.lineWidth = c * 0.05;
+        ctx.strokeStyle = dark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.55)';
+        ctx.strokeText(label, cx, cy + rad * 0.04);
+        ctx.fillStyle = ink;
+        ctx.fillText(label, cx, cy + rad * 0.04);
+      }
     }
     // Borde: blanco; seleccionado: dorado.
     ctx.lineWidth = (S.sel === t.id ? 4 : 2) * (c / 70);

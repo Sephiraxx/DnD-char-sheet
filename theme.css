@@ -468,3 +468,273 @@
     --teal: var(--accent);
   }
 }
+
+/* ---------- Tiradas: un d20 que rueda, cae y marca el resultado ---------- */
+@media screen {
+  #roll-fx {
+    bottom: 34px;
+    width: min(440px, calc(100vw - 28px));
+  }
+  .roll-card {
+    position: relative;
+    grid-template-columns: 96px 1fr;
+    gap: 2px 18px;
+    padding: 18px 22px 18px 18px;
+    border-radius: 18px;
+    border-color: var(--accent-line);
+    background:
+      radial-gradient(140px 120px at 62px 50%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%),
+      linear-gradient(180deg, #1a2f36, #10222a);
+    box-shadow:
+      inset 0 1px 0 #ffffff14,
+      0 0 0 1px #0008,
+      0 26px 60px -12px #000d,
+      0 0 46px -14px var(--accent);
+    animation: roll-in 0.26s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  }
+  .roll-icon {
+    width: 96px;
+    height: 96px;
+    color: var(--accent);
+    filter: drop-shadow(0 8px 10px #000a);
+  }
+  .roll-icon b {
+    padding-top: 9px;
+    font-family: var(--display);
+    font-size: 1.75rem;
+    font-weight: 800;
+    font-variant-numeric: lining-nums tabular-nums;
+    color: #0c181c;
+    text-shadow: 0 1px 0 #ffffff59;
+  }
+  .roll-card .roll-label {
+    font-family: var(--display);
+    font-variant-caps: all-small-caps;
+    font-size: 1.12rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: none;
+    color: var(--accent);
+  }
+  .roll-card .roll-total {
+    font-family: var(--display);
+    font-size: 3.5rem;
+    font-weight: 700;
+    line-height: 0.95;
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+  .roll-card .roll-detail {
+    font-size: 0.88rem;
+  }
+  /* Rodando: el dado gira y rebota; el número todavía no se lee. */
+  .roll-card.rolling .roll-icon {
+    animation: roll-tumble 0.42s linear infinite;
+  }
+  .roll-card.rolling .roll-icon b {
+    color: #0c181c99;
+  }
+  .roll-card.rolling .roll-total {
+    filter: blur(1.5px);
+  }
+  /* Cae: golpe seco, onda desde el dado y el total que entra. */
+  .roll-card.settled .roll-icon {
+    animation: roll-land 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  }
+  .roll-card.settled .roll-total {
+    animation: roll-total-in 0.42s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+  }
+  .roll-card.settled::after {
+    content: '';
+    position: absolute;
+    left: 18px;
+    top: 50%;
+    width: 96px;
+    height: 96px;
+    margin-top: -48px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    pointer-events: none;
+    animation: roll-shock 0.6s ease-out both;
+  }
+  /* Crítico: dorado, con rayos detrás del dado. Pifia: rojo, y la tarjeta tiembla. */
+  .roll-card.crit {
+    --accent: var(--gold);
+  }
+  .roll-card.crit.settled .roll-icon::before {
+    content: '';
+    position: absolute;
+    inset: -34px;
+    border-radius: 50%;
+    background: repeating-conic-gradient(from 0deg, #e0be8000 0 9deg, #e0be80aa 9deg 12deg, #e0be8000 12deg 20deg);
+    -webkit-mask: radial-gradient(circle, #0000 34%, #000 38%, #0000 70%);
+    mask: radial-gradient(circle, #0000 34%, #000 38%, #0000 70%);
+    z-index: -1;
+    animation: roll-rays 1.4s ease-out both;
+  }
+  .roll-card.crit.settled {
+    animation: roll-crit 0.7s ease-out both;
+  }
+  .roll-card.fumble {
+    --accent: var(--red);
+  }
+  .roll-card.fumble.settled {
+    animation: roll-fumble 0.45s ease-out both;
+  }
+  .roll-card.fumble .roll-icon b {
+    color: #2a0c0c;
+  }
+  @keyframes roll-tumble {
+    0% {
+      transform: translateY(0) rotate(0deg) scale(1);
+    }
+    25% {
+      transform: translateY(-14px) rotate(95deg) scale(1.06);
+    }
+    50% {
+      transform: translateY(0) rotate(180deg) scale(0.96);
+    }
+    75% {
+      transform: translateY(-9px) rotate(275deg) scale(1.04);
+    }
+    100% {
+      transform: translateY(0) rotate(360deg) scale(1);
+    }
+  }
+  @keyframes roll-land {
+    0% {
+      transform: translateY(-18px) rotate(-24deg) scale(1.28);
+    }
+    55% {
+      transform: translateY(2px) rotate(3deg) scale(0.93);
+    }
+    100% {
+      transform: none;
+    }
+  }
+  @keyframes roll-total-in {
+    0% {
+      opacity: 0.2;
+      transform: translateX(-10px) scale(0.8);
+    }
+    100% {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes roll-shock {
+    0% {
+      opacity: 0.9;
+      transform: scale(0.7);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(2.3);
+    }
+  }
+  @keyframes roll-rays {
+    0% {
+      opacity: 0;
+      transform: scale(0.5) rotate(-20deg);
+    }
+    30% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0.35;
+      transform: scale(1) rotate(25deg);
+    }
+  }
+  @keyframes roll-crit {
+    0% {
+      box-shadow:
+        0 0 0 0 #e0be80cc,
+        0 26px 60px -12px #000d;
+    }
+    100% {
+      box-shadow:
+        0 0 0 22px #e0be8000,
+        0 26px 60px -12px #000d,
+        0 0 60px -10px var(--gold);
+    }
+  }
+  @keyframes roll-fumble {
+    20% {
+      transform: translateX(-7px) rotate(-1deg);
+    }
+    40% {
+      transform: translateX(6px) rotate(1deg);
+    }
+    60% {
+      transform: translateX(-4px);
+    }
+    80% {
+      transform: translateX(2px);
+    }
+  }
+  @media (max-width: 720px) {
+    #roll-fx {
+      bottom: calc(86px + env(safe-area-inset-bottom));
+    }
+    .roll-card {
+      grid-template-columns: 80px 1fr;
+    }
+    .roll-icon {
+      width: 80px;
+      height: 80px;
+    }
+    .roll-card.settled::after {
+      width: 80px;
+      height: 80px;
+      margin-top: -40px;
+    }
+    .roll-card .roll-total {
+      font-size: 3rem;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .roll-card,
+    .roll-card.settled,
+    .roll-card.settled .roll-icon,
+    .roll-card.settled .roll-total,
+    .roll-card.rolling .roll-icon,
+    .roll-card.settled .roll-icon::before {
+      animation: none;
+    }
+    .roll-card.settled::after {
+      display: none;
+    }
+    .roll-card.rolling .roll-total {
+      filter: none;
+    }
+  }
+}
+
+/* Retoques tras revisar las páginas en el teléfono. */
+@media screen {
+  /* El buscador del creador, con el mismo aspecto que el resto de los campos. */
+  .creator-search input {
+    padding: 0 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #0d1b20;
+    color: var(--text);
+    font: inherit;
+  }
+  .creator-search input::placeholder {
+    color: var(--muted);
+  }
+  /* El título de cada paso recibe el foco para los lectores de pantalla: no hace falta el recuadro. */
+  .creator-shell h1:focus {
+    outline: none;
+  }
+  @media (max-width: 720px) {
+    /* El emblema de fondo, más chico y contra el borde, para que no pise el título. */
+    .heading::after {
+      width: 150px;
+      height: 150px;
+      right: -22px;
+      top: -34px;
+      opacity: 0.07;
+    }
+  }
+}

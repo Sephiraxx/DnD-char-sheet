@@ -8,9 +8,9 @@ const RollFX = (() => {
       c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
     );
   const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-  // Contorno de un d20 visto de frente: hexágono con el triángulo central.
+  // Un d20 visto de frente, con sus caras sombreadas: la luz viene de arriba a la izquierda.
   const D20 =
-    '<svg viewBox="0 0 56 56" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M28 3 51 16v24L28 53 5 40V16Z"/><path d="M28 13 44 39H12Z"/><path d="M28 3v10M5 16l7 23M51 16l-7 23M12 39l16 14 16-14"/></g></svg>';
+    '<svg viewBox="0 0 56 56" aria-hidden="true"><g fill="currentColor" stroke="none"><polygon points="28,3 5,16 28,13" fill-opacity="0.55"/><polygon points="28,3 51,16 28,13" fill-opacity="0.4"/><polygon points="5,16 12,39 28,13" fill-opacity="0.45"/><polygon points="51,16 44,39 28,13" fill-opacity="0.28"/><polygon points="5,16 5,40 12,39" fill-opacity="0.32"/><polygon points="51,16 51,40 44,39" fill-opacity="0.18"/><polygon points="5,40 28,53 12,39" fill-opacity="0.22"/><polygon points="51,40 28,53 44,39" fill-opacity="0.12"/><polygon points="12,39 44,39 28,53" fill-opacity="0.16"/><polygon points="28,13 44,39 12,39" fill-opacity="0.78"/></g><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M28 3 51 16v24L28 53 5 40V16Z"/><path d="M28 13 44 39H12Z"/><path d="M28 3v10M5 16l23-3 23 3M5 40l7-1M51 40l-7-1M28 53 12 39M28 53l16-14M5 16l7 23M51 16l-7 23" stroke-opacity=".55"/></g></svg>';
 
   function hide(box) {
     const card = box.firstElementChild;
