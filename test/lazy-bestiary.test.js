@@ -67,7 +67,7 @@ test('la ficha, el DM y el tablero abren sin los textos de reglas y conjuros; el
   assert.ok(c.indexOf('official-text-data.js') > c.indexOf('official-content-data.js'));
   assert.ok(c.indexOf('official-text-data.js') < c.indexOf('official-content.js'));
   assert.match(html('sw.js'), /'\.\/official-text-data\.js'/);
-  assert.ok(fs.statSync(path.join(ROOT, 'official-content-data.js')).size < 1.5e6);
+  assert.ok(fs.statSync(path.join(ROOT, 'official-content-data.js')).size < 1.1e6);
   assert.doesNotMatch(html('dm.html'), /encounter-tables-data\.js/);
 });
 
@@ -79,6 +79,8 @@ test('los textos de reglas y conjuros, cargados después y en cualquier orden, q
         [...c.OfficialContent.ruleTexts].sort((a, b) => (a[0] < b[0] ? -1 : 1)),
         [...c.OfficialContent.spellTexts].sort((a, b) => (a[0] < b[0] ? -1 : 1)),
         c.Catalog.spells.map(s => [s.id, s.ritual]),
+        [...c.OfficialContent.itemTexts].sort((a, b) => (a[0] < b[0] ? -1 : 1)),
+        c.MagicItems.ITEMS,
         c.BookContentData.official.rules,
       ]),
     want = snap(eager);
@@ -92,4 +94,25 @@ test('los textos de reglas y conjuros, cargados después y en cualquier orden, q
     lazy.OfficialContent.applyLongTexts();
     assert.equal(snap(lazy), want);
   }
+});
+
+test('lo que la ficha deduce del texto de cada objeto mágico coincide con lo guardado al armar los datos', () => {
+  const c = load();
+  let checked = 0;
+  for (const row of c.OfficialContentData.items) {
+    assert.ok(row.pre, row.name);
+    assert.equal(row.textLen, (row.text || '').length, row.name);
+    const count = /(?:tiene|has|contiene|dispone de)\s+(\d{1,2})\s+(?:cargas|charges)\b/i.exec(row.text),
+      charges = count && Number(count[1]) > 0 ? { max: Number(count[1]), regain: '0' } : null,
+      it = { name: row.name.trim(), ...(charges ? { charges } : {}) };
+    assert.equal(row.pre.note, c.MagicItems.ownText(row.text).slice(0, 480), row.name);
+    assert.deepEqual(JSON.parse(JSON.stringify(row.pre.charges)), charges, row.name);
+    assert.deepEqual(
+      JSON.parse(JSON.stringify(row.pre.derived)),
+      JSON.parse(JSON.stringify(c.MagicItems.derive(it, row))),
+      row.name,
+    );
+    checked++;
+  }
+  assert.ok(checked > 500);
 });
