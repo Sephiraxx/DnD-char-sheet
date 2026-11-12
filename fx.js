@@ -39,12 +39,20 @@ const RollFX = (() => {
     const landed = new Promise(r => (done = r));
     settle = done;
     const tag = crit ? '¡Crítico!' : fumble ? 'Pifia' : '';
-    box.innerHTML = `<button type="button" class="roll-card ${crit ? 'crit' : fumble ? 'fumble' : ''}" aria-label="${esc(label)}: ${esc(total)}. Tocá para cerrar."><span class="roll-icon">${D20}<b>${esc(face)}</b></span><span class="roll-label">${esc(label)}${tag ? `<span class="roll-tag">${tag}</span>` : ''}</span><span class="roll-total">${esc(total)}</span>${detail ? `<span class="roll-detail">${esc(detail)}</span>` : ''}</button>`;
+    box.innerHTML = `<button type="button" class="roll-card" aria-label="${esc(label)}: ${esc(total)}. Tocá para cerrar."><span class="roll-icon">${D20}<b>${esc(face)}</b></span><span class="roll-label">${esc(label)}${tag ? `<span class="roll-tag">${tag}</span>` : ''}</span><span class="roll-total">${esc(total)}</span>${detail ? `<span class="roll-detail">${esc(detail)}</span>` : ''}</button>`;
     const card = box.firstElementChild,
       out = card.querySelector('.roll-total'),
       dieOut = card.querySelector('.roll-icon b'),
       final = Number(total),
-      faceNum = Number(face);
+      faceNum = Number(face),
+      // El crítico o la pifia se muestran recién cuando el dado cae, no antes.
+      land = () => {
+        card.classList.remove('rolling');
+        card.classList.add('settled');
+        if (crit || fumble) card.classList.add(crit ? 'crit' : 'fumble');
+        settle = null;
+        done();
+      };
     // Números al azar que se frenan de a poco hasta quedar en el resultado real.
     if (!calm() && Number.isFinite(final)) {
       const steps = [45, 45, 50, 55, 65, 75, 90, 110, 135, 165];
@@ -55,10 +63,7 @@ const RollFX = (() => {
         if (i >= steps.length) {
           out.textContent = total;
           if (dieOut) dieOut.textContent = face;
-          card.classList.remove('rolling');
-          card.classList.add('settled');
-          settle = null;
-          done();
+          land();
           return;
         }
         out.textContent = Math.max(0, Math.round(final + (Math.random() - 0.5) * spread));
@@ -66,11 +71,7 @@ const RollFX = (() => {
         ticker = setTimeout(tick, steps[i++]);
       };
       tick();
-    } else {
-      card.classList.add('settled');
-      settle = null;
-      done();
-    }
+    } else land();
     timer = setTimeout(() => hide(box), 4000);
     return landed;
   }

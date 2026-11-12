@@ -536,6 +536,10 @@
   .roll-card.rolling .roll-total {
     filter: blur(1.5px);
   }
+  .roll-card.rolling .roll-tag,
+  .roll-card.rolling .roll-detail {
+    visibility: hidden;
+  }
   /* Cae: golpe seco, onda desde el dado y el total que entra. */
   .roll-card.settled .roll-icon {
     animation: roll-land 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
