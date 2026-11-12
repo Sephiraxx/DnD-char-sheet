@@ -537,3 +537,19 @@ html.board-open body {
   margin-bottom: 12px;
   border-color: var(--gold);
 }
+/* Generador de mapas */
+.gen-chips {
+  margin-bottom: 8px;
+}
+.gen-preview {
+  margin: 12px 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #071014;
+}
+.gen-preview canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
