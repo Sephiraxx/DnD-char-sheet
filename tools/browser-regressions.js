@@ -1,5 +1,6 @@
 // Recorridos en un navegador real para fallas que las pruebas de lógica no ven (auditoría del 8/11/2026).
-// Uso: npm run browser   (necesita Playwright con Chromium: npm i -D playwright && npx playwright install chromium)
+// Uso: npm run browser   (necesita Playwright con Chromium: npm i --no-save playwright && npx playwright install chromium)
+// Corre también en GitHub Actions, en el trabajo «browser» de .github/workflows/check.yml.
 // Sirve la carpeta en un puerto libre, abre la app en un origen limpio y falla con código 1 si algo no anda.
 const http = require('http');
 const fs = require('fs');
@@ -14,6 +15,7 @@ const TYPES = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.webmanifest': 'application/manifest+json',
+  '.woff2': 'font/woff2',
 };
 
 function serve() {
@@ -130,6 +132,89 @@ async function main() {
       'Notas de clase: siguen después de cambiar de sección',
       (await page.inputValue('#class-notes')).includes('no muertos'),
     );
+    // 6. Ninguna sección de la ficha se desborda de costado en un teléfono.
+    for (const route of ['combat', 'spells', 'gear', 'character', 'traits', 'class', 'journal', 'table']) {
+      await page.goto(base + 'index.html?abrir#' + route);
+      await page.waitForFunction(() => document.getElementById('main')?.children.length > 0);
+      await page.waitForTimeout(150);
+      const width = await page.evaluate(() => document.documentElement.scrollWidth);
+      check(`Teléfono: «${route}» entra en 390 px`, width <= 391, 'mide ' + width);
+    }
+
+    // 7. Identidad visual: la clase tiñe la ficha y el jugador puede elegir otro color.
+    await page.goto(base + 'index.html?abrir#character');
+    await page.waitForSelector('#persona-card');
+    check(
+      'Tema: la ficha lleva el color de su clase',
+      await page.evaluate(() => document.documentElement.dataset.cls === 'wizard'),
+    );
+    check(
+      'Tema: la tipografía de títulos está disponible',
+      await page.evaluate(() => document.fonts.load('600 20px Alegreya').then(f => f.length > 0)),
+    );
+    await page.click('[data-action="persona-color"]');
+    await page.check('input[name="color"][value="#8cc474"]', { force: true });
+    await page.click('#dialog-form button[type="submit"]');
+    await page.waitForFunction(() => !document.querySelector('#modal')?.open);
+    check(
+      'Color de la ficha: se guarda y se aplica',
+      await page.evaluate(
+        () =>
+          state.sheetColor === '#8cc474' && document.documentElement.style.getPropertyValue('--accent') === '#8cc474',
+      ),
+    );
+
+    // 8. Tiradas: la tarjeta aparece y queda en el resultado.
+    await page.evaluate(() => RollFX.show({ label: 'Prueba', total: 17, face: 14, detail: 'd20 (14) + 3' }));
+    await page.waitForSelector('.roll-card.settled');
+    check('Tiradas: la tarjeta muestra el total', (await page.textContent('.roll-card .roll-total')) === '17');
+
+    // 9. Mapas: cada tipo del generador se dibuja completo, y las luces alumbran en la oscuridad.
+    const maps = await page.evaluate(() => {
+      const out = [];
+      for (const [type] of BoardGen.TYPES) {
+        const m = BoardGen.generate(type, { size: 'small', seed: 5 }),
+          canvas = document.createElement('canvas'),
+          tile = 16;
+        canvas.width = m.cols * tile;
+        canvas.height = m.rows * tile;
+        const ctx = canvas.getContext('2d');
+        BoardArt.paint(ctx, BoardCore.normGrid({ cols: m.cols, rows: m.rows }), m.terrain, tile);
+        // Ningún píxel queda transparente: todo el mapa se pintó.
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        let empty = 0;
+        for (let i = 3; i < data.length; i += 4) if (data[i] === 0) empty++;
+        if (empty) out.push(type + ': ' + empty + ' píxeles sin pintar');
+      }
+      return out;
+    });
+    check(`Mapas: los tipos del generador se dibujan`, !maps.length, maps.join(' | '));
+    check(
+      'Mapas: una antorcha a la vista se ve en la oscuridad',
+      await page.evaluate(() => {
+        const g = BoardCore.normGrid({ cols: 30, rows: 6 }),
+          bits = BoardCore.sight(
+            g,
+            '.'.repeat(180),
+            [],
+            [{ x: 2.5, y: 3.5, range: 2 }],
+            [{ x: 20.5, y: 3.5, range: 3 }],
+          );
+        return bits[3 * 30 + 20] === 1 && bits[3 * 30 + 10] === 0;
+      }),
+    );
+    check(
+      'Fichas del mapa: hay emblema para la clase y para las criaturas',
+      await page.evaluate(() => Sigils.has('wizard') && Sigils.forName('Dragón rojo') === 'dragon'),
+    );
+
+    // 10. Pantalla del DM y catálogo: abren sin errores (sin cuenta, muestran su portada).
+    for (const file of ['dm.html', 'compendium.html', 'board.html']) {
+      await page.goto(base + file);
+      await page.waitForLoadState('load');
+      const width = await page.evaluate(() => document.documentElement.scrollWidth);
+      check(`«${file}» abre y entra en 390 px`, width <= 391, 'mide ' + width);
+    }
     check('Sin errores de JavaScript', !errors.length, errors.join(' | '));
   } finally {
     await browser.close();

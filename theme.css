@@ -732,7 +732,7 @@
     .heading::after {
       width: 150px;
       height: 150px;
-      right: -22px;
+      right: -10px;
       top: -34px;
       opacity: 0.07;
     }
