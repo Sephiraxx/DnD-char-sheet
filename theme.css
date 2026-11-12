@@ -1,0 +1,425 @@
+/* Identidad visual: tipografía Alegreya, color y emblema según la clase del personaje (o la pantalla del DM),
+   iconos de navegación y superficies con más materia. Se carga al final y solo afecta a la pantalla. */
+@font-face {
+  font-family: 'Alegreya';
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('./fonts/alegreya-latin-wght-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Alegreya';
+  font-style: italic;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('./fonts/alegreya-latin-wght-italic.woff2') format('woff2');
+}
+:root {
+  --display: 'Alegreya', Georgia, 'Times New Roman', serif;
+  --accent: var(--gold);
+  --sigil: none;
+  --i-wizard: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z%22/%3E%3Cpath d=%22M18.5 15l.8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8z%22/%3E%3C/svg%3E');
+  --i-fighter: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M4.5 4.5 15 15M19.5 4.5 9 15M13 17l4-4M7 13l4 4M5 19l3-3M19 19l-3-3%22/%3E%3C/svg%3E');
+  --i-barbarian: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M7 21 16 6%22/%3E%3Cpath d=%22M13 4c4-1 7 1 8 5-3 0-5 1-6 3z%22/%3E%3C/svg%3E');
+  --i-bard: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M9 17.5a2.5 2.5 0 1 1-2.5-2.5H9V5l10-2v11.5a2.5 2.5 0 1 1-2.5-2.5H19M9 9l10-2%22/%3E%3C/svg%3E');
+  --i-cleric: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%224%22/%3E%3Cpath d=%22M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.300l2.1 2.100M16.6 16.600l2.1 2.100M5.3 18.700l2.1-2.100M16.6 7.400l2.1-2.1%22/%3E%3C/svg%3E');
+  --i-druid: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M5 19c0-9 5-14 14-14 0 9-5 14-14 14zM5 19 14 10M9 15h4M11 13V9%22/%3E%3C/svg%3E');
+  --i-monk: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M19 12a7 7 0 1 1-3-5.7%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%221.6%22/%3E%3C/svg%3E');
+  --i-paladin: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z%22/%3E%3Cpath d=%22M12 8v8M9 11h6%22/%3E%3C/svg%3E');
+  --i-ranger: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M7 3c9 3 12 9 10 18M7 3l10 18M3 15l18-6M21 9l-4-.5M21 9l-2.5 3.5%22/%3E%3C/svg%3E');
+  --i-rogue: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 2l2.5 9h-5zM8 12h8M12 12v7M10.5 21h3%22/%3E%3C/svg%3E');
+  --i-sorcerer: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 3c1 4 6 6 6 11a6 6 0 0 1-12 0c0-2 1-3.5 2-4.5.3 2 1.2 3 2.5 3.200C10 9 10.5 6 12 3z%22/%3E%3C/svg%3E');
+  --i-warlock: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6zM12 9v6%22/%3E%3C/svg%3E');
+  --i-artificer: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%223.2%22/%3E%3Cpath d=%22M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.600l2.2 2.200M16.2 16.200l2.2 2.200M5.6 18.400l2.2-2.200M16.2 7.800l2.2-2.2%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%226.2%22/%3E%3C/svg%3E');
+  --i-dm: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M3 7l5-2v14l-5 2zM8 5h8v14H8zM16 5l5 2v14l-5-2zM10.5 9h3M10.5 12h3%22/%3E%3C/svg%3E');
+  --i-n-combat: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M4.5 4.5 15 15M19.5 4.5 9 15M13 17l4-4M7 13l4 4M5 19l3-3M19 19l-3-3%22/%3E%3C/svg%3E');
+  --i-n-spells: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z%22/%3E%3Cpath d=%22M18.5 15l.8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8z%22/%3E%3C/svg%3E');
+  --i-n-gear: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M8.5 7V5.5a3.5 3.5 0 0 1 7 0V7M6 7h12a1 1 0 0 1 1 1v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 1-1zM9 13h6v4H9z%22/%3E%3C/svg%3E');
+  --i-n-character: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 21a7.5 7.5 0 0 1 15 0%22/%3E%3C/svg%3E');
+  --i-n-traits: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.600l-5.4 2.9 1.2-6-4.5-4.2 6.1-.7z%22/%3E%3C/svg%3E');
+  --i-n-class: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z%22/%3E%3Cpath d=%22M9 12l2 2 4-4%22/%3E%3C/svg%3E');
+  --i-n-journal: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h11M9 8h6%22/%3E%3C/svg%3E');
+  --i-n-table: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 2.5l8.5 4.75v9.5L12 21.5l-8.5-4.75v-9.5zM12 2.5v6M3.5 7.25 12 8.5l8.5-1.25M12 8.5l-5 8h10zM3.5 16.75 7 16.5M20.5 16.75 17 16.5M12 21.5l-5-5M12 21.5l5-5%22/%3E%3C/svg%3E');
+}
+[data-cls='barbarian'] {
+  --accent: #e8834a;
+  --sigil: var(--i-barbarian);
+}
+[data-cls='bard'] {
+  --accent: #e07fb4;
+  --sigil: var(--i-bard);
+}
+[data-cls='cleric'] {
+  --accent: #ecd583;
+  --sigil: var(--i-cleric);
+}
+[data-cls='druid'] {
+  --accent: #8cc474;
+  --sigil: var(--i-druid);
+}
+[data-cls='fighter'] {
+  --accent: #c3ced9;
+  --sigil: var(--i-fighter);
+}
+[data-cls='monk'] {
+  --accent: #62c8cc;
+  --sigil: var(--i-monk);
+}
+[data-cls='paladin'] {
+  --accent: #a9c8ff;
+  --sigil: var(--i-paladin);
+}
+[data-cls='ranger'] {
+  --accent: #b3bf63;
+  --sigil: var(--i-ranger);
+}
+[data-cls='rogue'] {
+  --accent: #b3a3d1;
+  --sigil: var(--i-rogue);
+}
+[data-cls='sorcerer'] {
+  --accent: #f0705f;
+  --sigil: var(--i-sorcerer);
+}
+[data-cls='warlock'] {
+  --accent: #b683f0;
+  --sigil: var(--i-warlock);
+}
+[data-cls='wizard'] {
+  --accent: #8aa2ff;
+  --sigil: var(--i-wizard);
+}
+[data-cls='artificer'] {
+  --accent: #dba257;
+  --sigil: var(--i-artificer);
+}
+[data-cls='dm'] {
+  --accent: #e8796a;
+  --sigil: var(--i-dm);
+}
+
+@media screen {
+  :root {
+    --bg: #0a1418;
+    --panel: #122228;
+    --panel2: #192d34;
+    --line: #283d44;
+    --text: #efeadb;
+    --accent-wash: color-mix(in srgb, var(--accent) 14%, transparent);
+    --accent-line: color-mix(in srgb, var(--accent) 55%, var(--line));
+  }
+  /* Fondo: un resplandor del color de la clase arriba a la derecha y un grano fino, para que no sea un plano liso. */
+  body {
+    background:
+      radial-gradient(1100px 620px at 88% -8%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 62%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .045 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+      var(--bg);
+    background-attachment: fixed, scroll, scroll;
+  }
+
+  /* ---------- Tipografía ---------- */
+  h1,
+  h2,
+  h3,
+  .display,
+  .metric strong,
+  .portrait span,
+  .monogram,
+  #breadcrumb,
+  .party-card h3,
+  .creator-shell h1,
+  .library-title {
+    font-family: var(--display);
+  }
+  h1 {
+    font-weight: 500;
+    font-size: clamp(2.2rem, 1.4rem + 2.2vw, 3.2rem);
+    letter-spacing: -0.012em;
+    line-height: 1.04;
+  }
+  h2 {
+    font-weight: 600;
+    font-size: 1.62rem;
+    letter-spacing: -0.005em;
+  }
+  h3 {
+    font-weight: 700;
+    font-size: 1.16rem;
+  }
+  /* Rótulos: versalitas de Alegreya en el color de la clase, en lugar de mayúsculas espaciadas. */
+  .eyebrow {
+    font-family: var(--display);
+    font-variant-caps: all-small-caps;
+    font-weight: 700;
+    font-size: 1.2rem;
+    letter-spacing: 0.07em;
+    line-height: 1.1;
+    color: var(--accent);
+  }
+  .metric strong,
+  .party-stats dd,
+  .hp-number {
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+
+  /* ---------- Barra lateral ---------- */
+  .sidebar {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 9%, transparent), transparent 46%), #0e1d22;
+  }
+  .brand {
+    color: var(--text);
+    font-family: var(--display);
+    font-variant-caps: all-small-caps;
+    font-size: 0.98rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    line-height: 1.15;
+  }
+  .monogram {
+    border: 0;
+    border-radius: 0;
+    width: 46px;
+    height: 46px;
+    font-size: 19px;
+    font-weight: 800;
+    color: #14201f;
+    font-variant-numeric: lining-nums;
+    /* El «20» va dentro de un d20 visto de frente. */
+    background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 80%, white), var(--accent));
+    clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  }
+  .portrait {
+    border-radius: 14px;
+    background: radial-gradient(120% 90% at 30% 0%, color-mix(in srgb, var(--accent) 46%, #16262b), #16262b 70%);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent),
+      0 14px 30px -18px #000;
+  }
+  /* Emblema de la clase: grande cuando no hay retrato, como sello chico cuando lo hay. */
+  .portrait::before {
+    content: '';
+    position: absolute;
+    inset: 18px 0 auto;
+    height: 112px;
+    background: color-mix(in srgb, var(--accent) 70%, white);
+    opacity: 0.9;
+    -webkit-mask: var(--sigil) center / contain no-repeat;
+    mask: var(--sigil) center / contain no-repeat;
+    z-index: 1;
+  }
+  .portrait.custom-portrait::before {
+    inset: 10px 10px auto auto;
+    width: 34px;
+    height: 34px;
+    padding: 6px;
+    opacity: 1;
+    filter: drop-shadow(0 1px 3px #000c);
+  }
+  .portrait:after {
+    background: linear-gradient(transparent, #0e1d22);
+  }
+  .portrait span {
+    font-size: 1.7rem;
+    font-weight: 600;
+    line-height: 1.05;
+    left: 14px;
+    right: 12px;
+    bottom: 14px;
+    text-shadow: 0 1px 8px #000a;
+  }
+  /* Navegación: iconos dibujados en lugar de símbolos tipográficos. */
+  .nav-symbol {
+    font-size: 0;
+    width: 20px;
+    height: 20px;
+    flex: none;
+    background: currentColor;
+    -webkit-mask: var(--nav-icon, none) center / contain no-repeat;
+    mask: var(--nav-icon, none) center / contain no-repeat;
+  }
+  .nav-link[href='#combat'] {
+    --nav-icon: var(--i-n-combat);
+  }
+  .nav-link[href='#spells'] {
+    --nav-icon: var(--i-n-spells);
+  }
+  .nav-link[href='#gear'] {
+    --nav-icon: var(--i-n-gear);
+  }
+  .nav-link[href='#character'] {
+    --nav-icon: var(--i-n-character);
+  }
+  .nav-link[href='#traits'] {
+    --nav-icon: var(--i-n-traits);
+  }
+  .nav-link[href='#class'] {
+    --nav-icon: var(--i-n-class);
+  }
+  .nav-link[href='#journal'] {
+    --nav-icon: var(--i-n-journal);
+  }
+  .nav-link[href='#table'] {
+    --nav-icon: var(--i-n-table);
+  }
+  .nav-link.active {
+    color: var(--accent);
+    background: var(--accent-wash);
+    box-shadow: inset 3px 0 var(--accent);
+  }
+  @media (max-width: 720px) {
+    .nav-link.active {
+      box-shadow: inset 0 3px var(--accent);
+    }
+  }
+
+  /* ---------- Encabezado de página, con el emblema de fondo ---------- */
+  .heading {
+    position: relative;
+    isolation: isolate;
+  }
+  .heading::after {
+    content: '';
+    position: absolute;
+    right: -8px;
+    top: -64px;
+    width: 230px;
+    height: 230px;
+    background: var(--accent);
+    opacity: 0.09;
+    -webkit-mask: var(--sigil) center / contain no-repeat;
+    mask: var(--sigil) center / contain no-repeat;
+    z-index: -1;
+    pointer-events: none;
+  }
+  #breadcrumb {
+    font-size: 1.15rem;
+    font-weight: 600;
+  }
+
+  /* ---------- Superficies ---------- */
+  .card {
+    border-radius: 14px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 93%, white), var(--panel) 110px);
+    box-shadow:
+      inset 0 1px 0 #ffffff0f,
+      0 18px 30px -26px #000;
+  }
+  .banner {
+    border-left: 3px solid var(--accent);
+  }
+  /* Los números vitales: una sola tira con divisiones, no cinco tarjetas sueltas. */
+  .metric strong {
+    font-weight: 600;
+    font-size: 2.5rem;
+    line-height: 1;
+    color: var(--text);
+  }
+  .metric strong small {
+    font-size: 0.5em;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  @media (min-width: 900px) {
+    .metrics.battle-metrics {
+      gap: 0;
+      border: 1px solid var(--line);
+      border-top: 2px solid var(--accent);
+      border-radius: 4px 4px 14px 14px;
+      background: linear-gradient(180deg, var(--accent-wash), transparent 70%), var(--panel);
+      overflow: hidden;
+    }
+    .metrics.battle-metrics .metric {
+      border: 0;
+      border-left: 1px solid var(--line);
+      border-radius: 0;
+      background: none;
+      padding: 18px 22px 16px;
+    }
+    .metrics.battle-metrics .metric:first-child {
+      border-left: 0;
+    }
+    .metrics.battle-metrics .metric:first-child strong {
+      color: var(--accent);
+    }
+  }
+
+  /* ---------- Botones ---------- */
+  .button,
+  .icon-btn {
+    border-radius: 10px;
+    background-image: linear-gradient(180deg, #ffffff2e, #ffffff00 60%);
+    box-shadow:
+      inset 0 1px 0 #ffffff47,
+      0 1px 0 #0008;
+  }
+  .button.secondary,
+  .icon-btn {
+    background-image: linear-gradient(180deg, #ffffff0d, #ffffff00 70%);
+    box-shadow:
+      inset 0 1px 0 #ffffff12,
+      0 1px 0 #0006;
+  }
+  .button.secondary:hover:not(:disabled),
+  .icon-btn:hover:not(:disabled) {
+    border-color: var(--accent-line);
+  }
+
+  /* ---------- Fichas de la party (cada una con el color y el emblema de su clase) ---------- */
+  .party-card[data-cls] {
+    border-top: 2px solid var(--accent);
+    border-radius: 4px 4px 14px 14px;
+  }
+  .party-card[data-cls] .party-avatar {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent);
+  }
+  /* Emblema de la clase, como sello sobre el retrato. */
+  .party-card[data-cls] .party-who {
+    position: relative;
+  }
+  .party-card[data-cls] .party-who::before,
+  .party-card[data-cls] .party-who::after {
+    content: '';
+    position: absolute;
+    left: 26px;
+    top: 26px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+  }
+  .party-card[data-cls] .party-who::before {
+    background: var(--panel);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+  .party-card[data-cls] .party-who::after {
+    background: var(--accent);
+    -webkit-mask: var(--sigil) center / 15px no-repeat;
+    mask: var(--sigil) center / 15px no-repeat;
+  }
+  /* Los botones de solo texto no llevan relieve. */
+  .button.text-btn,
+  .text-btn {
+    background-image: none;
+    box-shadow: none;
+  }
+  /* La tira fija de números vitales toma el fondo de la página, con desenfoque al pasar contenido por debajo. */
+  .cc-stats {
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+  .cc-stat b {
+    font-family: var(--display);
+    font-weight: 700;
+    font-variant-numeric: lining-nums;
+  }
+  .topbar .eyebrow {
+    font-size: 1.05rem;
+  }
+  /* Puntuaciones de característica y otros números grandes, en la tipografía de títulos. */
+  .ability strong,
+  .ability-mod,
+  .hp-number {
+    font-family: var(--display);
+    font-variant-numeric: lining-nums;
+  }
+}
