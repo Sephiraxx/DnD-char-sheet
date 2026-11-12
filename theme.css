@@ -460,3 +460,11 @@
   flex: none;
   box-shadow: inset 0 0 0 1px #ffffff40;
 }
+
+/* En la ficha, los enlaces, botones de texto, barras y puntos (el «verde azulado» de la app)
+   siguen al color de la clase o al que eligió el jugador. La pantalla del DM conserva el suyo. */
+@media screen {
+  html[data-cls]:not([data-cls='dm']) {
+    --teal: var(--accent);
+  }
+}

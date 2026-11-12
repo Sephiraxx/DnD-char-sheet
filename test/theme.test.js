@@ -50,3 +50,7 @@ test('color de la ficha: se valida, se aclara si es muy oscuro y viaja en el res
   assert.ok(parseInt(lifted.slice(1, 3), 16) > 120);
   assert.equal(c.Persona.readable('nope'), '');
 });
+
+test('en la ficha, enlaces y botones de texto siguen al color elegido; la pantalla del DM no', () => {
+  assert.match(read('theme.css'), /html\[data-cls\]:not\(\[data-cls='dm'\]\) \{\s*--teal: var\(--accent\);/);
+});
