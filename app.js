@@ -378,9 +378,22 @@ addEventListener('cloud-backup', () => {
   const tag = document.querySelector('.settings-copy .copy-state');
   if (tag && typeof AccountUI !== 'undefined') tag.outerHTML = AccountUI.copyTag(KEY);
 });
+function setClassTheme() {
+  let id = '';
+  try {
+    const v = state && Classes.views(state)[0];
+    id = v?.cls?.id || v?.classId || '';
+  } catch {
+    id = '';
+  }
+  if (id) document.documentElement.dataset.cls = id;
+  else delete document.documentElement.dataset.cls;
+}
 function render() {
   const y = scrollY;
   document.body.classList.toggle('no-character', !state);
+  // Color y emblema de la pantalla según la clase principal (theme.css).
+  setClassTheme();
   copyFooter();
   if (!state) {
     PartyUI.welcome();
