@@ -1901,6 +1901,7 @@
         await openMap(el.dataset.id);
         await goLive(el.dataset.id);
       } else if (a === 'map-new') return newMapDialog();
+      else if (a === 'map-gen') return genDialog();
       else if (a === 'map-edit') return mapEditDialog(S.maps.find(m => m.id === el.dataset.id));
       else if (a === 'map-delete') {
         const m = S.maps.find(x => x.id === el.dataset.id);
@@ -1971,7 +1972,7 @@
               `<div class="board-map-row ${m.id === S.mapId ? 'on' : ''}"><div><b>${esc(m.name)}</b><p class="small muted">${m.image_path ? 'Imagen' : 'Terreno'} · ${BC.normGrid(m.grid).cols}×${BC.normGrid(m.grid).rows} casillas${m.fog?.on ? ' · niebla' : ''}</p></div>${m.id === live ? '<span class="tag">En la mesa</span>' : ''}<div class="actions">${button('Abrir', 'map-open', 'secondary', `data-id="${m.id}"`)}${m.id === live ? '' : button('Mostrar a la mesa', 'map-live', '', `data-id="${m.id}"`)}${button('Ajustes', 'map-edit', 'secondary', `data-id="${m.id}"`)}${button('Eliminar', 'map-delete', 'text-btn danger-text', `data-id="${m.id}"`)}</div></div>`,
           )
           .join('') || '<p class="muted">Todavía no hay mapas.</p>'
-      }</div><div class="actions">${button('+ Nuevo mapa', 'map-new', '')}</div>`,
+      }</div><div class="actions">${button('+ Nuevo mapa', 'map-new', '')}${globalThis.BoardGen ? button('🎲 Generar mapa', 'map-gen', 'secondary') : ''}</div>`,
     );
   }
   function tvDialog() {
@@ -2098,6 +2099,80 @@
   }
 
   // ---------- Nuevos mapas ----------
+  // Generador de mapas: elegir un tipo, ver la vista previa, volver a tirar y crear.
+  const genState = { type: 'trail', size: 'medium', map: null };
+  function genDialog() {
+    const G = globalThis.BoardGen,
+      roll = () => (genState.map = G.generate(genState.type, { size: genState.size })),
+      chips = (name, list, cur) =>
+        `<div class="chips gen-chips" role="radiogroup">${list
+          .map(
+            ([v, l, tip]) =>
+              `<button type="button" class="chip ${v === cur ? 'selected' : ''}" data-gen-${name}="${esc(v)}" title="${esc(tip || '')}" role="radio" aria-checked="${v === cur}">${esc(l)}</button>`,
+          )
+          .join('')}</div>`;
+    roll();
+    modal(
+      'Generar mapa',
+      `<p class="small">Elegí un tipo de lugar y tirá hasta que te guste. El mapa queda como terreno pintado: después lo podés retocar con el pincel.</p>${chips('type', G.TYPES, genState.type)}<p class="small muted" id="gen-about"></p>${chips(
+        'size',
+        Object.entries(G.SIZES).map(([k, v]) => [k, `${v[0]} · ${v[1]}×${v[2]}`]),
+        genState.size,
+      )}<div class="actions">${button('🎲 Otra versión', 'gen-roll', 'secondary')}</div><div class="gen-preview"><canvas id="gen-canvas" aria-label="Vista previa del mapa"></canvas></div>${field('Nombre', 'name', '', 'text', 'maxlength="100" required')}`,
+      async fd => {
+        const m = genState.map,
+          grid = BC.normGrid({ cols: m.cols, rows: m.rows, size: CELL }),
+          made = await Cloud.saveMap(S.id, {
+            name: String(fd.get('name')).trim() || m.name,
+            sort: S.maps.length,
+            grid,
+            terrain: { cells: BC.cells(grid, m.terrain), walls: [] },
+            fog: { on: false },
+          });
+        S.maps = [...S.maps, made];
+        await openMap(made.id);
+        if (!activeId()) await goLive(made.id);
+        toast('Mapa generado. Retocalo con «Terreno» si hace falta.');
+      },
+      'Crear mapa',
+    );
+    const form = $('#dialog-form'),
+      name = form.querySelector('[name=name]');
+    let autoName = '';
+    const show = () => {
+      const m = genState.map,
+        canvas = $('#gen-canvas'),
+        tile = Math.max(8, Math.floor(640 / m.cols));
+      canvas.width = m.cols * tile;
+      canvas.height = m.rows * tile;
+      globalThis.BoardArt?.paint(canvas.getContext('2d'), BC.normGrid({ cols: m.cols, rows: m.rows }), m.terrain, tile);
+      $('#gen-about').textContent = G.TYPES.find(t => t[0] === genState.type)[2];
+      // El nombre sigue al tipo mientras el DM no lo haya cambiado.
+      if (!name.value || name.value === autoName) {
+        const n = S.maps.filter(x => x.name.startsWith(m.name)).length;
+        name.value = autoName = m.name + (n ? ' ' + (n + 1) : '');
+      }
+      form.querySelectorAll('[data-gen-type]').forEach(b => {
+        b.classList.toggle('selected', b.dataset.genType === genState.type);
+        b.setAttribute('aria-checked', b.dataset.genType === genState.type);
+      });
+      form.querySelectorAll('[data-gen-size]').forEach(b => {
+        b.classList.toggle('selected', b.dataset.genSize === genState.size);
+        b.setAttribute('aria-checked', b.dataset.genSize === genState.size);
+      });
+    };
+    form.addEventListener('click', e => {
+      const t = e.target.closest('[data-gen-type], [data-gen-size], [data-action=bd-gen-roll]');
+      if (!t) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (t.dataset.genType) genState.type = t.dataset.genType;
+      if (t.dataset.genSize) genState.size = t.dataset.genSize;
+      roll();
+      show();
+    });
+    show();
+  }
   function newMapDialog() {
     modal(
       'Nuevo mapa',
