@@ -388,6 +388,10 @@ function setClassTheme() {
   }
   if (id) document.documentElement.dataset.cls = id;
   else delete document.documentElement.dataset.cls;
+  // Color elegido por el jugador: pisa al de la clase (el emblema no cambia).
+  const color = state && /^#[0-9a-f]{6}$/i.test(state.sheetColor || '') ? state.sheetColor : '';
+  if (color) document.documentElement.style.setProperty('--accent', color);
+  else document.documentElement.style.removeProperty('--accent');
 }
 function render() {
   const y = scrollY;

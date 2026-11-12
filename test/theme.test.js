@@ -31,3 +31,22 @@ test('el resumen de una ficha lleva su clase principal, para pintar su tarjeta',
   vm.runInContext(read('party-view.js'), c);
   assert.equal(c.PartyView.summarize(fixture('wizard-3.json')).cls, 'wizard');
 });
+
+test('color de la ficha: se valida, se aclara si es muy oscuro y viaja en el resumen', () => {
+  const c = load(),
+    s = fixture('wizard-3.json');
+  vm.runInContext(read('party-view.js'), c);
+  assert.equal(c.PartyView.summarize(s).color, '');
+  s.sheetColor = '#e8834a';
+  assert.doesNotThrow(() => c.Rules.validate(s));
+  assert.equal(c.PartyView.summarize(s).color, '#e8834a');
+  s.sheetColor = 'red; background:url(x)';
+  assert.throws(() => c.Rules.validate(s), /Color/);
+  // Una ficha con un color inválido no llega a pintar nada.
+  assert.ok(!c.PartyView.summarize(s).color);
+  assert.equal(c.Persona.readable('#e8834a'), '#e8834a');
+  const lifted = c.Persona.readable('#101010');
+  assert.match(lifted, /^#[0-9a-f]{6}$/);
+  assert.ok(parseInt(lifted.slice(1, 3), 16) > 120);
+  assert.equal(c.Persona.readable('nope'), '');
+});

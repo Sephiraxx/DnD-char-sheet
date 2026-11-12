@@ -34,6 +34,7 @@
       line: classLine(s),
       // Clase principal: da el color y el emblema de la tarjeta.
       cls: (v => v?.cls?.id || v?.classId || '')(root.Classes?.views(s)[0]),
+      color: /^#[0-9a-f]{6}$/i.test(s.sheetColor || '') ? s.sheetColor : '',
       race: s.race || '',
       level: root.Rules.totalLevel(s),
       hp: s.wildShape ? s.wildShape.hp : s.hp,
@@ -92,7 +93,7 @@
       ...(x.bonusDice || []).map(b => `<span class="chip selected">+${esc(b)}</span>`),
       x.hp === 0 ? `<span class="chip warn">Salvaciones: ${x.death.success}✓ ${x.death.failure}✗</span>` : '',
     ].join('');
-    return `<article class="card party-card ${hpClass(x)} ${x.onTurn ? 'on-turn' : ''} ${mine ? 'mine' : ''}"${/^[a-z]+$/.test(x.cls || '') ? ` data-cls="${x.cls}"` : ''}>
+    return `<article class="card party-card ${hpClass(x)} ${x.onTurn ? 'on-turn' : ''} ${mine ? 'mine' : ''}"${/^[a-z]+$/.test(x.cls || '') ? ` data-cls="${x.cls}"` : ''}${x.color ? ` style="--accent:${x.color}"` : ''}>
       <div class="party-card-head"><div class="party-who"><span class="party-avatar" aria-hidden="true">${x.portrait ? `<img src="${x.portrait}" alt="">` : esc((x.name || '?').trim().charAt(0).toUpperCase())}</span><div><h3>${online ? '<span class="online-dot" title="Con la aplicación abierta"></span>' : ''}${esc(x.name)}${x.onTurn ? ' <span class="chip turn">En turno</span>' : ''}</h3><p class="small muted">${esc(x.line)}${x.race ? ' · ' + esc(x.race) : ''}${owner ? ' · ' + esc(owner) : ''}</p></div></div>
       <div class="party-ac" title="Clase de armadura"><b>${x.ac}</b><span>CA</span></div></div>
       <div class="party-hp"><div class="meter" aria-hidden="true"><span style="width:${pct}%"></span></div><p><b>${hpKnown ? x.hp : '—'}</b> / ${x.maxHP} PG${x.temp ? ` · +${x.temp} temp.` : ''}</p></div>

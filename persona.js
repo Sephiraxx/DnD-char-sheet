@@ -55,7 +55,39 @@ const Persona = (() => {
     }
     return out;
   }
+  // ---------- Color de la ficha ----------
+  // Por defecto sigue a la clase; el jugador puede elegir otro. Se guarda en sheetColor (#rrggbb).
+  const COLORS = [
+    ['#e8834a', 'Brasa'],
+    ['#f0705f', 'Carmesí'],
+    ['#e07fb4', 'Rosa'],
+    ['#b683f0', 'Violeta'],
+    ['#8aa2ff', 'Arcano'],
+    ['#a9c8ff', 'Cielo'],
+    ['#62c8cc', 'Jade'],
+    ['#8cc474', 'Musgo'],
+    ['#b3bf63', 'Oliva'],
+    ['#ecd583', 'Sol'],
+    ['#dba257', 'Cobre'],
+    ['#c3ced9', 'Acero'],
+  ];
+  const isColor = v => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
+  // Un color demasiado oscuro no se leería sobre el fondo: se aclara hasta que se distinga.
+  function readable(hex) {
+    if (!isColor(hex)) return '';
+    let [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+    const lum = () => {
+      const f = v => {
+        v /= 255;
+        return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+    };
+    for (let i = 0; i < 40 && lum() < 0.3; i++) [r, g, b] = [r, g, b].map(v => Math.round(v + (255 - v) * 0.1));
+    return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+  }
   function validate(o) {
+    if (o.sheetColor !== undefined && !isColor(o.sheetColor)) throw Error('Color de ficha inválido.');
     if (o.persona !== undefined) {
       const p = o.persona;
       if (!p || typeof p !== 'object' || Array.isArray(p)) throw Error('Datos de personalidad inválidos.');
@@ -179,7 +211,7 @@ const Persona = (() => {
       tools = globalThis.Grants ? Grants.proficiencies(s, 'tool') : [],
       empty = !Object.keys(p).length;
     return (
-      `<section class="card section-space" id="persona-card"><div class="card-header"><h2>Personalidad e historia</h2><div class="actions">${button('Idiomas y herramientas', 'persona-profs')}${button('Editar', 'persona-edit')}</div></div>` +
+      `<section class="card section-space" id="persona-card"><div class="card-header"><h2>Personalidad e historia</h2><div class="actions">${button('Color de la ficha', 'persona-color')}${button('Idiomas y herramientas', 'persona-profs')}${button('Editar', 'persona-edit')}</div></div>` +
       (empty
         ? '<p class="small muted">Todavía no anotaste alineamiento, personalidad, apariencia ni historia. Tocá «Editar».</p>'
         : `<div class="grid two"><div>${row('Alineamiento', p.alignment)}${row('Deidad o fe', p.deity)}${look ? `<p><b>Apariencia:</b> ${cap(look)}</p>` : ''}${p.appearance ? `<p class="persona-text">${E(p.appearance)}</p>` : ''}</div><div>${LONG.filter(
@@ -208,6 +240,31 @@ const Persona = (() => {
         setExtra(s, 'tool', readExtra(fd, 'tool'));
       }),
     );
+  }
+  function editColor() {
+    const cur = isColor(state.sheetColor) ? state.sheetColor.toLowerCase() : '',
+      preset = COLORS.some(([c]) => c === cur),
+      sw = (value, label, color) =>
+        `<label class="color-swatch"><input type="radio" name="color" value="${value}" ${cur === value || (value === 'custom' && cur && !preset) ? 'checked' : ''}><span class="color-dot" style="background:${color}"></span>${E(label)}</label>`;
+    modal(
+      'Color de la ficha',
+      `<p class="small">Tiñe la barra lateral, los rótulos y los números de tu ficha, y tu tarjeta en la pantalla del DM. El emblema sigue siendo el de tu clase.</p><div class="color-grid">${sw('', 'El de mi clase', 'conic-gradient(#8aa2ff, #8cc474, #ecd583, #e8834a, #b683f0, #8aa2ff)')}${COLORS.map(([c, n]) => sw(c, n, c)).join('')}${sw('custom', 'Otro', cur && !preset ? cur : '#888888')}</div>${field('Otro color', 'custom', cur && !preset ? cur : '#7fd1c1', 'color')}`,
+      fd =>
+        commit('Color de la ficha actualizado', s => {
+          const pick = String(fd.get('color') || ''),
+            color = pick === 'custom' ? readable(String(fd.get('custom') || '')) : pick;
+          if (isColor(color)) s.sheetColor = color.toLowerCase();
+          else delete s.sheetColor;
+        }),
+    );
+    // Elegir un color en el selector marca «Otro».
+    const form = document.getElementById('dialog-form'),
+      custom = form?.querySelector('[name=custom]');
+    custom?.addEventListener('input', () => {
+      const radio = form.querySelector('input[name=color][value=custom]');
+      radio.checked = true;
+      radio.nextElementSibling.style.background = custom.value;
+    });
   }
   // ---------- Creador ----------
   function creatorFields(d) {
@@ -254,11 +311,13 @@ const Persona = (() => {
     );
   }
   function install() {
-    Object.assign(actions, { 'persona-edit': edit, 'persona-profs': editProfs });
+    Object.assign(actions, { 'persona-edit': edit, 'persona-profs': editProfs, 'persona-color': editColor });
   }
   return {
     ALIGNMENTS,
     FIELDS,
+    COLORS,
+    readable,
     of,
     clean,
     validate,
