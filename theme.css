@@ -507,6 +507,26 @@
     color: #0c181c;
     text-shadow: 0 1px 0 #ffffff59;
   }
+  /* El número va sobre la cara de frente de cada dado. */
+  .roll-icon[data-die='4'] b {
+    padding: 22% 17% 0 0;
+    font-size: 1.3rem;
+  }
+  .roll-icon[data-die='6'] b {
+    padding: 23% 11% 0 0;
+  }
+  .roll-icon[data-die='8'] b {
+    padding: 0 0 6%;
+    font-size: 1.5rem;
+  }
+  .roll-icon[data-die='10'] b {
+    padding: 0 0 6%;
+    font-size: 1.4rem;
+  }
+  .roll-icon[data-die='12'] b {
+    padding: 0;
+    font-size: 1.5rem;
+  }
   .roll-card .roll-label {
     font-family: var(--display);
     font-variant-caps: all-small-caps;

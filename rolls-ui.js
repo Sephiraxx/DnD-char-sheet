@@ -709,6 +709,7 @@ const RollUI = (() => {
       face: info.heal ? '✚' : '✦',
       detail: dice + (mod ? ' ' + sign(mod) : ''),
       crit: spellSession.crit,
+      die: groups[0]?.[1] || 20,
     });
     const applied = applySpellResult(fd, total).catch(err => {
       toast(err.message);

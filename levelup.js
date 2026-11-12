@@ -683,7 +683,7 @@ const LevelUp = (() => {
         const die = C.info(base).die;
         d.hpRoll = window.roll(die, 1)[0];
         d.rolled = true;
-        RollFX.show({ label: 'Puntos de golpe · d' + die, total: d.hpRoll, face: d.hpRoll });
+        RollFX.show({ label: 'Puntos de golpe · d' + die, total: d.hpRoll, face: d.hpRoll, die });
       }
       if (a === 'subclass') d.subclass = t.dataset.id;
       if (a === 'asimode') d.asi = t.dataset.v;

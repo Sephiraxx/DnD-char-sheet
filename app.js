@@ -1169,6 +1169,7 @@ const actions = {
             detail: (physical ? 'dados físicos ' : a.join(' + ')) + (b ? ' ' + sign(b) : ''),
             crit: die === 20 && n === 1 && a[0] === 20,
             fumble: die === 20 && n === 1 && a[0] === 1,
+            die,
           }),
         );
       },

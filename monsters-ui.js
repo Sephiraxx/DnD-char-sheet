@@ -609,7 +609,14 @@ const MonsterUI = (() => {
     const btn = document.getElementById('monster-apply');
     if (btn) btn.disabled = false;
     Promise.resolve(
-      RollFX.show({ label: 'Daño · ' + panel.name, total, face: '⚔', detail: text, crit: Boolean(crit) }),
+      RollFX.show({
+        label: 'Daño · ' + panel.name,
+        total,
+        face: '⚔',
+        detail: text,
+        crit: Boolean(crit),
+        die: RollFX.dieOf(a.dmg?.[0]?.[0]) || 20,
+      }),
     ).catch(() => {});
   }
   async function apply() {
