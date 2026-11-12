@@ -2155,6 +2155,7 @@
   const genState = { type: 'trail', size: 'medium', map: null };
   function genDialog() {
     const G = globalThis.BoardGen,
+      encounters = prepared().filter(e => e.monsters?.length && e.monsters.every(x => x.uid)),
       roll = () => (genState.map = G.generate(genState.type, { size: genState.size })),
       chips = (name, list, cur) =>
         `<div class="chips gen-chips" role="radiogroup">${list
@@ -2170,7 +2171,14 @@
         'size',
         Object.entries(G.SIZES).map(([k, v]) => [k, `${v[0]} · ${v[1]}×${v[2]}`]),
         genState.size,
-      )}<div class="actions">${button('🎲 Otra versión', 'gen-roll', 'secondary')}</div><div class="gen-preview"><canvas id="gen-canvas" aria-label="Vista previa del mapa"></canvas></div>${field('Nombre', 'name', '', 'text', 'maxlength="100" required')}`,
+      )}<div class="actions">${button('🎲 Otra versión', 'gen-roll', 'secondary')}</div><div class="gen-preview"><canvas id="gen-canvas" aria-label="Vista previa del mapa"></canvas></div>${field('Nombre', 'name', '', 'text', 'maxlength="100" required')}${
+        encounters.length
+          ? `<label class="field">Colocar un encuentro preparado<select name="enc"><option value="">Ninguno</option>${encounters
+              .map(e => `<option value="${esc(e.id)}">${esc(e.name)} (${(e.monsters || []).length})</option>`)
+              .join('')}</select></label>` +
+            '<p class="small muted">Las criaturas quedan ocultas en el mapa nuevo hasta que lances el encuentro.</p>'
+          : ''
+      }`,
       async fd => {
         const m = genState.map,
           grid = BC.normGrid({ cols: m.cols, rows: m.rows, size: CELL }),
@@ -2184,7 +2192,11 @@
         S.maps = [...S.maps, made];
         await openMap(made.id);
         if (!activeId()) await goLive(made.id);
-        toast('Mapa generado. Retocalo con «Terreno» si hace falta.');
+        const enc = String(fd.get('enc') || '');
+        if (enc) {
+          await placeEncounter(enc);
+          toast('Mapa generado y encuentro colocado. Acomodá las criaturas con «Encuentros».');
+        } else toast('Mapa generado. Retocalo con «Terreno» si hace falta.');
       },
       'Crear mapa',
     );
