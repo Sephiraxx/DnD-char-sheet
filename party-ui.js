@@ -47,7 +47,7 @@ const PartyUI = (() => {
         })
         .join(
           '',
-        )}</div><div class="actions section-space">${button('Crear personaje', 'party-create', '')}${button('Importar como personaje nuevo', 'party-import')}${state ? button('Exportar personaje actual', 'backup') : ''}${accountReady() ? button('Tu cuenta', 'account') : ''}</div>`,
+        )}</div><div class="actions section-space">${button('Crear personaje', 'party-create', '')}${button('Importar como personaje nuevo', 'party-import')}${button('Importar de D&D Beyond', 'interop-import')}${state ? button('Exportar personaje actual', 'backup') : ''}${accountReady() ? button('Tu cuenta', 'account') : ''}</div>`,
     );
   }
   // ---------- Dónde vive cada ficha ----------
@@ -106,7 +106,7 @@ const PartyUI = (() => {
     document.getElementById('main').innerHTML =
       `<section class="welcome-hero"><p class="eyebrow">D&D 5E · REGLAS 2014 · PARA JUGAR EN LA MESA</p><h1>Tu cuaderno de aventura.</h1><p>Fichas completas, tiradas con dados digitales o físicos, y una mesa compartida para que el DM y la party jueguen en vivo.</p>${accountReady() ? `<p class="welcome-account"><button type="button" class="text-btn" data-action="account">¿Ya tenés una cuenta? Entrá</button></p>` : ''}</section>
       <div class="paths">
-        <section class="card path-card"><span class="path-icon" aria-hidden="true">✦</span><h2>Creá tu personaje</h2><p>Clase, raza, trasfondo, conjuros y equipo, paso a paso. Se guarda en este dispositivo${accountReady() ? ' y, con una cuenta, en la nube' : ''}.</p><div class="actions">${button('Crear personaje', 'party-create', '')}${button('Importar ficha', 'party-import')}</div></section>
+        <section class="card path-card"><span class="path-icon" aria-hidden="true">✦</span><h2>Creá tu personaje</h2><p>Clase, raza, trasfondo, conjuros y equipo, paso a paso. Se guarda en este dispositivo${accountReady() ? ' y, con una cuenta, en la nube' : ''}.</p><div class="actions">${button('Crear personaje', 'party-create', '')}${button('Importar ficha', 'party-import')}${button('De D&D Beyond', 'interop-import')}</div></section>
         <div id="path-join" class="path-slot"></div>
         <section class="card path-card"><span class="path-icon" aria-hidden="true">⚑</span><h2>Dirigí la partida</h2><p>Creá una mesa, compartí el código y seguí a la party: PG, iniciativa, monstruos, botín y pedidos de tirada.</p><div class="actions"><a class="button secondary" href="./dm.html">Soy el DM</a></div></section>
       </div>

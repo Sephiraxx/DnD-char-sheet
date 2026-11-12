@@ -57,11 +57,11 @@ test('generador de mapas: todos los tipos y tamaños dan terreno válido y repet
         );
       }
   assert.notEqual(G.generate('woods', { seed: 1 }).terrain, G.generate('woods', { seed: 2 }).terrain);
-  assert.throws(() => G.generate('castle'), /no existe/);
+  assert.throws(() => G.generate('spaceship'), /no existe/);
 });
 
 test('generador de mapas: cavernas y mazmorras quedan conectadas', () => {
-  for (const type of ['cave', 'dungeon', 'tavern'])
+  for (const type of ['cave', 'dungeon', 'tavern', 'castle'])
     for (let seed = 1; seed <= 25; seed++) {
       const m = G.generate(type, { seed });
       assert.ok(reachable(m) > (type === 'cave' ? 0.97 : 0.99), `${type} ${seed}: ${reachable(m)}`);
