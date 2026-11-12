@@ -8,9 +8,25 @@ const RollFX = (() => {
       c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
     );
   const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-  // Un d20 visto de frente, con sus caras sombreadas: la luz viene de arriba a la izquierda.
-  const D20 =
-    '<svg viewBox="0 0 56 56" aria-hidden="true"><g fill="currentColor" stroke="none"><polygon points="28,3 5,16 28,13" fill-opacity="0.55"/><polygon points="28,3 51,16 28,13" fill-opacity="0.4"/><polygon points="5,16 12,39 28,13" fill-opacity="0.45"/><polygon points="51,16 44,39 28,13" fill-opacity="0.28"/><polygon points="5,16 5,40 12,39" fill-opacity="0.32"/><polygon points="51,16 51,40 44,39" fill-opacity="0.18"/><polygon points="5,40 28,53 12,39" fill-opacity="0.22"/><polygon points="51,40 28,53 44,39" fill-opacity="0.12"/><polygon points="12,39 44,39 28,53" fill-opacity="0.16"/><polygon points="28,13 44,39 12,39" fill-opacity="0.78"/></g><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M28 3 51 16v24L28 53 5 40V16Z"/><path d="M28 13 44 39H12Z"/><path d="M28 3v10M5 16l23-3 23 3M5 40l7-1M51 40l-7-1M28 53 12 39M28 53l16-14M5 16l7 23M51 16l-7 23" stroke-opacity=".55"/></g></svg>';
+  // Cada dado con su forma, visto de frente y con las caras sombreadas: la luz viene de arriba a la izquierda.
+  const SHAPES = {
+    4: '<svg viewBox="0 0 56 56" aria-hidden="true"><g fill="currentColor" stroke="none"><polygon points="26,4 40,52 53,36" fill-opacity="0.3"/><polygon points="26,4 4,47 40,52" fill-opacity="0.78"/></g><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><polygon points="26,4 40,52 53,36" stroke-opacity=".55"/><polygon points="26,4 4,47 40,52"/><polygon points="26,4 4,47 40,52 53,36"/></g></svg>',
+    6: '<svg viewBox="0 0 56 56" aria-hidden="true"><g fill="currentColor" stroke="none"><polygon points="7,17 18,5 52,5 43,17" fill-opacity="0.5"/><polygon points="43,17 52,5 52,40 43,52" fill-opacity="0.22"/><polygon points="7,17 43,17 43,52 7,52" fill-opacity="0.78"/></g><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><polygon points="7,17 18,5 52,5 43,17" stroke-opacity=".55"/><polygon points="43,17 52,5 52,40 43,52" stroke-opacity=".55"/><polygon points="7,17 43,17 43,52 7,52"/><polygon points="7,17 18,5 52,5 52,40 43,52 7,52"/></g></svg>',
+    8: '<svg viewBox="0 0 56 56" aria-hidden="true"><g fill="currentColor" stroke="none"><polygon points="28,3 4,19 7,37" fill-opacity="0.45"/><polygon points="28,3 52,19 49,37" fill-opacity="0.26"/><polygon points="7,37 49,37 28,53" fill-opacity="0.16"/><polygon points="4,19 7,37 28,53" fill-opacity="0.3"/><polygon points="52,19 49,37 28,53" fill-opacity="0.12"/><polygon points="28,3 7,37 49,37" fill-opacity="0.78"/></g><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><polygon points="28,3 4,19 7,37" stroke-opacity=".55"/><polygon points="28,3 52,19 49,37" stroke-opacity=".55"/><polygon points="7,37 49,37 28,53" stroke-opacity=".55"/><polygon points="4,19 7,37 28,53" stroke-opacity=".55"/><polygon points="52,19 49,37 28,53" stroke-opacity=".55"/><polygon points="28,3 7,37 49,37"/><polygon points="28,3 52,19 49,37 28,53 7,37 4,19"/></g></svg>',
+    10: '<svg viewBox="0 0 56 56" aria-hidden="true"><g fill="currentColor" stroke="none"><polygon points="28,3 4,26 13,31" fill-opacity="0.48"/><polygon points="28,3 43,31 52,26" fill-opacity="0.3"/><polygon points="4,26 13,31 28,40 28,53" fill-opacity="0.26"/><polygon points="52,26 43,31 28,40 28,53" fill-opacity="0.14"/><polygon points="28,3 43,31 28,40 13,31" fill-opacity="0.78"/></g><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><polygon points="28,3 4,26 13,31" stroke-opacity=".55"/><polygon points="28,3 43,31 52,26" stroke-opacity=".55"/><polygon points="4,26 13,31 28,40 28,53" stroke-opacity=".55"/><polygon points="52,26 43,31 28,40 28,53" stroke-opacity=".55"/><polygon points="28,3 43,31 28,40 13,31"/><polygon points="28,3 52,26 28,53 4,26"/></g></svg>',
+    12: '<svg viewBox="0 0 56 56" aria-hidden="true"><g fill="currentColor" stroke="none"><polygon points="28,13.5 28,2.5 43,7.4 52.3,20.1 41.8,23.5" fill-opacity="0.3"/><polygon points="41.8,23.5 52.3,20.1 52.3,35.9 43,48.6 36.5,39.7" fill-opacity="0.14"/><polygon points="36.5,39.7 43,48.6 28,53.5 13,48.6 19.5,39.7" fill-opacity="0.2"/><polygon points="19.5,39.7 13,48.6 3.7,35.9 3.7,20.1 14.2,23.5" fill-opacity="0.36"/><polygon points="14.2,23.5 3.7,20.1 13,7.4 28,2.5 28,13.5" fill-opacity="0.5"/><polygon points="28,13.5 41.8,23.5 36.5,39.7 19.5,39.7 14.2,23.5" fill-opacity="0.78"/></g><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><polygon points="28,13.5 28,2.5 43,7.4 52.3,20.1 41.8,23.5" stroke-opacity=".55"/><polygon points="41.8,23.5 52.3,20.1 52.3,35.9 43,48.6 36.5,39.7" stroke-opacity=".55"/><polygon points="36.5,39.7 43,48.6 28,53.5 13,48.6 19.5,39.7" stroke-opacity=".55"/><polygon points="19.5,39.7 13,48.6 3.7,35.9 3.7,20.1 14.2,23.5" stroke-opacity=".55"/><polygon points="14.2,23.5 3.7,20.1 13,7.4 28,2.5 28,13.5" stroke-opacity=".55"/><polygon points="28,13.5 41.8,23.5 36.5,39.7 19.5,39.7 14.2,23.5"/><polygon points="28,2.5 43,7.4 52.3,20.1 52.3,35.9 43,48.6 28,53.5 13,48.6 3.7,35.9 3.7,20.1 13,7.4"/></g></svg>',
+    20: '<svg viewBox="0 0 56 56" aria-hidden="true"><g fill="currentColor" stroke="none"><polygon points="28,3 5,16 28,13" fill-opacity="0.55"/><polygon points="28,3 51,16 28,13" fill-opacity="0.4"/><polygon points="5,16 12,39 28,13" fill-opacity="0.45"/><polygon points="51,16 44,39 28,13" fill-opacity="0.28"/><polygon points="5,16 5,40 12,39" fill-opacity="0.32"/><polygon points="51,16 51,40 44,39" fill-opacity="0.18"/><polygon points="5,40 28,53 12,39" fill-opacity="0.22"/><polygon points="51,40 28,53 44,39" fill-opacity="0.12"/><polygon points="12,39 44,39 28,53" fill-opacity="0.16"/><polygon points="28,13 44,39 12,39" fill-opacity="0.78"/></g><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M28 3 51 16v24L28 53 5 40V16Z"/><path d="M28 13 44 39H12Z"/><path d="M28 3v10M5 16l23-3 23 3M5 40l7-1M51 40l-7-1M28 53 12 39M28 53l16-14M5 16l7 23M51 16l-7 23" stroke-opacity=".55"/></g></svg>',
+  };
+  // d100 se tira con dados de diez caras; un dado raro (d3, d5…) usa la forma más parecida.
+  const shapeOf = die => {
+    const n = Number(die);
+    if (SHAPES[n]) return n;
+    if (n === 100) return 10;
+    if (n === 2 || n === 3) return 6;
+    return 20;
+  };
+  // «2d8+3», «Puntos de golpe · d10» → 8, 10. Sin dados reconocibles, nada.
+  const dieOf = text => Number(/\d*d(\d{1,3})\b/i.exec(String(text ?? ''))?.[1]) || null;
 
   function hide(box) {
     const card = box.firstElementChild;
@@ -20,7 +36,9 @@ const RollFX = (() => {
   }
   // face: d20 que quedó (número) o un símbolo; total: resultado final.
   // Devuelve una promesa que se cumple cuando el número queda fijo (para mostrar el resultado en otros lados).
-  function show({ label, total, face = '', detail = '', crit = false, fumble = false }) {
+  function show({ label, total, face = '', detail = '', crit = false, fumble = false, die = 20 }) {
+    const sides = Number(die) > 1 ? Number(die) : 20,
+      shape = shapeOf(sides);
     const host = document.querySelector('dialog[open]') || document.body;
     let box = document.getElementById('roll-fx');
     if (!box || box.parentElement !== host) {
@@ -39,12 +57,20 @@ const RollFX = (() => {
     const landed = new Promise(r => (done = r));
     settle = done;
     const tag = crit ? '¡Crítico!' : fumble ? 'Pifia' : '';
-    box.innerHTML = `<button type="button" class="roll-card ${crit ? 'crit' : fumble ? 'fumble' : ''}" aria-label="${esc(label)}: ${esc(total)}. Tocá para cerrar."><span class="roll-icon">${D20}<b>${esc(face)}</b></span><span class="roll-label">${esc(label)}${tag ? `<span class="roll-tag">${tag}</span>` : ''}</span><span class="roll-total">${esc(total)}</span>${detail ? `<span class="roll-detail">${esc(detail)}</span>` : ''}</button>`;
+    box.innerHTML = `<button type="button" class="roll-card" aria-label="${esc(label)}: ${esc(total)}. Tocá para cerrar."><span class="roll-icon" data-die="${shape}">${SHAPES[shape]}<b>${esc(face)}</b></span><span class="roll-label">${esc(label)}${tag ? `<span class="roll-tag">${tag}</span>` : ''}</span><span class="roll-total">${esc(total)}</span>${detail ? `<span class="roll-detail">${esc(detail)}</span>` : ''}</button>`;
     const card = box.firstElementChild,
       out = card.querySelector('.roll-total'),
       dieOut = card.querySelector('.roll-icon b'),
       final = Number(total),
-      faceNum = Number(face);
+      faceNum = Number(face),
+      // El crítico o la pifia se muestran recién cuando el dado cae, no antes.
+      land = () => {
+        card.classList.remove('rolling');
+        card.classList.add('settled');
+        if (crit || fumble) card.classList.add(crit ? 'crit' : 'fumble');
+        settle = null;
+        done();
+      };
     // Números al azar que se frenan de a poco hasta quedar en el resultado real.
     if (!calm() && Number.isFinite(final)) {
       const steps = [45, 45, 50, 55, 65, 75, 90, 110, 135, 165];
@@ -55,26 +81,19 @@ const RollFX = (() => {
         if (i >= steps.length) {
           out.textContent = total;
           if (dieOut) dieOut.textContent = face;
-          card.classList.remove('rolling');
-          card.classList.add('settled');
-          settle = null;
-          done();
+          land();
           return;
         }
         out.textContent = Math.max(0, Math.round(final + (Math.random() - 0.5) * spread));
-        if (dieOut && Number.isInteger(faceNum)) dieOut.textContent = 1 + Math.floor(Math.random() * 20);
+        if (dieOut && Number.isInteger(faceNum)) dieOut.textContent = 1 + Math.floor(Math.random() * sides);
         ticker = setTimeout(tick, steps[i++]);
       };
       tick();
-    } else {
-      card.classList.add('settled');
-      settle = null;
-      done();
-    }
+    } else land();
     timer = setTimeout(() => hide(box), 4000);
     return landed;
   }
-  return { show };
+  return { show, dieOf, shapeOf };
 })();
 
 /* Aviso de combate a pantalla completa: golpe, suspenso y retirada en tres tiempos. */

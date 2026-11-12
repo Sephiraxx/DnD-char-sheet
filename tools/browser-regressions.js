@@ -168,6 +168,33 @@ async function main() {
     await page.evaluate(() => RollFX.show({ label: 'Prueba', total: 17, face: 14, detail: 'd20 (14) + 3' }));
     await page.waitForSelector('.roll-card.settled');
     check('Tiradas: la tarjeta muestra el total', (await page.textContent('.roll-card .roll-total')) === '17');
+    const early = await page.evaluate(() => {
+      void RollFX.show({ label: 'Ataque', total: 25, face: 20, detail: 'd20 (20) + 5', crit: true });
+      const card = document.querySelector('.roll-card');
+      const hidden = sel => getComputedStyle(card.querySelector(sel)).visibility === 'hidden';
+      return (
+        card.classList.contains('rolling') &&
+        !card.classList.contains('crit') &&
+        hidden('.roll-tag') &&
+        hidden('.roll-detail')
+      );
+    });
+    await page.waitForSelector('.roll-card.settled.crit');
+    const late = await page.evaluate(
+      () => getComputedStyle(document.querySelector('.roll-card .roll-tag')).visibility === 'visible',
+    );
+    check('Tiradas: el crítico y el detalle no se ven hasta que el dado cae', early && late);
+    const shapes = await page.evaluate(() =>
+      [4, 6, 8, 10, 12, 20, 100].map(die => {
+        void RollFX.show({ label: 'd' + die, total: 2, face: 2, die });
+        const icon = document.querySelector('.roll-card .roll-icon');
+        return icon.dataset.die + ':' + icon.querySelector('svg').innerHTML.length;
+      }),
+    );
+    check(
+      'Tiradas: cada dado tiene su forma (el d100 usa la del d10)',
+      new Set(shapes.slice(0, 6)).size === 6 && shapes[6] === shapes[3],
+    );
 
     // 9. Mapas: cada tipo del generador se dibuja completo, y las luces alumbran en la oscuridad.
     const maps = await page.evaluate(() => {

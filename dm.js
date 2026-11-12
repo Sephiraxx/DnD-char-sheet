@@ -694,6 +694,7 @@ const actions = {
             detail: rolls.join(' + ') + (mod ? ' ' + sign(mod) : ''),
             crit: die === 20 && n === 1 && rolls[0] === 20,
             fumble: die === 20 && n === 1 && rolls[0] === 1,
+            die,
           }),
         );
         return send(

@@ -300,7 +300,7 @@
                 if (fd.has('me')) x.temp = Math.max(n(x.temp), temp);
               });
               if (typeof RollFX !== 'undefined')
-                RollFX.show({ label: 'Protector · PG temporales', total: temp, face: roll });
+                RollFX.show({ label: 'Protector · PG temporales', total: temp, face: roll, die: 8 });
             },
             'Aplicar',
           );

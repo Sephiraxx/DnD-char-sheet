@@ -192,7 +192,7 @@ const MagicUI = (() => {
       r.qty = Math.max(0, r.qty - 1);
       Companions.heal(s, total);
     });
-    if (typeof RollFX !== 'undefined') RollFX.show({ label: x.name, total, face: rolls[0] });
+    if (typeof RollFX !== 'undefined') RollFX.show({ label: x.name, total, face: rolls[0], die: Number(m[2]) });
     toast(`${x.name}: ${x.magic.heal} → ${rolls.join(' + ')} + ${m[3]} = ${total} PG.`);
   }
 

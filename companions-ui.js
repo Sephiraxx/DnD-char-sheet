@@ -55,7 +55,8 @@ const CompanionsUI = (() => {
       return `[${r.join(', ')}]${bonus ? (bonus > 0 ? ' + ' : ' − ') + Math.abs(bonus) : ''}`;
     });
     total = Math.max(0, total);
-    if (typeof RollFX !== 'undefined') RollFX.show({ label: label + ' · daño', total, face: total });
+    if (typeof RollFX !== 'undefined')
+      RollFX.show({ label: label + ' · daño', total, face: total, die: RollFX.dieOf(expr) || 20 });
     toast(`${label}: ${expr} → ${text.join(' + ')} = ${total}`);
   }
 

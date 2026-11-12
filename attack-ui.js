@@ -263,7 +263,14 @@ const AttackUI = (() => {
         })
       : Promise.resolve(null);
     Promise.all([
-      RollFX.show({ label: 'Daño · ' + item.name, total: dmg.total, face: '⚔', detail: parts || 'fijo', crit }),
+      RollFX.show({
+        label: 'Daño · ' + item.name,
+        total: dmg.total,
+        face: '⚔',
+        detail: parts || 'fijo',
+        crit,
+        die: RollFX.dieOf(p.dice) || 20,
+      }),
       applied,
     ]).then(([, out]) => {
       if (out) entry.html += ` → ${esc(out.name)}: <b>${esc(TableUI.statusLabel(out.status))}</b>`;
