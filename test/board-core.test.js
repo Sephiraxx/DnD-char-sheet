@@ -311,3 +311,38 @@ test('luces: en un mapa a oscuras se ve lo que una antorcha alumbra, si está a 
   assert.equal(at(behind, 21, 5), 1);
   assert.equal(at(behind, 22, 5), 0);
 });
+
+test('puertas: abrir y cerrar; la trabada no se mueve; la abierta deja ver', () => {
+  const g2 = B.normGrid({ cols: 5, rows: 3 });
+  let t = B.cells(g2, '..#....D....#..'.replace(/\./g, 'f'));
+  assert.equal(B.at(g2, t, 2, 1), 'D');
+  const shut = B.sight(g2, t, [], [{ x: 0, y: 1, r: 10 }], []);
+  t = B.toggleDoor(g2, t, 2, 1);
+  assert.equal(B.at(g2, t, 2, 1), 'O');
+  const open = B.sight(g2, t, [], [{ x: 0, y: 1, r: 10 }], []);
+  const count = bits => Array.from(bits).filter(Boolean).length;
+  assert.ok(count(open) > count(shut), 'con la puerta abierta se ve más');
+  assert.equal(B.at(g2, B.toggleDoor(g2, t, 2, 1), 2, 1), 'D');
+  const locked = B.paint(g2, t, [[2, 1]], 'L');
+  assert.equal(B.toggleDoor(g2, locked, 2, 1), null);
+  assert.equal(B.toggleDoor(g2, t, 0, 0), null);
+  assert.ok(B.isDoor('L') && B.isDoor('O') && !B.isDoor('#'));
+  assert.ok(B.terrainType('L').blocks && !B.terrainType('O').blocks);
+});
+
+test('escaleras: los destinos solo valen sobre una escalera; se llega junto a la que vuelve', () => {
+  const g2 = B.normGrid({ cols: 4, rows: 2 });
+  const t = B.cells(g2, 'fSff' + 'fffS');
+  const raw = { '1,0': 'mapa-a', '3,1': 'mapa-b', '0,0': 'mapa-c', 'x,y': 'no', '2,0': 7 };
+  assert.deepEqual(B.links(g2, t, raw), { '1,0': 'mapa-a', '3,1': 'mapa-b' });
+  assert.deepEqual(B.arrival(g2, t, raw, 'mapa-b'), [3, 1]);
+  assert.deepEqual(B.arrival(g2, t, raw, 'otro'), [1, 0]);
+  assert.equal(B.arrival(g2, B.cells(g2, ''), {}, 'x'), null);
+  assert.deepEqual(B.links(g2, t, null), {});
+});
+
+test('sonido de ambiente: se guarda en la cuadrícula si es un nombre simple', () => {
+  assert.equal(B.normGrid({ ambient: 'tavern' }).ambient, 'tavern');
+  assert.equal(B.normGrid({ ambient: '<b>' }).ambient, '');
+  assert.equal(B.normGrid().ambient, '');
+});

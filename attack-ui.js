@@ -270,6 +270,7 @@ const AttackUI = (() => {
         detail: parts || 'fijo',
         crit,
         die: RollFX.dieOf(p.dice) || 20,
+        dice: dmg.parts.flatMap(x => (x.sides ? x.rolls.map(v => ({ die: x.sides, v })) : [])),
       }),
       applied,
     ]).then(([, out]) => {

@@ -48,15 +48,17 @@ const CompanionsUI = (() => {
       return toast(`${label}: ${expr}.`);
     }
     let total = 0;
+    const each = [];
     const text = parts.map(([, n, d, sg, k]) => {
       const r = window.roll(Number(d), Number(n)),
         bonus = k ? (sg === '-' ? -1 : 1) * Number(k) : 0;
+      each.push(...r.map(v => ({ die: Number(d), v })));
       total += r.reduce((a, b) => a + b, 0) + bonus;
       return `[${r.join(', ')}]${bonus ? (bonus > 0 ? ' + ' : ' − ') + Math.abs(bonus) : ''}`;
     });
     total = Math.max(0, total);
     if (typeof RollFX !== 'undefined')
-      RollFX.show({ label: label + ' · daño', total, face: total, die: RollFX.dieOf(expr) || 20 });
+      RollFX.show({ label: label + ' · daño', total, face: total, die: RollFX.dieOf(expr) || 20, dice: each });
     toast(`${label}: ${expr} → ${text.join(' + ')} = ${total}`);
   }
 

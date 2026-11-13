@@ -21,11 +21,41 @@
     { code: 'r', name: 'Roca', color: '#55524d', blocks: true },
     { code: '#', name: 'Muro', color: '#2a2724', blocks: true },
     { code: 'D', name: 'Puerta', color: '#a0692e', blocks: true },
+    { code: 'O', name: 'Puerta abierta', color: '#c79a5b' },
+    { code: 'L', name: 'Puerta trabada', color: '#7a4a1c', blocks: true },
+    { code: 'S', name: 'Escalera', color: '#9a9488' },
     { code: 'p', name: 'Abismo', color: '#0d0b0b' },
     { code: 'l', name: 'Lava', color: '#d4501d', difficult: true },
   ];
   const BY_CODE = Object.fromEntries(TERRAIN.map(t => [t.code, t]));
   const terrainType = c => BY_CODE[c] || BY_CODE['.'];
+  // Puertas: cerrada (D), abierta (O) o trabada (L). Abrir y cerrar alterna D y O; la trabada no se mueve.
+  const isDoor = c => c === 'D' || c === 'O' || c === 'L';
+  const DOOR_NEXT = { D: 'O', O: 'D' };
+  // Devuelve el terreno con la puerta de (x,y) abierta o cerrada; null si no hay puerta o está trabada.
+  function toggleDoor(g, s, x, y) {
+    const to = DOOR_NEXT[at(g, s, x, y)];
+    return to ? paint(g, s, [[x, y]], to) : null;
+  }
+  // Escaleras y trampillas que llevan a otro mapa: { 'x,y': idDelMapa }. Se descartan las que ya no pisan una escalera.
+  function links(g, s, raw) {
+    const out = {};
+    if (!raw || typeof raw !== 'object') return out;
+    for (const [k, v] of Object.entries(raw)) {
+      const m = /^(\d{1,3}),(\d{1,3})$/.exec(k);
+      if (!m || typeof v !== 'string' || !v || v.length > 64) continue;
+      if (at(g, s, Number(m[1]), Number(m[2])) === 'S') out[k] = v;
+    }
+    return out;
+  }
+  // Casilla de escalera de este mapa que lleva al mapa `to` (para aparecer al lado al llegar), o la primera escalera.
+  function arrival(g, s, raw, to) {
+    const all = links(g, s, raw);
+    const hit = Object.entries(all).find(([, v]) => v === to);
+    if (hit) return hit[0].split(',').map(Number);
+    const i = cells(g, s).indexOf('S');
+    return i < 0 ? null : [i % g.cols, Math.floor(i / g.cols)];
+  }
 
   const clampSide = n => Math.max(1, Math.min(MAX_SIDE, Math.round(Number(n) || 1)));
   // Cuadrícula normalizada: cols/rows (casillas), size (px por casilla en la imagen), ox/oy (desfase en px).
@@ -47,6 +77,8 @@
         dark: g.vision?.dark === true,
         light: Math.max(0, Math.min(600, Math.round(Number(g.vision?.light ?? 40)) || 0)),
       },
+      // Sonido de ambiente del mapa (taberna, cueva…); '' = ninguno.
+      ambient: typeof g.ambient === 'string' && /^[a-z]{1,12}$/.test(g.ambient) ? g.ambient : '',
     };
   }
   const inside = (g, x, y) => x >= 0 && y >= 0 && x < g.cols && y < g.rows;
@@ -662,6 +694,10 @@
     templateOutline,
     templateHits,
     sightBlockers,
+    isDoor,
+    toggleDoor,
+    links,
+    arrival,
     visibleCells,
     distance3d,
   });

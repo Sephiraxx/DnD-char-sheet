@@ -527,6 +527,65 @@
     padding: 0;
     font-size: 1.5rem;
   }
+  /* Dados sueltos de una tirada con varios (2d8 + 4d6): chicos, en fila, cada uno con su número. */
+  .roll-dice {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    align-items: center;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--accent-line);
+  }
+  .roll-mini {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    color: var(--accent);
+  }
+  .roll-mini svg {
+    width: 100%;
+    height: 100%;
+  }
+  .roll-mini b {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 9% 0 0;
+    font-family: var(--display);
+    font-weight: 800;
+    font-variant-numeric: lining-nums tabular-nums;
+    font-size: 0.8rem;
+    color: #0c181c;
+  }
+  .roll-more {
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+  .roll-card.rolling .roll-mini b {
+    color: #0c181c99;
+  }
+  .roll-mini[data-die='4'] b {
+    padding: 22% 17% 0 0;
+    font-size: 0.72rem;
+  }
+  .roll-mini[data-die='6'] b {
+    padding: 23% 11% 0 0;
+  }
+  .roll-mini[data-die='8'] b {
+    padding: 0 0 6%;
+    font-size: 0.72rem;
+  }
+  .roll-mini[data-die='10'] b {
+    padding: 0 0 6%;
+    font-size: 0.72rem;
+  }
+  .roll-mini[data-die='12'] b {
+    padding: 0;
+    font-size: 0.72rem;
+  }
   .roll-card .roll-label {
     font-family: var(--display);
     font-variant-caps: all-small-caps;

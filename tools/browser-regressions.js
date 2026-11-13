@@ -191,6 +191,37 @@ async function main() {
         return icon.dataset.die + ':' + icon.querySelector('svg').innerHTML.length;
       }),
     );
+    const minis = await page.evaluate(() => {
+      void RollFX.show({
+        label: 'Daño',
+        total: 21,
+        face: '⚔',
+        die: 8,
+        dice: [
+          { die: 8, v: 5 },
+          { die: 8, v: 7 },
+          { die: 6, v: 2 },
+          { die: 6, v: 4 },
+        ],
+      });
+      return [...document.querySelectorAll('.roll-card .roll-mini')].map(m => m.dataset.die).join(',');
+    });
+    await page.waitForSelector('.roll-card.settled');
+    const miniValues = await page.evaluate(() =>
+      [...document.querySelectorAll('.roll-card .roll-mini b')].map(b => b.textContent).join(','),
+    );
+    check('Tiradas: un daño con varios dados los muestra uno por uno', minis === '8,8,6,6' && miniValues === '5,7,2,4');
+    await page.click('[data-sound-toggle]');
+    const mutedNow = await page.evaluate(() => Sound.muted() && localStorage.getItem('dnd-sound') === 'off');
+    await page.click('[data-sound-toggle]');
+    await page.evaluate(() => Sound.ambient('tavern'));
+    await page.waitForFunction(() => Sound.playing() === 'tavern', { timeout: 3000 }).catch(() => {});
+    const ambientOn = await page.evaluate(() => Sound.playing());
+    await page.evaluate(() => Sound.ambient(''));
+    check(
+      'Sonido: el interruptor se recuerda y el ambiente arranca y se apaga',
+      mutedNow && ambientOn === 'tavern' && (await page.evaluate(() => !Sound.muted() && Sound.playing() === '')),
+    );
     check(
       'Tiradas: cada dado tiene su forma (el d100 usa la del d10)',
       new Set(shapes.slice(0, 6)).size === 6 && shapes[6] === shapes[3],
