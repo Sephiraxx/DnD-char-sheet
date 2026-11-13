@@ -36,7 +36,23 @@ const RollFX = (() => {
   }
   // face: d20 que quedó (número) o un símbolo; total: resultado final.
   // Devuelve una promesa que se cumple cuando el número queda fijo (para mostrar el resultado en otros lados).
-  function show({ label, total, face = '', detail = '', crit = false, fumble = false, die = 20 }) {
+  // dice: cada dado tirado, [{ die, v }]; con dos o más se muestran uno por uno debajo (2d8 + 4d6).
+  const MAX_MINI = 12;
+  function show({ label, total, face = '', detail = '', crit = false, fumble = false, die = 20, dice = [] }) {
+    const each = (Array.isArray(dice) ? dice : [])
+      .map(x => ({ die: Number(x?.die), v: Number(x?.v) }))
+      .filter(x => x.die > 1 && Number.isInteger(x.v));
+    const minis =
+      each.length > 1
+        ? `<span class="roll-dice">${each
+            .slice(0, MAX_MINI)
+            .map(
+              x => `<span class="roll-mini" data-die="${shapeOf(x.die)}">${SHAPES[shapeOf(x.die)]}<b>${x.v}</b></span>`,
+            )
+            .join(
+              '',
+            )}${each.length > MAX_MINI ? `<span class="roll-more">+${each.length - MAX_MINI}</span>` : ''}</span>`
+        : '';
     const sides = Number(die) > 1 ? Number(die) : 20,
       shape = shapeOf(sides);
     const host = document.querySelector('dialog[open]') || document.body;
@@ -57,17 +73,21 @@ const RollFX = (() => {
     const landed = new Promise(r => (done = r));
     settle = done;
     const tag = crit ? '¡Crítico!' : fumble ? 'Pifia' : '';
-    box.innerHTML = `<button type="button" class="roll-card" aria-label="${esc(label)}: ${esc(total)}. Tocá para cerrar."><span class="roll-icon" data-die="${shape}">${SHAPES[shape]}<b>${esc(face)}</b></span><span class="roll-label">${esc(label)}${tag ? `<span class="roll-tag">${tag}</span>` : ''}</span><span class="roll-total">${esc(total)}</span>${detail ? `<span class="roll-detail">${esc(detail)}</span>` : ''}</button>`;
+    box.innerHTML = `<button type="button" class="roll-card" aria-label="${esc(label)}: ${esc(total)}. Tocá para cerrar."><span class="roll-icon" data-die="${shape}">${SHAPES[shape]}<b>${esc(face)}</b></span><span class="roll-label">${esc(label)}${tag ? `<span class="roll-tag">${tag}</span>` : ''}</span><span class="roll-total">${esc(total)}</span>${detail ? `<span class="roll-detail">${esc(detail)}</span>` : ''}${minis}</button>`;
     const card = box.firstElementChild,
       out = card.querySelector('.roll-total'),
       dieOut = card.querySelector('.roll-icon b'),
       final = Number(total),
       faceNum = Number(face),
+      miniOut = [...card.querySelectorAll('.roll-mini b')],
+      sfx = typeof Sound !== 'undefined' ? Sound : null,
       // El crítico o la pifia se muestran recién cuando el dado cae, no antes.
       land = () => {
         card.classList.remove('rolling');
         card.classList.add('settled');
         if (crit || fumble) card.classList.add(crit ? 'crit' : 'fumble');
+        miniOut.forEach((b, k) => (b.textContent = each[k].v));
+        sfx?.land(crit ? 'crit' : fumble ? 'fumble' : '');
         settle = null;
         done();
       };
@@ -86,6 +106,8 @@ const RollFX = (() => {
         }
         out.textContent = Math.max(0, Math.round(final + (Math.random() - 0.5) * spread));
         if (dieOut && Number.isInteger(faceNum)) dieOut.textContent = 1 + Math.floor(Math.random() * sides);
+        miniOut.forEach((b, k) => (b.textContent = 1 + Math.floor(Math.random() * each[k].die)));
+        sfx?.tick();
         ticker = setTimeout(tick, steps[i++]);
       };
       tick();

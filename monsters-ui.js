@@ -595,7 +595,7 @@ const MonsterUI = (() => {
       parts = (a.dmg || []).map(([d, type]) => {
         const r = rollDice(d);
         const extra = crit && r.n ? rollDice(r.n + 'd' + r.sides) : { rolls: [], total: 0 };
-        return { type, mod: r.mod, rolls: [...r.rolls, ...extra.rolls], total: r.total + extra.total };
+        return { type, mod: r.mod, sides: r.sides, rolls: [...r.rolls, ...extra.rolls], total: r.total + extra.total };
       });
       total = parts.reduce((s, p) => s + p.total, 0);
       text = parts.map(p => `${p.rolls.join('+') || '—'}${p.mod ? ' ' + sign(p.mod) : ''} ${p.type}`).join(' · ');
@@ -616,6 +616,7 @@ const MonsterUI = (() => {
         detail: text,
         crit: Boolean(crit),
         die: RollFX.dieOf(a.dmg?.[0]?.[0]) || 20,
+        dice: (parts || []).flatMap(p => (p.sides ? p.rolls.map(v => ({ die: p.sides, v })) : [])),
       }),
     ).catch(() => {});
   }

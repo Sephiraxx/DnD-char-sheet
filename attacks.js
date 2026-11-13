@@ -262,7 +262,7 @@
         if (gwf && r <= 2) r = d(x.sides, rnd);
         rolls.push(r);
       }
-      return { label, rolls, sum: rolls.reduce((a, b) => a + b, 0) };
+      return { label, rolls, sides: x.sides, sum: rolls.reduce((a, b) => a + b, 0) };
     };
     parts.push(roll(p.dice, p.type, p.gwf));
     const extra = /^\+?\s*(\d+d\d+)\s*(.*)$/.exec(p.extra.trim());

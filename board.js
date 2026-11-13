@@ -27,6 +27,7 @@
     grid: BC.normGrid(),
     terrain: '',
     walls: [],
+    links: {}, // escaleras que llevan a otro mapa: { 'x,y': idDelMapa }
     fogOn: false,
     fog: null,
     img: null,
@@ -202,6 +203,8 @@
     S.grid = BC.normGrid(m?.grid || {});
     S.terrain = BC.cells(S.grid, m?.terrain?.cells || '');
     S.walls = Array.isArray(m?.terrain?.walls) ? m.terrain.walls : [];
+    S.links = BC.links(S.grid, S.terrain, m?.terrain?.links);
+    if (typeof Sound !== 'undefined') Sound.ambient(shown || STANDALONE ? S.grid.ambient : '');
     S.fogOn = !!m?.fog?.on;
     S.fog = BC.fogBits(S.grid, m?.fog?.revealed || '');
     S.dirty = true;
@@ -259,7 +262,9 @@
     }
   }
   const fogPatch = () => ({ fog: { on: S.fogOn, revealed: BC.fogEncode(S.fog) } });
-  const terrainPatch = () => ({ terrain: { cells: S.terrain, walls: S.walls } });
+  const terrainPatch = () => ({
+    terrain: { cells: S.terrain, walls: S.walls, links: BC.links(S.grid, S.terrain, S.links) },
+  });
 
   // ---------- Fichas automáticas (DM): la party y las criaturas del combate ----------
   let ensuring = false,
@@ -403,6 +408,8 @@
     if (m.t === 'tpl-clear' && m.map === S.mapId)
       S.templates = S.templates.filter(t => (m.all ? false : t.by !== m.by));
     if (m.t === 'refresh' && !S.isDM) reload();
+    if (m.t === 'door' && m.map === S.mapId) onDoorAsk(m);
+    if (m.t === 'door-locked' && m.map === S.mapId && m.to === S.me?.id) toast('Esa puerta está trabada.');
     if (m.t === 'view' && S.follow && m.map === S.mapId) fitRect(m.x, m.y, m.w, m.h);
     S.dirty = true;
   }
@@ -795,7 +802,13 @@
         );
         ctx.fill();
       }
-    } else if (code === 'D') {
+    } else if (code === 'S') {
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      for (let i = 0; i < 4; i++) ctx.fillRect(px + c * 0.12, py + c * (0.14 + i * 0.2), c * 0.76, c * 0.07);
+    } else if (code === 'O') {
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillRect(px + c * 0.1, py + c * 0.42, c * 0.12, c * 0.5);
+    } else if (code === 'D' || code === 'L') {
       ctx.fillStyle = 'rgba(0,0,0,0.35)';
       ctx.fillRect(px + c * 0.1, py + c * 0.42, c * 0.8, c * 0.16);
       ctx.fillStyle = '#e0be80';
@@ -1250,8 +1263,10 @@
       // Mayúsculas o Alt al soltar: movimiento libre (empujón, teletransporte…), no provoca.
       d.free = e.shiftKey || e.altKey;
       dropToken(d);
-    } else if (d?.pan && !press?.moved) tapToken(d.tap);
-    else if (d?.area) placeTemplate(d.area);
+    } else if (d?.pan && !press?.moved) {
+      // Tocar una puerta o una escalera sin ficha encima: se abre, se cierra o se sube.
+      if (d.tap || S.tool !== 'move' || !tapCell(toCell(toWorld(press.p.x, press.p.y)))) tapToken(d.tap);
+    } else if (d?.area) placeTemplate(d.area);
     else if (d?.rect && d.fog) {
       const cells = BC.rect(d.rect.a.x, d.rect.a.y, d.rect.b.x, d.rect.b.y);
       S.fog = BC.setFog(S.grid, S.fog, cells, S.fogMode === 'rect');
@@ -1537,6 +1552,105 @@
     saveSoon(fogPatch());
     hint(`Revelaste ${cells.length} casillas.`);
   }
+  // ---------- Puertas y escaleras ----------
+  // Devuelve true si el toque cayó en una puerta o una escalera y ya se resolvió.
+  function tapCell(cell) {
+    if (TV || !S.mapId || !BC.inside(S.grid, cell.x, cell.y)) return false;
+    const code = BC.at(S.grid, S.terrain, cell.x, cell.y);
+    if (code === 'S') {
+      if (dmView()) stairsDialog(cell);
+      else {
+        const to = S.maps.find(m => m.id === S.links[cell.x + ',' + cell.y]);
+        toast(to ? `Escalera a «${to.name}». El DM lleva la mesa.` : 'Una escalera.');
+      }
+      return true;
+    }
+    if (!BC.isDoor(code)) return false;
+    if (dmView()) {
+      if (code === 'L') lockedDialog(cell);
+      else setDoor(cell, code === 'D' ? 'O' : 'D');
+      return true;
+    }
+    // Un jugador abre o cierra la puerta que tiene al lado; el cambio lo guarda la pantalla del DM.
+    const me = mapTokens().find(t => myCharacters().includes(t.character_id));
+    if (!me) return false;
+    const size = Math.max(1, Math.round(me.size || 1)),
+      dx = Math.max(me.x - cell.x, 0, cell.x - (me.x + size - 1)),
+      dy = Math.max(me.y - cell.y, 0, cell.y - (me.y + size - 1));
+    if (Math.max(dx, dy) > 1) toast('Acercate a la puerta para abrirla o cerrarla.');
+    else
+      S.channel?.send({
+        t: 'door',
+        map: S.mapId,
+        x: cell.x,
+        y: cell.y,
+        to: code === 'O' ? 'D' : 'O',
+        by: S.me?.id,
+      });
+    return true;
+  }
+  function setDoor(cell, to) {
+    if (BC.at(S.grid, S.terrain, cell.x, cell.y) === to) return;
+    S.terrain = BC.paint(S.grid, S.terrain, [[cell.x, cell.y]], to);
+    saveSoon(terrainPatch());
+    S.dirty = true;
+  }
+  // Pedido de un jugador: lo atiende la pantalla del DM que tiene ese mapa abierto.
+  function onDoorAsk(m) {
+    if (!S.isDM || TV || !Number.isInteger(m.x) || !Number.isInteger(m.y)) return;
+    const code = BC.at(S.grid, S.terrain, m.x, m.y);
+    if (code === 'L') S.channel?.send({ t: 'door-locked', map: S.mapId, to: m.by });
+    else if ((code === 'D' && m.to === 'O') || (code === 'O' && m.to === 'D')) setDoor({ x: m.x, y: m.y }, m.to);
+  }
+  function lockedDialog(cell) {
+    modal(
+      'Puerta trabada',
+      '<p>Los jugadores no pueden abrirla. Para volver a trabarla, pintala con «Terreno» → «Puerta trabada».</p>',
+      async () => setDoor(cell, 'D'),
+      'Destrabar',
+    );
+  }
+  function stairsDialog(cell) {
+    const key = cell.x + ',' + cell.y,
+      cur = S.links[key] || '',
+      others = S.maps.filter(m => m.id !== S.mapId);
+    if (!others.length) return toast('Creá otro mapa para unirlo con esta escalera.');
+    modal(
+      'Escalera',
+      `<label class="field">Lleva a<select name="to"><option value="">Ningún mapa</option>${others
+        .map(m => `<option value="${esc(m.id)}" ${m.id === cur ? 'selected' : ''}>${esc(m.name)}</option>`)
+        .join(
+          '',
+        )}</select></label><label class="check"><input type="checkbox" name="go" ${cur ? 'checked' : ''}>Llevar la mesa a ese mapa ahora</label><p class="small">Al llegar, los personajes aparecen junto a la escalera de ese mapa que vuelve a este (o junto a la primera que tenga).</p>`,
+      async fd => {
+        const to = String(fd.get('to') || '');
+        S.links = { ...S.links };
+        if (to) S.links[key] = to;
+        else delete S.links[key];
+        const from = S.mapId;
+        saveSoon(terrainPatch());
+        if (to && fd.has('go')) await travel(to, from);
+        else ui();
+      },
+    );
+  }
+  // Lleva la mesa a otro mapa y acomoda a los personajes junto a la escalera de llegada.
+  async function travel(to, from) {
+    clearTimeout(S.saveTimer);
+    await flushSave();
+    await goLive(to);
+    await openMap(to);
+    const spot = BC.arrival(S.grid, S.terrain, currentMap()?.terrain?.links, from);
+    if (!spot) return;
+    const placed = mapTokens().filter(t => t.kind !== 'pc');
+    for (const t of mapTokens().filter(k => k.kind === 'pc')) {
+      const p = BC.freeSpot(S.grid, placed, { x: spot[0], y: spot[1] }, S.terrain);
+      placed.push({ ...t, ...p });
+      if (p.x !== t.x || p.y !== t.y) await patchToken(t, p);
+    }
+    S.channel?.send({ t: 'refresh' });
+    S.dirty = true;
+  }
   function paintBrush(cell) {
     S.terrain = BC.paint(S.grid, S.terrain, BC.brush(cell.x, cell.y, S.radius), S.paintCode);
     saveSoon(terrainPatch());
@@ -1790,7 +1904,7 @@
     const back = S.isDM ? `./dm.html#${encodeURIComponent(S.id)}` : './#table';
     $('#board-top').innerHTML = TV
       ? `<span class="board-title">${esc(m?.name || 'Esperando un mapa…')}</span><button type="button" class="icon-btn" data-action="bd-fullscreen" title="Pantalla completa" aria-label="Pantalla completa">⛶</button>`
-      : `${STANDALONE ? `<a class="icon-btn" href="${back}" aria-label="Volver" title="Volver">←</a>` : `<button type="button" class="icon-btn" data-action="bd-close" aria-label="Cerrar el tablero" title="Volver">←</button>`}<div class="board-title"><span class="eyebrow">${esc(S.party?.campaign.name || 'TABLERO')}</span><b>${esc(m?.name || (S.isDM ? 'Sin mapa' : 'Esperando al DM'))}</b>${S.isDM && m ? `<span class="tag ${live ? '' : 'warn'}">${live ? 'En la mesa' : 'Solo vos'}</span>` : ''}</div><div class="board-top-actions">${S.isDM ? (m && !live ? button('Mostrar a la mesa', 'go-live', '') : '') + button('Mapas', 'maps') + button(S.asPlayer ? 'Vista DM' : 'Ver como jugador', 'as-player') + button('📺 Tele', 'tv') : button(S.follow ? 'Siguiendo al DM' : 'Seguir al DM', 'follow')}<button type="button" class="icon-btn" data-action="bd-fit" title="Ver todo el mapa" aria-label="Ver todo el mapa">⤢</button></div>`;
+      : `${STANDALONE ? `<a class="icon-btn" href="${back}" aria-label="Volver" title="Volver">←</a>` : `<button type="button" class="icon-btn" data-action="bd-close" aria-label="Cerrar el tablero" title="Volver">←</button>`}<div class="board-title"><span class="eyebrow">${esc(S.party?.campaign.name || 'TABLERO')}</span><b>${esc(m?.name || (S.isDM ? 'Sin mapa' : 'Esperando al DM'))}</b>${S.isDM && m ? `<span class="tag ${live ? '' : 'warn'}">${live ? 'En la mesa' : 'Solo vos'}</span>` : ''}</div><div class="board-top-actions">${S.isDM ? (m && !live ? button('Mostrar a la mesa', 'go-live', '') : '') + button('Mapas', 'maps') + button(S.asPlayer ? 'Vista DM' : 'Ver como jugador', 'as-player') + button('📺 Tele', 'tv') : button(S.follow ? 'Siguiendo al DM' : 'Seguir al DM', 'follow')}${typeof Sound !== 'undefined' ? Sound.toggleHTML() : ''}<button type="button" class="icon-btn" data-action="bd-fit" title="Ver todo el mapa" aria-label="Ver todo el mapa">⤢</button></div>`;
   }
   function tools() {
     if (TV) return ($('#board-tools').innerHTML = '');
@@ -1920,7 +2034,7 @@
         ? `<div class="actions">${button(t.elev ? `Altura: ${t.elev} pies` : 'Altura', 'token-elev', 'secondary', `data-id="${t.id}"`)}</div>`
         : ''
     }${
-      dm && t.kind !== 'monster'
+      (dm && t.kind !== 'monster') || (t.kind === 'pc' && canMove(t))
         ? `<div class="actions">${button(BC.lightFeet(t.stage) ? `Luz: ${BC.lightFeet(t.stage)} pies` : 'Luz', 'token-light', 'secondary', `data-id="${t.id}"`)}</div>`
         : ''
     }${
@@ -2242,7 +2356,7 @@
       }`,
       async fd => {
         const m = genState.map,
-          grid = BC.normGrid({ cols: m.cols, rows: m.rows, size: CELL }),
+          grid = BC.normGrid({ cols: m.cols, rows: m.rows, size: CELL, ambient: BoardGen.ambient?.(m.type) || '' }),
           made = await Cloud.saveMap(S.id, {
             name: String(fd.get('name')).trim() || m.name,
             sort: S.maps.length,
@@ -2395,11 +2509,15 @@
         m.image_path
           ? `<p class="small">Hacé coincidir la cuadrícula con la del dibujo: primero el tamaño de la casilla, después el desfase. Se ve en vivo detrás de esta ventana.</p><div class="form-grid">${field('Tamaño de casilla (px)', 'size', +g.size.toFixed(2), 'number', 'min="8" max="1000" step="0.1" data-live')}${field('Desfase X (px)', 'ox', +g.ox.toFixed(1), 'number', 'step="0.5" data-live')}${field('Desfase Y (px)', 'oy', +g.oy.toFixed(1), 'number', 'step="0.5" data-live')}</div><div class="form-grid">${field('Columnas', 'cols', g.cols, 'number', 'min="1" max="200" data-live')}${field('Filas', 'rows', g.rows, 'number', 'min="1" max="200" data-live')}</div><div class="actions">${button('Calcular columnas y filas', 'grid-auto')}</div>`
           : `<div class="form-grid">${field('Columnas', 'cols', g.cols, 'number', 'min="1" max="200"')}${field('Filas', 'rows', g.rows, 'number', 'min="1" max="200"')}</div>`
-      }<div class="form-grid">${field('Pies por casilla', 'feet', g.feet, 'number', 'min="1" max="100"')}<label class="field">Color de la cuadrícula<input type="color" name="color" value="${esc(g.color)}" data-live></label>${field('Opacidad', 'opacity', g.opacity, 'range', 'min="0" max="1" step="0.05" data-live')}</div><label class="check"><input type="checkbox" name="show" ${g.show ? 'checked' : ''} data-live>Mostrar cuadrícula</label><fieldset class="skill-choice"><legend>Visión de los jugadores</legend><input type="hidden" name="visionForm" value="1"><label class="check"><input type="checkbox" name="los" ${g.vision.los ? 'checked' : ''}>Solo ven lo que sus personajes tienen a la vista (muros, rocas, puertas y paredes importadas tapan)</label><label class="check"><input type="checkbox" name="dark" ${g.vision.dark ? 'checked' : ''}>Mapa a oscuras: se ve hasta la luz que llevan o su visión en la oscuridad, y lo que alumbren las antorchas, faroles y fogatas que pongas</label>${field('Luz que lleva la party (pies)', 'light', g.vision.light, 'number', 'min="0" max="600" step="5"')}<p class="small muted">Se combina con la niebla manual. Como la niebla, se dibuja en el dispositivo de cada jugador.</p></fieldset>`,
+      }<div class="form-grid">${field('Pies por casilla', 'feet', g.feet, 'number', 'min="1" max="100"')}<label class="field">Color de la cuadrícula<input type="color" name="color" value="${esc(g.color)}" data-live></label>${field('Opacidad', 'opacity', g.opacity, 'range', 'min="0" max="1" step="0.05" data-live')}</div><label class="check"><input type="checkbox" name="show" ${g.show ? 'checked' : ''} data-live>Mostrar cuadrícula</label>${typeof Sound !== 'undefined' ? `<label class="field">Sonido de ambiente (lo oye toda la mesa)<select name="ambient">${Sound.AMBIENTS.map(([id, n]) => `<option value="${id}" ${id === g.ambient ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>` : ''}<fieldset class="skill-choice"><legend>Visión de los jugadores</legend><input type="hidden" name="visionForm" value="1"><label class="check"><input type="checkbox" name="los" ${g.vision.los ? 'checked' : ''}>Solo ven lo que sus personajes tienen a la vista (muros, rocas, puertas y paredes importadas tapan)</label><label class="check"><input type="checkbox" name="dark" ${g.vision.dark ? 'checked' : ''}>Mapa a oscuras: se ve hasta la luz que llevan o su visión en la oscuridad, y lo que alumbren las antorchas, faroles y fogatas que pongas</label>${field('Luz que lleva la party (pies)', 'light', g.vision.light, 'number', 'min="0" max="600" step="5"')}<p class="small muted">Se combina con la niebla manual. Como la niebla, se dibuja en el dispositivo de cada jugador.</p></fieldset>`,
       async fd => {
         const grid = readGrid(fd, g);
         // Cambiar columnas o filas reacomoda terreno y niebla.
-        const terrain = { cells: resizeCells(m, g, grid), walls: m.terrain?.walls || [] };
+        const terrain = {
+          cells: resizeCells(m, g, grid),
+          walls: m.terrain?.walls || [],
+          links: m.terrain?.links || {},
+        };
         const fog = { on: !!m.fog?.on, revealed: resizeFog(m, g, grid) };
         const row = await Cloud.saveMap(
           S.id,
@@ -2447,6 +2565,7 @@
       opacity: Number(fd.get('opacity') ?? g.opacity),
       show: fd.has('show'),
       vision: fd.has('visionForm') ? { los: fd.has('los'), dark: fd.has('dark'), light: fd.get('light') } : g.vision,
+      ambient: fd.has('ambient') ? String(fd.get('ambient')) : g.ambient,
     });
   }
   function resizeCells(m, from, to) {
@@ -2516,7 +2635,11 @@
       )}</select></label>${field('O un radio a medida (pies)', 'custom', BC.LIGHTS.some(l => l[2] === cur) ? '' : cur || '', 'number', 'min="5" max="300" step="5"')}<p class="small">En un mapa a oscuras, los jugadores ven lo que esta luz alumbra si lo tienen a la vista. El radio cuenta la luz brillante más la tenue.</p>`,
       async fd => {
         const feet = Math.max(0, Math.min(300, Math.round(Number(fd.get('custom')) || Number(fd.get('feet')) || 0)));
-        await patchToken(t, { stage: feet ? 'light:' + feet : null });
+        const want = feet ? 'light:' + feet : null;
+        await patchToken(t, { stage: want });
+        // Sin la actualización 017, la base ignora el cambio de un jugador.
+        if ((S.tokens.find(x => x.id === t.id)?.stage || null) !== want)
+          toast('Tu mesa todavía no deja que los jugadores cambien su luz: pedile al DM que la actualice (017).');
         ui();
       },
     );
@@ -2614,6 +2737,7 @@
     }
     host.hidden = false;
     shown = true;
+    if (typeof Sound !== 'undefined') Sound.ambient(S.mapId ? S.grid.ambient : '');
     document.documentElement.classList.add('board-open');
     mount();
     if (S.id !== campaignId) {
@@ -2640,6 +2764,7 @@
     if (host) host.hidden = true;
     shown = false;
     document.documentElement.classList.remove('board-open');
+    if (typeof Sound !== 'undefined') Sound.ambient('');
     H.closed?.();
   }
   window.Board = {

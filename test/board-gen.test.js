@@ -82,3 +82,15 @@ test('el generador se carga en las pantallas con mapa y queda disponible sin con
   }
   assert.match(read('sw.js'), /'\.\/board-gen\.js'/);
 });
+
+test('generador: los mapas techados traen una escalera y cada tipo su ambiente', () => {
+  for (const type of ['dungeon', 'castle', 'tavern', 'ship']) {
+    let withStairs = 0;
+    for (let seed = 1; seed <= 12; seed++) if (G.generate(type, { seed }).terrain.includes('S')) withStairs++;
+    assert.ok(withStairs >= 10, `${type}: ${withStairs} de 12 con escalera`);
+  }
+  assert.ok(!G.generate('woods', { seed: 3 }).terrain.includes('S'));
+  assert.equal(G.ambient('tavern'), 'tavern');
+  assert.equal(G.ambient('ship'), 'sea');
+  assert.equal(G.ambient('nada'), '');
+});

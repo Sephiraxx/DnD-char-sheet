@@ -695,6 +695,7 @@ const actions = {
             crit: die === 20 && n === 1 && rolls[0] === 20,
             fumble: die === 20 && n === 1 && rolls[0] === 1,
             die,
+            dice: rolls.map(v => ({ die, v })),
           }),
         );
         return send(

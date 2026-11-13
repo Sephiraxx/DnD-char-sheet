@@ -630,6 +630,39 @@
   }
 
   // Genera un mapa: { type, name, cols, rows, seed, terrain } (terrain: una letra por casilla, por filas).
+  // Sonido de ambiente que le va a cada tipo de mapa.
+  const AMBIENT = {
+    trail: 'forest',
+    woods: 'forest',
+    river: 'forest',
+    swamp: 'forest',
+    village: 'forest',
+    ruins: 'wind',
+    desert: 'wind',
+    ice: 'wind',
+    coast: 'sea',
+    ship: 'sea',
+    cave: 'cave',
+    lava: 'cave',
+    dungeon: 'dungeon',
+    castle: 'dungeon',
+    tavern: 'tavern',
+  };
+  const ambient = type => AMBIENT[type] || '';
+  // Mapas techados: una escalera contra una pared, para unirlos con el piso de arriba o de abajo.
+  const STAIRS = { dungeon: 'f', castle: 'f', tavern: 'm', ship: 'm', cave: 'f' };
+  function stairs(m, floor) {
+    const spots = [];
+    m.each((x, y, c) => {
+      if (c !== floor && !(floor === 'f' && c === 'a')) return;
+      if (m.near(x, y, ['D', 'd', 'w', 'W', 'l', 'p'])) return;
+      const solid = (dx, dy) => '#r'.includes(m.get(x + dx, y + dy));
+      // Contra una pared de un solo lado: no tapa un pasillo.
+      const sides = [solid(0, -1), solid(1, 0), solid(0, 1), solid(-1, 0)].filter(Boolean).length;
+      if (sides === 1) spots.push([x, y]);
+    });
+    if (spots.length) m.set(...spots[m.int(0, spots.length - 1)], 'S');
+  }
   function generate(type, { size = 'medium', cols, rows, seed } = {}) {
     const info = TYPES.find(t => t[0] === type);
     if (!info) throw Error('Ese tipo de mapa no existe.');
@@ -639,9 +672,10 @@
       sd = (seed ?? Math.floor(Math.random() * 4294967296)) >>> 0,
       m = make(c, r, sd);
     GEN[type](m);
+    if (STAIRS[type]) stairs(m, STAIRS[type]);
     return { type, name: info[1], cols: c, rows: r, seed: sd, terrain: m.cells.join('') };
   }
-  const api = { TYPES, SIZES, generate, rng };
+  const api = { TYPES, SIZES, generate, rng, ambient };
   if (typeof module !== 'undefined') module.exports = api;
   root.BoardGen = api;
 })(typeof window !== 'undefined' ? window : globalThis);

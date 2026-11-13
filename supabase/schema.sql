@@ -815,7 +815,14 @@ begin
     new.color := old.color;
     new.size := old.size;
     new.hidden := old.hidden;
-    new.stage := old.stage;
+    -- El jugador puede prender o apagar la luz de su ficha («light:<pies>»), nada más.
+    if not (
+      old.kind = 'pc'
+      and (old.stage is null or old.stage ~ '^light:[0-9]{1,3}$')
+      and (new.stage is null or new.stage ~ '^light:[0-9]{1,3}$')
+    ) then
+      new.stage := old.stage;
+    end if;
   end if;
   new.updated_at := now();
   return new;

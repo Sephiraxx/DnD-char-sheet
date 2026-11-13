@@ -663,6 +663,7 @@ const RollUI = (() => {
     let rolls = [],
       sum;
     const empowered = [];
+    let each = [];
     if (own !== null && own !== '') {
       sum = Number(own);
       if (!Number.isInteger(sum) || sum < 0 || sum > 999) throw Error('Revisá la suma de tus dados.');
@@ -688,6 +689,7 @@ const RollUI = (() => {
           rolls[x.i] = { v: again, sides: x.sides };
         }
       }
+      each = rolls.map(x => ({ die: x.sides, v: x.v }));
       rolls = rolls.map(x => x.v);
       sum = rolls.reduce((a, b) => a + b, 0);
     }
@@ -710,6 +712,7 @@ const RollUI = (() => {
       detail: dice + (mod ? ' ' + sign(mod) : ''),
       crit: spellSession.crit,
       die: groups[0]?.[1] || 20,
+      dice: each,
     });
     const applied = applySpellResult(fd, total).catch(err => {
       toast(err.message);

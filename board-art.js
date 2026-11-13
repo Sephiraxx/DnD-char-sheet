@@ -13,7 +13,9 @@
     n ^= n >>> 16;
     return (n >>> 0) / 4294967296;
   }
-  const BLOCK = new Set(['#', 'D', 'r']);
+  const BLOCK = new Set(['#', 'D', 'L', 'r']);
+  // Puertas (cerrada, abierta, trabada): las tres tienen marco y pisan losas.
+  const DOOR = new Set(['D', 'O', 'L']);
   // Colores base de cada suelo.
   const BASE = {
     f: '#8d8577',
@@ -47,7 +49,7 @@
       ground = (x, y) => {
         const c = at(x, y);
         if (c === 't') return 'g';
-        if (c === 'D') return 'f';
+        if (DOOR.has(c) || c === 'S') return 'f';
         if (c === 'W') return 'w';
         if (c !== 'r') return c;
         const near = [at(x - 1, y), at(x + 1, y), at(x, y - 1), at(x, y + 1)].map(n =>
@@ -264,7 +266,7 @@
         if (!is(x, y)) {
           // Esquina entrante: dos vecinas de esta capa se juntan en diagonal y el rincón se rellena curvo.
           const n = at(x, y);
-          if (n === '#' || n === 'D') return;
+          if (n === '#' || DOOR.has(n)) return;
           for (const [sx, sy] of CORNERS) {
             if (!is(x + sx, y) || !is(x, y + sy)) continue;
             const cx = px + (sx > 0 ? T : 0),
@@ -311,7 +313,7 @@
         sides.forEach(([dx, dy, line, horiz], s) => {
           const n = at(x + dx, y + dy);
           // Contra un muro o una puerta el borde queda recto.
-          if (is(x + dx, y + dy) || n === '#' || n === 'D') return;
+          if (is(x + dx, y + dy) || n === '#' || DOOR.has(n)) return;
           const STEPS = 8,
             v0 = horiz ? x : y,
             // ¿Esta casilla redondea la esquina del principio o del final de este lado?
@@ -601,7 +603,7 @@
     const solid = new Path2D();
     let anySolid = false;
     each((x, y, c) => {
-      if (c !== '#' && c !== 'D') return;
+      if (c !== '#' && c !== 'D' && c !== 'L') return;
       anySolid = true;
       solid.rect(x * T, y * T, T, T);
     });
@@ -678,11 +680,34 @@
       if (open(1, 0)) line(px + T - k, py, px + T - k, py + T, 'rgba(18,16,14,0.75)');
     });
     // Puertas: una hoja de madera con herrajes, atravesada en el paso.
+    // Escaleras: peldaños que se oscurecen hacia abajo, entre dos barandas.
     each((x, y, c) => {
-      if (c !== 'D') return;
+      if (c !== 'S') return;
       const px = x * T,
         py = y * T,
-        wall = (dx, dy) => BLOCK.has(at(x + dx, y + dy)) && at(x + dx, y + dy) !== 'r',
+        n = 5;
+      ctx.save();
+      ctx.fillStyle = '#2a2622';
+      ctx.fillRect(px + T * 0.08, py + T * 0.06, T * 0.84, T * 0.88);
+      for (let i = 0; i < n; i++) {
+        const k = i / (n - 1),
+          v = Math.round(176 - k * 104);
+        ctx.fillStyle = `rgb(${v},${Math.round(v * 0.95)},${Math.round(v * 0.86)})`;
+        ctx.fillRect(px + T * 0.14, py + T * (0.1 + i * 0.162), T * 0.72, T * 0.13);
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fillRect(px + T * 0.14, py + T * (0.1 + i * 0.162 + 0.13), T * 0.72, T * 0.032);
+      }
+      ctx.fillStyle = '#5a554c';
+      ctx.fillRect(px + T * 0.08, py + T * 0.06, T * 0.06, T * 0.88);
+      ctx.fillRect(px + T * 0.86, py + T * 0.06, T * 0.06, T * 0.88);
+      ctx.restore();
+    });
+    each((x, y, c) => {
+      if (!DOOR.has(c)) return;
+      const px = x * T,
+        py = y * T,
+        wall = (dx, dy) =>
+          (BLOCK.has(at(x + dx, y + dy)) || DOOR.has(at(x + dx, y + dy))) && at(x + dx, y + dy) !== 'r',
         vertical = wall(0, -1) && wall(0, 1) && !(wall(-1, 0) && wall(1, 0));
       ctx.save();
       ctx.translate(px + T / 2, py + T / 2);
@@ -691,6 +716,26 @@
       ctx.fillStyle = '#4a463f';
       ctx.fillRect(-T / 2, -T * 0.24, T * 0.12, T * 0.48);
       ctx.fillRect(T / 2 - T * 0.12, -T * 0.24, T * 0.12, T * 0.48);
+      if (c === 'O') {
+        // Abierta: la hoja girada contra una jamba, y el paso libre.
+        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = T * 0.1;
+        ctx.shadowOffsetY = T * 0.04;
+        const go = ctx.createLinearGradient(-T * 0.38, 0, -T * 0.26, 0);
+        go.addColorStop(0, '#b47a3c');
+        go.addColorStop(1, '#7a4a1e');
+        ctx.fillStyle = go;
+        ctx.fillRect(-T * 0.38, -T * 0.1, T * 0.12, T * 0.58);
+        ctx.shadowColor = 'transparent';
+        ctx.strokeStyle = 'rgba(40,20,5,0.6)';
+        ctx.lineWidth = lw(0.018);
+        ctx.strokeRect(-T * 0.38, -T * 0.1, T * 0.12, T * 0.58);
+        ctx.fillStyle = '#3a3a3c';
+        ctx.fillRect(-T * 0.38, 0, T * 0.12, T * 0.03);
+        ctx.fillRect(-T * 0.38, T * 0.36, T * 0.12, T * 0.03);
+        ctx.restore();
+        return;
+      }
       ctx.shadowColor = 'rgba(0,0,0,0.55)';
       ctx.shadowBlur = T * 0.12;
       ctx.shadowOffsetY = T * 0.05;
@@ -717,6 +762,18 @@
       ctx.beginPath();
       ctx.arc(T * 0.26, 0, T * 0.04, 0, TAU);
       ctx.fill();
+      if (c === 'L') {
+        // Trabada: una tranca de hierro cruzada y el candado en el medio.
+        ctx.fillStyle = '#2c2c2e';
+        ctx.fillRect(-T * 0.44, -T * 0.035, T * 0.88, T * 0.07);
+        ctx.fillStyle = '#d8b25c';
+        ctx.fillRect(-T * 0.07, -T * 0.05, T * 0.14, T * 0.13);
+        ctx.strokeStyle = '#d8b25c';
+        ctx.lineWidth = lw(0.03);
+        ctx.beginPath();
+        ctx.arc(0, -T * 0.05, T * 0.045, Math.PI, 0);
+        ctx.stroke();
+      }
       ctx.restore();
     });
     // Árboles: sombra, tronco apenas visible y una copa de varios mechones (de arriba hacia abajo).
