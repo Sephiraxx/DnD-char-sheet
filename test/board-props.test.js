@@ -116,7 +116,7 @@ test('generador: los muebles caen dentro del mapa, sobre piso, y se repiten con 
 // Todas las casillas pisables de un piso están unidas (cruzando puertas).
 function connected(cols, rows, terrain) {
   const open = c => !B.terrainType(c).blocks && c !== '.',
-    pass = c => open(c) || c === 'D',
+    pass = c => open(c) || c === 'D' || c === 'L', // una puerta trabada sigue siendo una entrada
     start = [...terrain].findIndex(open),
     seen = new Uint8Array(terrain.length),
     stack = [start];
@@ -138,43 +138,43 @@ function connected(cols, rows, terrain) {
   return n === [...terrain].filter(pass).length;
 }
 
-test('generador: una taberna de varios pisos queda unida por sus escaleras', () => {
-  for (const size of Object.keys(G.SIZES))
-    for (let seed = 1; seed <= 20; seed++)
-      for (const [floors, cellar] of [
-        [1, false],
-        [2, false],
-        [3, true],
-        [2, true],
-      ]) {
-        const m = G.generate('tavern', { size, seed, floors, cellar }),
-          tag = `${size} ${seed} ${floors}${cellar ? '+s' : ''}`;
-        assert.equal(m.floors.length, floors + (cellar ? 1 : 0), tag);
-        assert.equal(m.floors[0].name, 'Planta baja');
-        m.floors.forEach((f, i) => {
-          assert.ok(connected(m.cols, m.rows, f.terrain), `${tag}: ${f.name} tiene un cuarto sin salida`);
-          const stairs = [...f.terrain].filter(c => c === 'S').length;
-          // Con un solo piso, la escalera de la planta baja queda para que el DM la una a mano.
-          if (floors > 1)
-            assert.equal(Object.keys(f.links).length, stairs, `${tag}: ${f.name} tiene escaleras sin destino`);
-          for (const [key, to] of Object.entries(f.links)) {
-            const [x, y] = key.split(',').map(Number);
-            assert.equal(f.terrain[y * m.cols + x], 'S', `${tag}: ${f.name} ${key}`);
-            // La escalera de vuelta está en la misma casilla del otro piso.
-            assert.equal(m.floors[to].links[key], i, `${tag}: ${f.name} → ${m.floors[to].name}`);
-          }
-        });
-        // Desde la planta baja se llega a todos los pisos.
-        const reach = new Set([0]);
-        for (let k = 0; k < 4; k++)
-          for (const i of [...reach]) Object.values(m.floors[i].links).forEach(t => reach.add(t));
-        assert.equal(reach.size, m.floors.length, tag);
-        if (floors > 1)
-          assert.ok(
-            m.floors[1].props.some(p => p[2] === 'bed' || p[2] === 'bed2'),
-            `${tag}: sin camas`,
-          );
-      }
+test('generador: tabernas y castillos de varios pisos quedan unidos por sus escaleras', () => {
+  for (const type of Object.keys(G.MULTI))
+    for (const size of Object.keys(G.SIZES))
+      for (let seed = 1; seed <= 20; seed++)
+        for (const [floors, cellar] of [
+          [1, false],
+          [2, false],
+          [3, true],
+          [2, true],
+        ]) {
+          const m = G.generate(type, { size, seed, floors, cellar }),
+            tag = `${type} ${size} ${seed} ${floors}${cellar ? '+s' : ''}`;
+          assert.equal(m.floors.length, floors + (cellar ? 1 : 0), tag);
+          m.floors.forEach((f, i) => {
+            assert.ok(connected(m.cols, m.rows, f.terrain), `${tag}: ${f.name} tiene un cuarto sin salida`);
+            const stairs = [...f.terrain].filter(c => c === 'S').length;
+            // Con un solo piso, la escalera de la planta baja queda para que el DM la una a mano.
+            if (floors > 1)
+              assert.equal(Object.keys(f.links).length, stairs, `${tag}: ${f.name} tiene escaleras sin destino`);
+            for (const [key, to] of Object.entries(f.links)) {
+              const [x, y] = key.split(',').map(Number);
+              assert.equal(f.terrain[y * m.cols + x], 'S', `${tag}: ${f.name} ${key}`);
+              // La escalera de vuelta está en la misma casilla del otro piso.
+              assert.equal(m.floors[to].links[key], i, `${tag}: ${f.name} → ${m.floors[to].name}`);
+            }
+          });
+          // Desde la planta baja se llega a todos los pisos.
+          const reach = new Set([0]);
+          for (let k = 0; k < 4; k++)
+            for (const i of [...reach]) Object.values(m.floors[i].links).forEach(t => reach.add(t));
+          assert.equal(reach.size, m.floors.length, tag);
+          if (floors > 1 && !(type === 'castle' && size === 'small'))
+            assert.ok(
+              m.floors[1].props.some(p => p[2] === 'bed' || p[2] === 'bed2'),
+              `${tag}: sin camas`,
+            );
+        }
 });
 
 test('los muebles se cargan antes que el generador y el tablero, y quedan disponibles sin conexión', () => {
@@ -184,4 +184,25 @@ test('los muebles se cargan antes que el generador y el tablero, y quedan dispon
     assert.ok(h.indexOf('board-props.js') > 0 && h.indexOf('board-props.js') < h.indexOf('board-gen.js'), f);
   }
   assert.match(read('sw.js'), /'\.\/board-props\.js'/);
+});
+
+test('generador: las casas de la aldea tienen cama o un oficio, y el castillo su trono', () => {
+  for (let seed = 1; seed <= 10; seed++) {
+    const v = G.generate('village', { seed }),
+      ids = v.props.map(p => p[2]);
+    assert.ok(v.props.length >= 20, `aldea ${seed}: ${v.props.length} piezas`);
+    assert.ok(ids.includes('bed') || ids.includes('bed2'), `aldea ${seed}: sin camas`);
+    assert.ok(ids.includes('forge') || ids.includes('altar') || ids.includes('bar'), `aldea ${seed}: sin oficios`);
+    const c = G.generate('castle', { seed, floors: 3, cellar: true });
+    assert.deepEqual(
+      c.floors.map(f => f.name),
+      ['Patio y planta baja', 'Murallas y aposentos', 'Lo alto de la torre', 'Mazmorras'],
+    );
+    assert.ok(
+      c.props.some(p => p[2] === 'throne'),
+      `castillo ${seed}: sin trono`,
+    );
+    assert.ok(c.floors[2].terrain.includes('L'), `castillo ${seed}: el tesoro no está trabado`);
+  }
+  assert.equal(G.generate('castle', { seed: 1 }).floors.length, 1);
 });

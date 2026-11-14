@@ -24,7 +24,11 @@
       'Salón con barra, cocina y depósito; habitaciones en los pisos de arriba y, si querés, sótano.',
     ],
     ['village', 'Aldea', 'Un cruce de caminos con casas, una plaza y un pozo.'],
-    ['castle', 'Castillo', 'Muralla con torres, foso, patio de armas y la torre del homenaje.'],
+    [
+      'castle',
+      'Castillo',
+      'Muralla con torres, foso y patio; la torre del homenaje puede tener pisos, camino de ronda y mazmorras.',
+    ],
     ['ship', 'Barco', 'La cubierta de un velero en mar abierto, con camarote y bodega.'],
   ];
   const SIZES = {
@@ -165,6 +169,95 @@
     api.pick = list => list[int(0, list.length - 1)];
     return api;
   }
+
+  // Amuebla un cuarto (rectángulo interior x0..x1, y0..y1): `wall` son piezas que se apoyan contra una pared
+  // con el frente hacia adentro; `center`, piezas sueltas en el medio. Nada queda pegado a una puerta o escalera.
+  // Cada entrada puede ser un id o [id, probabilidad].
+  function fitOut(m, x0, y0, x1, y1, wall = [], center = []) {
+    if (!P || x1 < x0 || y1 < y0) return;
+    const slots = [];
+    for (let x = x0; x <= x1; x++) {
+      slots.push([x, y0, 0]);
+      if (y1 > y0) slots.push([x, y1, 2]);
+    }
+    for (let y = y0; y <= y1; y++) {
+      slots.push([x0, y, 3]);
+      if (x1 > x0) slots.push([x1, y, 1]);
+    }
+    for (let i = slots.length - 1; i > 0; i--) {
+      const j = m.int(0, i);
+      [slots[i], slots[j]] = [slots[j], slots[i]];
+    }
+    const inRoom = (x, y, w, h) => x >= x0 && y >= y0 && x + w - 1 <= x1 && y + h - 1 <= y1,
+      clear = (x, y, w, h) => {
+        for (let j = 0; j < h; j++)
+          for (let i = 0; i < w; i++) if (m.near(x + i, y + j, ['D', 'O', 'L', 'S'], 1)) return false;
+        return true;
+      },
+      each = (list, fn) => {
+        for (const it of list) {
+          const [id, chance] = Array.isArray(it) ? it : [it, 1];
+          if (P.get(id) && m.R() < chance) fn(id);
+        }
+      };
+    each(wall, id => {
+      for (const [sx, sy, rot] of slots) {
+        const [w, h] = P.footprint(id, rot),
+          x = rot === 1 ? x1 - w + 1 : sx,
+          y = rot === 2 ? y1 - h + 1 : sy;
+        if (inRoom(x, y, w, h) && clear(x, y, w, h) && m.put(x, y, id, rot)) return;
+      }
+    });
+    each(center, id => {
+      const rot = P.get(id).w === P.get(id).h ? 0 : m.int(0, 1),
+        [w, h] = P.footprint(id, rot);
+      for (let tries = 0; tries < 12; tries++) {
+        const x = m.int(x0 + 1, x1 - w),
+          y = m.int(y0 + 1, y1 - h);
+        if (x < x0 + 1 || y < y0 + 1) return;
+        if (clear(x, y, w, h) && m.put(x, y, id, rot)) {
+          // Sillas alrededor de una mesa.
+          if (id.startsWith('table'))
+            for (const [dx, dy, r] of [
+              [0, -1, 0],
+              [w - 1, h, 2],
+              [-1, 0, 3],
+              [w, h - 1, 1],
+            ])
+              if (m.R() < 0.6 && inRoom(x + dx, y + dy, 1, 1) && clear(x + dx, y + dy, 1, 1))
+                m.put(x + dx, y + dy, m.pick(['chair', 'stool', 'chair']), r);
+          return;
+        }
+      }
+    });
+  }
+  // Qué hay en cada casa de la aldea.
+  const HOUSES = {
+    home: [
+      ['bed', 'chest', ['wardrobe', 0.6], ['hearth', 0.5], ['shelf', 0.6], ['barrel', 0.4], ['candles', 0.3]],
+      ['table', ['rug2', 0.5]],
+    ],
+    farm: [
+      ['bed', 'sacks', 'barrel', ['crate', 0.7], ['woodpile', 0.6], ['stove', 0.5], ['shelf', 0.5]],
+      ['table', ['hay', 0.4]],
+    ],
+    smithy: [
+      ['forge', 'rack', 'barrel', ['crates', 0.6], ['woodpile', 0.6], ['shelf', 0.4]],
+      ['anvil', ['table', 0.4]],
+    ],
+    shop: [
+      ['shelf', 'shelf', 'crates', 'barrels', ['sacks', 0.7], ['chest', 0.5], ['bookshelf', 0.4]],
+      ['bar', ['table', 0.5], ['crate', 0.4]],
+    ],
+    chapel: [
+      ['altar', 'candles', 'candles', ['statue', 0.6], ['bookshelf', 0.4]],
+      ['bench', 'bench', ['rug', 0.6]],
+    ],
+    elder: [
+      ['bed2', 'desk', 'bookshelf', 'wardrobe', ['chest', 0.8], ['hearth', 0.7]],
+      ['table2', ['rug', 0.6]],
+    ],
+  };
 
   // Árboles según un ruido: más cerrados donde el ruido es alto.
   function forest(m, threshold, k = 1, on = c => c === 'g') {
@@ -808,9 +901,11 @@
       m.set(px, py, 'w');
       // Casas: paredes, piso de madera y una puerta hacia el camino más cercano.
       const houses = [];
-      for (let tries = 0; tries < 300 && houses.length < Math.round((m.cols * m.rows) / 85); tries++) {
-        const w = m.int(4, 7),
-          hh = m.int(4, 6),
+      for (let tries = 0; tries < 1500 && houses.length < Math.round((m.cols * m.rows) / 85); tries++) {
+        // En un mapa chico, o si no entran, las casas se achican.
+        const snug = m.cols < 24 || tries > 600,
+          w = snug ? m.int(4, 6) : m.int(5, 8),
+          hh = snug ? m.int(4, 5) : m.int(5, 7),
           x = m.int(1, m.cols - w - 1),
           y = m.int(1, m.rows - hh - 1);
         let clear = x >= 1 && y >= 1;
@@ -846,10 +941,43 @@
         if (sides.n < 99)
           for (let n = 1; n < sides.n; n++) m.set(sides.dx + sides.sx * n, sides.dy + sides.sy * n, 'a');
       }
+      // Cada casa es algo: la más grande, la del anciano; después herrería, almacén, capilla y hogares.
+      const kinds = ['elder', 'smithy', 'shop', 'chapel'];
+      [...houses]
+        .sort((a, b) => b.w * b.h - a.w * a.h)
+        .forEach((r, i) => {
+          const kind = kinds[i] || m.pick(['home', 'home', 'farm']),
+            [wall, center] = HOUSES[kind];
+          fitOut(m, r.x + 1, r.y + 1, r.x + r.w - 2, r.y + r.h - 2, wall, center);
+          // Afuera: huerta junto a las granjas, leña y barriles contra la pared, cartel en los negocios.
+          const grass = c => c === 'g';
+          if (kind === 'farm' || m.R() < 0.3)
+            m.put(r.x + m.int(0, 2), r.y + r.h + 1, 'crops', 0, grass) || m.put(r.x + r.w + 1, r.y, 'crops', 0, grass);
+          if (m.R() < 0.7)
+            m.put(r.x - 1, r.y + m.int(1, r.h - 2), m.pick(['woodpile', 'barrel', 'hay', 'crate', 'bush']), 0, grass);
+          if (m.R() < 0.5)
+            m.put(r.x + r.w, r.y + m.int(1, r.h - 2), m.pick(['barrel', 'bush', 'trough', 'hay']), 0, grass);
+        });
+      // La plaza: puestos de feria alrededor del pozo y un farol en cada punta.
+      const paved = c => c === 'f';
+      for (const [dx, dy] of [
+        [-3, -2],
+        [2, 3],
+        [-3, 3],
+        [2, -2],
+      ])
+        if (m.R() < 0.75) m.put(px + dx, py + dy, m.pick(['stall', 'stall', 'cart', 'crates']), 0, paved);
+      for (const [dx, dy] of [
+        [-1, -1],
+        [1, 1],
+      ])
+        m.put(px + dx * 2, py + dy * 2, 'lamp', 0, paved);
       forest(m, 0.62, 5);
       m.scatter('d', 0.01, c => c === 'g');
     },
-    castle(m) {
+    castle(m, opt = {}) {
+      const floorsN = Math.max(1, Math.min(3, Math.trunc(opt.floors) || 1)),
+        cellar = Boolean(opt.cellar);
       m.fill('g');
       forest(m, 0.66, 6);
       // Foso, muralla y patio.
@@ -867,6 +995,8 @@
       m.each((x, y, c) => {
         if (c === 'a' && m.noise(x, y, 4, 130) > 0.62) m.set(x, y, 'g');
       });
+      // En un castillo chico no hay lugar para separar la torre del homenaje: se apoya en la muralla misma.
+      const tight = y1 - y0 < 12;
       // Torres en las esquinas: macizas por fuera, con un cuarto adentro.
       for (const [tx, ty] of [
         [x0, y0],
@@ -876,11 +1006,25 @@
       ]) {
         for (let y = ty - 1; y <= ty + 3; y++)
           for (let x = tx - 1; x <= tx + 3; x++) if (x >= mx0 && y >= my0 && x <= mx1 && y <= my1) m.set(x, y, '#');
-        m.set(tx + 1, ty + 1, 'f');
+        for (let y = ty; y <= ty + 2; y++) for (let x = tx; x <= tx + 2; x++) m.set(x, y, 'f');
         const ix = tx === x0 ? tx + 3 : tx - 1,
           iy = ty + 1;
-        m.set(ix, iy, 'D');
+        // En un castillo chico la torre del homenaje tapa el costado de las torres del fondo: se entra por abajo.
+        if (tight && ty === y0) m.set(tx + 1, ty + 3, 'D');
+        else m.set(ix, iy, 'D');
+        fitOut(m, tx, ty, tx + 2, ty + 2, [
+          m.pick(['rack', 'barrels', 'crates']),
+          ['barrel', 0.6],
+          ['bed', 0.4],
+          ['chest', 0.3],
+        ]);
       }
+      const TOWERS = [
+        [x0, y0],
+        [x1 - 2, y0],
+        [x0, y1 - 2],
+        [x1 - 2, y1 - 2],
+      ];
       // Puerta principal abajo, con su puente sobre el foso y el camino que llega.
       const gate = m.int(x0 + 5, x1 - 6);
       for (let d = 0; d < 2; d++) {
@@ -890,29 +1034,237 @@
         for (let y = y1 - 3; y < y1; y++) m.set(gate + d, y, 'a');
       }
       // Torre del homenaje contra la muralla del fondo, con salón de piedra y una cámara.
-      const kw = Math.max(7, Math.round((x1 - x0) * 0.4)),
-        kh = Math.max(5, Math.round((y1 - y0) * 0.4)),
+      const kw = Math.max(5, Math.min(x1 - x0 - 7, Math.max(7, Math.round((x1 - x0) * 0.4)))),
+        kh = tight ? 4 : Math.max(5, Math.round((y1 - y0) * 0.4)),
         kx = m.int(x0 + 4, Math.max(x0 + 4, x1 - kw - 4)),
-        ky = y0 + 2;
+        ky = tight ? y0 : y0 + 2;
       for (let y = ky; y < ky + kh; y++)
         for (let x = kx; x < kx + kw; x++)
           m.set(x, y, x === kx || y === ky || x === kx + kw - 1 || y === ky + kh - 1 ? '#' : 'f');
-      const wall = kx + Math.round(kw * 0.62);
-      for (let y = ky + 1; y < ky + kh - 1; y++) m.set(wall, y, '#');
-      m.set(wall, ky + m.int(1, kh - 2), 'D');
-      m.set(kx + m.int(1, Math.max(1, wall - kx - 1)), ky + kh - 1, 'D');
+      // Con lugar, una pared separa el salón de la cámara; si no, es una sola sala.
+      const split = kw >= 7,
+        wall = split ? kx + Math.round(kw * 0.62) : kx + kw - 1;
+      if (split) for (let y = ky + 1; y < ky + kh - 1; y++) m.set(wall, y, '#');
+      // Las torres de arriba, si quedaron pegadas a las de abajo, se comunican con ellas.
+      if (tight) for (const tx of [x0, x1 - 2]) if (m.get(tx + 1, y0 + 4) === '#') m.set(tx + 1, y0 + 4, 'D');
+      // Escaleras de la torre: dos en el salón (subir) y una en la cámara (bajar a las mazmorras).
+      const K1 = [kx + 1, ky + 1],
+        K2 = [kx + 2, ky + 1],
+        KD = [kx + kw - 2, ky + 1],
+        kix1 = kx + kw - 2,
+        kiy1 = ky + kh - 2;
+      if (split) m.set(wall, m.int(ky + 2, Math.max(ky + 2, kiy1)), 'D');
+      m.set(m.int(kx + 2, Math.max(kx + 2, wall - 1)), ky + kh - 1, 'D');
+      m.set(...K1, 'S');
+      if (cellar) m.set(...KD, 'S');
+      // Gran salón: trono, mesas largas, hogar y armas en las paredes. La cámara de al lado es cocina y despensa.
+      fitOut(
+        m,
+        kx + 1,
+        ky + 1,
+        wall - 1,
+        kiy1,
+        ['throne', 'hearth', ['rack', 0.7], ['brazier', 0.6], ['statue', 0.4]],
+        ['table2', ['table2', 0.6], ['rug', 0.5]],
+      );
+      fitOut(
+        m,
+        wall + 1,
+        ky + 1,
+        kix1,
+        kiy1,
+        ['stove', 'barrels', ['shelf', 0.7], ['sacks', 0.6], ['crate', 0.5]],
+        [['table', 0.5]],
+      );
       // Establo de madera y pozo en el patio.
       const sx = kx > (x0 + x1) / 2 ? x0 + 4 : x1 - 7,
         sy = y1 - 4;
       for (let y = sy; y < sy + 2; y++)
         for (let x = sx; x < sx + 4; x++) if (m.get(x, y) === 'a' || m.get(x, y) === 'g') m.set(x, y, 'm');
+      const planks = c => c === 'm';
+      m.put(sx, sy, 'hay', 0, planks);
+      m.put(sx + 2, sy, 'trough', 0, planks);
+      m.put(sx + 1, sy + 1, m.pick(['hay', 'barrel', 'sacks']), 0, planks);
       const spots = [];
       m.each(
         (x, y, c) =>
           (c === 'a' || c === 'g') && x > x0 + 4 && x < x1 - 4 && y > ky + kh + 1 && y < y1 - 5 && spots.push([x, y]),
       );
-      if (spots.length) m.set(...spots[m.int(0, spots.length - 1)], 'w');
+      if (spots.length) m.put(...spots[m.int(0, spots.length - 1)], 'well', 0);
       m.scatter('d', 0.02, c => c === 'a');
+
+      // ----- Pisos de arriba y mazmorras -----
+      const floors = [
+        { name: floorsN > 1 || cellar ? 'Patio y planta baja' : 'Castillo', m, ambient: 'wind', links: {} },
+      ];
+      const keepShell = (k, floor) => {
+        for (let y = ky; y < ky + kh; y++)
+          for (let x = kx; x < kx + kw; x++)
+            k.set(x, y, x === kx || y === ky || x === kx + kw - 1 || y === ky + kh - 1 ? '#' : floor);
+      };
+      if (floorsN > 1) {
+        // Primer piso: el camino de ronda sobre la muralla, las torres y los aposentos del señor.
+        const k = make(m.cols, m.rows, (opt.seed + 7919) >>> 0);
+        k.fill('.');
+        for (let y = y0; y <= y1; y++)
+          for (let x = x0; x <= x1; x++) if (x === x0 || y === y0 || x === x1 || y === y1) k.set(x, y, 'f');
+        for (const [tx, ty] of TOWERS) {
+          for (let y = ty - 1; y <= ty + 3; y++)
+            for (let x = tx - 1; x <= tx + 3; x++)
+              if (x >= mx0 && y >= my0 && x <= mx1 && y <= my1)
+                k.set(x, y, x >= tx && x <= tx + 2 && y >= ty && y <= ty + 2 ? 'f' : '#');
+          // Una puerta hacia cada tramo de muralla que llega a la torre.
+          k.set(tx === x0 ? tx + 3 : tx - 1, ty === y0 ? y0 : y1, 'D');
+          k.set(tx === x0 ? x0 : x1, ty === y0 ? ty + 3 : ty - 1, 'D');
+          fitOut(k, tx, ty, tx + 2, ty + 2, [k.pick(['rack', 'crates', 'bed']), ['barrel', 0.6], ['brazier', 0.4]]);
+        }
+        const walk = c => c === 'f';
+        for (let n = 0, tries = 0; n < 6 && tries < 60; tries++) {
+          const along = k.R() < 0.5,
+            x = along ? k.int(x0 + 5, x1 - 5) : k.pick([x0, x1]),
+            y = along ? k.pick([y0, y1]) : k.int(y0 + 5, y1 - 5);
+          if (
+            !k.near(x, y, ['D'], 2) &&
+            k.put(x, y, k.pick(['brazier', 'barrel', 'crate', 'rack']), along ? 0 : 1, walk)
+          )
+            n++;
+        }
+        keepShell(k, 'm');
+        const wall2 = kx + Math.round(kw * 0.45),
+          bx = kix1;
+        for (let y = ky + 1; y <= kiy1; y++) k.set(wall2, y, '#');
+        k.set(wall2, k.int(ky + 2, Math.max(ky + 2, kiy1)), 'D');
+        // Pasarela de madera de la torre a la muralla del fondo.
+        if (tight) {
+          // Sin separación: se sale por el costado, a un tablón que sube a la muralla o directo a la torre vecina.
+          k.set(kx + kw - 1, ky + 1, 'D');
+          k.set(kx + kw, ky + 1, k.get(kx + kw, ky + 1) === '#' ? 'D' : 'm');
+        } else {
+          k.set(bx, ky, 'D');
+          k.set(bx, y0 + 1, 'm');
+        }
+        k.set(...K1, 'S');
+        const links = { [K1.join(',')]: 0 };
+        if (floorsN > 2) {
+          k.set(...K2, 'S');
+          links[K2.join(',')] = 2;
+        }
+        fitOut(
+          k,
+          kx + 1,
+          ky + 1,
+          wall2 - 1,
+          kiy1,
+          ['bookshelf', 'desk', ['shelf', 0.5], ['candles', 0.6]],
+          [['rug2', 0.5]],
+        );
+        fitOut(
+          k,
+          wall2 + 1,
+          ky + 1,
+          kix1,
+          kiy1,
+          [kix1 - wall2 >= 2 ? 'bed2' : 'bed', 'wardrobe', 'chest', ['hearth', 0.8], ['desk', 0.5], ['tub', 0.3]],
+          [
+            ['rug', 0.6],
+            ['table', 0.4],
+          ],
+        );
+        floors[0].links[K1.join(',')] = 1;
+        floors.push({ name: 'Murallas y aposentos', m: k, ambient: 'wind', links });
+      }
+      if (floorsN > 2) {
+        // Lo alto de la torre: capilla y, tras una puerta trabada, el tesoro.
+        const k = make(m.cols, m.rows, (opt.seed + 15838) >>> 0);
+        k.fill('.');
+        keepShell(k, 'm');
+        const wallT = kx + Math.max(4, Math.round(kw * 0.62));
+        if (wallT < kix1) {
+          for (let y = ky + 1; y <= kiy1; y++) k.set(wallT, y, '#');
+          k.set(wallT, k.int(ky + 2, Math.max(ky + 2, kiy1)), 'L');
+          fitOut(k, wallT + 1, ky + 1, kix1, kiy1, [
+            'chest',
+            'chest',
+            ['sacks', 0.8],
+            ['crates', 0.6],
+            ['rack', 0.5],
+            ['statue', 0.3],
+          ]);
+        }
+        k.set(...K2, 'S');
+        fitOut(
+          k,
+          kx + 1,
+          ky + 1,
+          Math.min(wallT, kix1 + 1) - 1,
+          kiy1,
+          ['altar', 'candles', ['candles', 0.7], ['statue', 0.6], ['bookshelf', 0.4]],
+          ['bench', ['bench', 0.7], ['rug', 0.5]],
+        );
+        floors.push({ name: 'Lo alto de la torre', m: k, ambient: 'wind', links: { [K2.join(',')]: 1 } });
+      }
+      if (cellar) {
+        // Mazmorras bajo la torre: sala de guardia junto a la escalera y un pasillo de celdas trabadas.
+        const k = make(m.cols, m.rows, (opt.seed + 104729) >>> 0),
+          cx0 = Math.max(x0 + 2, kx - 3),
+          cx1 = kx + kw - 1,
+          cy0 = ky,
+          cy1 = Math.min(y1 - 2, ky + kh + 4);
+        k.fill('.');
+        for (let y = cy0; y <= cy1; y++)
+          for (let x = cx0; x <= cx1; x++) k.set(x, y, x === cx0 || y === cy0 || x === cx1 || y === cy1 ? '#' : 'f');
+        k.set(...KD, 'S');
+        const gx = cx1 - 4, // pared entre las celdas y la guardia
+          cr = Math.floor((cy0 + cy1) / 2);
+        if (cy1 - cy0 >= 8 && gx - cx0 >= 5) {
+          for (let y = cy0 + 1; y < cy1; y++) k.set(gx, y, '#');
+          k.set(gx, cr, 'D');
+          for (let x = cx0 + 1; x < gx; x++) {
+            k.set(x, cr - 1, '#');
+            k.set(x, cr + 1, '#');
+          }
+          for (let x = cx0 + 1; x < gx; x += 3) {
+            const right = Math.min(gx - 1, x + 1);
+            if (right + 1 < gx) for (let y = cy0 + 1; y < cy1; y++) if (y !== cr) k.set(right + 1, y, '#');
+            k.set(x, cr - 1, 'L');
+            k.set(x, cr + 1, k.R() < 0.3 ? 'D' : 'L');
+            fitOut(k, x, cy0 + 1, right, cr - 2, [k.pick(['bones', 'hay', 'cage']), ['bones', 0.4], ['web', 0.4]]);
+            fitOut(k, x, cr + 2, right, cy1 - 1, [k.pick(['bones', 'hay', 'coffin']), ['web', 0.5], ['bones', 0.3]]);
+          }
+          fitOut(
+            k,
+            gx + 1,
+            cy0 + 1,
+            cx1 - 1,
+            cy1 - 1,
+            ['rack', 'barrel', 'brazier', ['chest', 0.6], ['bed', 0.5], ['crates', 0.5]],
+            ['table', ['cage', 0.4]],
+          );
+        } else
+          fitOut(
+            k,
+            cx0 + 1,
+            cy0 + 1,
+            cx1 - 1,
+            cy1 - 1,
+            ['cage', 'cage', 'rack', 'brazier', 'bones', ['barrel', 0.6], ['web', 0.6]],
+            [['table', 0.6]],
+          );
+        floors[0].links[KD.join(',')] = floors.length;
+        floors.push({ name: 'Mazmorras', m: k, ambient: 'dungeon', links: { [KD.join(',')]: 0 } });
+      }
+      // Una puerta que da a un muro o al vacío se tapia.
+      for (const f of floors) {
+        const k = f.m,
+          open = (x, y) => {
+            const c = k.get(x, y);
+            return c !== null && c !== '#' && c !== '.' && c !== 'w' && c !== 'W';
+          };
+        k.each((x, y, c) => {
+          if (c === 'D' && !(open(x - 1, y) && open(x + 1, y)) && !(open(x, y - 1) && open(x, y + 1))) k.set(x, y, '#');
+        });
+      }
+      return { floors };
     },
     ship(m) {
       m.fill('W');
@@ -985,12 +1337,12 @@
     cave: 'cave',
     lava: 'cave',
     dungeon: 'dungeon',
-    castle: 'dungeon',
+    castle: 'wind',
     tavern: 'tavern',
   };
   const ambient = type => AMBIENT[type] || '';
   // Mapas techados: una escalera contra una pared, para unirlos con el piso de arriba o de abajo.
-  const STAIRS = { dungeon: 'f', castle: 'f', ship: 'm', cave: 'f' };
+  const STAIRS = { dungeon: 'f', ship: 'm', cave: 'f' };
   function stairs(m, floor) {
     const spots = [];
     m.each((x, y, c) => {
@@ -1013,11 +1365,7 @@
       n: 10,
     },
     castle: {
-      floor: 'f',
-      wall: ['rack', 'bookshelf', 'wardrobe', 'chest', 'barrel', 'bed', 'shelf', 'crates', 'desk'],
-      open: ['table2', 'table4', 'pillar', 'brazier', 'rug', 'statue', 'candles'],
-      n: 12,
-      out: ['a', ['cart', 'hay', 'barrel', 'crates', 'trough', 'woodpile', 'well', 'anvil']],
+      out: ['a', ['cart', 'hay', 'barrel', 'crates', 'trough', 'woodpile', 'anvil']],
       outN: 3,
     },
     ruins: {
@@ -1037,10 +1385,6 @@
       n: 12,
     },
     village: {
-      floor: 'm',
-      wall: ['bed', 'wardrobe', 'shelf', 'chest', 'barrel', 'desk', 'crate', 'stove'],
-      open: ['table', 'table2', 'rug2', 'stool'],
-      n: 22,
       out: ['ga', ['cart', 'hay', 'stall', 'sign', 'lamp', 'crops', 'barrel', 'trough', 'bush', 'woodpile', 'fence']],
       outN: 2,
     },
@@ -1136,7 +1480,7 @@
   // floors: los pisos del lugar (el primero es la planta principal), cada uno con su terreno, sus muebles
   // y sus escaleras: links = { 'x,y': índice del piso al que lleva }.
   // Opciones: floors (1–3) y cellar para los edificios que los admiten (MULTI).
-  const MULTI = { tavern: { floors: [1, 2, 3], cellar: true } };
+  const MULTI = { tavern: { floors: [1, 2, 3], cellar: true }, castle: { floors: [1, 2, 3], cellar: true } };
   function generate(type, { size = 'medium', cols, rows, seed, floors, cellar } = {}) {
     const info = TYPES.find(t => t[0] === type);
     if (!info) throw Error('Ese tipo de mapa no existe.');
@@ -1149,7 +1493,16 @@
     const built = MULTI[type] ? GEN[type](m, { floors, cellar, seed: sd }) : GEN[type](m);
     if (STAIRS[type]) stairs(m, STAIRS[type]);
     if (DECOR[type]) decor(m, DECOR[type]);
-    const clean = k => (P ? P.norm({ cols: c, rows: r }, k.props) : []);
+    // Lo que haya quedado sobre un muro, una puerta, una escalera o el vacío se descarta.
+    const bad = ch => ch === '.' || ch === '#' || ch === 'r' || 'DOLSpWl'.includes(ch),
+      clean = k =>
+        !P
+          ? []
+          : P.norm({ cols: c, rows: r }, k.props).filter(([x, y, id, rot]) => {
+              const [w, h] = P.footprint(id, rot);
+              for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (bad(k.get(x + i, y + j))) return false;
+              return true;
+            });
     const list = built?.floors
       ? built.floors.map(f => ({
           name: f.name,
