@@ -6,6 +6,7 @@
 (function () {
   'use strict';
   const BC = BoardCore,
+    BP = globalThis.BoardProps || null,
     esc = PartyView.esc,
     $ = s => document.querySelector(s);
   // board.html: página propia. En la ficha o la pantalla del DM, el tablero se monta encima al abrirlo.
@@ -27,6 +28,11 @@
     grid: BC.normGrid(),
     terrain: '',
     walls: [],
+    props: [], // muebles y objetos de escena: [x, y, id, giro]
+    propId: 'table', // pieza elegida para colocar, o 'move' / 'erase'
+    propRot: 0,
+    propGroup: 'inn',
+    propHover: null,
     links: {}, // escaleras que llevan a otro mapa: { 'x,y': idDelMapa }
     fogOn: false,
     fog: null,
@@ -204,6 +210,7 @@
     S.terrain = BC.cells(S.grid, m?.terrain?.cells || '');
     S.walls = Array.isArray(m?.terrain?.walls) ? m.terrain.walls : [];
     S.links = BC.links(S.grid, S.terrain, m?.terrain?.links);
+    S.props = BP ? BP.norm(S.grid, m?.terrain?.props) : [];
     if (typeof Sound !== 'undefined') Sound.ambient(shown || STANDALONE ? S.grid.ambient : '');
     S.fogOn = !!m?.fog?.on;
     S.fog = BC.fogBits(S.grid, m?.fog?.revealed || '');
@@ -263,7 +270,7 @@
   }
   const fogPatch = () => ({ fog: { on: S.fogOn, revealed: BC.fogEncode(S.fog) } });
   const terrainPatch = () => ({
-    terrain: { cells: S.terrain, walls: S.walls, links: BC.links(S.grid, S.terrain, S.links) },
+    terrain: { cells: S.terrain, walls: S.walls, links: BC.links(S.grid, S.terrain, S.links), props: S.props },
   });
 
   // ---------- Fichas automáticas (DM): la party y las criaturas del combate ----------
@@ -657,6 +664,17 @@
         ctx.stroke();
       }
     }
+    // Muebles y objetos de escena
+    const furniture = propsArt();
+    if (furniture) ctx.drawImage(furniture, 0, 0, furniture.width, furniture.height, o.x, o.y, g.cols * c, g.rows * c);
+    if (S.tool === 'props' && S.propHover && BP?.get(S.propId) && !S.drag) {
+      const spot = propSpot(S.propHover);
+      ctx.save();
+      ctx.globalAlpha = BP.fits(g, spot[0], spot[1], S.propId, S.propRot) ? 0.6 : 0.2;
+      ctx.translate(o.x, o.y);
+      BP.drawOne(ctx, c, [spot[0], spot[1], S.propId, S.propRot]);
+      ctx.restore();
+    }
     // Áreas de efecto (debajo de las fichas)
     for (const t of S.templates) drawTemplate(t);
     if (S.drag?.area) drawTemplate({ ...S.drag.area, ...whoAmI() }, true);
@@ -744,6 +762,81 @@
       artCache.terrain = S.terrain;
     }
     return artCache.canvas;
+  }
+  // Los muebles se dibujan una vez en un lienzo aparte y se rehacen solo cuando cambian.
+  const propCache = { canvas: null, props: null, cols: 0, rows: 0, tile: 0 };
+  function propsArt() {
+    if (!BP || !S.props.length) return null;
+    const g = S.grid,
+      tile = globalThis.BoardArt?.tileFor(g) || 48;
+    if (
+      propCache.props !== S.props ||
+      propCache.cols !== g.cols ||
+      propCache.rows !== g.rows ||
+      propCache.tile !== tile
+    ) {
+      propCache.canvas ||= document.createElement('canvas');
+      propCache.canvas.width = g.cols * tile;
+      propCache.canvas.height = g.rows * tile;
+      BP.paint(propCache.canvas.getContext('2d'), S.props, tile);
+      Object.assign(propCache, { props: S.props, cols: g.cols, rows: g.rows, tile });
+    }
+    return propCache.canvas;
+  }
+  // Esquina donde cae la pieza elegida al tocar una casilla: centrada sobre el toque.
+  function propSpot(cell) {
+    const [w, h] = BP.footprint(S.propId, S.propRot);
+    return [cell.x - Math.floor((w - 1) / 2), cell.y - Math.floor((h - 1) / 2)];
+  }
+  const saveProps = next => {
+    S.props = next;
+    saveSoon(terrainPatch());
+    S.dirty = true;
+    if (S.tool === 'props') panel();
+  };
+  function propDown(cell) {
+    if (S.propId === 'erase') {
+      S.drag = { propErase: true };
+      return propErase(cell);
+    }
+    if (S.propId === 'move') {
+      const i = BP.at(S.props, cell.x, cell.y);
+      if (i < 0) return false;
+      const it = S.props[i];
+      S.drag = { prop: { i, dx: cell.x - it[0], dy: cell.y - it[1], moved: false } };
+      return true;
+    }
+    const [x, y] = propSpot(cell);
+    if (!BP.fits(S.grid, x, y, S.propId, S.propRot)) return toast('Ahí no entra: queda fuera del mapa.');
+    if (S.props.length >= BP.MAX) return toast(`Este mapa ya tiene ${BP.MAX} piezas. Borrá alguna para sumar más.`);
+    if (S.props.some(p => p[0] === x && p[1] === y && p[2] === S.propId && p[3] === S.propRot)) return true;
+    saveProps([...S.props, [x, y, S.propId, S.propRot]]);
+    return true;
+  }
+  function propErase(cell) {
+    const i = BP.at(S.props, cell.x, cell.y);
+    if (i >= 0) saveProps(S.props.filter((_, k) => k !== i));
+  }
+  function propDrag(d, cell) {
+    const it = S.props[d.i],
+      x = cell.x - d.dx,
+      y = cell.y - d.dy;
+    if (!it || (x === it[0] && y === it[1]) || !BP.fits(S.grid, x, y, it[2], it[3])) return;
+    d.moved = true;
+    S.props = S.props.map((p, k) => (k === d.i ? [x, y, p[2], p[3]] : p));
+  }
+  // Soltar una pieza: si se movió queda ahí; si solo se tocó, gira un cuarto de vuelta.
+  function propUp(d) {
+    const it = S.props[d.i];
+    if (!it) return;
+    if (d.moved) return saveProps(S.props);
+    const [w, h] = BP.footprint(it[2], it[3]),
+      rot = (it[3] + 1) & 3,
+      [nw, nh] = BP.footprint(it[2], rot),
+      // Gira sobre su centro: una cama de 1×2 no se corre de lugar más de lo necesario.
+      x = Math.max(0, Math.min(S.grid.cols - nw, it[0] + Math.floor((w - nw) / 2))),
+      y = Math.max(0, Math.min(S.grid.rows - nh, it[1] + Math.floor((h - nh) / 2)));
+    saveProps(S.props.map((p, k) => (k === d.i ? [x, y, p[2], rot] : p)));
   }
   function drawCell(code, px, py, c, x, y) {
     const t = BC.terrainType(code);
@@ -1198,6 +1291,8 @@
         S.drag = { brush: true };
         fogBrush(cell);
       }
+    } else if (tool === 'props' && S.isDM && BP) {
+      if (!propDown(cell)) S.drag = { pan: { x: S.view.x, y: S.view.y, p }, tap: null };
     } else if (tool === 'paint' && S.isDM) {
       if (S.paintMode === 'brush') {
         S.drag = { brush: true };
@@ -1247,6 +1342,8 @@
       const f = toCellF(w);
       if (Math.hypot(f.x - d.area.x, f.y - d.area.y) > 0.3) d.area.dir = Math.atan2(f.y - d.area.y, f.x - d.area.x);
     } else if (d.rect) d.rect.b = cell;
+    else if (d.prop) propDrag(d.prop, cell);
+    else if (d.propErase) propErase(cell);
     else if (d.brush) S.tool === 'fog' ? fogBrush(cell) : paintBrush(cell);
     S.dirty = true;
   });
@@ -1265,8 +1362,10 @@
       dropToken(d);
     } else if (d?.pan && !press?.moved) {
       // Tocar una puerta o una escalera sin ficha encima: se abre, se cierra o se sube.
-      if (d.tap || S.tool !== 'move' || !tapCell(toCell(toWorld(press.p.x, press.p.y)))) tapToken(d.tap);
-    } else if (d?.area) placeTemplate(d.area);
+      if (S.tool === 'props') S.propHover = null;
+      else if (d.tap || S.tool !== 'move' || !tapCell(toCell(toWorld(press.p.x, press.p.y)))) tapToken(d.tap);
+    } else if (d?.prop) propUp(d.prop);
+    else if (d?.area) placeTemplate(d.area);
     else if (d?.rect && d.fog) {
       const cells = BC.rect(d.rect.a.x, d.rect.a.y, d.rect.b.x, d.rect.b.y);
       S.fog = BC.setFog(S.grid, S.fog, cells, S.fogMode === 'rect');
@@ -1295,6 +1394,14 @@
   );
   onCanvas('contextmenu', e => e.preventDefault());
   function hover(e) {
+    if (S.tool === 'props' && !TV) {
+      const cell = toCell(toWorld(local(e).x, local(e).y));
+      if (S.propHover?.x !== cell.x || S.propHover?.y !== cell.y) {
+        S.propHover = cell;
+        S.dirty = true;
+      }
+      return;
+    }
     if (!['move', 'tokens'].includes(S.tool) || TV) return;
     const t = hitToken(toWorld(local(e).x, local(e).y));
     canvas.style.cursor = t && canMove(t) ? 'grab' : 'default';
@@ -1460,7 +1567,8 @@
         y: t.y + (t.size || 1) / 2,
         feet: BC.lightFeet(t.stage),
         range: BC.lightFeet(t.stage) / S.grid.feet,
-      }));
+      }))
+      .concat(BP ? BP.lights(S.props).map(l => ({ ...l, range: l.feet / S.grid.feet })) : []);
   }
   function seen() {
     const v = S.grid.vision;
@@ -1918,6 +2026,7 @@
       (S.isDM && S.mapId && !S.asPlayer
         ? t('fog', '🌫', 'Niebla') +
           t('paint', '🧱', 'Terreno') +
+          (BP ? t('props', '🪑', 'Muebles') : '') +
           t('tokens', '♟', 'Fichas') +
           t('enc', '⚔', 'Encuentros')
         : '');
@@ -1931,6 +2040,7 @@
         area: 'Elegí forma y tamaño. Tocá para una esfera; arrastrá desde el origen para apuntar un cono, línea o cubo.',
         fog: 'Pintá para revelar u ocultar. «Sala» revela un cuarto entero hasta sus muros.',
         paint: 'Elegí un terreno y pintá. «Sala» traza muros alrededor y rellena el piso.',
+        props: 'Elegí una pieza y tocá el mapa para colocarla. Con «Mover», arrastrala; un toque la gira.',
         tokens: 'Tocá una ficha para editarla.',
         enc: S.group
           ? 'Arrastrá cualquier criatura del grupo: se mueven juntas.'
@@ -1969,6 +2079,19 @@
         .join(
           '',
         )}</div>${S.paintMode === 'brush' ? `<div class="chips"><span class="small muted">Pincel</span>${sizes}</div>` : ''}${S.walls.length ? `<label class="check"><input type="checkbox" data-action="bd-walls" ${S.showWalls ? 'checked' : ''}>Ver paredes importadas (${S.walls.length})</label>` : ''}`;
+    } else if (S.tool === 'props' && S.isDM && BP) {
+      const pick = (v, label, extra = '') =>
+        `<button type="button" class="chip ${S.propId === v ? 'selected' : ''}" data-action="bd-prop" data-v="${esc(v)}" aria-pressed="${S.propId === v}" ${extra}>${label}</button>`;
+      html = `<div class="chips">${pick('move', '✋ Mover y girar')}${pick('erase', '🧽 Borrar')}<button type="button" class="chip" data-action="bd-prop-rot" title="Girar la pieza elegida">⟳ Girar${S.propRot ? ' · ' + S.propRot * 90 + '°' : ''}</button></div><div class="chips">${BP.GROUPS.map(([id, name]) => chip('prop-group', id, esc(name), S.propGroup === id)).join('')}</div><div class="prop-grid">${BP.CATALOG.filter(
+        p => p.group === S.propGroup,
+      )
+        .map(
+          p =>
+            `<button type="button" class="prop-pick ${S.propId === p.id ? 'selected' : ''}" data-action="bd-prop" data-v="${esc(p.id)}" aria-pressed="${S.propId === p.id}" title="${esc(p.name)}${p.light ? ' · da luz' : ''}"><canvas data-prop="${esc(p.id)}"></canvas><span>${esc(p.name)}${p.light ? ' ✦' : ''}</span></button>`,
+        )
+        .join(
+          '',
+        )}</div><p class="small muted">${S.props.length} ${S.props.length === 1 ? 'pieza' : 'piezas'} en este mapa. Las marcadas con ✦ dan luz.${S.props.length ? ` <button type="button" class="chip" data-action="bd-prop-clear">Quitar todas</button>` : ''}</p>`;
     } else if (S.tool === 'tokens' && S.isDM) {
       const list = mapTokens().sort((a, b) => a.name.localeCompare(b.name, 'es'));
       html = `<div class="actions">${button('+ PNJ', 'token-new', '', 'data-kind="npc"')}${button('+ Objeto', 'token-new', 'secondary', 'data-kind="object"')}${button('+ Antorcha', 'light-new', 'secondary', 'data-light="torch"')}${button('+ Farol', 'light-new', 'secondary', 'data-light="lantern"')}${button('+ Fogata', 'light-new', 'secondary', 'data-light="campfire"')}${S.mapId === activeId() ? button('Traer a la party', 'ensure') : ''}</div><div class="board-token-list">${
@@ -2011,13 +2134,19 @@
     el.hidden = !html;
     // Plegable: el panel no tapa el mapa mientras pintás.
     const title =
-      { fog: 'Niebla', paint: 'Terreno', tokens: 'Fichas', enc: 'Encuentros preparados', area: 'Área de efecto' }[
-        S.tool
-      ] || '';
+      {
+        fog: 'Niebla',
+        paint: 'Terreno',
+        props: 'Muebles',
+        tokens: 'Fichas',
+        enc: 'Encuentros preparados',
+        area: 'Área de efecto',
+      }[S.tool] || '';
     el.classList.toggle('min', S.panelMin);
     el.innerHTML = html
       ? `<div class="board-panel-head"><b>${title}</b><button type="button" class="icon-btn" data-action="bd-panel-min" aria-expanded="${!S.panelMin}" aria-label="${S.panelMin ? 'Mostrar opciones' : 'Plegar opciones'}">${S.panelMin ? '▴' : '▾'}</button></div>${S.panelMin ? '' : html}`
       : '';
+    if (BP) el.querySelectorAll('canvas[data-prop]').forEach(cv => BP.thumb(cv, cv.dataset.prop));
   }
   function card() {
     const el = $('#board-card'),
@@ -2096,6 +2225,13 @@
       else if (a === 'fog-all' || a === 'fog-none') {
         S.fog = BC.fogAll(S.grid, a === 'fog-all');
         saveSoon(fogPatch());
+      } else if (a === 'prop') S.propId = el.dataset.v;
+      else if (a === 'prop-group') S.propGroup = el.dataset.v;
+      else if (a === 'prop-rot') S.propRot = (S.propRot + 1) & 3;
+      else if (a === 'prop-clear') {
+        if (!confirm('¿Quitar todos los muebles de este mapa?')) return;
+        S.props = [];
+        saveSoon(terrainPatch());
       } else if (a === 'paint-code') S.paintCode = el.dataset.v;
       else if (a === 'paint-mode') S.paintMode = el.dataset.v;
       else if (a === 'select') tapToken(el.dataset.id);
@@ -2327,11 +2463,16 @@
 
   // ---------- Nuevos mapas ----------
   // Generador de mapas: elegir un tipo, ver la vista previa, volver a tirar y crear.
-  const genState = { type: 'trail', size: 'medium', map: null };
+  const genState = { type: 'trail', size: 'medium', map: null, floors: 2, cellar: false, view: 0 };
   function genDialog() {
     const G = globalThis.BoardGen,
       encounters = prepared().filter(e => e.monsters?.length && e.monsters.every(x => x.uid)),
-      roll = () => (genState.map = G.generate(genState.type, { size: genState.size })),
+      roll = () =>
+        (genState.map = G.generate(genState.type, {
+          size: genState.size,
+          floors: genState.floors,
+          cellar: genState.cellar,
+        })),
       chips = (name, list, cur) =>
         `<div class="chips gen-chips" role="radiogroup">${list
           .map(
@@ -2342,11 +2483,11 @@
     roll();
     modal(
       'Generar mapa',
-      `<p class="small">Elegí un tipo de lugar y tirá hasta que te guste. El mapa queda como terreno pintado: después lo podés retocar con el pincel.</p>${chips('type', G.TYPES, genState.type)}<p class="small muted" id="gen-about"></p>${chips(
+      `<p class="small">Elegí un tipo de lugar y tirá hasta que te guste. El mapa queda como terreno pintado y amueblado: después lo podés retocar con «Terreno» y «Muebles».</p>${chips('type', G.TYPES, genState.type)}<p class="small muted" id="gen-about"></p>${chips(
         'size',
         Object.entries(G.SIZES).map(([k, v]) => [k, `${v[0]} · ${v[1]}×${v[2]}`]),
         genState.size,
-      )}<div class="actions">${button('🎲 Otra versión', 'gen-roll', 'secondary')}</div><div class="gen-preview"><canvas id="gen-canvas" aria-label="Vista previa del mapa"></canvas></div>${field('Nombre', 'name', '', 'text', 'maxlength="100" required')}${
+      )}<div id="gen-multi" hidden><div class="chips gen-chips" role="radiogroup" aria-label="Pisos">${[1, 2, 3].map(n => `<button type="button" class="chip" data-gen-floors="${n}" role="radio">${n === 1 ? 'Solo planta baja' : n + ' pisos'}</button>`).join('')}<label class="check"><input type="checkbox" id="gen-cellar">Con sótano</label></div><p class="small muted">Cada piso se crea como un mapa aparte, unido a los demás por sus escaleras.</p></div><div class="actions">${button('🎲 Otra versión', 'gen-roll', 'secondary')}</div><div class="gen-preview"><canvas id="gen-canvas" aria-label="Vista previa del mapa"></canvas></div><div class="chips gen-chips" id="gen-floor-tabs" hidden></div>${field('Nombre', 'name', '', 'text', 'maxlength="100" required')}${
         encounters.length
           ? `<label class="field">Colocar un encuentro preparado<select name="enc"><option value="">Ninguno</option>${encounters
               .map(e => `<option value="${esc(e.id)}">${esc(e.name)} (${(e.monsters || []).length})</option>`)
@@ -2356,22 +2497,39 @@
       }`,
       async fd => {
         const m = genState.map,
-          grid = BC.normGrid({ cols: m.cols, rows: m.rows, size: CELL, ambient: BoardGen.ambient?.(m.type) || '' }),
-          made = await Cloud.saveMap(S.id, {
-            name: String(fd.get('name')).trim() || m.name,
-            sort: S.maps.length,
-            grid,
-            terrain: { cells: BC.cells(grid, m.terrain), walls: [] },
-            fog: { on: false },
-          });
-        S.maps = [...S.maps, made];
-        await openMap(made.id);
-        if (!activeId()) await goLive(made.id);
+          base = String(fd.get('name')).trim() || m.name,
+          made = [];
+        // Un mapa por piso; después se unen las escaleras con los mapas ya creados.
+        for (const [i, f] of m.floors.entries()) {
+          const grid = BC.normGrid({ cols: m.cols, rows: m.rows, size: CELL, ambient: f.ambient || '' });
+          made.push(
+            await Cloud.saveMap(S.id, {
+              name: (m.floors.length > 1 ? `${base} · ${f.name}` : base).slice(0, 100),
+              sort: S.maps.length + i,
+              grid,
+              terrain: { cells: BC.cells(grid, f.terrain), walls: [], props: f.props },
+              fog: { on: false },
+            }),
+          );
+        }
+        if (m.floors.length > 1)
+          for (const [i, f] of m.floors.entries()) {
+            const links = Object.fromEntries(Object.entries(f.links).map(([k, to]) => [k, made[to].id]));
+            made[i] = await Cloud.saveMap(S.id, { terrain: { ...made[i].terrain, links } }, made[i].id);
+          }
+        S.maps = [...S.maps, ...made];
+        await openMap(made[0].id);
+        if (!activeId()) await goLive(made[0].id);
         const enc = String(fd.get('enc') || '');
         if (enc) {
           await placeEncounter(enc);
           toast('Mapa generado y encuentro colocado. Acomodá las criaturas con «Encuentros».');
-        } else toast('Mapa generado. Retocalo con «Terreno» si hace falta.');
+        } else
+          toast(
+            made.length > 1
+              ? `Se crearon ${made.length} mapas, uno por piso. Tocá una escalera para pasar de uno a otro.`
+              : 'Mapa generado. Retocalo con «Terreno» y «Muebles» si hace falta.',
+          );
       },
       'Crear mapa',
     );
@@ -2384,7 +2542,28 @@
         tile = Math.max(8, Math.floor(640 / m.cols));
       canvas.width = m.cols * tile;
       canvas.height = m.rows * tile;
-      globalThis.BoardArt?.paint(canvas.getContext('2d'), BC.normGrid({ cols: m.cols, rows: m.rows }), m.terrain, tile);
+      const multi = G.MULTI?.[genState.type],
+        floor = m.floors[Math.min(genState.view || 0, m.floors.length - 1)],
+        c2 = canvas.getContext('2d');
+      c2.fillStyle = '#0b1114';
+      c2.fillRect(0, 0, canvas.width, canvas.height);
+      globalThis.BoardArt?.paint(c2, BC.normGrid({ cols: m.cols, rows: m.rows }), floor.terrain, tile);
+      BP?.paint(c2, floor.props, tile);
+      $('#gen-multi').hidden = !multi;
+      $('#gen-cellar').checked = Boolean(genState.cellar);
+      form.querySelectorAll('[data-gen-floors]').forEach(b => {
+        const on = Number(b.dataset.genFloors) === genState.floors;
+        b.classList.toggle('selected', on);
+        b.setAttribute('aria-checked', on);
+      });
+      const tabs = $('#gen-floor-tabs');
+      tabs.hidden = m.floors.length < 2;
+      tabs.innerHTML = m.floors
+        .map(
+          (f, i) =>
+            `<button type="button" class="chip ${f === floor ? 'selected' : ''}" data-gen-view="${i}" aria-pressed="${f === floor}">${esc(f.name)}</button>`,
+        )
+        .join('');
       $('#gen-about').textContent = G.TYPES.find(t => t[0] === genState.type)[2];
       // El nombre sigue al tipo mientras el DM no lo haya cambiado.
       if (!name.value || name.value === autoName) {
@@ -2401,12 +2580,27 @@
       });
     };
     form.addEventListener('click', e => {
-      const t = e.target.closest('[data-gen-type], [data-gen-size], [data-action=bd-gen-roll]');
+      const t = e.target.closest(
+        '[data-gen-type], [data-gen-size], [data-gen-floors], [data-gen-view], #gen-cellar, [data-action=bd-gen-roll]',
+      );
       if (!t) return;
+      if (t.id === 'gen-cellar') {
+        genState.cellar = t.checked;
+        genState.view = 0;
+        roll();
+        return show();
+      }
       e.preventDefault();
       e.stopPropagation();
+      // Mirar otro piso no vuelve a tirar el mapa.
+      if (t.dataset.genView) {
+        genState.view = Number(t.dataset.genView);
+        return show();
+      }
       if (t.dataset.genType) genState.type = t.dataset.genType;
       if (t.dataset.genSize) genState.size = t.dataset.genSize;
+      if (t.dataset.genFloors) genState.floors = Number(t.dataset.genFloors);
+      genState.view = 0;
       roll();
       show();
     });
@@ -2517,6 +2711,7 @@
           cells: resizeCells(m, g, grid),
           walls: m.terrain?.walls || [],
           links: m.terrain?.links || {},
+          props: BP ? BP.norm(grid, m.terrain?.props) : [],
         };
         const fog = { on: !!m.fog?.on, revealed: resizeFog(m, g, grid) };
         const row = await Cloud.saveMap(

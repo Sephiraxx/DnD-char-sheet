@@ -266,6 +266,22 @@ async function main() {
       await page.evaluate(() => Sigils.has('wizard') && Sigils.forName('Dragón rojo') === 'dragon'),
     );
 
+    check(
+      'Muebles: todas las piezas se dibujan y una taberna generada sale amueblada y con pisos',
+      await page.evaluate(() => {
+        const cv = document.createElement('canvas');
+        cv.width = cv.height = 96;
+        const c = cv.getContext('2d');
+        const drawn = BoardProps.CATALOG.every(p => {
+          c.clearRect(0, 0, 96, 96);
+          BoardProps.drawOne(c, 32, [0, 0, p.id, 1]);
+          return c.getImageData(0, 0, 96, 96).data.some(v => v);
+        });
+        const t = BoardGen.generate('tavern', { seed: 3, floors: 3, cellar: true });
+        return drawn && t.floors.length === 4 && t.props.length > 25 && t.floors.every(f => f.props.length > 5);
+      }),
+    );
+
     // 10. Pantalla del DM y catálogo: abren sin errores (sin cuenta, muestran su portada).
     for (const file of ['dm.html', 'compendium.html', 'board.html']) {
       await page.goto(base + file);
