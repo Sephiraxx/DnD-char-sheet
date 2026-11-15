@@ -171,6 +171,8 @@
       dmgMod,
       type: w.type,
       extra: cfg.extra,
+      // Dados que suma un rasgo activo a los ataques cuerpo a cuerpo (Entidad simbiótica del Círculo de las Esporas).
+      bonus: !w.ranged ? root.Spores?.meleeBonus(s) || null : null,
       gwf,
       weapon: w,
       notes,
@@ -267,6 +269,7 @@
     parts.push(roll(p.dice, p.type, p.gwf));
     const extra = /^\+?\s*(\d+d\d+)\s*(.*)$/.exec(p.extra.trim());
     if (extra) parts.push(roll(extra[1], extra[2] || 'extra', false));
+    if (p.bonus) parts.push(roll(p.bonus.dice, p.bonus.label, false));
     const total = Math.max(
       p.weapon.id === 'unarmed' && !/d/.test(p.dice) ? 0 : 1,
       parts.reduce((a, b) => a + b.sum, 0) + p.dmgMod,

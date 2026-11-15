@@ -282,6 +282,38 @@ async function main() {
       }),
     );
 
+    // Círculo de las Esporas: la tarjeta aparece en combate y la Entidad simbiótica se activa.
+    await page.goto(base + 'index.html?abrir#combat');
+    await page.waitForFunction(() => typeof Spores !== 'undefined' && typeof commit === 'function');
+    const spores = await page.evaluate(() => {
+      const d = Rules.validate({
+        ...Rules.initial(),
+        classId: 'druid',
+        level: 10,
+        classSubclass: 'druid-circle-of-spores',
+        name: 'Mirra',
+      });
+      d.hp = Rules.stats(d).maxHP;
+      d.classSpent = { 'wild-shape': 0 };
+      const before = JSON.stringify(state);
+      commit('prueba', st => {
+        for (const k of Object.keys(st)) delete st[k];
+        Object.assign(st, Rules.validate(d));
+      });
+      const idle = document.querySelector('.spores h2')?.textContent;
+      commit('prueba', st => Spores.start(st));
+      const out = [idle, document.querySelector('.spores h2')?.textContent, state.temp, state.classSpent['wild-shape']];
+      commit('prueba', st => {
+        for (const k of Object.keys(st)) delete st[k];
+        Object.assign(st, JSON.parse(before));
+      });
+      return out.join('|');
+    });
+    check(
+      'Esporas: la Entidad simbiótica se activa desde la ficha',
+      spores === 'Esporas|Entidad simbiótica activa|40|1',
+    );
+
     // 10. Pantalla del DM y catálogo: abren sin errores (sin cuenta, muestran su portada).
     for (const file of ['dm.html', 'compendium.html', 'board.html']) {
       await page.goto(base + file);

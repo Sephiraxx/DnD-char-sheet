@@ -12,7 +12,7 @@ const AttackUI = (() => {
   const rnd = sides => roll(sides)[0];
   const itemById = id => A.options(state).find(x => x.id === id);
   const dmgText = p =>
-    `${/d/.test(p.dice) ? p.dice + (p.dmgMod ? ' ' + sign(p.dmgMod) : '') : Math.max(0, Number(p.dice) + p.dmgMod)} ${esc(p.type)}${p.extra ? ' + ' + esc(p.extra) : ''}`;
+    `${/d/.test(p.dice) ? p.dice + (p.dmgMod ? ' ' + sign(p.dmgMod) : '') : Math.max(0, Number(p.dice) + p.dmgMod)} ${esc(p.type)}${p.extra ? ' + ' + esc(p.extra) : ''}${p.bonus ? ' + ' + esc(p.bonus.dice) + ' necrótico' : ''}`;
 
   const dmgDice = p =>
     /d/.test(p.dice) ? p.dice + (p.dmgMod ? ' ' + sign(p.dmgMod) : '') : String(Math.max(0, Number(p.dice) + p.dmgMod));
@@ -42,7 +42,7 @@ const AttackUI = (() => {
           w.versatile ? 'Versátil ' + w.versatile : '',
           ...(w.props || []).filter(x => !['Versátil', 'Arrojadiza', 'Alcance'].includes(x) && x),
         ].filter(Boolean);
-        return `<article class="battle-choice attack-choice"><div><span class="eyebrow">${MODES[tab]}${tab === 'action' && n > 1 ? ' · ' + n + ' ataques' : ''}</span><h3>${esc(item.name)}</h3><div class="attack-stats"><span><small>Impacto</small><b>${sign(p.toHit)}</b></span><span><small>Daño</small><b>${dmgDice(p)}</b><em>${esc(p.type)}${p.extra ? ' + ' + esc(p.extra) : ''}</em></span></div>${meta.length ? `<p class="small">${esc(meta.join(' · '))}</p>` : ''}${p.notes.length ? `<p class="small muted">${esc(p.notes.join(' · '))}</p>` : ''}</div><div class="choice-bottom">${why ? `<p class="choice-reason">${esc(why)}</p>` : ''}<div class="actions">${item.unarmed ? '' : button('Ajustes', 'attack-settings', 'secondary', `data-id="${esc(item.id)}"`)}${button('Atacar', 'attack-open', '', `data-id="${esc(item.id)}" data-mode="${tab}" ${why ? 'disabled' : ''}`)}</div></div></article>`;
+        return `<article class="battle-choice attack-choice"><div><span class="eyebrow">${MODES[tab]}${tab === 'action' && n > 1 ? ' · ' + n + ' ataques' : ''}</span><h3>${esc(item.name)}</h3><div class="attack-stats"><span><small>Impacto</small><b>${sign(p.toHit)}</b></span><span><small>Daño</small><b>${dmgDice(p)}</b><em>${esc(p.type)}${p.extra ? ' + ' + esc(p.extra) : ''}${p.bonus ? ' + ' + esc(p.bonus.dice) + ' necrótico' : ''}</em></span></div>${meta.length ? `<p class="small">${esc(meta.join(' · '))}</p>` : ''}${p.notes.length ? `<p class="small muted">${esc(p.notes.join(' · '))}</p>` : ''}</div><div class="choice-bottom">${why ? `<p class="choice-reason">${esc(why)}</p>` : ''}<div class="actions">${item.unarmed ? '' : button('Ajustes', 'attack-settings', 'secondary', `data-id="${esc(item.id)}"`)}${button('Atacar', 'attack-open', '', `data-id="${esc(item.id)}" data-mode="${tab}" ${why ? 'disabled' : ''}`)}</div></div></article>`;
       })
       .join('');
   }

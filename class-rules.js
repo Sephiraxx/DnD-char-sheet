@@ -546,6 +546,15 @@
         'Transformación según tu círculo y límites de nivel, VD y movimiento. Conservá tus PG originales: anotá los de la forma aparte. Nivel 20: usos ilimitados.',
         'action',
       );
+    if (c === 'druid' && s.classSubclass === 'druid-circle-of-spores' && l >= 6)
+      add(
+        'fungal-infestation',
+        'Infestación fúngica',
+        Math.max(1, m.wis),
+        'long',
+        'Reacción cuando una bestia o humanoide Pequeño o Mediano muere a 10 pies de vos: se levanta como zombi con 1 PG, actúa tras tu turno durante 1 hora y solo puede atacar.',
+        'reaction',
+      );
     if (c === 'wizard')
       add(
         'arcane-recovery',
@@ -606,6 +615,7 @@
   }
   function reset(s, type) {
     s.raging = false;
+    delete s.symbiotic;
     // Los espacios creados con Fuente de magia desaparecen con el descanso largo; la Bendición de la forja
     // dura hasta el siguiente descanso largo (al terminarlo se elige de nuevo).
     // El cañón dura 1 hora: no sobrevive a un descanso.

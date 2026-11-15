@@ -108,7 +108,7 @@ const CompanionsUI = (() => {
   function combat() {
     const ws = state.wildShape,
       list = (state.companions || []).filter(c => c.hp > 0);
-    let out = '';
+    let out = typeof SporesUI !== 'undefined' ? SporesUI.card() : '';
     if (ws)
       out += `<section class="card wild-shape"><div class="card-header"><div><p class="eyebrow">FORMA SALVAJE</p><h2>${esc(ws.name)}</h2></div><div class="actions">${button('Volver a tu forma', 'ws-end', 'secondary')}</div></div><div class="cmp-stats"><button type="button" class="cc-stat cmp-hp" data-action="ws-hp"><b>${ws.hp}<small>/${ws.maxHp}</small></b><span>PG bestia</span></button><div class="cc-stat"><b>${ws.ac}</b><span>CA</span></div><div class="cc-stat"><b>${state.hp ?? '—'}</b><span>Tus PG</span></div></div>${ws.speed ? `<p class="small muted">${esc(ws.speed)}</p>` : ''}${attackButtons('ws', 'ws', ws.attacks)}<p class="small">El daño baja primero los PG de la bestia; si llegan a 0, volvés a tu forma y el exceso te lo llevás vos. No podés lanzar conjuros en esta forma.</p></section>`;
     else if (K.isDruid(state))

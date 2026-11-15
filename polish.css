@@ -1675,6 +1675,13 @@ button.cc-stat {
 .wild-shape .cmp-stats {
   margin: 8px 0;
 }
+.spores.on {
+  border-color: var(--accent, var(--teal));
+}
+.spores .plain-list {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
 
 /* ---------- Ficha para imprimir / PDF ---------- */
 #print-sheet {
