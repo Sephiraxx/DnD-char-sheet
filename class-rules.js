@@ -630,6 +630,8 @@
     // El cañón dura 1 hora: no sobrevive a un descanso.
     delete s.cannons;
     if (type === 'long') {
+      // Los d20 de Presagio se vuelven a tirar tras cada descanso largo.
+      delete s.portent;
       delete s.fontSlots;
       delete s.forgeBlessing;
       // Un descanso largo (con comida y bebida) baja un nivel de agotamiento.

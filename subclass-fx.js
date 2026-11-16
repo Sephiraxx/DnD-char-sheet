@@ -45,6 +45,22 @@
       }
       const kept = here.filter(e => !e.spec.replacedBy || !here.some(o => o.en === e.spec.replacedBy));
       out.push(...kept);
+      // Opciones elegidas (Espíritu tótem, maniobras, runas…): cada una cuenta como un rasgo más.
+      for (const e of kept)
+        if (e.spec.choice)
+          for (const id of picked(s, e.key)) {
+            const opt = optionsOf(e)[id];
+            if (!opt || (opt.fx?.when && !opt.fx.when(x)) || (opt.lv && v.level < opt.lv)) continue;
+            out.push({
+              key: e.key + '@' + id,
+              opt: e.key,
+              sub,
+              en: e.en,
+              name: opt.name,
+              spec: { lv: e.spec.lv, ...opt.fx },
+              x,
+            });
+          }
       // Estados activados (Canto del filo, Forma del pavor…): mientras duran, sus efectos cuentan como un rasgo más.
       for (const e of kept)
         for (const [key, def] of stateDefs(e))
@@ -63,6 +79,61 @@
     return out;
   }
   const label = e => e.name || names()[e.key] || e.en;
+
+  // ---------- Elecciones ----------
+  // s.subclassChoices: { [clave del rasgo]: [ids de opción] }.
+  const picked = (s, key) => s.subclassChoices?.[key] || [];
+  const optionsOf = e =>
+    typeof e.spec.choice.options === 'function' ? e.spec.choice.options(e.x) : e.spec.choice.options;
+  // Elecciones vigentes: { key, name, label, count, options: [{ id, name, text }], picked, rest }.
+  function choices(s) {
+    return active(s)
+      .filter(e => e.spec.choice && !e.base && !e.opt)
+      .map(e => {
+        const c = e.spec.choice,
+          opts = optionsOf(e);
+        return {
+          key: e.key,
+          name: label(e),
+          label: c.label || 'Elegí',
+          count: Math.max(1, val(c.count || 1, e.x)),
+          options: Object.entries(opts)
+            .filter(([, o]) => !o.lv || e.x.l >= o.lv)
+            .map(([id, o]) => ({ id, name: o.name, text: o.text || '' })),
+          picked: picked(s, e.key).filter(id => opts[id]),
+          rest: c.rest || '',
+        };
+      });
+  }
+  const pending = s => choices(s).filter(c => c.picked.length < Math.min(c.count, c.options.length));
+  function setChoice(s, key, ids) {
+    const c = choices(s).find(x => x.key === key);
+    if (!c) throw Error('Esa elección no está disponible.');
+    ids = [...new Set(ids)];
+    if (ids.length > c.count) throw Error(`Elegí como máximo ${c.count}.`);
+    if (ids.some(id => !c.options.some(o => o.id === id))) throw Error('Opción inválida.');
+    const next = { ...(s.subclassChoices || {}) };
+    if (ids.length) next[key] = ids;
+    else delete next[key];
+    if (Object.keys(next).length) s.subclassChoices = next;
+    else delete s.subclassChoices;
+  }
+  // Arma elegida que usa CAR (Guerrero maleficio).
+  const weaponAbility = (s, itemId) =>
+    active(s).some(e => e.spec.chaWeapon && e.spec.chaWeapon === itemId) ? 'cha' : '';
+  // Lo que queda de un recurso (para los daños extra que cuestan un dado de superioridad, ki…).
+  function left(s, res) {
+    if (res === 'inspiration')
+      return s.inspirationSpent === null ? 0 : root.Rules.stats(s).inspirationMax - s.inspirationSpent;
+    const r = root.Classes.resources(s).find(x => x.id === res);
+    const used = r && root.Classes.spent(s, r);
+    return r && used !== null ? r.max - used : 0;
+  }
+  function pay(s, res, n = 1) {
+    if (left(s, res) < n) throw Error('No alcanza el recurso.');
+    if (res === 'inspiration') s.inspirationSpent += n;
+    else root.Classes.spend(s, res, n);
+  }
 
   // ---------- Estados con duración ----------
   // s.subclassStates: { [clave del rasgo]: { until } }. `until` es el turno propio en que termina (null: hasta
@@ -189,7 +260,8 @@
           value: fly,
           why: label(e) + (e.spec.flyNote ? ', ' + e.spec.flyNote : ''),
         });
-      if (e.spec.swim) out.push({ kind: 'swim', value: e.spec.swim, why: label(e) });
+      const swim = val(e.spec.swim, e.x);
+      if (swim) out.push({ kind: 'swim', value: swim, why: label(e) });
     }
     return out;
   }
@@ -221,13 +293,22 @@
           dice: r.dice(e.x),
           flat: val(r.flat, e.x),
           type: r.type,
-          label: r.label || label(e),
+          label: (typeof r.label === 'function' ? r.label(e.x) : r.label) || label(e),
           once: !!r.once,
-          available: !r.once || !onceUsed(s, e.key),
-          checked: r.checked !== false,
+          available: (!r.once || !onceUsed(s, e.key)) && (!r.cost || left(s, r.cost.res) >= (r.cost.n || 1)),
+          checked: r.checked !== false && !r.cost,
+          cost: r.cost ? { ...r.cost, label: costLabel(r.cost), left: left(s, r.cost.res) } : null,
         };
       });
   }
+  const COST = {
+    superiority: 'dado de superioridad',
+    ki: 'ki',
+    inspiration: 'Inspiración bárdica',
+    channel: 'Canalizar divinidad',
+    sorcery: 'punto de hechicería',
+  };
+  const costLabel = c => (c.n > 1 ? c.n + ' ' : '') + (COST[c.res] || c.name || 'uso');
   // Bonos a la tirada de ataque con arma (Arma sagrada).
   const hitMods = s => parts(s, 'hit');
   // Característica para los golpes sin armas (Brazos del yo astral: SAB si es mejor).
@@ -387,8 +468,15 @@
   function report(s) {
     const seen = new Set();
     return active(s)
-      .filter(e => !seen.has(e.key) && seen.add(e.key))
-      .map(e => ({ key: e.key, name: label(e), auto: e.spec.auto || usesText(e), table: e.spec.table || '' }));
+      .filter(e => !e.base && !e.opt && !seen.has(e.key) && seen.add(e.key))
+      .map(e => {
+        const c = e.spec.choice && choices(s).find(x => x.key === e.key),
+          chosen =
+            c && c.picked.length
+              ? ' Elegido: ' + c.picked.map(id => c.options.find(o => o.id === id)?.name).join(', ') + '.'
+              : '';
+        return { key: e.key, name: label(e), auto: (e.spec.auto || usesText(e)) + chosen, table: e.spec.table || '' };
+      });
   }
   const SHARED = {
     channel: 'Canalizar divinidad',
@@ -428,6 +516,16 @@
         return name === en || (en === firstName && !listed.has(name));
       });
     if (!rows.length) return null;
+    const keys = new Set(rows.map(r => r.key)),
+      acts = choices(s)
+        .filter(c => keys.has(c.key))
+        .map(c => [
+          (c.picked.length ? 'Cambiar: ' : 'Elegir: ') +
+            c.name +
+            (c.count > 1 ? ` (${c.picked.length}/${c.count})` : ''),
+          'sfx-choose',
+          `data-key="${c.key.replace(/"/g, '&quot;')}"`,
+        ]);
     const text = rows
       .map(
         r =>
@@ -435,7 +533,7 @@
           [r.auto, r.table && 'En la mesa: ' + r.table].filter(Boolean).join(' '),
       )
       .join(' · ');
-    return { note: 'En la ficha: ' + text };
+    return { note: 'En la ficha: ' + text, ...(acts.length ? { actions: acts } : {}) };
   }
   // Rasgos de la auditoría que tienen datos (para la prueba de cobertura).
   const keys = () => Object.entries(data()).flatMap(([id, t]) => Object.keys(t).map(en => id + ':' + en));
@@ -476,6 +574,12 @@
     isOn,
     hitMods,
     unarmedAbility,
+    choices,
+    pending,
+    setChoice,
+    weaponAbility,
+    left,
+    pay,
     find,
     dc,
     sharedId,

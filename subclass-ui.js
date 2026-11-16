@@ -82,10 +82,12 @@ const SubclassUI = (() => {
       const d = R.stats(state),
         slots = d.slots
           .map((max, i) => [i + 1, max])
-          .filter(([l, max]) => max && state.slotsSpent[l - 1] !== null && state.slotsSpent[l - 1] < max);
+          .filter(
+            ([l, max]) => max && (u.noSpend || (state.slotsSpent[l - 1] !== null && state.slotsSpent[l - 1] < max)),
+          );
       if (!slots.length) throw Error('No quedan espacios de conjuro.');
       body += select(
-        'Espacio a gastar',
+        u.noSpend ? 'Nivel del espacio que usaste' : 'Espacio a gastar',
         'slot',
         slots.map(([l]) => [l, 'Nivel ' + l]),
         slots[0][0],
@@ -138,9 +140,9 @@ const SubclassUI = (() => {
           let slot = 0;
           if (u.slot) {
             slot = number(fd, 'slot', 1, 9);
-            if (s.slotsSpent[slot - 1] === null || s.slotsSpent[slot - 1] >= R.stats(s).slots[slot - 1])
+            if ((!u.noSpend && s.slotsSpent[slot - 1] === null) || s.slotsSpent[slot - 1] >= R.stats(s).slots[slot - 1])
               throw Error('No queda ese espacio.');
-            s.slotsSpent[slot - 1]++;
+            if (!u.noSpend) s.slotsSpent[slot - 1]++;
           }
           // Si el rasgo activa un estado (Canto del filo, Forma estelar…), empieza a contar su duración.
           const stateKey = again.e.base
@@ -157,6 +159,10 @@ const SubclassUI = (() => {
           if (u.restore) {
             const target = 'sfx:' + r.e.sub.id + '-' + u.restore;
             s.classSpent = { ...(s.classSpent || {}), [target]: Math.max(0, (s.classSpent?.[target] || 0) - 1) };
+          }
+          if (u.portent) {
+            s.portent = roll(20, u.portent(again.x));
+            result = 'tus d20 de Presagio: ' + s.portent.join(', ');
           }
           if (u.slots) result = `recuperás espacios que sumen hasta ${u.slots(r.x)} niveles (ajustalos en Recursos)`;
           if (!u.roll) return;
@@ -223,19 +229,51 @@ const SubclassUI = (() => {
     if (!list.length) return '';
     return `<div class="pool-row"><div class="pool-head"><b>Rasgos de subclase</b></div><p class="small">Gastan otro recurso o no tienen límite: la ficha descuenta lo que corresponda y tira los dados.</p><div class="battle-choices">${list.map(cardOf).join('')}</div></div>`;
   }
+  // Elegir las opciones de un rasgo (Espíritu tótem, maniobras, runas…).
+  function choose(key) {
+    const c = F()
+      ?.choices(state)
+      .find(x => x.key === key);
+    if (!c) throw Error('Esa elección no está disponible.');
+    const one = c.count === 1;
+    modal(
+      c.name,
+      `<p class="small">${esc(c.label)}${one ? '' : ` (hasta ${c.count})`}.${c.rest ? ' Podés cambiarla tras un descanso ' + (c.rest === 'short' ? 'corto o largo' : 'largo') + '.' : ''}</p><div class="choice-list">${c.options
+        .map(
+          o =>
+            `<label class="check sfx-option"><input type="${one ? 'radio' : 'checkbox'}" name="pick" value="${esc(o.id)}" ${c.picked.includes(o.id) ? 'checked' : ''}><span><b>${esc(o.name)}</b>${o.text ? `<br><span class="small">${esc(o.text)}</span>` : ''}</span></label>`,
+        )
+        .join('')}</div>`,
+      fd => {
+        const ids = fd.getAll('pick');
+        commit(`${c.name}: ${ids.map(id => c.options.find(o => o.id === id)?.name).join(', ') || 'sin elegir'}`, s =>
+          F().setChoice(s, key, ids),
+        );
+      },
+      'Guardar',
+    );
+    if (!one)
+      document.querySelector('#dialog-form').addEventListener('change', () => {
+        const boxes = [...document.querySelectorAll('#dialog-form [name=pick]')],
+          full = boxes.filter(b => b.checked).length >= c.count;
+        for (const b of boxes) b.disabled = full && !b.checked;
+      });
+  }
   // Estados activos con su duración, y los que se activan sin gastar nada.
   function statesCard() {
     if (!F()) return '';
     const on = F().states(state),
-      off = F().toggles(state);
-    if (!on.length && !off.length) return '';
+      off = F().toggles(state),
+      todo = F().pending(state),
+      portent = state.portent || [];
+    if (!on.length && !off.length && !todo.length && !portent.length) return '';
     const left = x =>
       x.left === null
         ? 'hasta que lo termines o descanses'
         : x.left === 1
           ? 'termina al empezar tu próximo turno'
           : `quedan ${x.left} turnos tuyos`;
-    return `<section class="card sfx-states"><div class="card-header"><div><p class="eyebrow">SUBCLASE</p><h2>${on.length ? 'Rasgos activos' : 'Rasgos para activar'}</h2></div></div>${on
+    return `<section class="card sfx-states"><div class="card-header"><div><p class="eyebrow">SUBCLASE</p><h2>${on.length ? 'Rasgos activos' : 'Rasgos de subclase'}</h2></div></div>${on
       .map(
         x =>
           `<div class="feature"><h3>${esc(x.name)}</h3><p class="small">${esc(x.text)}</p><p class="small muted">${esc(left(x))}.</p><div class="actions">${button('Terminar', 'sfx-state-end', 'secondary', `data-key="${esc(x.key)}"`)}</div></div>`,
@@ -245,9 +283,29 @@ const SubclassUI = (() => {
         x =>
           `<div class="feature"><h3>${esc(x.name)}</h3><p class="small">${esc(x.text)}</p><div class="actions">${button('Activar', 'sfx-state-start', 'secondary', `data-key="${esc(x.key)}"`)}</div></div>`,
       )
+      .join('')}${
+      portent.length
+        ? `<div class="feature"><h3>Presagio</h3><p class="small">Reemplazá una tirada de ataque, salvación o prueba que veas por uno de estos valores, antes de saber el resultado.</p><div class="actions">${portent.map((n, i) => button('Usar ' + n, 'sfx-portent', 'secondary', `data-i="${i}"`)).join('')}</div></div>`
+        : ''
+    }${todo
+      .map(
+        c =>
+          `<div class="feature"><h3>${esc(c.name)}</h3><p class="small">Falta elegir (${c.picked.length}/${c.count}).</p><div class="actions">${button('Elegir', 'sfx-choose', 'secondary', `data-key="${esc(c.key)}"`)}</div></div>`,
+      )
       .join('')}</section>`;
   }
   function install() {
+    actions['sfx-choose'] = e => choose(e.dataset.key);
+    actions['sfx-portent'] = e => {
+      const i = Number(e.dataset.i),
+        n = state.portent?.[i];
+      if (!n) return;
+      commit('Presagio: ' + n, s => {
+        s.portent = s.portent.filter((_, j) => j !== i);
+        if (!s.portent.length) delete s.portent;
+      });
+      toast(`Presagio: la tirada es ${n}.`);
+    };
     actions['sfx-use'] = e => open(e.dataset.id);
     actions['sfx-state-start'] = e => {
       const name =
@@ -266,6 +324,6 @@ const SubclassUI = (() => {
       render();
     };
   }
-  return { open, combat, panel, statesCard, install };
+  return { open, choose, combat, panel, statesCard, install };
 })();
 if (typeof globalThis !== 'undefined') globalThis.SubclassUI = SubclassUI;
