@@ -160,6 +160,12 @@ const SubclassUI = (() => {
             const target = 'sfx:' + r.e.sub.id + '-' + u.restore;
             s.classSpent = { ...(s.classSpent || {}), [target]: Math.max(0, (s.classSpent?.[target] || 0) - 1) };
           }
+          // Rasgos que invocan un compañero (Espíritu del fuego salvaje, Objeto danzante, zombi…).
+          if (u.companion) {
+            const c = F().makeCompanion(s, u.companion);
+            s.companions = [...(s.companions || []).filter(x => x.sfx !== u.companion), c];
+            result = (result ? result + ' · ' : '') + c.name + ' en Compañeros';
+          }
           if (u.portent) {
             s.portent = roll(20, u.portent(again.x));
             result = 'tus d20 de Presagio: ' + s.portent.join(', ');
@@ -294,7 +300,79 @@ const SubclassUI = (() => {
       )
       .join('')}</section>`;
   }
+  // Compañeros de subclase: crear, elegir la bestia o actualizar sus estadísticas a tu nivel.
+  function companionsCard() {
+    if (!F()) return '';
+    const mine = state.companions || [],
+      rows = [];
+    const seen = new Set();
+    for (const d of F().companionDefs(state)) {
+      const have = mine.filter(c => c.sfx === d.id || c.sfx?.startsWith(d.key + '/') || c.sfx === d.key);
+      for (const c of have.filter(c => c.sfx === d.id))
+        if (F().staleCompanion(state, c))
+          rows.push(
+            `<div class="feature"><h3>${esc(c.name)}</h3><p class="small">Sus estadísticas cambiaron con tu nivel o tus características.</p><div class="actions">${button('Actualizar a tu nivel', 'sfx-companion-sync', 'secondary', `data-id="${esc(c.id)}"`)}</div></div>`,
+          );
+      if (have.length || d.via === 'use' || seen.has(d.key)) continue;
+      if (d.variant) {
+        seen.add(d.key);
+        const all = F()
+          .companionDefs(state)
+          .filter(x => x.key === d.key);
+        rows.push(
+          `<div class="feature"><h3>${esc(
+            F()
+              .report(state)
+              .find(r => r.key === d.key)?.name || d.name,
+          )}</h3><div class="actions">${all.map(x => button('Crear: ' + x.name, 'sfx-companion', 'secondary', `data-id="${esc(x.id)}"`)).join('')}</div></div>`,
+        );
+      } else
+        rows.push(
+          `<div class="feature"><h3>${esc(d.name)}</h3><div class="actions">${d.beast ? button('Elegir bestia', 'sfx-beast', 'secondary', `data-id="${esc(d.id)}"`) : button('Crear', 'sfx-companion', 'secondary', `data-id="${esc(d.id)}"`)}</div></div>`,
+        );
+    }
+    return rows.length ? `<div class="sfx-companions section-space">${rows.join('')}</div>` : '';
+  }
+  function addCompanion(id, monster = null) {
+    commit('Compañero de subclase', s => {
+      const c = F().makeCompanion(s, id, monster);
+      s.companions = [...(s.companions || []), c];
+    });
+    toast('Compañero creado: está en Compañeros.');
+  }
+  async function beastPicker(id) {
+    await CompanionsUI.loadMonsters();
+    const d = F()
+      .companionDefs(state)
+      .find(x => x.id === id);
+    const list = MonsterData.filter(
+      m => m.cr <= d.beast.cr && d.beast.sizes.includes(m.size) && /beast|bestia/i.test(String(m.type || '')),
+    ).sort((a, b) => a.cr - b.cr || a.name.localeCompare(b.name));
+    modal(
+      'Elegí tu bestia',
+      `<p class="small">Bestias Medianas o menores de VD 1/4 o menos. La ficha suma tu competencia a su CA, ataques y daño, y le da ${4 * d.x.l} PG si tiene menos.</p><div class="magic-pick-list">${list
+        .map(
+          m =>
+            `<button type="button" class="magic-pick" data-action="sfx-beast-pick" data-id="${esc(id)}" data-m="${esc(m.id)}"><b>${esc(m.name)}</b><span class="small muted">CA ${m.ac} · PG ${m.hp} · ${esc(Companions.speedEs(m.speed))}</span></button>`,
+        )
+        .join('')}</div>`,
+    );
+  }
   function install() {
+    actions['sfx-companion'] = e => addCompanion(e.dataset.id);
+    actions['sfx-beast'] = e => beastPicker(e.dataset.id);
+    actions['sfx-beast-pick'] = e => {
+      document.querySelector('dialog[open]')?.close();
+      addCompanion(
+        e.dataset.id,
+        MonsterData.find(m => m.id === e.dataset.m),
+      );
+    };
+    actions['sfx-companion-sync'] = e => {
+      let name = '';
+      commit('Compañero actualizado a tu nivel', s => (name = F().syncCompanion(s, e.dataset.id).name));
+      toast(name + ': estadísticas actualizadas.');
+    };
     actions['sfx-choose'] = e => choose(e.dataset.key);
     actions['sfx-portent'] = e => {
       const i = Number(e.dataset.i),
@@ -324,6 +402,6 @@ const SubclassUI = (() => {
       render();
     };
   }
-  return { open, choose, combat, panel, statesCard, install };
+  return { open, choose, combat, panel, statesCard, companionsCard, install };
 })();
 if (typeof globalThis !== 'undefined') globalThis.SubclassUI = SubclassUI;

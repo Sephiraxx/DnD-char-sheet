@@ -102,7 +102,7 @@ const CompanionsUI = (() => {
   // Tarjeta de Diario.
   function card() {
     const list = state.companions || [];
-    return `<section class="card"><div class="card-header"><h2>Compañeros</h2><button class="text-btn" data-action="cmp-add">Añadir</button></div>${list.length ? `<div class="cmp-list">${list.map(c => block(c)).join('')}</div>` : '<p class="muted">Familiares, invocaciones, monturas y mascotas con sus PG, CA y ataques. Elegilos del bestiario o anotalos a mano.</p>'}${state.companion.name || state.companion.notes ? `<details class="section-space"><summary>Notas de compañeros</summary><h3>${esc(state.companion.name)}</h3><p>${esc(state.companion.notes)}</p></details>` : ''}<p class="small section-space"><button class="text-btn" data-action="companion">Notas libres de compañeros y PNJ</button></p></section>`;
+    return `<section class="card"><div class="card-header"><h2>Compañeros</h2><button class="text-btn" data-action="cmp-add">Añadir</button></div>${typeof SubclassUI !== 'undefined' ? SubclassUI.companionsCard() : ''}${list.length ? `<div class="cmp-list">${list.map(c => block(c)).join('')}</div>` : '<p class="muted">Familiares, invocaciones, monturas y mascotas con sus PG, CA y ataques. Elegilos del bestiario o anotalos a mano.</p>'}${state.companion.name || state.companion.notes ? `<details class="section-space"><summary>Notas de compañeros</summary><h3>${esc(state.companion.name)}</h3><p>${esc(state.companion.notes)}</p></details>` : ''}<p class="small section-space"><button class="text-btn" data-action="companion">Notas libres de compañeros y PNJ</button></p></section>`;
   }
   // Combate: forma salvaje activa (o el botón para entrar) y compañeros.
   function combat() {
@@ -290,5 +290,5 @@ const CompanionsUI = (() => {
       for (const b of document.querySelectorAll('.cmp-pick')) b.hidden = q && !b.dataset.q.includes(q);
     });
   }
-  return { card, combat, install, rollDamage };
+  return { card, combat, install, rollDamage, loadMonsters };
 })();
