@@ -15,6 +15,7 @@ const LOGIC = [
   'subclass-fx-states.js',
   'subclass-fx-choices.js',
   'subclass-fx-companions.js',
+  'subclass-fx-reminders.js',
   'subclass-fx.js',
   'magic-items.js',
   'metamagic.js',

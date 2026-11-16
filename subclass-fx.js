@@ -464,6 +464,22 @@
     return out;
   }
 
+  // ---------- Al tirar iniciativa ----------
+  // Recupera un uso de lo que esté en 0 (Implacable, Espíritu incansable…) y devuelve los avisos.
+  function onInitiative(s) {
+    const notes = [];
+    for (const e of active(s)) {
+      const o = e.spec.onInit;
+      if (!o) continue;
+      if (o.note) notes.push(o.note);
+      if (o.restore && root.Classes.resources(s).some(r => r.id === o.restore) && left(s, o.restore) === 0) {
+        s.classSpent = { ...(s.classSpent || {}), [o.restore]: Math.max(0, (s.classSpent?.[o.restore] || 0) - 1) };
+        notes.push(label(e) + ': recuperás un uso.');
+      }
+    }
+    return notes;
+  }
+
   // ---------- Compañeros de subclase ----------
   // companion: { name, cost, via, beast, build(x, monstruo) → { ac, maxHp, speed, attacks, notes }, variants }.
   // Las estadísticas se calculan con tu nivel; «Actualizar» las rehace al subir de nivel.
@@ -644,6 +660,7 @@
     isOn,
     hitMods,
     unarmedAbility,
+    onInitiative,
     companionDefs,
     makeCompanion,
     staleCompanion,

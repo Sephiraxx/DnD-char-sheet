@@ -30,6 +30,26 @@ test('cobertura: cada rasgo con datos existe en la auditoría y nombra una subcl
   const rows = new Set(audit.map(r => r.sub + ':' + r.feature));
   const bad = F.keys().filter(k => !rows.has(k));
   assert.equal(JSON.stringify(bad), '[]');
+  // Y al revés: las 526 filas de la auditoría tienen datos (efecto, uso, estado, elección, compañero o recordatorio).
+  const keys = new Set(F.keys());
+  const missing = audit.filter(r => !keys.has(r.sub + ':' + r.feature)).map(r => r.sub + ':' + r.feature);
+  assert.equal(JSON.stringify(missing), '[]');
+  assert.equal(audit.length, 526);
+  // Cada rasgo dice algo: lo que hace la ficha, lo que queda para la mesa, o tiene una mecánica.
+  for (const [id, t] of Object.entries(g.SubclassFXData))
+    for (const [en, spec] of Object.entries(t))
+      assert.ok(
+        spec.auto ||
+          spec.table ||
+          spec.use ||
+          spec.cast ||
+          spec.choice ||
+          spec.companion ||
+          spec.state ||
+          spec.rider ||
+          spec.onInit,
+        id + ':' + en,
+      );
   for (const id of new Set(F.keys().map(k => k.split(':')[0])))
     assert.ok(
       g.ClassData.subclasses.some(s => s.id === id),
@@ -426,4 +446,19 @@ test('compañeros: defensor de acero, compañero primigenio, bestia del explorad
   F.startState(wf, 'druid-circle-of-wildfire:Summon Wildfire Spirit');
   assert.ok(F.spellBonus(wf, { id: 'fb', level: 1 }, { types: ['fuego'] }).some(b => /Vínculo/.test(b.label)));
   assert.equal(F.makeCompanion(wf, 'druid-circle-of-wildfire:Summon Wildfire Spirit').maxHp, 35);
+});
+
+test('al tirar iniciativa: Implacable recupera un dado si no te queda ninguno', () => {
+  const bm = pc('fighter', 15, 'fighter-battle-master');
+  bm.classSpent = { superiority: 6 };
+  const notes = F.onInitiative(bm);
+  assert.equal(bm.classSpent.superiority, 5);
+  assert.match(notes.join(), /Implacable/);
+  assert.equal(F.onInitiative(bm).length, 0, 'con dados no recupera');
+  const scout = pc('rogue', 13, 'rogue-scout');
+  assert.match(F.onInitiative(scout).join(), /ventaja en la iniciativa/);
+  const card = g.Campaign.characterTraits(pc('rogue', 17, 'rogue-scout')).find(
+    r => r.key === 'sub:rogue-scout:Sudden Strike',
+  );
+  assert.match(card.note, /En la mesa: Tras la acción de Atacar/);
 });
