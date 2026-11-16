@@ -136,6 +136,9 @@
       // Listo para la batalla (Herrero de batalla): con armas mágicas, INT si es mejor.
       const smart = root.SubclassFX?.magicAbility(s);
       if (smart && !item.unarmed && (item.magic || cfg.magic) && mods[smart] > mods[ability]) ability = smart;
+      // Guerrero maleficio: el arma elegida usa CAR si es mejor.
+      const hex = !item.unarmed && root.SubclassFX?.weaponAbility(s, item.id);
+      if (hex && mods[hex] > mods[ability]) ability = hex;
       // Brazos del yo astral: los golpes sin armas pueden usar SAB.
       const astral = item.unarmed && root.SubclassFX?.unarmedAbility(s);
       if (astral && mods[astral] > mods[ability]) ability = astral;

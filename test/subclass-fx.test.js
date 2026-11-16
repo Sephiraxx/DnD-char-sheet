@@ -304,3 +304,72 @@ test('estados: Arma sagrada suma al ataque, Conquistador invencible cambia ataqu
   F.startState(dragon, F.toggles(dragon)[0].key);
   assert.equal(F.speeds(dragon, 30)[0].value, 30);
 });
+
+test('elecciones: tótem del oso, maniobras con su dado, guerrero maleficio y resiliencia infernal', () => {
+  const bear = pc('barbarian', 3, 'barbarian-path-of-the-totem-warrior');
+  assert.equal(F.pending(bear).length, 1);
+  F.setChoice(bear, 'barbarian-path-of-the-totem-warrior:Totem Spirit', ['bear']);
+  assert.equal(F.pending(bear).length, 0);
+  assert.equal(g.Defenses.apply(bear, [{ amount: 10, type: 'fuego' }]).total, 10);
+  bear.raging = true;
+  assert.equal(g.Defenses.apply(bear, [{ amount: 10, type: 'fuego' }]).total, 5);
+  assert.equal(g.Defenses.apply(bear, [{ amount: 10, type: 'psíquico' }]).total, 10);
+  assert.throws(() => F.setChoice(bear, 'barbarian-path-of-the-totem-warrior:Totem Spirit', ['bear', 'wolf']));
+
+  const bm = pc('fighter', 10, 'fighter-battle-master');
+  weapon(bm, 'longsword');
+  const key = 'fighter-battle-master:Combat Superiority';
+  assert.equal(F.choices(bm).find(c => c.key === key).count, 7);
+  F.setChoice(bm, key, ['trip', 'parry', 'riposte']);
+  const trip = g.Attacks.profile(bm, bm.inventory.at(-1)).riders.find(r => /^Derribo/.test(r.label));
+  assert.equal(trip.dice, '1d10');
+  assert.match(trip.label, /CD \d+/);
+  assert.equal(trip.checked, false);
+  assert.equal(trip.cost.left, 5);
+  F.pay(bm, 'superiority', 5);
+  assert.equal(g.Attacks.profile(bm, bm.inventory.at(-1)).riders.find(r => /^Derribo/.test(r.label)).available, false);
+  assert.ok(F.actions(bm).some(r => r.u.id === 'mnv-parry'));
+
+  const hex = pc('warlock', 1, 'warlock-the-hexblade', {
+    abilities: { str: 8, dex: 10, con: 12, int: 10, wis: 10, cha: 16 },
+  });
+  const sword = weapon(hex, 'longsword');
+  assert.equal(g.Attacks.profile(hex, sword).ability, 'str');
+  F.setChoice(hex, 'warlock-the-hexblade:Hex Warrior', [sword.id]);
+  assert.equal(g.Attacks.profile(hex, sword).ability, 'cha');
+
+  const fiend = pc('warlock', 10, 'warlock-the-fiend');
+  F.setChoice(fiend, 'warlock-the-fiend:Fiendish Resilience', ['cold']);
+  assert.equal(g.Defenses.apply(fiend, [{ amount: 9, type: 'frío' }]).total, 4);
+  assert.match(F.choices(fiend)[0].options.find(o => o.id === 'cold').name, /Frío/);
+  assert.throws(() => g.Rules.validate({ ...fiend, subclassChoices: { a: 'b' } }));
+});
+
+test('runas, enjambre, presagio y tormenta', () => {
+  const rk = pc('fighter', 7, 'fighter-rune-knight');
+  F.setChoice(rk, 'fighter-rune-knight:Rune Carver', ['hill', 'stone', 'fire']);
+  assert.equal(g.Defenses.apply(rk, [{ amount: 10, type: 'veneno' }]).total, 5);
+  assert.equal(F.darkvision(rk, 0), 120);
+  const fire = g.Classes.resources(rk).find(r => r.id === 'sfx:fighter-rune-knight-rune-runa-del-fuego');
+  assert.equal(fire.max, 1);
+  assert.equal(fire.reset, 'short');
+  const sk = pc('ranger', 11, 'ranger-swarmkeeper');
+  F.setChoice(sk, 'ranger-swarmkeeper:Gathered Swarm', ['damage']);
+  assert.equal(F.riders(sk)[0].dice, '1d8');
+  const div = pc('wizard', 14, 'wizard-school-of-divination');
+  assert.equal(
+    F.find(div, 'sfx:wizard-school-of-divination-portent').u.portent(
+      F.find(div, 'sfx:wizard-school-of-divination-portent').x,
+    ),
+    3,
+  );
+  div.portent = [3, 17];
+  assert.ok(g.Rules.validate(div));
+  g.Classes.reset(div, 'long');
+  assert.equal(div.portent, undefined);
+  const storm = pc('barbarian', 6, 'barbarian-path-of-the-storm-herald');
+  F.setChoice(storm, 'barbarian-path-of-the-storm-herald:Storm Aura', ['sea']);
+  assert.equal(g.Defenses.apply(storm, [{ amount: 10, type: 'relámpago' }]).total, 5);
+  assert.equal(F.speeds(storm, 30).find(x => x.kind === 'swim').value, 30);
+  assert.ok(F.actions(storm).some(r => r.u.id === 'aura-sea' && F.dc(r)));
+});

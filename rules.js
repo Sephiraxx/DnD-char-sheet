@@ -786,6 +786,23 @@
         ))
     )
       fail();
+    // Elecciones de rasgos de subclase: { clave: [ids] }; y los d20 de Presagio.
+    if (
+      o.subclassChoices !== undefined &&
+      (!o.subclassChoices ||
+        typeof o.subclassChoices !== 'object' ||
+        Array.isArray(o.subclassChoices) ||
+        Object.keys(o.subclassChoices).length > 40 ||
+        Object.entries(o.subclassChoices).some(
+          ([k, v]) => !txt(k, 150) || !Array.isArray(v) || v.length > 12 || v.some(x => !txt(x, 80)),
+        ))
+    )
+      fail();
+    if (
+      o.portent !== undefined &&
+      (!Array.isArray(o.portent) || o.portent.length > 3 || o.portent.some(n => !int(n, 1, 20)))
+    )
+      fail();
     if (!['eloquence', 'manual'].includes(o.subclass)) fail();
     for (let k in attrs) if (!int(o.abilities?.[k], 1, 30)) fail();
     for (let k of ['proficiencies', 'expertise'])

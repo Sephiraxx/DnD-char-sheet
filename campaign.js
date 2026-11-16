@@ -516,7 +516,12 @@ const Campaign = (() => {
         }
         // Qué hace sola la ficha con este rasgo (subclass-fx-data.js) y qué queda para la mesa.
         const fx = isSub ? globalThis.SubclassFX?.trait(s, sub, en) : null;
-        if (fx) extra = { ...extra, note: [extra.note, fx.note].filter(Boolean).join(' ') };
+        if (fx)
+          extra = {
+            ...extra,
+            note: [extra.note, fx.note].filter(Boolean).join(' '),
+            ...(fx.actions ? { actions: [...(extra.actions || []), ...fx.actions] } : {}),
+          };
         add(key, f.name, text || 'Consultá las reglas completas de este rasgo.', origin, book, { language, ...extra });
       }
     }

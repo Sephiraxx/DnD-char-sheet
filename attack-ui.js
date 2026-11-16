@@ -157,7 +157,7 @@ const AttackUI = (() => {
     return `<fieldset class="attack-riders"><legend>Daño extra de tus rasgos</legend>${p.riders
       .map(
         r =>
-          `<label class="check"><input type="checkbox" name="rider" value="${esc(r.id)}" ${r.available ? (r.checked !== false ? 'checked' : '') : 'disabled'}>${esc(r.label)}: +${esc([r.dice, r.flat].filter(Boolean).join(' + '))}${r.type ? ' ' + esc(Defenses.label(r.type)) : ''}${r.once ? (r.available ? ' · una vez por turno' : ' · ya usado este turno') : ''}</label>`,
+          `<label class="check"><input type="checkbox" name="rider" value="${esc(r.id)}" ${r.available ? (r.checked !== false ? 'checked' : '') : 'disabled'}>${esc(r.label)}: +${esc([r.dice, r.flat].filter(Boolean).join(' + '))}${r.type ? ' ' + esc(Defenses.label(r.type)) : ''}${r.once ? (r.available ? ' · una vez por turno' : ' · ya usado este turno') : ''}${r.cost ? ` · gasta ${esc(r.cost.label)} (quedan ${r.cost.left})` : ''}</label>`,
       )
       .join('')}</fieldset>`;
   }
@@ -268,13 +268,18 @@ const AttackUI = (() => {
           ? A.rollDamage(p, crit, rnd, riders)
           : { parts: [{ rolls: [], sum: mine }], total: Math.max(0, mine + p.dmgMod + flat), physical: true };
     // Lo de «una vez por turno» queda gastado y la casilla se apaga.
-    if (riders.some(r => r.once))
+    // Lo que cuesta un dado de superioridad, ki o Inspiración se descuenta al tirar.
+    if (riders.some(r => r.once || r.cost))
       commit('Daño extra: ' + riders.map(r => r.label).join(', '), s => {
-        for (const r of riders) if (r.once) SubclassFX.markOnce(s, r.id);
+        for (const r of riders) {
+          if (r.once) SubclassFX.markOnce(s, r.id);
+          if (r.cost) SubclassFX.pay(s, r.cost.res, r.cost.n || 1);
+        }
       });
     for (const r of riders) {
       const box = document.querySelector(`#dialog-form [name=rider][value="${CSS.escape(r.id)}"]`);
       if (box && r.once && SubclassFX.onceUsed(state, r.id)) ((box.checked = false), (box.disabled = true));
+      else if (box && r.cost) box.checked = false;
     }
     const parts = dmg.physical
       ? 'dados físicos ' + mine
