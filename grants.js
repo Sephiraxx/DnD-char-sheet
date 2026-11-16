@@ -837,7 +837,60 @@
       'terran',
     ];
   const skillId = x => ({ 'animal handling': 'animal', 'sleight of hand': 'sleight' })[x] || x;
-  function profPlan(s, source) {
+  // Idiomas escritos a mano en la ficha («Común, Élfico, Enano»): los que no da ya la raza o el trasfondo
+  // completan sus elecciones de idioma, para no pedir otra vez lo que se eligió al crear el personaje.
+  const fold = t =>
+    String(t || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  function typedLanguages(s) {
+    const names = new Map();
+    for (const id of [
+      ...languages,
+      'aarakocra',
+      'gith',
+      'quori',
+      'loxodon',
+      'minotaur',
+      'vedalken',
+      'grung',
+      'leonin',
+      'kraul',
+      'druidic',
+      "thieves' cant",
+    ]) {
+      names.set(fold(id), id);
+      const es = root.Campaign?.facts?.(id);
+      if (es) names.set(fold(es), id);
+    }
+    return unique(
+      String(s.languages || '')
+        .split(/[,;\n]|\s+y\s+/)
+        .map(x => names.get(fold(x)))
+        .filter(Boolean),
+    );
+  }
+  function typedPicks(s) {
+    const typed = typedLanguages(s),
+      out = {};
+    if (!typed.length) return out;
+    const plans = sources(s).map(src => [src, profPlan(s, src, false)]),
+      taken = new Set(plans.flatMap(([, p]) => p.selected));
+    for (const [src, p] of plans)
+      for (const g of p.groups) {
+        if (g.kind !== 'language' || !g.need || pick(s, src.key).proficiencies?.[g.id]) continue;
+        const add = typed
+          .map(id => 'language:' + id)
+          .filter(x => g.from.includes(x) && !taken.has(x))
+          .slice(0, g.count - g.selected.length);
+        add.forEach(x => taken.add(x));
+        out[src.key + '|' + g.id] = [...g.selected, ...add];
+      }
+    return out;
+  }
+  function profPlan(s, source, typed = true) {
     const otherLanguages = {
         'gith-githyanki-MTF': 'gith',
         'gith-githzerai-MTF': 'gith',
@@ -944,6 +997,7 @@
             const id = field + '.' + i + '.' + key,
               selected = (
                 saved[id] ||
+                (kind === 'language' && typed && s.languages ? typedPicks(s)[source.key + '|' + id] : null) ||
                 (source.kind === 'feat' && ['skill', 'expertise'].includes(kind)
                   ? (s.progression?.featChoices?.[source.id]?.[kind === 'skill' ? 'skills' : 'expertise'] || []).map(
                       x => kind + ':' + x,
