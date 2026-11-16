@@ -475,3 +475,29 @@ test('expertise cannot continue using a proficiency from an inactive origin', ()
       .proficiencies.groups.some(g => g.kind === 'expertise' && g.need),
   );
 });
+
+test('los idiomas escritos al crear el personaje completan las elecciones de idioma de la raza y el trasfondo', () => {
+  const g = load();
+  const s = g.Rules.validate({
+    ...g.Rules.initial(),
+    classId: 'bard',
+    level: 1,
+    raceId: 'aarakocra-base-EEPC',
+    backgroundId: 'acolyte-PHB',
+    languages: 'Común, Élfico, Enano',
+  });
+  const groups = () =>
+    g.Grants.plans(s).flatMap(p => p.proficiencies.groups.filter(x => x.kind === 'language' && x.need));
+  assert.equal(groups().length, 0);
+  assert.ok(['elvish', 'dwarvish'].every(x => g.Grants.proficiencies(s, 'language').includes(x)));
+  // Lo que se eligió después en «Beneficios» manda sobre lo escrito.
+  s.grantChoices = {
+    'background:acolyte-PHB': {
+      proficiencies: { 'languageProficiencies.0.anyStandard': ['language:orc', 'language:giant'] },
+    },
+  };
+  assert.ok(!g.Grants.proficiencies(s, 'language').includes('elvish'));
+  s.grantChoices = {};
+  s.languages = 'Común';
+  assert.equal(groups().length, 1);
+});
