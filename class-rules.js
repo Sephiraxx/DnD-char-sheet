@@ -421,7 +421,12 @@
   function resources(s) {
     return s._total
       ? ownResources(s)
-      : [...classResources(s), ...(root.FeatFX?.resources(s) || []), ...(root.Grants?.resources(s) || [])];
+      : [
+          ...classResources(s),
+          ...(root.SubclassFX?.resources(s) || []),
+          ...(root.FeatFX?.resources(s) || []),
+          ...(root.Grants?.resources(s) || []),
+        ];
   }
   function classResources(s) {
     if (!mcList(s).length) return ownResources(s);

@@ -175,6 +175,25 @@
     'artificer-artillerist': [3, { toolProficiencies: [{ "woodcarver's tools": true }] }],
     'artificer-battle-smith': [3, { toolProficiencies: [{ "smith's tools": true }] }],
   };
+  // Une dos bloques de additionalSpells: las listas se suman y lo que ya tenía el primero manda.
+  function merge(a, b) {
+    if (Array.isArray(a) && Array.isArray(b)) return [...a, ...b];
+    if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return a ?? b;
+    const out = { ...a };
+    for (const [k, v] of Object.entries(b)) out[k] = k in a ? merge(a[k], v) : v;
+    return out;
+  }
+  // Quita de los conjuros innatos de un bloque los que un rasgo vuelve a dar con su límite de usos.
+  function strip(block, names) {
+    if (!names.length || !block.innate) return block;
+    const drop = v =>
+      Array.isArray(v)
+        ? v.filter(x => typeof x !== 'string' || !names.includes(x.toLowerCase()))
+        : v && typeof v === 'object'
+          ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, drop(x)]))
+          : v;
+    return { ...block, innate: drop(block.innate) };
+  }
   function sources(s) {
     const out = originRows(s).map(([kind, row]) => ({
       key: choicesKey(kind, row),
@@ -316,7 +335,21 @@
           classId: v.classId,
           ability: root.Classes.casting(v).ability,
         });
-      if (sub && v.level >= root.Classes.info(v).subclassLevel && sub.spells?.length)
+      // Más los lanzamientos de rasgos de la subclase (Dominio químico, Paso brumoso del errante feérico…).
+      // Cada bloque de additionalSpells es una alternativa: los lanzamientos de rasgos se suman a todas.
+      const extra = (sub && root.SubclassFX?.grantBlocks(s, v)) || [],
+        blocks = (sub?.spells?.length ? sub.spells : extra.length ? [{}] : []).map(b =>
+          extra.reduce(
+            merge,
+            extra.length
+              ? strip(
+                  b,
+                  extra.flatMap(x => x.replaces || []),
+                )
+              : b,
+          ),
+        );
+      if (sub && v.level >= root.Classes.info(v).subclassLevel && blocks.length)
         out.push({
           key: 'sub:' + sub.id,
           kind: 'sub',
@@ -324,7 +357,7 @@
           name: sub.name,
           source: sub.source,
           data: {
-            additionalSpells: sub.spells.map((block, i) => ({
+            additionalSpells: blocks.map((block, i) => ({
               ...block,
               ability: block.ability || root.Classes.casting(v).ability,
               name:
@@ -488,11 +521,13 @@
       if (!value || typeof value !== 'object') return;
       if (value.choose) return add(value, ctx, path);
       for (const [key, v] of Object.entries(value)) {
-        if (['ability', 'name', 'resourceName'].includes(key)) continue;
+        if (['ability', 'name', 'resourceName', 'replaces'].includes(key)) continue;
         if (['known', 'innate', 'prepared', 'expanded'].includes(key)) walk(v, { ...ctx, mode: key }, [...path, key]);
         else if (key === 'daily' || key === 'rest')
           walk(v, { ...ctx, reset: key === 'rest' ? 'short' : 'long' }, [...path, key]);
         else if (key === 'will') walk(v, { ...ctx, unlimited: true }, [...path, key]);
+        // Varios conjuros con un mismo contador (Consultar a los espíritus: Augurio o Clarividencia).
+        else if (key === 'shared') (Array.isArray(v) ? v : []).forEach(x => walk(x, ctx, [...path, key]));
         else if (key === 'ritual') walk(v, { ...ctx, ritual: true }, [...path, key]);
         else if (key === 'resource')
           walk(v, { ...ctx, costResource: (p.data.resourceName || 'Ki').toLowerCase() }, [...path, key]);

@@ -1293,6 +1293,7 @@ PrintSheet.install();
 Persona.install();
 Surge.install();
 SporesUI.install();
+SubclassUI.install();
 InteropUI.install();
 document.addEventListener('click', e => {
   if (e.target.closest('[data-close]')) {

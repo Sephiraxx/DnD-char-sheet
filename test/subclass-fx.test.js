@@ -197,3 +197,58 @@ test('la tarjeta del rasgo dice qué hace la ficha', () => {
   const champ = g.Campaign.characterTraits(pc('fighter', 3, 'fighter-champion'));
   assert.match(champ.find(r => r.key === 'sub:fighter-champion:Champion').note, /19 o 20/);
 });
+
+test('usos propios: aparecen en Recursos, se gastan y vuelven con su descanso', () => {
+  const s = pc('fighter', 10, 'fighter-samurai');
+  const fs = g.Classes.resources(s).find(r => r.name === 'Espíritu de lucha');
+  assert.equal(fs.max, 3);
+  assert.equal(fs.reset, 'long');
+  g.Classes.spend(s, fs.id, 1);
+  g.Classes.reset(s, 'short');
+  assert.equal(g.Classes.spent(s, fs), 1);
+  g.Classes.reset(s, 'long');
+  assert.equal(g.Classes.spent(s, fs), 0);
+  const r = F.find(s, fs.id);
+  assert.equal(r.u.roll.flat(r.x), 10, 'PG temporales a nivel 10');
+});
+
+test('reservas psiónicas, CD y rasgos que gastan Canalizar divinidad o ki', () => {
+  const psi = pc('fighter', 5, 'fighter-psi-warrior', {
+    abilities: { str: 16, dex: 10, con: 10, int: 14, wis: 10, cha: 10 },
+  });
+  const pool = g.Classes.resources(psi).find(r => r.id === 'sfx:fighter-psi-warrior-psi');
+  assert.equal(pool.max, 6);
+  assert.equal(F.find(psi, pool.id).u.pool.die(F.find(psi, pool.id).x), 8);
+  assert.ok(g.Classes.resources(psi).some(r => r.id === 'sfx:fighter-psi-warrior-psi-recover'));
+  const light = pc('cleric', 2, 'cleric-light-domain');
+  const dawn = F.actions(light).find(r => /Dawn/.test(r.e.en));
+  assert.equal(dawn.u.shared, 'channel');
+  assert.equal(F.dc(dawn), g.Rules.stats(light).dc);
+  const monk = pc('monk', 17, 'monk-way-of-the-long-death', {
+    abilities: { str: 10, dex: 16, con: 10, int: 10, wis: 16, cha: 10 },
+  });
+  const touch = F.actions(monk).find(r => /Touch of the Long Death/.test(r.e.en));
+  assert.equal(F.dc(touch), 8 + 6 + 3);
+  assert.equal(touch.u.roll.dice({ ...touch.x, n: 4 }), '8d10');
+});
+
+test('lanzamientos gratuitos de la subclase: por descanso, compartidos y por puntos', () => {
+  const free = s =>
+    g.Grants.spells(s)
+      .filter(x => x.freeResource)
+      .map(x => x.id + ':' + x.max + ':' + x.reset)
+      .sort()
+      .join();
+  const alch = pc('artificer', 15, 'artificer-alchemist', {
+    abilities: { str: 10, dex: 10, con: 10, int: 16, wis: 10, cha: 10 },
+  });
+  assert.equal(free(alch), 'greater-restoration:1:long,heal:1:long,lesser-restoration:3:long');
+  assert.equal(free(pc('artificer', 14, 'artificer-alchemist')).includes('heal'), false);
+  const anc = pc('barbarian', 10, 'barbarian-path-of-the-ancestral-guardian');
+  const ids = g.Grants.spells(anc).map(x => x.freeResource);
+  assert.equal(ids.length, 2, 'Augurio y Clarividencia, sin las copias sin límite');
+  assert.equal(new Set(ids).size, 1, 'comparten un solo uso');
+  const sh = pc('sorcerer', 3, 'sorcerer-shadow-magic');
+  assert.ok(g.Grants.spells(sh).some(x => x.id === 'darkness' && x.costResource === 'sorcery' && x.cost === 2));
+  assert.ok(!g.Grants.spells(pc('sorcerer', 2, 'sorcerer-shadow-magic')).some(x => x.costResource));
+});
