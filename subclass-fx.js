@@ -333,6 +333,7 @@
       const b = e.spec.spell;
       if (!b) continue;
       if (ctx.heal ? !b.heal : !b.damage) continue;
+      if (b.when && !b.when(e.x)) continue;
       if (b.cantrip && sp.level !== 0) continue;
       if (b.minLevel && sp.level < b.minLevel) continue;
       if (b.cls && b.cls !== (ctx.classId || e.x.v.classId)) continue;
@@ -463,6 +464,75 @@
     return out;
   }
 
+  // ---------- Compañeros de subclase ----------
+  // companion: { name, cost, via, beast, build(x, monstruo) → { ac, maxHp, speed, attacks, notes }, variants }.
+  // Las estadísticas se calculan con tu nivel; «Actualizar» las rehace al subir de nivel.
+  function companionDefs(s) {
+    const out = [];
+    for (const e of active(s)) {
+      const c = e.spec.companion;
+      if (!c || e.opt) continue;
+      const base = { key: e.key, e, x: e.x, cost: c.cost || null, via: c.via || '', beast: c.beast || null };
+      if (c.variants)
+        for (const [v, d] of Object.entries(c.variants))
+          out.push({
+            ...base,
+            id: e.key + '/' + v,
+            name: typeof d.name === 'function' ? d.name(e.x) : d.name,
+            build: d.build || c.build,
+            variant: v,
+          });
+      else out.push({ ...base, id: e.key, name: c.name, build: c.build });
+    }
+    return out;
+  }
+  // Datos del compañero listos para guardar en s.companions.
+  function makeCompanion(s, id, monster = null, prev = null) {
+    const d = companionDefs(s).find(x => x.id === id);
+    if (!d) throw Error('Ese compañero no está disponible en tu nivel.');
+    if (d.beast && !monster) throw Error('Elegí la bestia.');
+    const b = d.build({ ...d.x, variant: d.variant }, monster),
+      maxHp = Math.max(1, Math.min(9999, Math.floor(b.maxHp))),
+      hp = prev ? Math.max(0, Math.min(maxHp, prev.hp + Math.max(0, maxHp - prev.maxHp))) : maxHp;
+    return {
+      id: prev?.id || root.Companions.uid(),
+      kind: 'class',
+      name: String(b.name || d.name).slice(0, 100),
+      ...(monster || prev?.monsterId ? { monsterId: monster?.id || prev.monsterId } : {}),
+      ac: Math.max(0, Math.min(40, b.ac)),
+      maxHp,
+      hp,
+      speed: String(b.speed || '').slice(0, 100),
+      attacks: (b.attacks || []).slice(0, 6).map(a => ({
+        name: String(a.name).slice(0, 60),
+        bonus: Math.max(-10, Math.min(30, a.bonus)),
+        damage: String(a.damage).slice(0, 60),
+      })),
+      notes: String(b.notes || '').slice(0, 2000),
+      sfx: id,
+    };
+  }
+  // ¿Cambiaron sus estadísticas desde que lo creaste (subiste de nivel, cambió tu característica)?
+  function staleCompanion(s, c) {
+    if (!c.sfx || !companionDefs(s).some(d => d.id === c.sfx)) return false;
+    const monster = c.monsterId ? root.MonsterData?.find(m => m.id === c.monsterId) : null;
+    if (companionDefs(s).find(d => d.id === c.sfx).beast && !monster) return false;
+    const fresh = makeCompanion(s, c.sfx, monster, c);
+    return (
+      ['ac', 'maxHp', 'speed', 'notes'].some(k => fresh[k] !== c[k]) ||
+      JSON.stringify(fresh.attacks) !== JSON.stringify(c.attacks)
+    );
+  }
+  function syncCompanion(s, cid) {
+    const i = (s.companions || []).findIndex(c => c.id === cid);
+    if (i < 0) throw Error('Ese compañero ya no está.');
+    const c = s.companions[i],
+      monster = c.monsterId ? root.MonsterData?.find(m => m.id === c.monsterId) : null;
+    const next = makeCompanion(s, c.sfx, monster, c);
+    s.companions = s.companions.map((x, j) => (j === i ? next : x));
+    return next;
+  }
+
   // ---------- Lo que se ve en la ficha ----------
   // Qué hace sola la ficha y qué queda para la mesa, por rasgo vigente.
   function report(s) {
@@ -574,6 +644,10 @@
     isOn,
     hitMods,
     unarmedAbility,
+    companionDefs,
+    makeCompanion,
+    staleCompanion,
+    syncCompanion,
     choices,
     pending,
     setChoice,

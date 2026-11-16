@@ -373,3 +373,57 @@ test('runas, enjambre, presagio y tormenta', () => {
   assert.equal(F.speeds(storm, 30).find(x => x.kind === 'swim').value, 30);
   assert.ok(F.actions(storm).some(r => r.u.id === 'aura-sea' && F.dc(r)));
 });
+
+test('compañeros: defensor de acero, compañero primigenio, bestia del explorador y su actualización', () => {
+  const bs = pc('artificer', 3, 'artificer-battle-smith', {
+    abilities: { str: 10, dex: 12, con: 12, int: 16, wis: 10, cha: 10 },
+  });
+  const def = F.makeCompanion(bs, 'artificer-battle-smith:Steel Defender');
+  assert.equal(def.ac, 15);
+  assert.equal(def.maxHp, 2 + 3 + 15);
+  assert.equal(def.attacks[0].bonus, 5);
+  assert.equal(def.attacks[0].damage, '1d8+2 fuerza');
+  bs.companions = [def];
+  assert.ok(g.Rules.validate(bs));
+  assert.equal(F.staleCompanion(bs, def), false);
+  bs.level = 15;
+  assert.equal(F.staleCompanion(bs, bs.companions[0]), true);
+  const up = F.syncCompanion(bs, def.id);
+  assert.equal(up.ac, 17);
+  assert.equal(up.maxHp, 2 + 3 + 75);
+  assert.equal(up.hp, up.maxHp, 'gana los PG que sube su máximo');
+  assert.match(up.notes, /1d4\+3/);
+
+  const bm = pc('ranger', 11, 'ranger-beast-master', {
+    optionalClassFeatures: true,
+    abilities: { str: 10, dex: 16, con: 12, int: 10, wis: 14, cha: 10 },
+  });
+  const ids = F.companionDefs(bm).map(d => d.id);
+  assert.ok(ids.includes('ranger-beast-master:Primal Companion/sky'));
+  const sky = F.makeCompanion(bm, 'ranger-beast-master:Primal Companion/sky');
+  assert.equal(sky.maxHp, 4 + 44);
+  assert.equal(sky.ac, 15);
+  assert.equal(sky.attacks[0].damage, '1d4+7 cortante');
+  assert.match(sky.notes, /dos veces/);
+  const wolf = {
+    id: 'wolf',
+    name: 'Lobo',
+    ac: 13,
+    hp: 11,
+    speed: '40 ft.',
+    actions: [{ n: 'Mordisco', atk: 4, dmg: [['2d4+2', 'perforante']] }],
+  };
+  const pet = F.makeCompanion(bm, "ranger-beast-master:Ranger's Companion", wolf);
+  assert.equal(pet.ac, 17);
+  assert.equal(pet.maxHp, 44);
+  assert.equal(pet.attacks[0].bonus, 8);
+  assert.equal(pet.attacks[0].damage, '2d4+6 perforante');
+  assert.throws(() => F.makeCompanion(bm, "ranger-beast-master:Ranger's Companion"));
+
+  const wf = pc('druid', 6, 'druid-circle-of-wildfire');
+  const use = F.actions(wf).find(r => r.u.companion);
+  assert.equal(use.u.shared, 'wild-shape');
+  F.startState(wf, 'druid-circle-of-wildfire:Summon Wildfire Spirit');
+  assert.ok(F.spellBonus(wf, { id: 'fb', level: 1 }, { types: ['fuego'] }).some(b => /Vínculo/.test(b.label)));
+  assert.equal(F.makeCompanion(wf, 'druid-circle-of-wildfire:Summon Wildfire Spirit').maxHp, 35);
+});

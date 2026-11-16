@@ -10,6 +10,7 @@
     pet: 'Mascota',
     ally: 'Aliado',
     sidekick: 'Secuaz',
+    class: 'Compañero de subclase',
   };
   // Secuaces de Tasha: una criatura de VD 1/2 o menos que gana niveles en una de tres clases.
   const SIDEKICKS = { warrior: 'Guerrero', expert: 'Experto', spellcaster: 'Lanzador de conjuros' };
@@ -226,6 +227,7 @@
         bad();
       if (c.speed !== undefined && !txt(c.speed, 100)) bad();
       if (c.monsterId !== undefined && !txt(c.monsterId, 100)) bad();
+      if (c.sfx !== undefined && !txt(c.sfx, 150)) bad();
       if (
         !Array.isArray(c.attacks) ||
         c.attacks.length > 6 ||
