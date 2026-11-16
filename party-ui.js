@@ -960,10 +960,14 @@ const PartyUI = (() => {
           const used = C.spent(state, r);
           return `<div class="pool-row"><div class="pool-head"><b>${esc(r.name)}</b><span>${used === null ? '—' : r.max === 999 ? '∞' : Math.max(0, r.max - used) + ' / ' + r.max}</span></div><p class="small">${esc(r.text)}</p><div class="actions">${r.id === 'cannon' ? button('Crear cañón', 'cannon-create', '') : button('Usar', 'class-resource', '', `data-id="${r.id}"`)}${button('Ajustar', 'class-resource-edit', 'secondary', `data-id="${r.id}"`)}</div><p class="small">Recuperación: descanso ${r.reset === 'short' ? 'corto o largo' : 'largo'}.</p>${r.id === 'rage' && state.raging ? button('Terminar rabia', 'class-rage-end') : ''}</div>`;
         })
-        .join('') + mm
+        .join('') +
+      (typeof SubclassUI !== 'undefined' ? SubclassUI.panel() : '') +
+      mm
     );
   }
   function useResource(id, adjust = false) {
+    // Rasgos de subclase con usos propios: su propio modal (CD, tiradas, curación).
+    if (!adjust && id.startsWith('sfx:') && typeof SubclassUI !== 'undefined') return SubclassUI.open(id);
     const r = C.resources(state).find(x => x.id === id);
     if (!r) throw Error('Recurso no disponible.');
     const avail = r.max - (C.spent(state, r) || 0);
@@ -1233,7 +1237,11 @@ const PartyUI = (() => {
     return list;
   }
   function combatAbilities(kind) {
-    const res = C.resources(state).filter(r => r.action === kind || (kind === 'action' && r.id === 'action-surge'));
+    const res = C.resources(state).filter(
+      r =>
+        r.action === kind ||
+        (kind === 'action' && (r.id === 'action-surge' || (r.fx && ['free', 'manual'].includes(r.action)))),
+    );
     const feats = featureOptions().filter(f => f.kind === kind || (kind === 'action' && f.kind === 'free'));
     return (
       res
@@ -1242,6 +1250,7 @@ const PartyUI = (() => {
             `<article class="battle-choice"><h3>${esc(r.name)}</h3><p>${esc(r.text)}</p>${button('Usar rasgo', 'class-resource', 'secondary', `data-id="${r.id}"`)}</article>`,
         )
         .join('') +
+      (typeof SubclassUI !== 'undefined' ? SubclassUI.combat(kind) : '') +
       feats
         .map(
           f =>

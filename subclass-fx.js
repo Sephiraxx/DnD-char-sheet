@@ -216,13 +216,109 @@
   const turnStart = (s, rnd) => tick(s, 'turnStart', rnd);
   const turnEnd = (s, rnd) => tick(s, 'turnEnd', rnd);
 
+  // ---------- Usos, reservas y lanzamientos ----------
+  const slug = t =>
+    String(t)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+  const uses = e => [].concat(e.spec.use || []);
+  const useId = (e, u) => 'sfx:' + (u.id ? e.sub.id + '-' + u.id : slug(e.key));
+  // Recurso que gasta un uso compartido: 'channel', 'ki', 'sorcery'… o la reserva psiónica de la subclase.
+  const sharedId = (e, u) => (u.shared === 'psi' ? 'sfx:' + e.sub.id + '-psi' : u.shared);
+  // Todos los usos vigentes: { id, e, u, x, name, own (tiene contador propio) }.
+  function allUses(s) {
+    const out = [];
+    for (const e of active(s))
+      for (const u of uses(e)) {
+        const own = !u.shared && !u.free;
+        out.push({ id: useId(e, u), e, u, x: e.x, own, name: u.name || label(e) });
+      }
+    return out;
+  }
+  // Recursos con contador propio: aparecen en Recursos y se recuperan solos con su descanso.
+  function resources(s) {
+    return allUses(s)
+      .filter(r => r.own)
+      .map(r => ({
+        id: r.id,
+        name: r.name,
+        max: Math.max(1, val(r.u.max, r.x)),
+        reset: r.u.reset || 'long',
+        text: r.u.text,
+        action: r.u.action || 'manual',
+        fx: true,
+      }));
+  }
+  // Rasgos sin contador propio (gastan Canalizar divinidad, ki, puntos…, o no tienen límite).
+  const actions = s => allUses(s).filter(r => !r.own);
+  const find = (s, id) => allUses(s).find(r => r.id === id) || null;
+  // CD de un rasgo: 8 + competencia + modificador (o tu CD de conjuros, o la de ki).
+  function dc(r) {
+    const sv = r.u.save;
+    if (!sv?.dc) return null;
+    if (sv.dc === 'spell') return root.Rules.stats(r.x.v).dc;
+    const a = sv.dc === 'ki' ? 'wis' : sv.dc === 'dex' ? (r.x.m.dex >= r.x.m.str ? 'dex' : 'str') : sv.dc;
+    return 8 + r.x.pb + r.x.m[a];
+  }
+  // Lanzamientos de la subclase en formato de additionalSpells (los lee Grants como los de cualquier rasgo).
+  function grantBlocks(s, v) {
+    const out = [];
+    for (const e of active(s))
+      if (e.x.v.classId === v.classId && e.spec.cast) {
+        const c = e.spec.cast,
+          lv = String(Math.max(e.spec.lv || 1, c.minLevel || 0));
+        let body;
+        if (c.will) body = { will: c.spells };
+        else if (c.cost) body = { resource: { [c.cost.n]: c.spells } };
+        else
+          body = {
+            [c.reset === 'short' ? 'rest' : 'daily']: {
+              [Math.max(1, val(c.max, e.x)) + (c.each ? 'e' : '')]:
+                c.spells.length > 1 && !c.each ? { shared: c.spells } : c.spells,
+            },
+          };
+        out.push({
+          name: label(e),
+          replaces: c.spells,
+          ...(c.ability ? { ability: c.ability } : {}),
+          ...(c.cost ? { resourceName: c.cost.res } : {}),
+          innate: { [lv]: body },
+        });
+      }
+    return out;
+  }
+
   // ---------- Lo que se ve en la ficha ----------
   // Qué hace sola la ficha y qué queda para la mesa, por rasgo vigente.
   function report(s) {
     const seen = new Set();
     return active(s)
       .filter(e => !seen.has(e.key) && seen.add(e.key))
-      .map(e => ({ key: e.key, name: label(e), auto: e.spec.auto || '', table: e.spec.table || '' }));
+      .map(e => ({ key: e.key, name: label(e), auto: e.spec.auto || usesText(e), table: e.spec.table || '' }));
+  }
+  const SHARED = {
+    channel: 'Canalizar divinidad',
+    ki: 'ki',
+    sorcery: 'puntos de hechicería',
+    inspiration: 'Inspiración bárdica',
+    psi: 'dados psiónicos',
+  };
+  // Qué hace la ficha con los usos del rasgo, si los datos no lo dicen.
+  function usesText(e) {
+    const bits = uses(e).map(u => {
+      const roll = u.roll
+          ? ' y tira ' +
+            ({ heal: 'la curación', temp: 'los PG temporales', damage: 'el daño' }[u.roll.kind] || 'los dados')
+          : '',
+        dc = u.save?.dc ? ', con tu CD' : '';
+      if (u.shared) return `Botón «Usar» en combate y Recursos: gasta ${SHARED[u.shared] || u.shared}${roll}${dc}.`;
+      if (u.free) return `Botón «Usar» en combate y Recursos${roll}${dc}.`;
+      const max = Math.max(1, val(u.max, e.x));
+      return `${u.pool ? 'Reserva de ' + max + ' dados' : max + ' uso' + (max > 1 ? 's' : '')} en Recursos (vuelve${max > 1 ? 'n' : ''} con descanso ${u.reset === 'short' ? 'corto o largo' : 'largo'})${roll}${dc}.`;
+    });
+    if (e.spec.cast) bits.push('Lanzamientos gratuitos en tus conjuros.');
+    return bits.join(' ');
   }
   // Nota para la tarjeta de un rasgo: la del rasgo y, en el primer rasgo de la subclase, la de los
   // rasgos que el libro describe dentro de él (no tienen tarjeta propia).
@@ -278,6 +374,12 @@
     turnEnd,
     report,
     trait,
+    resources,
+    actions,
+    find,
+    dc,
+    sharedId,
+    grantBlocks,
     keys,
     heavy,
   };
