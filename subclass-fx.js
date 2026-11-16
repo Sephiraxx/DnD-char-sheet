@@ -43,11 +43,85 @@
         if (spec.when && !spec.when(x)) continue;
         here.push({ key: sub.id + ':' + en, sub, en, spec, x });
       }
-      out.push(...here.filter(e => !e.spec.replacedBy || !here.some(o => o.en === e.spec.replacedBy)));
+      const kept = here.filter(e => !e.spec.replacedBy || !here.some(o => o.en === e.spec.replacedBy));
+      out.push(...kept);
+      // Estados activados (Canto del filo, Forma del pavor…): mientras duran, sus efectos cuentan como un rasgo más.
+      for (const e of kept)
+        for (const [key, def] of stateDefs(e))
+          if (isOn(s, key) && (def.dur !== 'rage' || s.raging))
+            out.push({
+              key: key + '#on',
+              base: key,
+              def,
+              sub,
+              en: e.en,
+              name: def.name || names()[e.key] || e.en,
+              spec: { lv: e.spec.lv, ...def.fx },
+              x,
+            });
     }
     return out;
   }
-  const label = e => names()[e.key] || e.en;
+  const label = e => e.name || names()[e.key] || e.en;
+
+  // ---------- Estados con duración ----------
+  // s.subclassStates: { [clave del rasgo]: { until } }. `until` es el turno propio en que termina (null: hasta
+  // que lo termines o descanses). Un minuto son 10 turnos tuyos.
+  const DUR = { turn: 1, minute: 10, '10min': 100, hour: 600 };
+  const isOn = (s, key) => Boolean(s.subclassStates?.[key]);
+  // Estados de un rasgo: el único (`state`, clave del rasgo) o varios (`states`, clave «rasgo/nombre»).
+  const stateDefs = e => [
+    ...(e.spec.state ? [[e.key, e.spec.state]] : []),
+    ...Object.entries(e.spec.states || {}).map(([k, d]) => [e.key + '/' + k, d]),
+  ];
+  function states(s) {
+    const t = turn(s);
+    return active(s)
+      .filter(e => e.base)
+      .map(e => {
+        const st = s.subclassStates[e.base];
+        return {
+          key: e.base,
+          name: e.name,
+          text: e.def.text || '',
+          left: st.until !== null && t !== null ? Math.max(0, st.until - t) : null,
+        };
+      });
+  }
+  // Rasgos que se activan sin gastar nada (Alas de dragón): botón «Activar» en la tarjeta de estados.
+  const toggles = s =>
+    active(s)
+      .filter(e => !e.base && e.spec.state && !e.spec.use && !isOn(s, e.key))
+      .map(e => ({ key: e.key, name: e.spec.state.name || label(e), text: e.spec.state.text || '' }));
+  function startState(s, key) {
+    const def = active(s)
+      .filter(e => !e.base)
+      .flatMap(stateDefs)
+      .find(([k]) => k === key)?.[1];
+    if (!def) throw Error('Ese rasgo no se puede activar ahora.');
+    const d = DUR[def.dur] || null,
+      t = turn(s);
+    s.subclassStates = { ...(s.subclassStates || {}), [key]: { until: d && t !== null ? t + d : null } };
+  }
+  function endState(s, key) {
+    if (!s.subclassStates?.[key]) return;
+    const next = { ...s.subclassStates };
+    delete next[key];
+    if (Object.keys(next).length) s.subclassStates = next;
+    else delete s.subclassStates;
+  }
+  // Al empezar un turno propio terminan los estados vencidos. Devuelve sus nombres.
+  function expire(s) {
+    const t = turn(s),
+      gone = [];
+    if (t === null || !s.subclassStates) return gone;
+    for (const [key, st] of Object.entries(s.subclassStates))
+      if (st.until !== null && t >= st.until) {
+        gone.push(names()[key] || key.split(':').slice(1).join(':'));
+        endState(s, key);
+      }
+    return gone;
+  }
   const parts = (s, k) =>
     active(s)
       .map(e => ({ label: e.spec.label || label(e), value: val(e.spec[k], e.x) }))
@@ -90,9 +164,10 @@
     for (const e of active(s)) {
       const sp = e.spec,
         why = label(e);
-      for (const t of sp.resist || []) out.resist.push([t, why]);
-      for (const t of sp.immune || []) out.immune.push([t, why]);
-      for (const c of sp.conditions || []) if (!out.conditions.includes(c)) out.conditions.push(c);
+      const get = k => [].concat((typeof sp[k] === 'function' ? sp[k](e.x) : sp[k]) || []);
+      for (const t of get('resist')) out.resist.push([t, why]);
+      for (const t of get('immune')) out.immune.push([t, why]);
+      for (const c of get('conditions')) if (!out.conditions.includes(c)) out.conditions.push(c);
       if (sp.resistIf) out.conditional.push({ ...sp.resistIf, why: sp.resistIf.why || why });
       if (sp.advSave) out.advSaves.push([sp.advSave, why]);
     }
@@ -100,17 +175,18 @@
   }
   // Crítico de los ataques con arma: el menor número que lo consigue (20 sin rasgos).
   const crit = s => Math.min(20, ...active(s).map(e => e.spec.crit || 20));
-  const attacks = s => Math.max(1, ...active(s).map(e => e.spec.attacks || 1));
+  const attacks = s => Math.max(1, ...active(s).map(e => val(e.spec.attacks, e.x) || 1));
   const noStrength = s => active(s).some(e => e.spec.noStrength);
   const magicAbility = s => active(s).find(e => e.spec.magicAbility)?.spec.magicAbility || '';
   // Velocidades especiales (vuelo, nado) que la ficha muestra junto a la de caminar.
   function speeds(s, walk) {
     const out = [];
     for (const e of active(s)) {
-      if (e.spec.fly)
+      const fly = e.spec.fly === 'walk' ? walk : val(e.spec.fly, e.x);
+      if (fly)
         out.push({
           kind: 'fly',
-          value: e.spec.fly === 'walk' ? walk : e.spec.fly,
+          value: fly,
           why: label(e) + (e.spec.flyNote ? ', ' + e.spec.flyNote : ''),
         });
       if (e.spec.swim) out.push({ kind: 'swim', value: e.spec.swim, why: label(e) });
@@ -148,9 +224,14 @@
           label: r.label || label(e),
           once: !!r.once,
           available: !r.once || !onceUsed(s, e.key),
+          checked: r.checked !== false,
         };
       });
   }
+  // Bonos a la tirada de ataque con arma (Arma sagrada).
+  const hitMods = s => parts(s, 'hit');
+  // Característica para los golpes sin armas (Brazos del yo astral: SAB si es mejor).
+  const unarmedAbility = s => active(s).find(e => e.spec.unarmedAbility)?.spec.unarmedAbility || '';
   // Modificadores fijos al daño con arma (Aura de odio).
   function damageMods(s, { melee = true } = {}) {
     return active(s)
@@ -203,6 +284,15 @@
       const fn = e.spec[k];
       const got = fn && fn(e.x);
       if (!got) continue;
+      if (got.temp !== undefined) {
+        const roll = got.dice ? rnd(Number(got.dice.slice(1))) : 0,
+          temp = roll + got.temp;
+        if (temp > (s.temp || 0)) {
+          s.temp = temp;
+          notes.push(`${got.why}: ${temp} PG temporales`);
+        }
+        continue;
+      }
       const die = got.dice ? rnd(Number(got.dice.slice(1))) : 0,
         heal = Math.max(0, die + got.heal),
         max = root.Rules.stats(s).maxHP,
@@ -213,7 +303,10 @@
     }
     return notes;
   }
-  const turnStart = (s, rnd) => tick(s, 'turnStart', rnd);
+  const turnStart = (s, rnd) => {
+    const gone = expire(s);
+    return [...(gone.length ? ['Terminó: ' + gone.join(', ')] : []), ...tick(s, 'turnStart', rnd)];
+  };
   const turnEnd = (s, rnd) => tick(s, 'turnEnd', rnd);
 
   // ---------- Usos, reservas y lanzamientos ----------
@@ -376,6 +469,13 @@
     trait,
     resources,
     actions,
+    states,
+    toggles,
+    startState,
+    endState,
+    isOn,
+    hitMods,
+    unarmedAbility,
     find,
     dc,
     sharedId,

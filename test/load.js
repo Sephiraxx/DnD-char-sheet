@@ -12,6 +12,7 @@ const LOGIC = [
   'feats.js',
   'subclass-fx-data.js',
   'subclass-fx-uses.js',
+  'subclass-fx-states.js',
   'subclass-fx.js',
   'magic-items.js',
   'metamagic.js',

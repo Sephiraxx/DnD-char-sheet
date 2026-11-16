@@ -623,6 +623,8 @@
   function reset(s, type) {
     s.raging = false;
     delete s.symbiotic;
+    // Los estados de subclase (Canto del filo, Forma del pavor…) no sobreviven a un descanso.
+    delete s.subclassStates;
     // Los espacios creados con Fuente de magia desaparecen con el descanso largo; la Bendición de la forja
     // dura hasta el siguiente descanso largo (al terminarlo se elige de nuevo).
     // El cañón dura 1 hora: no sobrevive a un descanso.

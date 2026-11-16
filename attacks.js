@@ -136,6 +136,9 @@
       // Listo para la batalla (Herrero de batalla): con armas mágicas, INT si es mejor.
       const smart = root.SubclassFX?.magicAbility(s);
       if (smart && !item.unarmed && (item.magic || cfg.magic) && mods[smart] > mods[ability]) ability = smart;
+      // Brazos del yo astral: los golpes sin armas pueden usar SAB.
+      const astral = item.unarmed && root.SubclassFX?.unarmedAbility(s);
+      if (astral && mods[astral] > mods[ability]) ability = astral;
     }
     const prof = cfg.proficient === 'auto' ? item.unarmed || proficient(s, w) : cfg.proficient;
     let dice = twoHands && w.versatile ? w.versatile : w.dice;
@@ -149,6 +152,10 @@
     if (w.ranged && hasStyle(s, 'archery')) {
       toHit += 2;
       notes.push('Arquería +2');
+    }
+    for (const h of root.SubclassFX?.hitMods(s) || []) {
+      toHit += h.value;
+      notes.push(`${h.label} ${h.value < 0 ? '−' : '+'}${Math.abs(h.value)} al ataque`);
     }
     let dmgMod = mods[ability] + cfg.magic;
     if (mode === 'bonus' && !hasStyle(s, 'two-weapon-fighting')) {

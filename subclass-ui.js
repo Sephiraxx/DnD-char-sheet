@@ -119,7 +119,8 @@ const SubclassUI = (() => {
       r.name,
       body,
       fd => {
-        let result = '';
+        let result = '',
+          started = false;
         commit('Usado: ' + r.name, s => {
           const k = fd.get('action'),
             again = F().find(s, id);
@@ -140,6 +141,18 @@ const SubclassUI = (() => {
             if (s.slotsSpent[slot - 1] === null || s.slotsSpent[slot - 1] >= R.stats(s).slots[slot - 1])
               throw Error('No queda ese espacio.');
             s.slotsSpent[slot - 1]++;
+          }
+          // Si el rasgo activa un estado (Canto del filo, Forma estelar…), empieza a contar su duración.
+          const stateKey = again.e.base
+            ? ''
+            : u.state
+              ? again.e.key + '/' + u.state
+              : again.e.spec.state
+                ? again.e.key
+                : '';
+          if (stateKey) {
+            F().startState(s, stateKey);
+            started = true;
           }
           if (u.restore) {
             const target = 'sfx:' + r.e.sub.id + '-' + u.restore;
@@ -174,7 +187,7 @@ const SubclassUI = (() => {
             if (before > temp) result += ' (te quedás con los que ya tenías)';
           } else if (temp && mode !== 'temp') result += ` · ${temp} PG temporales`;
         });
-        toast(r.name + (result ? ': ' + result + '.' : '.'));
+        toast(r.name + (result ? ': ' + result + '.' : '.') + (started ? ' Activo.' : ''));
         if (result && typeof TableUI !== 'undefined' && TableUI.link?.())
           TableUI.shareRoll?.({
             label: r.name,
@@ -210,9 +223,49 @@ const SubclassUI = (() => {
     if (!list.length) return '';
     return `<div class="pool-row"><div class="pool-head"><b>Rasgos de subclase</b></div><p class="small">Gastan otro recurso o no tienen límite: la ficha descuenta lo que corresponda y tira los dados.</p><div class="battle-choices">${list.map(cardOf).join('')}</div></div>`;
   }
+  // Estados activos con su duración, y los que se activan sin gastar nada.
+  function statesCard() {
+    if (!F()) return '';
+    const on = F().states(state),
+      off = F().toggles(state);
+    if (!on.length && !off.length) return '';
+    const left = x =>
+      x.left === null
+        ? 'hasta que lo termines o descanses'
+        : x.left === 1
+          ? 'termina al empezar tu próximo turno'
+          : `quedan ${x.left} turnos tuyos`;
+    return `<section class="card sfx-states"><div class="card-header"><div><p class="eyebrow">SUBCLASE</p><h2>${on.length ? 'Rasgos activos' : 'Rasgos para activar'}</h2></div></div>${on
+      .map(
+        x =>
+          `<div class="feature"><h3>${esc(x.name)}</h3><p class="small">${esc(x.text)}</p><p class="small muted">${esc(left(x))}.</p><div class="actions">${button('Terminar', 'sfx-state-end', 'secondary', `data-key="${esc(x.key)}"`)}</div></div>`,
+      )
+      .join('')}${off
+      .map(
+        x =>
+          `<div class="feature"><h3>${esc(x.name)}</h3><p class="small">${esc(x.text)}</p><div class="actions">${button('Activar', 'sfx-state-start', 'secondary', `data-key="${esc(x.key)}"`)}</div></div>`,
+      )
+      .join('')}</section>`;
+  }
   function install() {
     actions['sfx-use'] = e => open(e.dataset.id);
+    actions['sfx-state-start'] = e => {
+      const name =
+        F()
+          .toggles(state)
+          .find(x => x.key === e.dataset.key)?.name || 'Estado';
+      commit('Activado: ' + name, s => F().startState(s, e.dataset.key));
+      render();
+    };
+    actions['sfx-state-end'] = e => {
+      const name =
+        F()
+          .states(state)
+          .find(x => x.key === e.dataset.key)?.name || 'Estado';
+      commit('Terminó: ' + name, s => F().endState(s, e.dataset.key));
+      render();
+    };
   }
-  return { open, combat, panel, install };
+  return { open, combat, panel, statesCard, install };
 })();
 if (typeof globalThis !== 'undefined') globalThis.SubclassUI = SubclassUI;
