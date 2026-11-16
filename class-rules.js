@@ -190,6 +190,8 @@
     ac += mi ? mi.acBonuses(s, { worn: true, shield: true }).reduce((a, b) => a + b.value, 0) : 0;
     if (s.armorMode === 'barbarian') ac = 10 + m.dex + m.con + s.acBonus;
     if (s.armorMode === 'monk') ac = 10 + m.dex + m.wis + s.acBonus;
+    // Rasgos de subclase (Alma de la forja, Magia duradera…): con equipo ya los suma Equipment.defense.
+    if (!s.equipmentDefense) ac += (root.SubclassFX?.ac(s) || []).reduce((a, b) => a + b.value, 0);
     if (s.equipmentDefense && root.Equipment) ac = root.Equipment.defense(s).total;
     return {
       prof: p,
@@ -226,7 +228,7 @@
       initiative: R()
         .initiativeParts(s)
         .reduce((t, x) => t + x.value, 0),
-      speed: (s.speed ?? 30) + (root.FeatFX?.speed(s) || 0),
+      speed: (s.speed ?? 30) + (root.FeatFX?.speed(s) || 0) + (root.SubclassFX?.speed(s) || 0),
       songDie: id(s) === 'bard' && l >= 2 ? R().song(l) : 0,
     };
   }
@@ -592,8 +594,8 @@
           'long',
           'Lanzamiento del conjuro elegido una vez por descanso largo, sin gastar espacio de pacto.',
         );
-    const sc = sub(s)?.name;
-    if (c === 'fighter' && sc === 'Battle Master' && l >= 3)
+    // Por id: el nombre de la subclase está traducido.
+    if (c === 'fighter' && sub(s)?.id === 'fighter-battle-master' && l >= 3)
       add(
         'superiority',
         'Dados de superioridad',

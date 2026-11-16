@@ -2189,3 +2189,18 @@ button.cc-stat {
     align-items: start;
   }
 }
+/* Daño extra de rasgos de subclase en el modal de ataque (Golpe divino, Furia divina…). */
+.attack-riders {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px 12px 10px;
+  margin: 12px 0;
+}
+.attack-riders legend {
+  padding: 0 6px;
+  color: var(--gold);
+  font-size: 0.85rem;
+}
+.attack-riders .check {
+  margin: 6px 0 0;
+}

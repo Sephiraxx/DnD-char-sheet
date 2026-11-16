@@ -549,9 +549,10 @@ function installCombatActions() {
     },
     turn: () => {
       const start = () => {
-        let ended = [];
+        let ended = [],
+          fx = [];
         commit('Inicio de mi turno: acción, adicional y reacción disponibles', s => {
-          Combat.start(s);
+          fx = Combat.start(s) || [];
           ended = Effects.tick(s);
         });
         combatTab = 'action';
@@ -559,7 +560,8 @@ function installCombatActions() {
         render();
         toast(
           'Nuevo turno: acción, adicional y reacción disponibles.' +
-            (ended.length ? ' Terminó: ' + ended.join(', ') + '.' : ''),
+            (ended.length ? ' Terminó: ' + ended.join(', ') + '.' : '') +
+            (fx.length ? ' ' + fx.join('. ') + '.' : ''),
         );
       };
       if (Combat.data(state).active && Combat.data(state).onTurn)
@@ -572,7 +574,11 @@ function installCombatActions() {
       else start();
     },
     'combat-end': () => {
-      commit('Fin de mi turno', s => Combat.end(s));
+      let fx = [];
+      commit('Fin de mi turno', s => {
+        fx = Combat.end(s) || [];
+      });
+      if (fx.length) toast(fx.join('. ') + '.');
       combatTab = 'reaction';
       combatLevel = 'all';
       render();

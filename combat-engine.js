@@ -159,6 +159,8 @@
     s.reactionUsed = false;
     c.rolled = {};
     c.extraRolls = 0;
+    // Rasgos que actúan al empezar el turno (Superviviente): devuelve qué pasó para avisarlo.
+    return root.SubclassFX?.turnStart(s) || [];
   }
   // Tiradas hechas con la página durante el combate: cada una vale una vez por turno (los ataques de
   // la acción, tantas como ataques tenga). Para repetir, el DM habilita otra tirada (extraRolls).
@@ -176,9 +178,12 @@
     else if ((c.extraRolls || 0) > 0) c.extraRolls--;
     else throw Error('Ya hiciste esa tirada en este turno. Si hay que repetirla, pedile al DM que te habilite otra.');
   }
+  // Al terminar el propio turno en combate actúan rasgos como Espíritu protector.
   function end(s) {
+    const was = data(s).active && data(s).onTurn;
     data(s).onTurn = false;
     data(s).spells = [];
+    return was ? root.SubclassFX?.turnEnd(s) || [] : [];
   }
   function finish(s) {
     const c = data(s);

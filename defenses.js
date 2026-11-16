@@ -1,5 +1,5 @@
 /* Resistencias, inmunidades y vulnerabilidades al daño de una ficha, y el daño ajustado por tipo.
-   Fuentes: raza, Furia del bárbaro mientras dura, dotes (FeatFX) y las que se anotan a mano. */
+   Fuentes: raza, Furia del bárbaro mientras dura, dotes (FeatFX), subclase (SubclassFX) y las anotadas a mano. */
 (function (root) {
   'use strict';
   const TYPES = [
@@ -83,6 +83,13 @@
     for (const [t, why] of feats?.resist || []) add('resist', t, why);
     for (const [t, why] of feats?.immune || []) add('immune', t, why);
     for (const c of feats?.conditions || []) if (!out.conditions.includes(c)) out.conditions.push(c);
+    // Subclase: las fijas se aplican solas; las condicionadas (armas no mágicas, daño de conjuros) se recuerdan.
+    const sub = root.SubclassFX?.defenses(s);
+    for (const [t, why] of sub?.resist || []) add('resist', t, why);
+    for (const [t, why] of sub?.immune || []) add('immune', t, why);
+    for (const c of sub?.conditions || []) if (!out.conditions.includes(c)) out.conditions.push(c);
+    out.conditional = sub?.conditional || [];
+    out.advSaves = sub?.advSaves || [];
     return out;
   }
 
@@ -95,6 +102,9 @@
       const n = Math.max(0, Math.floor(Number(p.amount) || 0)),
         t = normalize(p.type);
       let v = n;
+      for (const c of d.conditional)
+        if (t && !d.immune.has(t) && !d.resist.has(t) && (c.types === 'all' || c.types.includes(t)))
+          notes.push(`${c.why}: resistencia a ${label(t)} ${c.note} (si corresponde, registrá la mitad)`);
       if (t && d.immune.has(t)) {
         v = 0;
         notes.push(`inmune a ${label(t)} (${d.immune.get(t)})`);

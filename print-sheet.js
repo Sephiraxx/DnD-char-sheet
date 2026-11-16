@@ -16,7 +16,11 @@ const PrintSheet = (() => {
   }
   function abilities(s) {
     const sc = R.scores(s),
-      saves = new Set([...(C.info(s).saves || []), ...(FeatFX?.saves(s) || [])]);
+      saves = new Set([
+        ...(C.info(s).saves || []),
+        ...(FeatFX?.saves(s) || []),
+        ...(globalThis.SubclassFX?.saveProfs(s) || []),
+      ]);
     return `<div class="ps-abilities">${Object.entries(R.attrs)
       .map(([k, label]) => {
         const mod = Math.floor((sc[k] - 10) / 2);

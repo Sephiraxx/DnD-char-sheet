@@ -24,6 +24,7 @@ const Equipment = (() => {
     if (s.equipmentDefense?.proficiencyOverride) return true;
     if (base.includes(type)) return true;
     if (globalThis.FeatFX?.armor(s, type)) return true;
+    if (globalThis.SubclassFX?.armor(s, type)) return true;
     if (globalThis.Grants?.proficiencies(s, 'armor').some(x => x === type || (type === 'shield' && x === 'shield|phb')))
       return true;
     // Armaduras ganadas por multiclase (PHB p. 164).
@@ -306,6 +307,7 @@ const Equipment = (() => {
     // Bendición de la forja (clérigo de la Forja): la armadura bendecida da +1 mientras la llevás puesta.
     if (worn && s.forgeBlessing && s.forgeBlessing === cfg.armorId && !armorRow?.magic)
       bonuses.push({ label: 'Bendición de la forja', value: 1 });
+    bonuses.push(...(globalThis.SubclassFX?.ac(s) || []));
     if (cfg.bonus) bonuses.push({ label: 'Otros bonos confirmados', value: Number(cfg.bonus) });
     if ((worn && !proficient(s, worn.type)) || (shield && !proficient(s, 'shield')))
       warnings.push(
@@ -314,7 +316,12 @@ const Equipment = (() => {
     const mithral = armorRow?.magic?.id === 'mithral-armor';
     if (worn?.stealth && !mithral) warnings.push('Esta armadura impone desventaja en Sigilo.');
     const speedPenalty =
-      worn?.strength > Number(Rules.scores(s).str) && !s.raceId?.startsWith('dwarf-') && !mithral ? 10 : 0;
+      worn?.strength > Number(Rules.scores(s).str) &&
+      !s.raceId?.startsWith('dwarf-') &&
+      !mithral &&
+      !globalThis.SubclassFX?.noStrength(s)
+        ? 10
+        : 0;
     if (speedPenalty)
       warnings.push('No alcanzás FUE ' + worn.strength + ': esta armadura reduce tu velocidad en 10 pies.');
     if (

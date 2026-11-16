@@ -133,6 +133,9 @@
       else if (w.finesse || (ma && (w.monk || item.unarmed)) || (item.homebrew?.finesse && item.unarmed))
         ability = mods.dex > mods.str ? 'dex' : 'str';
       else ability = 'str';
+      // Listo para la batalla (Herrero de batalla): con armas mágicas, INT si es mejor.
+      const smart = root.SubclassFX?.magicAbility(s);
+      if (smart && !item.unarmed && (item.magic || cfg.magic) && mods[smart] > mods[ability]) ability = smart;
     }
     const prof = cfg.proficient === 'auto' ? item.unarmed || proficient(s, w) : cfg.proficient;
     let dice = twoHands && w.versatile ? w.versatile : w.dice;
@@ -156,6 +159,13 @@
       dmgMod += 2;
       notes.push('Duelo +2 al daño (sin otra arma en la otra mano)');
     }
+    const melee = !w.ranged;
+    for (const m of root.SubclassFX?.damageMods(s, { melee }) || []) {
+      dmgMod += m.value;
+      notes.push(`${m.label} ${m.value < 0 ? '−' : '+'}${Math.abs(m.value)} al daño`);
+    }
+    const critOn = item.unarmed ? 20 : root.SubclassFX?.crit(s) || 20;
+    if (critOn < 20) notes.push(`Crítico con ${critOn}–20`);
     const gwf = !w.ranged && (w.twoHanded || (twoHands && w.versatile)) && hasStyle(s, 'great-weapon-fighting');
     if (gwf) notes.push('Gran arma: repetís 1 y 2 de los dados de daño');
     if (!prof) notes.push('Sin competencia: no suma bono de competencia');
@@ -173,22 +183,23 @@
       extra: cfg.extra,
       // Dados que suma un rasgo activo a los ataques cuerpo a cuerpo (Entidad simbiótica del Círculo de las Esporas).
       bonus: !w.ranged ? root.Spores?.meleeBonus(s) || null : null,
+      // Daño extra opcional de la subclase (Golpe divino, Furia divina…): la persona lo marca al tirar daño.
+      riders: root.SubclassFX?.riders(s, { melee }) || [],
+      crit: critOn,
       gwf,
       weapon: w,
       notes,
     };
   }
 
+  // Ataque adicional de clase o de subclase (Valor, Espadas, Herrero de batalla, Armero, Canto del filo…).
   function attacksPerAction(s) {
-    return Math.max(...parts(s).map(classAttacks));
+    return Math.max(...parts(s).map(classAttacks), root.SubclassFX?.attacks(s) || 1);
   }
   function classAttacks(s) {
-    const c = classId(s),
-      sc = C()?.sub?.(s)?.name || '';
+    const c = classId(s);
     if (c === 'fighter') return s.level >= 20 ? 4 : s.level >= 11 ? 3 : s.level >= 5 ? 2 : 1;
     if (['barbarian', 'monk', 'paladin', 'ranger'].includes(c) && s.level >= 5) return 2;
-    if (c === 'bard' && ['College of Swords', 'College of Valor'].includes(sc) && s.level >= 6) return 2;
-    if (c === 'artificer' && ['Battle Smith', 'Armorer'].includes(sc) && s.level >= 5) return 2;
     if (c === 'warlock' && styles(s).some(x => /thirsting-blade/.test(x)) && s.level >= 5) return 2;
     return 1;
   }
@@ -246,13 +257,20 @@
     const a = d(20, rnd),
       b = adv ? d(20, rnd) : null;
     const kept = adv === 'adv' ? Math.max(a, b) : adv === 'dis' ? Math.min(a, b) : a;
-    return { rolls: b === null ? [a] : [a, b], kept, total: kept + p.toHit, crit: kept === 20, fumble: kept === 1 };
+    return {
+      rolls: b === null ? [a] : [a, b],
+      kept,
+      total: kept + p.toHit,
+      crit: kept >= (p.crit || 20),
+      fumble: kept === 1,
+    };
   }
   function parseDice(expr) {
     const m = /^(\d+)d(\d+)$/.exec(expr);
     return m ? { n: Number(m[1]), sides: Number(m[2]) } : { n: 0, sides: 0, flat: Number(expr) || 0 };
   }
-  function rollDamage(p, crit, rnd) {
+  // riders: los daños extra marcados ({ dice, flat, label }); en un crítico sus dados también se duplican.
+  function rollDamage(p, crit, rnd, riders = []) {
     const parts = [];
     const roll = (expr, label, gwf) => {
       const x = parseDice(expr);
@@ -270,6 +288,11 @@
     const extra = /^\+?\s*(\d+d\d+)\s*(.*)$/.exec(p.extra.trim());
     if (extra) parts.push(roll(extra[1], extra[2] || 'extra', false));
     if (p.bonus) parts.push(roll(p.bonus.dice, p.bonus.label, false));
+    for (const r of riders) {
+      const got = roll(r.dice, r.label, false);
+      got.sum += r.flat || 0;
+      parts.push(got);
+    }
     const total = Math.max(
       p.weapon.id === 'unarmed' && !/d/.test(p.dice) ? 0 : 1,
       parts.reduce((a, b) => a + b.sum, 0) + p.dmgMod,
