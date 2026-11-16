@@ -769,6 +769,23 @@
       (!txt(o.forgeBlessing, 100) || !o.inventory?.some(x => x.id === o.forgeBlessing))
     )
       delete o.forgeBlessing;
+    // Estados de subclase activos: { clave: { until: turno | null } }.
+    if (
+      o.subclassStates !== undefined &&
+      (!o.subclassStates ||
+        typeof o.subclassStates !== 'object' ||
+        Array.isArray(o.subclassStates) ||
+        Object.keys(o.subclassStates).length > 30 ||
+        Object.entries(o.subclassStates).some(
+          ([k, v]) =>
+            !txt(k, 150) ||
+            !v ||
+            typeof v !== 'object' ||
+            Object.keys(v).some(x => x !== 'until') ||
+            !(v.until === null || int(v.until, 0, 999999)),
+        ))
+    )
+      fail();
     if (!['eloquence', 'manual'].includes(o.subclass)) fail();
     for (let k in attrs) if (!int(o.abilities?.[k], 1, 30)) fail();
     for (let k of ['proficiencies', 'expertise'])

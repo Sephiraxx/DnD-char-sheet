@@ -252,3 +252,55 @@ test('lanzamientos gratuitos de la subclase: por descanso, compartidos y por pun
   assert.ok(g.Grants.spells(sh).some(x => x.id === 'darkness' && x.costResource === 'sorcery' && x.cost === 2));
   assert.ok(!g.Grants.spells(pc('sorcerer', 2, 'sorcerer-shadow-magic')).some(x => x.costResource));
 });
+
+test('estados: Canto del filo suma CA y velocidad, dura 10 turnos y termina con el descanso', () => {
+  const s = pc('wizard', 14, 'wizard-bladesinging', {
+    abilities: { str: 10, dex: 14, con: 12, int: 18, wis: 10, cha: 10 },
+  });
+  const ac = g.Rules.stats(s).ac,
+    speed = g.Rules.stats(s).speed;
+  g.Combat.start(s);
+  F.startState(s, 'wizard-bladesinging:Bladesong');
+  assert.equal(g.Rules.stats(s).ac, ac + 4);
+  assert.equal(g.Rules.stats(s).speed, speed + 10);
+  assert.ok(
+    F.damageMods(s, { melee: true }).some(m => m.value === 4),
+    'Canción de la victoria',
+  );
+  assert.ok(F.actions(s).some(r => r.u.id === 'song-of-defense'));
+  assert.equal(F.states(s)[0].left, 10);
+  for (let i = 0; i < 9; i++) g.Combat.start(s);
+  assert.equal(F.states(s).length, 1);
+  const notes = g.Combat.start(s);
+  assert.equal(F.states(s).length, 0);
+  assert.match(notes.join(), /Terminó: /);
+  F.startState(s, 'wizard-bladesinging:Bladesong');
+  g.Classes.reset(s, 'short');
+  assert.equal(g.Rules.stats(s).ac, ac);
+  assert.throws(() => g.Rules.validate({ ...s, subclassStates: { x: { until: 'a' } } }));
+  assert.ok(g.Rules.validate({ ...s, subclassStates: { x: { until: null } } }));
+});
+
+test('estados: Arma sagrada suma al ataque, Conquistador invencible cambia ataques y crítico', () => {
+  const dev = pc('paladin', 3, 'paladin-oath-of-devotion', {
+    abilities: { str: 16, dex: 10, con: 12, int: 10, wis: 10, cha: 16 },
+  });
+  weapon(dev, 'longsword');
+  const before = g.Attacks.profile(dev, dev.inventory.at(-1)).toHit;
+  F.startState(dev, 'paladin-oath-of-devotion:Sacred Weapon');
+  assert.equal(g.Attacks.profile(dev, dev.inventory.at(-1)).toHit, before + 3);
+  const con = pc('paladin', 20, 'paladin-oath-of-conquest');
+  assert.equal(g.Attacks.attacksPerAction(con), 2);
+  F.startState(con, 'paladin-oath-of-conquest:Invincible Conqueror');
+  assert.equal(g.Attacks.attacksPerAction(con), 3);
+  assert.equal(F.crit(con), 19);
+  assert.equal(g.Defenses.apply(con, [{ amount: 10, type: 'fuego' }]).total, 5);
+  const stars = pc('druid', 10, 'druid-circle-of-stars');
+  F.startState(stars, 'druid-circle-of-stars:Starry Form/chalice');
+  assert.ok(F.spellBonus(stars, { id: 'cure', level: 1 }, { heal: true, slot: 1 }).some(b => /Cáliz/.test(b.label)));
+  assert.throws(() => F.startState(stars, 'druid-circle-of-stars:Starry Form/nope'));
+  const dragon = pc('sorcerer', 14, 'sorcerer-draconic-bloodline');
+  assert.equal(F.toggles(dragon)[0].name, 'Alas de dragón');
+  F.startState(dragon, F.toggles(dragon)[0].key);
+  assert.equal(F.speeds(dragon, 30)[0].value, 30);
+});

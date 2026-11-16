@@ -258,7 +258,7 @@ function combatCompact() {
   ${combatTab !== 'bonus' ? ongoingSpellActions() : ''}
   ${state.conditions.length || R.exhaustion(state) ? `<p class="cc-conditions">${R.exhaustion(state) ? `<span class="chip warn" title="${esc(R.exhaustionEffects(state).join(' · '))}">Agotamiento ${R.exhaustion(state)}</span>` : ''}${state.conditions.map(x => `<button class="chip selected" data-action="condition" data-condition="${esc(x)}" title="Quitar">${esc(x)} ×</button>`).join('')}</p>` : ''}
   ${combatSpeedInfo().notes.length ? `<p class="small muted">Velocidad: ${esc(combatSpeedInfo().notes.join(' · '))}.</p>` : ''}
-  ${typeof CompanionsUI !== 'undefined' ? CompanionsUI.combat() : ''}
+  ${typeof SubclassUI !== 'undefined' ? SubclassUI.statesCard() : ''}${typeof CompanionsUI !== 'undefined' ? CompanionsUI.combat() : ''}
   ${typeof Cannon !== 'undefined' ? Cannon.card() : ''}
   <div class="cc-turn">${[
     ['action', 'Acción', c.action],
@@ -346,7 +346,7 @@ function combatView() {
       .join(
         '',
       )}</div><div class="quick-resources" aria-label="Reservas disponibles">${d.slots.map((max, i) => (max ? `<button data-action="pool-edit" data-type="slot" data-index="${i}" title="Ajustar espacios"><span>Espacios Nv. ${i + 1}</span><b>${state.slotsSpent[i] === null ? '—' : max - state.slotsSpent[i]} / ${max}</b></button>` : '')).join('')}${Classes.id(state) === 'bard' ? `<button data-action="combat-help" data-topic="inspiration"><span>Inspiración · d${d.inspirationDie}</span><b>${state.inspirationSpent === null ? '—' : d.inspirationMax - state.inspirationSpent} / ${d.inspirationMax}</b></button>` : ''}</div>${state.concentration ? `<button class="concentration-link" data-action="combat-focus"><b>${c.checks.length ? '⚠ Salvación de concentración pendiente' : 'Concentración'}</b> · ${esc(spellName(state.concentration))}${c.checks.length ? ' · CON CD ' + c.checks[0] : ''} →</button>` : ''}</section>
- ${typeof CompanionsUI !== 'undefined' ? CompanionsUI.combat() : ''}
+ ${typeof SubclassUI !== 'undefined' ? SubclassUI.statesCard() : ''}${typeof CompanionsUI !== 'undefined' ? CompanionsUI.combat() : ''}
  ${typeof Cannon !== 'undefined' ? Cannon.card() : ''}
  <div class="battle-layout"><section class="card battle-actions"><div class="card-header"><h2>Elegí qué hacer</h2><span class="tag">${combatLabels[combatTab]}</span></div><div class="battle-tabs" role="group" aria-label="Tipo de acción">${Object.entries(
    combatLabels,

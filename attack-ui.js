@@ -157,7 +157,7 @@ const AttackUI = (() => {
     return `<fieldset class="attack-riders"><legend>Daño extra de tus rasgos</legend>${p.riders
       .map(
         r =>
-          `<label class="check"><input type="checkbox" name="rider" value="${esc(r.id)}" ${r.available ? 'checked' : 'disabled'}>${esc(r.label)}: +${esc(r.dice)}${r.flat ? ' + ' + r.flat : ''}${r.type ? ' ' + esc(Defenses.label(r.type)) : ''}${r.once ? (r.available ? ' · una vez por turno' : ' · ya usado este turno') : ''}</label>`,
+          `<label class="check"><input type="checkbox" name="rider" value="${esc(r.id)}" ${r.available ? (r.checked !== false ? 'checked' : '') : 'disabled'}>${esc(r.label)}: +${esc([r.dice, r.flat].filter(Boolean).join(' + '))}${r.type ? ' ' + esc(Defenses.label(r.type)) : ''}${r.once ? (r.available ? ' · una vez por turno' : ' · ya usado este turno') : ''}</label>`,
       )
       .join('')}</fieldset>`;
   }
