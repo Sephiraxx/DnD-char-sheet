@@ -74,6 +74,7 @@
     add('immune', own.immune, 'anotada');
     add('vulnerable', own.vulnerable, 'anotada');
     if (s.raging) add('resist', ['bludgeoning', 'piercing', 'slashing'], 'Furia');
+    for (const c of root.Spores?.conditionImmune(s) || []) if (!out.conditions.includes(c)) out.conditions.push(c);
     const items = root.MagicItems?.defenses(s);
     for (const [t, why] of items?.resist || []) add('resist', t, why);
     for (const [t, why] of items?.immune || []) add('immune', t, why);

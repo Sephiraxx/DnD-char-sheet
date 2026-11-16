@@ -130,6 +130,8 @@
   function startWildShape(s, m) {
     const why = canBecome(s, m);
     if (why) throw Error(why);
+    // Volver a usar Forma salvaje termina la Entidad simbiótica (Círculo de las Esporas).
+    delete s.symbiotic;
     s.wildShape = {
       name: m.name,
       monsterId: m.id,

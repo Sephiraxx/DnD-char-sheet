@@ -1292,6 +1292,7 @@ CompanionsUI.install();
 PrintSheet.install();
 Persona.install();
 Surge.install();
+SporesUI.install();
 InteropUI.install();
 document.addEventListener('click', e => {
   if (e.target.closest('[data-close]')) {
