@@ -927,6 +927,16 @@ const RollUI = (() => {
           state.inspirationSpent === R.stats(state).inspirationMax
         )
           commit('Inspiración superior: recuperada una Inspiración al tirar iniciativa', s => s.inspirationSpent--);
+        // Rasgos de subclase que actúan al tirar iniciativa (Implacable, Maestro de la emboscada…).
+        if (e.dataset.label === 'Iniciativa' && typeof SubclassFX !== 'undefined') {
+          let notes = [];
+          const probe = clone(state);
+          if (SubclassFX.onInitiative(probe).length)
+            commit('Iniciativa: rasgos de subclase', s => {
+              notes = SubclassFX.onInitiative(s);
+            });
+          if (notes.length) setTimeout(() => toast(notes.join(' ')), 1200);
+        }
         d20({
           title: e.dataset.label,
           label: e.dataset.label,
