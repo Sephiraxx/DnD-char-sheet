@@ -63,6 +63,17 @@ const SheetStatus = (() => {
         rs.map(x => x.name + (x.uses ? ` (${x.uses})` : '')).join(', ') + ' en tus conjuros.',
       ]);
     for (const f of FeatFX.report(s)) if (f.auto.length) out.push([f.name, f.auto.join(' · ') + '.']);
+    // Rasgos de subclase que la ficha ya aplica, y las velocidades y sentidos que suman.
+    if (globalThis.SubclassFX) {
+      for (const f of SubclassFX.report(s)) if (f.auto) out.push([f.name, f.auto]);
+      const extra = SubclassFX.speeds(s, d.speed).map(
+        x => `${x.kind === 'fly' ? 'vuelo' : 'nado'} ${x.value} pies (${x.why})`,
+      );
+      const dv = SubclassFX.darkvision(s, race?.darkvision || 0);
+      if (dv > (race?.darkvision || 0)) extra.push(`visión en la oscuridad ${dv} pies`);
+      if (extra.length) out.push(['Movimiento y sentidos', extra.join(' · ') + '.']);
+      for (const [t, why] of def.advSaves || []) out.push([why, t]);
+    }
     if (s.equipmentDefense) out.push(['Equipo', 'La CA se calcula con la armadura y el escudo equipados.']);
     for (const x of MagicItems.active(s)) {
       const fx = MagicItems.effects(x.magic).filter(t => !/cargas|cura /.test(t));
@@ -120,6 +131,9 @@ const SheetStatus = (() => {
     for (const x of globalThis.Grants ? [] : Campaign.raceSpells(s).spells)
       if (x.uses && x.uses !== 'según el rasgo') out.push([x.name, `${x.uses}, sin gastar espacio (magia de linaje).`]);
     for (const f of FeatFX.report(s)) for (const m of f.manual) out.push([f.name, m]);
+    for (const f of globalThis.SubclassFX?.report(s) || []) if (f.table) out.push([f.name, f.table]);
+    for (const c of Defenses.of(s).conditional || [])
+      out.push([c.why, 'Resistencia ' + c.note + ': al registrar ese daño, aplicá la mitad.']);
     return out;
   }
 

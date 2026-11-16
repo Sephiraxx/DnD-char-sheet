@@ -10,6 +10,8 @@ const LOGIC = [
   'names-es.js',
   'feat-data.js',
   'feats.js',
+  'subclass-fx-data.js',
+  'subclass-fx.js',
   'magic-items.js',
   'metamagic.js',
   'cannon.js',

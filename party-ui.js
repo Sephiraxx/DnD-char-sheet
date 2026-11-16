@@ -1119,22 +1119,7 @@ const PartyUI = (() => {
   }
   function genericAttack() {
     const d = R.stats(state),
-      c = C.id(state),
-      sc = C.sub(state)?.name;
-    const count =
-      c === 'fighter'
-        ? state.level >= 20
-          ? 4
-          : state.level >= 11
-            ? 3
-            : state.level >= 5
-              ? 2
-              : 1
-        : (['barbarian', 'monk', 'paladin', 'ranger'].includes(c) && state.level >= 5) ||
-            (c === 'bard' && ['College of Swords', 'College of Valor'].includes(sc) && state.level >= 6) ||
-            (c === 'artificer' && ['Battle Smith', 'Armorer'].includes(sc) && state.level >= 5)
-          ? 2
-          : 1;
+      count = Attacks.attacksPerAction(state);
     modal(
       'Acción de Atacar',
       `<p>Tu clase y subclase permiten <b>${count} ataque(s)</b> con esta acción. Resolvé cada impacto y daño en mesa. Otras excepciones de rasgos, dotes y objetos se aplican según su texto.</p><p>Bonos de referencia con competencia: FUE ${sign(d.mods.str + d.prof)} · DES ${sign(d.mods.dex + d.prof)}. Sin competencia, no sumes ${d.prof}. Las armas con sutileza permiten elegir FUE o DES; otras usan su característica correspondiente.</p>${field('Arma o ataque utilizado', 'weapon', '', 'text', 'required maxlength="150"')}<p class="small">Registrá el dado de daño y propiedades en Equipo. Este botón registra la acción completa, no un ataque individual.</p>`,

@@ -486,23 +486,30 @@ const TableUI = (() => {
       return;
     }
     if (p.characterId === l.characterId) {
-      let ended = [];
+      let ended = [],
+        fx = [];
       // Igual que «Mi turno»: la pantalla de combate vuelve a la pestaña de acción.
       combatTab = 'action';
       combatLevel = 'all';
       commit('Turno indicado por el DM (ronda ' + (p.round || 1) + ')', s => {
-        Combat.start(s);
+        fx = Combat.start(s) || [];
         ended = Effects.tick(s);
       });
       location.hash = 'combat';
       navigator.vibrate?.(200);
-      toast('¡Es tu turno!' + (ended.length ? ' Terminó: ' + ended.join(', ') + '.' : ''));
+      toast(
+        '¡Es tu turno!' +
+          (ended.length ? ' Terminó: ' + ended.join(', ') + '.' : '') +
+          (fx.length ? ' ' + fx.join('. ') + '.' : ''),
+      );
     } else if (state.combatState?.onTurn || !state.combatState?.active) {
       if (state.combatState?.onTurn) combatTab = 'reaction';
+      let fx = [];
       commit('Turno de ' + (p.name || 'otro integrante'), s => {
-        Combat.end(s);
+        fx = Combat.end(s) || [];
         Combat.data(s).active = true;
       });
+      if (fx.length) toast(fx.join('. ') + '.');
     }
   }
 

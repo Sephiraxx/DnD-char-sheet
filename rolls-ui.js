@@ -557,7 +557,17 @@ const RollUI = (() => {
       mod = st.mods[ability];
     const mm = opts.mm || {};
     info.types = mmTypes(info, mm);
-    spellSession = { sp, info, crit: false, hitTarget: null, slot, mm, override: opts.override || null };
+    // Bonos de subclase a esta tirada (Discípulo de la vida, Evocación potenciada, Alma radiante…).
+    const fx =
+      typeof SubclassFX !== 'undefined' && (info.dice || info.attack || info.save)
+        ? SubclassFX.spellBonus(state, sp, {
+            slot,
+            heal: info.heal,
+            classId: caster(sp).classId,
+            types: String(info.types || '').split(/,\s*|\s+y\s+/),
+          })
+        : [];
+    spellSession = { sp, info, crit: false, hitTarget: null, slot, mm, override: opts.override || null, fx };
     const mmNotes = [
       mm.heightened ? 'Conjuro intensificado: un objetivo tiene desventaja en su primera salvación.' : '',
       mm.careful ? `Conjuro cuidadoso: hasta ${mm.careful} criatura(s) que elijas la superan automáticamente.` : '',
@@ -576,13 +586,25 @@ const RollUI = (() => {
       ${info.save ? `<p class="banner">Cada objetivo tira una salvación de <b>${esc(info.saveName)}</b> contra tu CD <b>${st.dc}</b>.${halfOnSave(sp) ? ' Si la supera, suele recibir la mitad.' : ''}</p>` : ''}
       ${
         info.dice || info.attack || info.save
-          ? `<h3 class="section-space">${info.heal ? 'Curación' : 'Daño'}${info.types ? ' · ' + esc(info.types) : ''}</h3><div class="form-grid">${field('Dados', 'spellDice', info.dice, 'text', 'maxlength="20" placeholder="2d8"')}<label class="check"><input type="checkbox" name="spellMod" ${info.addMod ? 'checked' : ''}>Sumar modificador de lanzamiento (${sign(mod)})</label></div>${empower}${info.notes.length ? `<p class="small">${esc(info.notes.join(' '))}</p>` : ''}<details class="physical-dice"><summary>Uso mis propios dados</summary>${field('Suma de mis dados', 'myDamage', '', 'number', 'min="0" max="999" inputmode="numeric"')}</details><div class="actions">${button(info.heal ? 'Tirar curación' : 'Tirar daño', 'spell-roll-damage', info.attack ? 'secondary' : '')}</div>`
+          ? `<h3 class="section-space">${info.heal ? 'Curación' : 'Daño'}${info.types ? ' · ' + esc(info.types) : ''}</h3><div class="form-grid">${field('Dados', 'spellDice', info.dice, 'text', 'maxlength="20" placeholder="2d8"')}<label class="check"><input type="checkbox" name="spellMod" ${info.addMod ? 'checked' : ''}>Sumar modificador de lanzamiento (${sign(mod)})</label></div>${empower}${fxFields(fx)}${info.notes.length ? `<p class="small">${esc(info.notes.join(' '))}</p>` : ''}<details class="physical-dice"><summary>Uso mis propios dados</summary>${field('Suma de mis dados', 'myDamage', '', 'number', 'min="0" max="999" inputmode="numeric"')}</details><div class="actions">${button(info.heal ? 'Tirar curación' : 'Tirar daño', 'spell-roll-damage', info.attack ? 'secondary' : '')}</div>`
           : ''
       }
       <div class="attack-log" id="attack-log" aria-live="polite"><p class="small muted">Revisá los dados: salen del texto del conjuro y podés corregirlos.</p></div>`,
       null,
     );
     lockSpell();
+  }
+  function fxFields(fx) {
+    return fx
+      .map(b => {
+        const what = b.max
+          ? 'dados al máximo'
+          : [b.dice && '+' + b.dice, b.value && sign(b.value)].filter(Boolean).join(' ');
+        if (b.note && !b.value && !b.dice && !b.max) return `<p class="small">${esc(b.note)}</p>`;
+        if (!b.optional && !b.once) return `<p class="small">Se suma solo: ${esc(b.label)} (${esc(what)}).</p>`;
+        return `<label class="check"><input type="checkbox" name="fxSpell" value="${esc(b.id)}" ${b.available && b.checked ? 'checked' : ''} ${b.available ? '' : 'disabled'}>${esc(b.label)} (${esc(what)})${b.once ? (b.available ? ' · una vez por turno' : ' · ya usado este turno') : ''}</label>`;
+      })
+      .join('');
   }
   function logLine(html, cls = '') {
     const el = document.getElementById('attack-log');
@@ -693,9 +715,41 @@ const RollUI = (() => {
       rolls = rolls.map(x => x.v);
       sum = rolls.reduce((a, b) => a + b, 0);
     }
-    commit('Tirada de ' + (info.heal ? 'curación' : 'daño') + ': ' + sp.name, s =>
-      Combat.takeRoll(s, ...spellKeys().dmg),
-    );
+    // Bonos de subclase: los fijos siempre; los opcionales, si están marcados.
+    const picked = fd.getAll('fxSpell'),
+      fx = (spellSession.fx || []).filter(
+        b => b.available && (b.value || b.dice || b.max) && ((!b.optional && !b.once) || picked.includes(b.id)),
+      ),
+      fxText = [];
+    if (fx.some(b => b.max) && rolls.length) {
+      each = each.map(x => ({ ...x, v: x.die }));
+      rolls = each.map(x => x.v);
+      sum = rolls.reduce((a, b) => a + b, 0);
+      fxText.push(fx.find(b => b.max).label);
+    }
+    for (const b of fx) {
+      if (b.max) continue;
+      let add = b.value || 0;
+      if (b.dice) {
+        const [n, sides] = b.dice.split('d').map(Number),
+          got = roll(sides, n * (spellSession.crit ? 2 : 1));
+        add += got.reduce((a, v) => a + v, 0);
+        each.push(...got.map(v => ({ die: sides, v })));
+        fxText.push(`${b.label}: ${got.join('+')}${b.value ? ' ' + sign(b.value) : ''}`);
+      } else fxText.push(`${b.label} ${sign(b.value)}`);
+      sum += add;
+    }
+    commit('Tirada de ' + (info.heal ? 'curación' : 'daño') + ': ' + sp.name, s => {
+      Combat.takeRoll(s, ...spellKeys().dmg);
+      for (const b of fx) if (b.once) SubclassFX.markOnce(s, b.id);
+    });
+    // Lo de «una vez por turno» queda gastado (en combate) y su casilla se apaga.
+    for (const b of fx)
+      if (b.once && SubclassFX.onceUsed(state, b.id)) {
+        b.available = false;
+        const box = document.querySelector(`#dialog-form [name=fxSpell][value="${CSS.escape(b.id)}"]`);
+        if (box) ((box.checked = false), (box.disabled = true));
+      }
     lockSpell();
     const dice =
       (rolls.length ? rolls.join('+') : 'dados físicos ' + sum) +
@@ -704,7 +758,8 @@ const RollUI = (() => {
     sum += flat;
     const total = Math.max(0, sum + mod),
       what = info.heal ? 'Curación' : 'Daño';
-    let line = `<b>${what}${spellSession.crit ? ' crítico' : ''}:</b> ${dice}${mod ? ' ' + sign(mod) : ''} = <b>${total}</b>${info.types ? ' ' + esc(info.types) : ''}`;
+    const fxLine = fxText.length ? ' · ' + esc(fxText.join(' · ')) : '';
+    let line = `<b>${what}${spellSession.crit ? ' crítico' : ''}:</b> ${dice}${mod ? ' ' + sign(mod) : ''}${fxLine} = <b>${total}</b>${info.types ? ' ' + esc(info.types) : ''}`;
     const landedDamage = RollFX.show({
       label: what + ' · ' + sp.name,
       total,

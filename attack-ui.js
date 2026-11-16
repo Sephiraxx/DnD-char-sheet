@@ -136,6 +136,7 @@ const AttackUI = (() => {
       ${foes.length ? select('Objetivo', 'target', [...foes.map(f => [f.id, f.name + ' · ' + TableUI.statusLabel(f.status)]), ['', 'Otro objetivo (lo resuelve la mesa)']], TableUI.preferredTarget(foes)) : ''}
       ${RollUI.d20Fields(RollUI.boardMods(RollUI.conditionMods(state, 'attack', p.ability), { ranged: !!w.ranged || (!!w.range && (TableUI.boardContext()?.distance || 0) > (w.reach ? 10 : 5)), reach: w.reach ? 10 : 5 }), '', { kind: 'attack' }).replace(/<details class="physical-dice">[\s\S]*<\/details>$/, '')}
       <div id="attack-ammo">${ammoField(item)}</div>
+      ${riderFields(p)}
       ${w.versatile && mode !== 'bonus' ? `<label class="check"><input type="checkbox" name="twoHands">A dos manos (${esc(w.versatile)})</label>` : ''}
       <details class="physical-dice"><summary>Uso mis propios dados</summary><p class="small">Escribí lo que salió en la mesa y la ficha suma tus bonos. Con ventaja o desventaja, anotá el d20 que conservás. En un crítico, sumá todos los dados duplicados.</p><div class="form-grid">${field('Mi d20', 'myD20', '', 'number', 'min="1" max="20" inputmode="numeric"')}${field('Suma de mis dados de daño', 'myDamage', '', 'number', 'min="0" max="999" inputmode="numeric"')}</div></details>
       <div class="attack-log" id="attack-log" aria-live="polite"></div>
@@ -149,6 +150,17 @@ const AttackUI = (() => {
     drawLog();
   }
 
+  // Daño extra de la subclase: casillas que se suman al tirar daño. Las de «una vez por turno» vienen
+  // marcadas hasta usarlas en el turno.
+  function riderFields(p) {
+    if (!p.riders?.length) return '';
+    return `<fieldset class="attack-riders"><legend>Daño extra de tus rasgos</legend>${p.riders
+      .map(
+        r =>
+          `<label class="check"><input type="checkbox" name="rider" value="${esc(r.id)}" ${r.available ? 'checked' : 'disabled'}>${esc(r.label)}: +${esc(r.dice)}${r.flat ? ' + ' + r.flat : ''}${r.type ? ' ' + esc(Defenses.label(r.type)) : ''}${r.once ? (r.available ? ' · una vez por turno' : ' · ya usado este turno') : ''}</label>`,
+      )
+      .join('')}</fieldset>`;
+  }
   function attack() {
     const { item, p, ammoId } = current();
     let shot = '';
@@ -166,7 +178,14 @@ const AttackUI = (() => {
     const r =
         mine === null
           ? A.rollAttack(p, adv, rnd)
-          : { rolls: [mine], kept: mine, total: mine + p.toHit, crit: mine === 20, fumble: mine === 1, physical: true },
+          : {
+              rolls: [mine],
+              kept: mine,
+              total: mine + p.toHit,
+              crit: mine >= (p.crit || 20),
+              fumble: mine === 1,
+              physical: true,
+            },
       n = session.mode === 'action' ? A.attacksPerAction(state) : 1;
     r.total += extra.total;
     session.attacks++;
@@ -241,10 +260,22 @@ const AttackUI = (() => {
     const { item, p } = current();
     const crit = session.last.crit,
       mine = takeInput('myDamage', 0, 999),
+      picked = [...document.querySelectorAll('#dialog-form [name=rider]:checked')].map(x => x.value),
+      riders = (p.riders || []).filter(r => r.available && picked.includes(r.id)),
+      flat = riders.reduce((a, r) => a + (r.flat || 0), 0),
       dmg =
         mine === null
-          ? A.rollDamage(p, crit, rnd)
-          : { parts: [{ rolls: [], sum: mine }], total: Math.max(0, mine + p.dmgMod), physical: true };
+          ? A.rollDamage(p, crit, rnd, riders)
+          : { parts: [{ rolls: [], sum: mine }], total: Math.max(0, mine + p.dmgMod + flat), physical: true };
+    // Lo de «una vez por turno» queda gastado y la casilla se apaga.
+    if (riders.some(r => r.once))
+      commit('Daño extra: ' + riders.map(r => r.label).join(', '), s => {
+        for (const r of riders) if (r.once) SubclassFX.markOnce(s, r.id);
+      });
+    for (const r of riders) {
+      const box = document.querySelector(`#dialog-form [name=rider][value="${CSS.escape(r.id)}"]`);
+      if (box && r.once && SubclassFX.onceUsed(state, r.id)) ((box.checked = false), (box.disabled = true));
+    }
     const parts = dmg.physical
       ? 'dados físicos ' + mine
       : dmg.parts

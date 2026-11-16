@@ -502,6 +502,7 @@
     }
     const items = root.MagicItems?.check(s) || 0;
     if (items) parts.push({ label: 'Objetos', value: items });
+    parts.push(...(root.SubclassFX?.checks(s, ability, skill) || []));
     return parts;
   }
   // ---------- Agotamiento (PHB, apéndice A) ----------
@@ -568,13 +569,18 @@
     const parts = checkParts(s, 'dex'),
       feat = root.FeatFX?.initiative(s) || 0;
     if (feat) parts.push({ label: 'Dotes', value: feat });
+    parts.push(...(root.SubclassFX?.initiative(s) || []));
     return parts;
   }
   const partsText = parts => parts.map(x => (x.value < 0 ? '−' : '+') + Math.abs(x.value) + ' ' + x.label).join(' ');
   const hasSkill = (s, id) =>
-    s.proficiencies.includes(id) || Boolean(root.Grants?.proficiencies(s, 'skill').includes(id));
+    s.proficiencies.includes(id) ||
+    Boolean(root.Grants?.proficiencies(s, 'skill').includes(id)) ||
+    Boolean(root.SubclassFX?.skills(s).includes(id));
   const hasExpertise = (s, id) =>
-    s.expertise.includes(id) || Boolean(root.Grants?.proficiencies(s, 'expertise').includes(id));
+    s.expertise.includes(id) ||
+    Boolean(root.Grants?.proficiencies(s, 'expertise').includes(id)) ||
+    Boolean(root.SubclassFX?.expertise(s).includes(id));
   function saveBonus(s, a) {
     const own = ownSaveBonus(s, a),
       beast = s.wildShape?.saves?.[a];
@@ -589,9 +595,12 @@
         : root.Classes
           ? root.Classes.info(s).saves
           : ['dex', 'cha']
-      ).includes(a) || (root.FeatFX?.saves(s) || []).includes(a)
+      ).includes(a) ||
+      (root.FeatFX?.saves(s) || []).includes(a) ||
+      (root.SubclassFX?.saveProfs(s) || []).includes(a)
         ? prof(totalLevel(s))
-        : 0)
+        : 0) +
+      (root.SubclassFX?.saves(s) || []).reduce((t, x) => t + x.value, 0)
     );
   }
   function allSpells(s) {
@@ -945,7 +954,13 @@
           Array.isArray(c.rolled) ||
           Object.keys(c.rolled).length > 200 ||
           Object.entries(c.rolled).some(([k, v]) => !txt(k, 150) || !int(v, 0, 999)))) ||
-      (c.extraRolls !== undefined && !int(c.extraRolls, 0, 99))
+      (c.extraRolls !== undefined && !int(c.extraRolls, 0, 99)) ||
+      (c.fxOnce !== undefined &&
+        (!c.fxOnce ||
+          typeof c.fxOnce !== 'object' ||
+          Array.isArray(c.fxOnce) ||
+          Object.keys(c.fxOnce).length > 100 ||
+          Object.entries(c.fxOnce).some(([k, v]) => !txt(k, 150) || !int(v, 0, 999999))))
     )
       fail();
     if (root.Homebrew) {
