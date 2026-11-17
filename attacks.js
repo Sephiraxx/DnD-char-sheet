@@ -143,13 +143,29 @@
       const astral = item.unarmed && root.SubclassFX?.unarmedAbility(s);
       if (astral && mods[astral] > mods[ability]) ability = astral;
     }
+    // Garrote (Shillelagh): con garrote o bastón, característica de lanzamiento, d8 y arma mágica.
+    const shillelagh =
+      !item.unarmed && ['club', 'quarterstaff'].includes(item.equipmentId) && root.Effects?.active(s, 'shillelagh');
+    if (shillelagh && cfg.ability === 'auto') {
+      const cast = root.Classes?.casting(root.Classes.spellCaster(s, 'shillelagh'))?.ability || 'wis';
+      if (mods[cast] > mods[ability]) ability = cast;
+    }
     const prof = cfg.proficient === 'auto' ? item.unarmed || proficient(s, w) : cfg.proficient;
-    let dice = twoHands && w.versatile ? w.versatile : w.dice;
+    let dice = shillelagh ? '1d8' : twoHands && w.versatile ? w.versatile : w.dice;
     if (ma && (w.monk || item.unarmed) && !item.homebrew) {
       const cur = /^1d(\d+)$/.exec(dice);
       if (!cur || Number(cur[1]) < ma) dice = '1d' + ma;
     }
     const notes = [];
+    if (shillelagh) notes.push(`Garrote: ${R().attrs[ability]} al ataque y al daño, d8, arma mágica`);
+    else if (
+      !item.unarmed &&
+      ['club', 'quarterstaff'].includes(item.equipmentId) &&
+      root.Classes?.usable(s).includes('shillelagh')
+    )
+      notes.push(
+        'Garrote no está activo: lanzalo desde Conjuros (acción adicional) para usar tu característica de lanzamiento y d8',
+      );
     if (item.homebrew) notes.push(`${item.homebrew.from}: golpe sin armas ${item.homebrew.dice}`);
     let toHit = mods[ability] + (prof ? st.prof : 0) + cfg.magic;
     if (w.ranged && hasStyle(s, 'archery')) {
@@ -198,6 +214,7 @@
       crit: critOn,
       gwf,
       weapon: w,
+      magical: Boolean(shillelagh || item.magic || cfg.magic),
       notes,
     };
   }
