@@ -25,7 +25,10 @@
     return Array.isArray(s.timedEffects) ? s.timedEffects : [];
   }
   // `link` identifica un efecto lanzado por otro (personaje:conjuro): relanzarlo lo reemplaza.
-  function add(s, { name, rounds = null, concentration = null, from = 'self', link = null, casting = null }) {
+  function add(
+    s,
+    { name, rounds = null, concentration = null, from = 'self', link = null, casting = null, spell = null },
+  ) {
     const id = 'fx-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     s.timedEffects = [
       ...list(s).filter(x => !(concentration && x.concentration === concentration) && !(link && x.link === link)),
@@ -36,6 +39,7 @@
         concentration,
         from,
         ...(link ? { link: String(link).slice(0, 120) } : {}),
+        ...(spell ? { spell: String(spell).slice(0, 60) } : {}),
         ...(casting ? { casting: structuredClone(casting) } : {}),
       },
     ].slice(-30);
@@ -47,6 +51,8 @@
     if (!sp.concentration && rounds === null) return;
     add(s, {
       name: sp.name,
+      // Garrote (Shillelagh) cambia los ataques con garrote o bastón mientras dura.
+      ...(sp.id === 'shillelagh' ? { spell: sp.id } : {}),
       rounds,
       concentration: sp.concentration ? sp.id : null,
       ...(sp.id === 'heat-metal'
@@ -138,6 +144,7 @@
             (x.rounds === null || (Number.isInteger(x.rounds) && x.rounds >= 0 && x.rounds <= 100000)) &&
             (x.concentration === null || typeof x.concentration === 'string') &&
             (x.link === undefined || (typeof x.link === 'string' && x.link.length <= 120)) &&
+            (x.spell === undefined || (typeof x.spell === 'string' && x.spell.length <= 60)) &&
             ['self', 'dm'].includes(x.from) &&
             (x.casting === undefined ||
               (x.casting &&
@@ -152,6 +159,21 @@
         ))
     );
   }
-  root.Effects = { roundsFrom, list, add, fromSpell, repeatInfo, repeatBlock, repeat, tick, sync, remaining, valid };
+  // ¿Hay un efecto propio activo de ese conjuro?
+  const active = (s, spellId) => list(s).some(x => x.from === 'self' && x.spell === spellId && x.rounds !== 0);
+  root.Effects = {
+    roundsFrom,
+    list,
+    add,
+    fromSpell,
+    repeatInfo,
+    repeatBlock,
+    repeat,
+    tick,
+    sync,
+    remaining,
+    valid,
+    active,
+  };
   if (typeof module !== 'undefined') module.exports = root.Effects;
 })(typeof window !== 'undefined' ? window : globalThis);
