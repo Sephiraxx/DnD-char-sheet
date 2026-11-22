@@ -333,5 +333,5 @@ const Encounters = (() => {
     });
   }
   install();
-  return { card, get, addMonsters, addGenerated, STYLES };
+  return { card, get, list, addMonsters, addGenerated, STYLES };
 })();

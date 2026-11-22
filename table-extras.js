@@ -95,24 +95,8 @@ const TableExtras = (() => {
     if (!item) throw Error('Ese objeto ya no está.');
     if (item.data?.for && item.data.for !== characterId)
       throw Error('El DM lo reservó para ' + charName(item.data.for) + '.');
-    // Del catálogo: llega con sus efectos y se puede equipar o sintonizar.
-    const made = ref(item) ? ItemRef.rows(ref(item), { qty: item.qty, notes: item.notes || '', uid }) : null;
-    return Cloud.claimLoot(id, characterId, state.name).then(() => {
-      commit('Botín: ' + item.name, s => {
-        if (made?.length) for (const r of made) s.inventory.push(r);
-        else
-          s.inventory.push({
-            id: uid(),
-            name: item.name,
-            qty: item.qty,
-            category: 'Equipo',
-            weight: null,
-            location: 'Con el personaje',
-            notes: item.notes || 'Botín de la party',
-          });
-      });
-      if (made?.[0]?.magic?.attune) toast('Tomaste ' + item.name + '. Sintonizalo en Equipo para que funcione.');
-      else toast('Tomaste ' + item.name + '.');
+    return Cloud.claimLoot(id, characterId).then(async () => {
+      await ctx.receiveCommands?.();
       ctx.refresh();
     });
   }

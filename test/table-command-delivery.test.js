@@ -125,3 +125,40 @@ test('unconfirmed HP retains pending damage, and typed resistance plus temporary
   assert.equal(g.state.hp, start - 2);
   assert.equal(g.state.temp, 0);
 });
+
+test('a rejected local storage write leaves damage and its receipt pending', async () => {
+  const { g, control, sync } = await setup();
+  const before = g.state.hp;
+  g.$ = () => ({});
+  g.BACKUP = g.KEY + '-previous';
+  g.rawBroken = null;
+  g.storageIssue = '';
+  const app = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
+  vm.runInContext(app.slice(app.indexOf('function persist('), app.indexOf('function download(')), g);
+  const set = g.localStorage.setItem;
+  g.localStorage.setItem = (key, value) => {
+    if (key === g.KEY) throw Error('QuotaExceededError');
+    set(key, value);
+  };
+  control.pending = [damage(77)];
+  await sync();
+  assert.equal(g.state.hp, before);
+  assert.ok(!g.state.dmCommandsApplied?.includes(77));
+  assert.ok(!control.calls.some(c => c.startsWith('ack:')));
+});
+
+test('a condition sent by the DM cancels concentration and an in-progress ritual', async () => {
+  const { g, control, sync } = await setup();
+  g.state.concentration = 'detectmagic';
+  g.state.ritualCasting = 'detectmagic';
+  g.state.combatState.checks = [10];
+  g.Cloud.COMMANDS.push('condition');
+  control.pending = [
+    { id: 71, kind: 'condition', target_character: 'player', payload: { name: 'Aturdido', on: true } },
+  ];
+  await sync();
+  assert.ok(g.state.conditions.includes('Aturdido'));
+  assert.equal(g.state.concentration, null);
+  assert.equal(g.state.ritualCasting, undefined);
+  assert.equal(g.state.combatState.checks.length, 0);
+});

@@ -38,6 +38,7 @@ test('QA O-08: a subscribed own-turn event opens Combat and resets action tokens
     },
     party: async () => ({ characters: [], members: [] }),
     events: async () => [],
+    order: list => list,
     pendingCommands: async () => [],
   };
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../table-ui.js'), 'utf8'), g);
@@ -59,4 +60,17 @@ test('QA O-08: a subscribed own-turn event opens Combat and resets action tokens
   });
   assert.equal(g.location.hash, 'journal');
   assert.equal(g.state.combatState.onTurn, false);
+  g.Cloud.party = async () => ({
+    characters: [],
+    members: [],
+    encounter: { active: true, round: 3, current_id: 'mine', updated_at: '2026-11-22T19:00:00Z' },
+    combatants: [{ id: 'mine', character_id: 'qa-player', name: 'Golpe' }],
+  });
+  await receive('resync', {});
+  assert.equal(g.state.combatState.onTurn, true);
+  g.state.combatState.action = 'Ataque';
+  const turn = g.state.combatState.turn;
+  await receive('resync', {});
+  assert.equal(g.state.combatState.turn, turn);
+  assert.equal(g.state.combatState.action, 'Ataque');
 });

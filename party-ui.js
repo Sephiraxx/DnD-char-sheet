@@ -674,6 +674,7 @@ const PartyUI = (() => {
           button('Libros habilitados', 'campaign-sources') +
           button('Dados y siglas', 'rules-help'),
       ) +
+      (state.ritualCasting ? ritualControls() : '') +
       strixhavenCard(state) +
       GrantUI.card(state, true) +
       `<div class="banner"><p>${cast.type === 'book' ? 'El libro conserva lo aprendido. Para lanzar, prepará hasta ' + d.prepared + ' conjuros; los rituales del libro pueden lanzarse sin prepararlos.' : cast.type === 'prepared' ? 'Podés preparar hasta ' + d.prepared + ' conjuros de clase, además de los siempre preparados y extras.' : cast.type === 'known' ? 'Máximo de clase: ' + d.known + ' conjuros y ' + d.cantrips + ' trucos.' : 'Los conjuros concedidos por objetos, raza o el DM se agregan como extras.'} Los extras del DM pueden ser de cualquier clase o nivel.</p></div>${['prepared', 'book'].includes(cast.type) ? `<p class="spell-counts">${counts.prepared}/${d.prepared} preparados por vos · ${counts.automaticPrepared} siempre preparados por subclase${counts.automaticKnown ? ' · ' + counts.automaticKnown + ' concedido(s) automáticamente' : ''}.</p>` : ''}<div class="toolbar"><input class="control" id="spell-search" type="search" aria-label="Buscar conjuros" placeholder="Buscar por nombre español o inglés…" value="${esc(query)}"><select class="control" id="spell-filter" aria-label="Filtrar conjuros">${[
@@ -1026,57 +1027,58 @@ const PartyUI = (() => {
           }
           if (id === 'second-wind') {
             if (s.hp === null) throw Error('Confirmá tus PG actuales.');
-            s.hp = Math.min(R.stats(s).maxHP, s.hp + number(fd, 'roll', 1, 10) + s.level);
+            Companions.heal(s, number(fd, 'roll', 1, 10) + s.level);
           }
         }),
       'Registrar uso',
     );
   }
   function shortRest() {
-    const d = R.stats(state),
-      dice = C.hitDiceLeft(state),
-      die = (dice.find(x => x.left) || dice[0]).die;
+    if (Combat.dead(state)) throw Error('El personaje necesita resucitar antes de descansar.');
     if (state.hdSpent === null || state.hp === null)
       throw Error('Confirmá tus PG y Dados de Golpe antes de descansar.');
-    const max = R.totalLevel(state) - state.hdSpent;
+    const dice = C.hitDiceLeft(state);
+    const fields = dice
+      .filter(x => x.left)
+      .map(
+        x =>
+          `<fieldset><legend>d${x.die} · ${x.left} disponibles</legend>
+      ${field('Dados a gastar', 'count-' + x.die, 0, 'number', `min="0" max="${x.left}" required`)}
+      ${field('Resultados (separados por comas)', 'rolls-' + x.die, '', 'text', 'placeholder="3, 7"')}
+      ${button('Tirar d' + x.die, 'party-short-roll', 'secondary', `data-die="${x.die}"`)}</fieldset>`,
+      )
+      .join('');
     modal(
       'Descanso corto completado',
-      `<p>Podés gastar hasta ${max} Dados de Golpe (${dice.map(x => x.count + 'd' + x.die).join(' + ')} en total; te quedan ${dice.map(x => x.left + 'd' + x.die).join(' + ')}). Tirás cada dado, sumás CON ${sign(d.mods.con)} y recuperás ese resultado (mínimo 0 por dado). Podés decidir gastar otro después de cada tirada.</p>${
-        dice.length > 1
-          ? select(
-              'Tipo de dado',
-              'die',
-              dice.map(x => [x.die, `d${x.die} (te quedan ${x.left})`]),
-              die,
-            ) + '<p class="small">Para gastar dados de distinto tipo, hacé un descanso por cada tipo.</p>'
-          : ''
-      }${field('Cantidad de Dados de Golpe a gastar', 'count', 0, 'number', `min="0" max="${max}" required`)}${field('Resultados de los dados (separados por comas)', 'rolls', '', 'text', 'placeholder="Ejemplo: 3, 7"')}${button('Tirar la cantidad elegida', 'party-short-roll')}${field('Canción de descanso recibida (0 si no aplica)', 'song', 0, 'number', 'min="0" max="12" required')}<p class="small">Sumá Canción una sola vez si gastaste dados y escuchaste al bardo. El descanso también recupera tus recursos marcados «corto», y espacios de pacto si sos brujo. Mago: Recuperación arcana se usa aparte.</p><label class="check"><input type="checkbox" required>Completé al menos una hora de descanso y los requisitos de recuperación de mis rasgos.</label>`,
+      `<p>Elegí qué Dados de Golpe gastar. Podés combinar tipos en el mismo descanso. Cada dado recupera su resultado + CON ${sign(R.stats(state).mods.con)} (mínimo 0).</p>${fields || '<p>No te quedan dados disponibles.</p>'}
+      ${field('Canción de descanso recibida (0 si no aplica)', 'song', 0, 'number', 'min="0" max="12" required')}
+      <p class="small">Sumá Canción una sola vez si gastaste dados y escuchaste al bardo. También recuperás los recursos marcados «corto» y los espacios de pacto.</p><label class="check"><input type="checkbox" required>Completé al menos una hora de descanso.</label>`,
       fd => {
-        const n = number(fd, 'count', 0, max),
-          rolls = String(fd.get('rolls'))
-            .trim()
-            .split(/[,;\s]+/)
-            .filter(Boolean)
-            .map(Number),
-          song = number(fd, 'song', 0, n ? 12 : 0);
-        const used = Number(fd.get('die')) || die,
-          left = dice.find(x => x.die === used)?.left ?? 0;
-        if (n > left) throw Error(`Te quedan ${left}d${used}. Para otro tipo de dado, elegilo arriba.`);
-        if (rolls.length !== n || rolls.some(x => !Number.isInteger(x) || x < 1 || x > used))
-          throw Error('Ingresá un resultado válido por cada d' + used + ' gastado.');
-        const heal = rolls.reduce((a, n) => a + Math.max(0, n + d.mods.con), 0) + song;
-        commit('Descanso corto · ' + n + 'd' + used + ' · +' + heal + ' PG', s => {
-          C.spendHitDice(s, used, n);
-          s.hp = Math.min(d.maxHP, s.hp + heal);
+        const spent = dice
+          .filter(x => x.left)
+          .map(x => {
+            const n = number(fd, 'count-' + x.die, 0, x.left);
+            const rolls = String(fd.get('rolls-' + x.die) || '')
+              .trim()
+              .split(/[,;\s]+/)
+              .filter(Boolean)
+              .map(Number);
+            if (rolls.length !== n || rolls.some(v => !Number.isInteger(v) || v < 1 || v > x.die))
+              throw Error('Ingresá un resultado válido por cada d' + x.die + ' gastado.');
+            return { die: x.die, rolls };
+          });
+        const con = R.stats(state).mods.con;
+        const count = spent.reduce((sum, x) => sum + x.rolls.length, 0);
+        const song = number(fd, 'song', 0, count ? 12 : 0);
+        const heal = spent.flatMap(x => x.rolls).reduce((sum, n) => sum + Math.max(0, n + con), song);
+        commit('Descanso corto · ' + count + ' dados · +' + heal + ' PG', s => {
+          for (const x of spent) C.spendHitDice(s, x.die, x.rolls.length);
+          if (heal) Companions.heal(s, heal);
           C.reset(s, 'short');
           Effects.tick(s, 600);
           s.extraResources.forEach(r => {
             if (r.reset === 'short') r.spent = 0;
           });
-          if (s.hp > 0) {
-            s.death = { success: 0, failure: 0 };
-            s.conditions = s.conditions.filter(x => x !== 'Inconsciente');
-          }
           Combat.finish(s);
           s.combatState.effects = [];
         });
@@ -1359,16 +1361,13 @@ const PartyUI = (() => {
       stats: statsEdit,
       'short-rest': shortRest,
       'party-attack': genericAttack,
-      'party-short-roll': () => {
-        const form = document.getElementById('dialog-form'),
-          n = Number(form.elements.namedItem('count').value);
-        const die =
-            Number(form.elements.namedItem('die')?.value) ||
-            C.hitDiceLeft(state).find(x => x.left)?.die ||
-            C.info(state).die,
-          left = C.hitDiceLeft(state).find(x => x.die === die)?.left ?? 0;
+      'party-short-roll': e => {
+        const die = Number(e.dataset.die);
+        const form = document.getElementById('dialog-form');
+        const n = Number(form.elements.namedItem('count-' + die).value);
+        const left = C.hitDiceLeft(state).find(x => x.die === die)?.left ?? 0;
         if (!Number.isInteger(n) || n < 0 || n > left) throw Error(`Te quedan ${left}d${die}.`);
-        form.elements.namedItem('rolls').value = roll(die, n).join(', ');
+        form.elements.namedItem('rolls-' + die).value = n ? roll(die, n).join(', ') : '';
       },
     });
   }

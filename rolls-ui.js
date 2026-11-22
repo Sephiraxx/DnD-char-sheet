@@ -245,7 +245,8 @@ const RollUI = (() => {
   }
 
   function deathSave() {
-    if (state.hp !== 0) throw Error('Las salvaciones de muerte se tiran a 0 PG.');
+    if (state.hp !== 0 || Combat.dead(state) || Combat.stable(state))
+      throw Error('No corresponde una salvación de muerte.');
     d20({
       title: 'Salvación de muerte',
       label: 'Salvación de muerte',
@@ -255,21 +256,7 @@ const RollUI = (() => {
         setTimeout(() => {
           let msg;
           commit('Salvación de muerte: ' + r.kept, s => {
-            if (r.kept === 20) {
-              s.hp = 1;
-              s.death = { success: 0, failure: 0 };
-              s.conditions = s.conditions.filter(x => x !== 'Inconsciente');
-              msg = '¡20 natural! Recuperás 1 PG y volvés en ti.';
-            } else if (r.kept >= 10) {
-              s.death.success = Math.min(3, s.death.success + 1);
-              msg = s.death.success >= 3 ? 'Tres éxitos: estás estable.' : 'Éxito (' + s.death.success + '/3).';
-            } else {
-              s.death.failure = Math.min(3, s.death.failure + (r.kept === 1 ? 2 : 1));
-              msg =
-                s.death.failure >= 3
-                  ? 'Tres fallos: tu personaje muere. Avisale al DM.'
-                  : (r.kept === 1 ? '1 natural: dos fallos' : 'Fallo') + ' (' + s.death.failure + '/3).';
-            }
+            msg = Combat.deathSave(s, r.kept, r.total);
           });
           toast(msg);
         }),
@@ -796,11 +783,7 @@ const RollUI = (() => {
       for (const w of who) {
         if (w === 'self') {
           commit('Curación propia: ' + sp.name + ' +' + total, s => {
-            s.hp = Math.min(R.stats(s).maxHP, (s.hp ?? 0) + total);
-            if (s.hp > 0) {
-              s.death = { success: 0, failure: 0 };
-              s.conditions = s.conditions.filter(x => x !== 'Inconsciente');
-            }
+            Companions.heal(s, total);
           });
           names.push('vos');
         } else {

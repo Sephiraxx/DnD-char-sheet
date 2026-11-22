@@ -107,7 +107,9 @@ function commit(label, fn, requireSaved = false) {
       localStorage.setItem(KEY, JSON.stringify(next));
     } catch (e) {
       throw Error(
-        'No hay espacio para guardar la foto. Quitá fotos de otras fichas o exportá y eliminá una ficha que no uses.',
+        typeof requireSaved === 'string'
+          ? requireSaved
+          : 'No hay espacio para guardar la foto. Quitá fotos de otras fichas o exportá y eliminá una ficha que no uses.',
       );
     }
     try {
@@ -751,33 +753,6 @@ function rest() {
     `<p>Elegí el descanso que completaste.</p><div class="actions">${button('Descanso corto', 'short-rest', '')}${button('Descanso largo', 'long-rest', 'secondary')}</div><p class="small section-space">Corto: al menos una hora. Largo: al menos ocho horas y como máximo sus beneficios una vez por 24 horas. La ficha no avanza el tiempo por vos.</p>`,
   );
 }
-function shortRest() {
-  const d = R.stats(state);
-  if (state.hdSpent === null || state.hp === null) throw Error('Confirmá tus PG y Dados de Golpe en Ajustar recursos.');
-  const avail = state.level - state.hdSpent;
-  modal(
-    'Descanso corto',
-    `<p class="small">Disponibles: ${avail}d8. Anotá la suma de tus dados físicos o usá «Tirar dados». Canción de descanso se suma una sola vez si gastás al menos un dado.</p><div class="form-grid">${field('Dados de Golpe a gastar', 'dados', 0, 'number', `min="0" max="${avail}" required`)}${field('Suma de los d8 (sin CON)', 'tirada', 0, 'number', 'min="0" max="160" required')}${field('Resultado Canción de descanso', 'canción', 0, 'number', `min="0" max="${d.songDie}" required`)}</div>${button('Tirar dados seleccionados', 'short-roll')}<p class="small section-space">Cada d8 suma CON ${sign(d.mods.con)}. ${state.level >= 5 ? 'También recuperás Inspiración.' : 'No recuperás espacios ni Inspiración.'}</p>`,
-    fd => {
-      const n = number(fd, 'dados', 0, avail),
-        sum = number(fd, 'tirada', n, n * 8),
-        song = number(fd, 'canción', 0, n ? d.songDie : 0);
-      const heal = n ? Math.max(0, sum + n * d.mods.con) + song : 0;
-      commit(`Descanso corto: ${n} Dados de Golpe, +${heal} PG`, s => {
-        s.hdSpent += n;
-        s.hp = Math.min(d.maxHP, s.hp + heal);
-        if (s.hp > 0) {
-          s.death = { success: 0, failure: 0 };
-          if (heal > 0) s.conditions = s.conditions.filter(x => x !== 'Inconsciente');
-        }
-        if (s.level >= 5) s.inspirationSpent = 0;
-        s.extraResources.forEach(x => {
-          if (x.reset === 'short') x.spent = 0;
-        });
-      });
-    },
-  );
-}
 function longRest() {
   if (state.hp === 0) throw Error('Para obtener los beneficios del descanso largo debés iniciarlo con al menos 1 PG.');
   modal(
@@ -953,7 +928,7 @@ function settings() {
 function sources() {
   modal(
     'Reglas y créditos',
-    `<p>Ficha para <b>D&D 5e 2014</b>. Las reglas de mesa del DM prevalecen sobre la referencia. Los cálculos automáticos cubren las 13 clases, la multiclase, los ataques con armas, las dotes más comunes, la magia de linaje y los objetos mágicos del catálogo; otras excepciones se registran y ajustan manualmente.</p><p><a href="https://media.wizards.com/2023/downloads/dnd/SRD_CC_v5.1.pdf" target="_blank" rel="noopener">SRD 5.1</a></p><p class="small">Referencias resumidas para uso de mesa de los libros de la línea 2014. Los libros se habilitan en cada ficha o los elige el DM para su mesa. Los conjuros incluyen resúmenes de uso en español; las excepciones y tablas se consultan en su fuente. Aplicación no oficial, sin afiliación con Wizards of the Coast.</p><p class="small">This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.</p><p class="small"><b>Tus datos.</b> Tus fichas se guardan en este dispositivo. Si te unís a una mesa, esa ficha, tus tiradas y tu nombre de jugador se comparten con la mesa a través de su servidor (Supabase); el ingreso usa Cloudflare Turnstile contra bots y, si lo elegís, tu email para abrir tus fichas en otros dispositivos. Con una cuenta, cada ficha también se copia en ese servidor. Nada sale de este dispositivo si no te unís a una mesa ni creás una cuenta.</p>`,
+    `<p>Ficha para <b>D&D 5e 2014</b>. Las reglas de mesa del DM prevalecen sobre la referencia. Los cálculos automáticos cubren las 13 clases, la multiclase, los ataques con armas, las dotes más comunes, la magia de linaje y los objetos mágicos del catálogo; otras excepciones se registran y ajustan manualmente.</p><p><a href="https://media.wizards.com/2023/downloads/dnd/SRD_CC_v5.1.pdf" target="_blank" rel="noopener">SRD 5.1</a></p><p class="small">Referencias resumidas para uso de mesa de los libros de la línea 2014. Los libros se habilitan en cada ficha o los elige el DM para su mesa. Los conjuros incluyen resúmenes de uso en español; las excepciones y tablas se consultan en su fuente. Aplicación no oficial, sin afiliación con Wizards of the Coast.</p><p class="small">This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.</p><p class="small"><b>Tus datos.</b> Tus fichas se guardan en este dispositivo. Si te unís a una mesa, el servidor (Supabase) guarda tu ficha y el DM puede verla. Los demás jugadores reciben un resumen, tus tiradas compartidas y tu nombre de jugador. El ingreso usa Cloudflare Turnstile contra bots y podés usar tu email para abrir tus fichas en otros dispositivos. Con una cuenta, cada ficha también se copia en ese servidor. Nada sale de este dispositivo si no te unís a una mesa ni creás una cuenta.</p>`,
   );
 }
 const actions = {
@@ -962,7 +937,6 @@ const actions = {
   resources: editResources,
   stats: editStats,
   rest: rest,
-  'short-rest': shortRest,
   'long-rest': longRest,
   levelup: levelup,
   'spell-manage': () => PartyUI.manageSpells(),
@@ -1033,14 +1007,7 @@ const actions = {
     const conc = state.concentration;
     let wild = null;
     commit('Daño recibido: ' + n, s => {
-      wild = Companions.absorb(s, n);
-      s.hp = Math.max(0, s.hp - wild.toCharacter);
-      if (s.hp === 0) {
-        s.concentration = null;
-        Combat.data(s).checks = [];
-        if (!s.conditions.includes('Inconsciente')) s.conditions.push('Inconsciente');
-        if (!s.conditions.includes('Derribado')) s.conditions.push('Derribado');
-      } else if (conc) Combat.data(s).checks.push(Math.max(10, Math.floor(n / 2)));
+      wild = Combat.takeDamage(s, n, !!$('#hp-critical')?.checked);
     });
     $('#modal').close();
     if (wild?.beast)
@@ -1052,7 +1019,7 @@ const actions = {
     toast(
       conc && state.hp > 0
         ? `Daño registrado: ${n}${why}. Resolvé la salvación de concentración en «En curso».`
-        : `Daño registrado: ${n}${why}. Si estabas a 0 PG, ajustá las salvaciones de muerte según el impacto.`,
+        : `Daño registrado: ${n}${why}.${Combat.dead(state) ? ' El personaje murió.' : ''}`,
     );
   },
   heal: () => {
@@ -1100,10 +1067,11 @@ const actions = {
     commit('Inicio de mi turno: reacción disponible', s => (s.reactionUsed = false));
     toast('Reacción recuperada.');
   },
+  'ritual-complete': () =>
+    commit('Ritual completado: ' + spellName(state.ritualCasting), s => Combat.completeRitual(s)),
   'concentration-end': () =>
     commit('Concentración terminada', s => {
-      s.concentration = null;
-      Combat.data(s).checks = [];
+      Combat.endConcentration(s);
     }),
   'ammo-recover': e => {
     const keep = e.dataset.keep === '1',
@@ -1124,6 +1092,7 @@ const actions = {
         if (next === 6) {
           s.hp = 0;
           s.death = { success: 0, failure: 3 };
+          Combat.condition(s, 'Inconsciente', true);
         }
       });
     if (next === 6)
@@ -1138,20 +1107,26 @@ const actions = {
   condition: e => {
     let c = e.dataset.condition;
     commit((state.conditions.includes(c) ? 'Quitada: ' : 'Añadida: ') + c, s => {
-      s.conditions = s.conditions.includes(c) ? s.conditions.filter(x => x !== c) : [...s.conditions, c];
-      if (
-        ['Incapacitado', 'Inconsciente', 'Paralizado', 'Aturdido', 'Petrificado'].includes(c) &&
-        s.conditions.includes(c)
-      ) {
-        s.concentration = null;
-        Combat.data(s).checks = [];
-      }
+      Combat.condition(s, c, !s.conditions.includes(c));
     });
   },
+  'death-stabilize': () =>
+    commit('Personaje estabilizado', s => {
+      if (s.hp !== 0 || Combat.dead(s)) throw Error('El personaje no se puede estabilizar.');
+      s.death = { success: 3, failure: 0 };
+    }),
+  'death-revive': () =>
+    confirmAction('Resucitar personaje', 'Confirmá que el DM resolvió la resurrección. La ficha recupera 1 PG.', () =>
+      commit('Personaje resucitado', s => {
+        if (!Combat.dead(s)) throw Error('El personaje no está muerto.');
+        s.death = { success: 0, failure: 0 };
+        Companions.heal(s, 1);
+      }),
+    ),
   death: e =>
     commit('Salvación de muerte registrada', s => {
-      let k = e.dataset.kind;
-      s.death[k] = (s.death[k] + 1) % 4;
+      const kind = e.dataset.kind;
+      Combat.deathSave(s, kind === 'success' ? 10 : 2);
     }),
   'death-reset': () => commit('Salvaciones de muerte reiniciadas', s => (s.death = { success: 0, failure: 0 })),
   dice: () =>
@@ -1292,16 +1267,6 @@ const actions = {
           }),
         ),
     ),
-  'short-roll': () => {
-    let form = $('#dialog-form'),
-      n = Number(form.elements.namedItem('dados').value);
-    if (!Number.isInteger(n) || n < 0 || n > state.level - state.hdSpent) throw Error('Cantidad de dados no válida.');
-    const a = roll(8, n),
-      b = n && state.level >= 2 ? roll(R.stats(state).songDie)[0] : 0;
-    form.elements.namedItem('tirada').value = a.reduce((x, y) => x + y, 0);
-    form.elements.namedItem('canción').value = b;
-    toast('d8: ' + (a.join(', ') || 'ninguno') + ' · Canción: ' + b);
-  },
 };
 installCombatActions();
 PartyUI.install();

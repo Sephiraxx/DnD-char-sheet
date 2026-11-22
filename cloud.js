@@ -230,15 +230,19 @@
   async function myCharacters() {
     const me = await currentUser();
     if (!me) return [];
-    return check(
-      await (
-        await api()
-      )
+    const c = await api();
+    const rows = check(
+      await c
         .from('characters')
         .select('id, name, data, updated_at, campaign_id, campaigns(name, code)')
         .eq('owner_id', me.id)
         .order('name'),
     );
+    if (rows.some(row => !row.campaigns) && (await supportsPrivateTables(c))) {
+      const tables = check(await c.rpc('member_campaigns'));
+      for (const row of rows) row.campaigns ||= tables.find(t => t.id === row.campaign_id);
+    }
+    return rows;
   }
   async function myDmTables() {
     const me = await currentUser();
@@ -416,13 +420,32 @@
     const camp = check(await c.rpc('join_campaign', { p_code: code, p_display: display }));
     return attach(key, state, camp);
   }
+  // La ficha privada y su resumen público se actualizan juntos en la misma fila.
+  let privateTables;
+  async function supportsPrivateTables(c) {
+    if (privateTables !== undefined || typeof c.rpc !== 'function') return !!privateTables;
+    const res = await c.rpc('member_campaigns');
+    if (res.error?.code === 'PGRST202') return (privateTables = false);
+    check(res);
+    privateTables = true;
+    return true;
+  }
+  function sheetPayload(state, publishSummary) {
+    const row = { name: state.name, data: state };
+    if (publishSummary && root.PartyView) {
+      const { gold, ...summary } = root.PartyView.summarize(state);
+      row.public_summary = summary;
+    }
+    return row;
+  }
   // Sube la ficha a una mesa a la que ya se unió este acceso y la vincula.
   async function attach(key, state, camp) {
     const c = await api();
+    const fields = sheetPayload(state, await supportsPrivateTables(c));
     const row = check(
       await c
         .from('characters')
-        .insert({ campaign_id: camp.id || camp.campaignId, name: state.name, data: state })
+        .insert({ campaign_id: camp.id || camp.campaignId, ...fields })
         .select('id, updated_at')
         .single(),
     );
@@ -485,7 +508,7 @@
             check(
               await c
                 .from('characters')
-                .update({ name: state.name, data: state })
+                .update(sheetPayload(state, await supportsPrivateTables(c)))
                 .eq('id', l.characterId)
                 .eq('updated_at', l.syncedAt)
                 .select('updated_at')
@@ -790,12 +813,37 @@
   async function reconcile(key) {
     const l = link(key);
     if (!l) return { action: 'none' };
+    const c = await api();
+    const privateAccess = await supportsPrivateTables(c);
     const row = check(
-      await (await api()).from('characters').select('data, updated_at').eq('id', l.characterId).maybeSingle(),
+      await c
+        .from('characters')
+        .select(privateAccess ? 'data, updated_at, public_summary' : 'data, updated_at')
+        .eq('id', l.characterId)
+        .maybeSingle(),
     );
     if (!row) {
       setLink(key, null);
       return { action: 'removed', link: l };
+    }
+    if (privateAccess && row.public_summary === null && root.PartyView) {
+      const summary = sheetPayload(row.data, true).public_summary;
+      const refreshed = check(
+        await c
+          .from('characters')
+          .update({ public_summary: summary })
+          .eq('id', l.characterId)
+          .eq('updated_at', row.updated_at)
+          .select('updated_at')
+          .maybeSingle(),
+      );
+      const latest = link(key);
+      if (refreshed && latest?.characterId === l.characterId && latest.syncedAt === row.updated_at) {
+        l.syncedAt = refreshed.updated_at;
+        l.dirty = latest.dirty;
+        setLink(key, { ...latest, syncedAt: l.syncedAt });
+      }
+      if (refreshed) row.updated_at = refreshed.updated_at;
     }
     const remoteNewer = row.updated_at !== l.syncedAt;
     if (remoteNewer && l.dirty) return { action: 'conflict', remote: row.data, updatedAt: row.updated_at };
@@ -812,17 +860,24 @@
   async function party(campaignId) {
     const c = await api();
     const me = await user();
-    const [campaign, members, characters] = await Promise.all([
-      c.from('campaigns').select('id, name, code, dm_id, settings').eq('id', campaignId).maybeSingle().then(check),
+    const privateAccess = await supportsPrivateTables(c);
+    const [campaign, members] = await Promise.all([
+      privateAccess
+        ? c.rpc('campaign_for_member', { p_campaign: campaignId }).then(check)
+        : c.from('campaigns').select('id, name, code, dm_id, settings').eq('id', campaignId).maybeSingle().then(check),
       c.from('members').select('user_id, role, display_name, joined_at').eq('campaign_id', campaignId).then(check),
-      c
-        .from('characters')
-        .select('id, owner_id, name, data, updated_at')
-        .eq('campaign_id', campaignId)
-        .order('name')
-        .then(check),
     ]);
-    if (!campaign) throw Error('La mesa ya no existe o no formás parte de ella.');
+    if (!campaign?.id) throw Error('La mesa ya no existe o no formás parte de ella.');
+    const dm = campaign.dm_id === me.id;
+    const characters = check(
+      await (
+        privateAccess && !dm
+          ? c.from('character_summaries').select('id, owner_id, name, summary, updated_at')
+          : c.from('characters').select('id, owner_id, name, data, updated_at')
+      )
+        .eq('campaign_id', campaignId)
+        .order('name'),
+    );
     // Botín y homebrew son opcionales: si la migración 003 no se aplicó, la mesa sigue funcionando.
     const rows = (table, order) =>
       c
@@ -857,7 +912,7 @@
       combatants,
       secrets,
       encounter,
-      viewerIsDM: campaign.dm_id === me.id,
+      viewerIsDM: dm,
     };
   }
   async function events(campaignId, limit = 60) {
@@ -990,20 +1045,12 @@
   async function removeLoot(id) {
     check(await (await api()).from('loot').delete().eq('id', id));
   }
-  // Reclamar un objeto libre: solo uno puede ganarlo.
-  async function claimLoot(id, characterId, name) {
-    const rows = check(
-      await (
-        await api()
-      )
-        .from('loot')
-        .update({ claimed_character: characterId, claimed_name: name })
-        .eq('id', id)
-        .is('claimed_character', null)
-        .select(),
-    );
-    if (!rows.length) throw Error('Alguien lo tomó primero.');
-    return rows[0];
+  // La reserva del objeto y su evento de entrega se graban en la misma transacción.
+  async function claimLoot(id, characterId) {
+    const r = await (await api()).rpc('claim_loot_for_delivery', { p_loot: id, p_character: characterId });
+    if (r.error?.code === 'PGRST202')
+      throw Error('Actualizá la base de datos para activar el botín recuperable (migración 018).');
+    return check(r);
   }
   // ---------- Homebrew de la mesa ----------
   async function saveHomebrew(campaignId, entry, id = null) {
@@ -1029,7 +1076,7 @@
   // `presence`: datos para mostrar quién tiene la aplicación abierta (por ejemplo { characterId } o { role: 'dm' }).
   async function subscribe(campaignId, handler, presence = null) {
     const c = await api();
-    await user();
+    const me = await user();
     const filter = 'campaign_id=eq.' + campaignId;
     const channel = c.channel('mesa-' + campaignId);
     let closed = false,
@@ -1044,8 +1091,10 @@
         syncing = false;
       }
     };
+    const privateAccess = await supportsPrivateTables(c);
+    const campaign = privateAccess ? check(await c.rpc('campaign_for_member', { p_campaign: campaignId })) : null;
     for (const table of [
-      'characters',
+      privateAccess && campaign?.dm_id !== me.id ? 'character_summaries' : 'characters',
       'events',
       'members',
       'loot',
@@ -1054,7 +1103,9 @@
       'combatants',
       'combatant_secrets',
     ])
-      channel.on('postgres_changes', { event: '*', schema: 'public', table, filter }, p => handler(table, p));
+      channel.on('postgres_changes', { event: '*', schema: 'public', table, filter }, p =>
+        handler(table === 'character_summaries' ? 'characters' : table, p),
+      );
     channel.on('presence', { event: 'sync' }, () => handler('presence', Object.values(channel.presenceState()).flat()));
     channel.subscribe(status => {
       if (status === 'SUBSCRIBED' && presence) channel.track(presence);
@@ -1143,6 +1194,26 @@
         .upload(path, blob, { contentType: blob.type || 'image/' + ext, cacheControl: '31536000', upsert: false }),
     );
     return path;
+  }
+  async function downloadMapImage(path) {
+    return check(await (await api()).storage.from('maps').download(path));
+  }
+  async function removeMapImages(paths) {
+    check(await (await api()).storage.from('maps').remove(paths));
+  }
+  async function restoreCampaignArchive(id, archive) {
+    const response = await (
+      await api()
+    ).rpc('restore_campaign_archive', {
+      p_campaign: id,
+      p_settings: archive.settings,
+      p_maps: archive.maps,
+      p_tokens: archive.tokens,
+      p_homebrew: archive.homebrew,
+      p_active: archive.active,
+    });
+    if (response.error?.code === 'PGRST202') throw Error('La importación requiere la migración 020.');
+    check(response);
   }
   async function mapImageUrl(path) {
     const r = check(await (await api()).storage.from('maps').createSignedUrl(path, 6 * 3600));
@@ -1249,9 +1320,10 @@
   async function myTables() {
     const me = await currentUser();
     if (!me) return [];
-    const rows = check(
-      await (await api()).from('members').select('campaign_id, role, campaigns(name)').eq('user_id', me.id),
-    );
+    const c = await api();
+    if (await supportsPrivateTables(c))
+      return check(await c.rpc('member_campaigns')).sort((a, b) => a.name.localeCompare(b.name, 'es'));
+    const rows = check(await c.from('members').select('campaign_id, role, campaigns(name)').eq('user_id', me.id));
     return rows
       .map(r => ({ id: r.campaign_id, name: r.campaigns?.name || 'Mesa', role: r.role }))
       .sort((a, b) => a.name.localeCompare(b.name, 'es'));
@@ -1277,6 +1349,9 @@
     removeToken,
     uploadMapImage,
     mapImageUrl,
+    downloadMapImage,
+    removeMapImages,
+    restoreCampaignArchive,
     subscribeBoard,
     enabled,
     order,

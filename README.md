@@ -183,6 +183,12 @@ En **Mesa → Tu acceso** (o en la pantalla del DM) cada uno puede guardar su ac
 
 El alta no envía correos si **Authentication → Sign In / Providers → Email → Confirm email** está desactivado. **Olvidé mi contraseña** sí envía un enlace. Habilitá el envío a tus jugadores con SMTP propio en Supabase y comprobá que `recover.html` esté permitido en las URLs de redirección del paso 5.
 
+### Copia de campaña del DM
+
+En **Mesa → Exportar campaña** descargá una copia de la preparación. Incluye mapas e imágenes, enlaces entre pisos, fichas preparadas, encuentros guardados en este dispositivo, crónica y homebrew de la mesa. **Restaurar copia de campaña** en Mis mesas crea una mesa con un código nuevo. Cada jugador puede volver a unirse con su ficha. La copia sirve para guardar o duplicar la preparación entre sesiones.
+
+En una instalación existente, desplegá la versión nueva de la app y ejecutá las migraciones **018 a 020** en orden antes de la próxima partida. La 018 activa el botín recuperable, la 019 aplica permisos de lectura y la 020 habilita la restauración de campañas. Después de la 019, pediles a los jugadores que recarguen y abran sus fichas vinculadas para publicar el resumen de cada personaje. La versión nueva también oculta las misiones que no están marcadas como compartidas en la base de datos.
+
 ## Guardado, copias y uso sin conexión
 
 Todo se guarda **en ese navegador y dispositivo**. Las fichas que están en una mesa compartida también se sincronizan con ella y, con el acceso guardado (email y contraseña), se abren en otros dispositivos. Sin mesa, GitHub Pages publica la aplicación pero no almacena ni sincroniza las fichas. Para trasladar una ficha usá **Personajes → Exportar personaje actual** e **Importar como personaje nuevo**. La importación tradicional de Mi ficha reemplaza solo la ficha activa, después de confirmar.

@@ -144,6 +144,7 @@
   }
   // Los efectos de concentración terminan cuando termina (o cambia) la concentración.
   function sync(s) {
+    if (s.ritualCasting && s.ritualCasting !== s.concentration) delete s.ritualCasting;
     if (!list(s).length) return;
     s.timedEffects = list(s).filter(
       x =>

@@ -168,6 +168,7 @@
   }
   // La curación se aplica a la reserva activa, incluida la de la bestia.
   function heal(s, amount) {
+    if (root.Combat?.dead(s)) throw Error('Este personaje necesita resucitar antes de recibir curación.');
     if (s.wildShape) {
       const ws = s.wildShape;
       const restored = Math.min(amount, ws.maxHp - ws.hp);

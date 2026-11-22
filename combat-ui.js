@@ -175,6 +175,18 @@ function ammoBanner() {
   const back = r.reduce((t, x) => t + x.back, 0);
   return `<div class="banner"><p><b>Munición gastada:</b> ${esc(r.map(x => `${x.used} de ${x.name}`).join(', '))}. Con un minuto de búsqueda recuperás la mitad: <b>${back}</b>.</p><div class="actions">${button('Recuperar ' + back, 'ammo-recover', '', 'data-keep="1"')}${button('No recuperar', 'ammo-recover', 'secondary', 'data-keep="0"')}</div></div>`;
 }
+function deathControls(manual = false) {
+  if (state.hp !== 0) return '';
+  if (Combat.dead(state))
+    return `<section class="banner"><b>Personaje muerto.</b> ${button('Resucitar', 'death-revive')}</section>`;
+  if (Combat.stable(state)) return '<section class="banner"><b>Estable a 0 PG.</b></section>';
+  return `<section class="banner"><p><b>A 0 PG.</b> Salvaciones de muerte: ${state.death.success}/3 éxitos · ${state.death.failure}/3 fallos.</p><div class="actions">${button('Tirar salvación de muerte', 'death-roll', '')}${manual ? button('Éxito', 'death', 'secondary', 'data-kind="success"') + button('Fallo', 'death', 'secondary', 'data-kind="failure"') : ''}${button('Estabilizar', 'death-stabilize')}${button('Reiniciar', 'death-reset')}</div></section>`;
+}
+function ritualControls() {
+  return state.ritualCasting
+    ? `<section class="banner"><p>Ritual en curso: <b>${esc(spellName(state.ritualCasting))}</b>. Completalo cuando termine el tiempo de lanzamiento.</p><div class="actions">${button('Completar ritual', 'ritual-complete', '')}${button('Interrumpir', 'concentration-end')}</div></section>`
+    : '';
+}
 function combatCompact() {
   const d = R.stats(state),
     v = Companions.vitals(state, d),
@@ -252,7 +264,7 @@ function combatCompact() {
   </div>
   ${ammoBanner()}
   ${pendingBanner(true)}
-  ${state.hp === 0 ? `<section class="banner"><p><b>A 0 PG.</b> Salvaciones de muerte: ${state.death.success}/3 éxitos · ${state.death.failure}/3 fallos.</p><div class="actions">${button('Tirar salvación de muerte', 'death-roll', '')}${button('Reiniciar', 'death-reset')}</div></section>` : ''}
+  ${deathControls()}${ritualControls()}
   ${state.heroicInspiration ? `<button class="text-btn heroic" data-action="heroic-toggle">★ Inspiración del DM</button>` : ''}
   ${state.concentration ? `<div class="cc-focus ${c.checks.length ? 'alert' : ''}"><span><b>${c.checks.length ? '⚠ Salvación de concentración' : 'Concentración'}</b> · ${esc(spellName(state.concentration))}${c.checks.length ? ' · CON ' + sign(R.saveBonus(state, 'con')) + ' vs CD ' + c.checks[0] : ''}</span><div class="actions">${c.checks.length ? button('Tirar', 'concentration-roll', '') + button('Superada', 'combat-concentration-pass') + button('Fallada', 'combat-concentration-fail', 'danger') : button('Terminar', 'concentration-end')}</div></div>` : ''}
   ${combatTab !== 'bonus' ? ongoingSpellActions() : ''}
@@ -331,7 +343,7 @@ function combatView() {
     ) +
     // Primero lo que se mira en cada turno: PG, CA, iniciativa.
     `<div class="metrics battle-metrics"><div class="metric"><strong>${v.hp ?? '—'}<small> / ${v.maxHP}</small></strong><span>PG actuales${state.wildShape ? ' de la bestia' : ''} ${state.temp ? ' · +' + state.temp + ' temporales' : ''}</span><button class="text-btn" data-action="combat-hp">Daño / curación</button></div><div class="metric"><strong>${v.ac}</strong><span>Clase de armadura</span>${state.heroicInspiration ? `<button class="text-btn heroic" data-action="heroic-toggle" title="Ventaja en una tirada; se gasta al usarla">★ Inspiración del DM</button>` : ''}</div>${magic ? `<div class="metric"><strong>${d.dc}</strong><span>CD de tus conjuros</span></div>` : ''}<div class="metric"><strong>${sign(d.initiative)}</strong><span>Iniciativa</span><button class="text-btn" data-action="roll" data-bonus="${d.initiative}" data-label="Iniciativa">Tirar d20</button></div><div class="metric"><strong>${R.passive(state, 'perception')}</strong><span>Percepción pasiva</span></div></div>
- ${state.hp === 0 ? `<section class="banner"><p><b>Estás a 0 PG.</b> Registrá las salvaciones de muerte. Tres éxitos estabilizan; tres fallos causan muerte.</p><div class="actions">${button('Tirar salvación de muerte', 'death-roll', '')}${button('Éxitos ' + state.death.success + '/3', 'death', 'secondary', 'data-kind="success"')}${button('Fallos ' + state.death.failure + '/3', 'death', 'danger', 'data-kind="failure"')}${button('Reiniciar', 'death-reset')}</div></section>` : ''}` +
+ ${deathControls(true)}${ritualControls()}` +
     `${!state.hpConfirmed || state.hp === null || (Classes.id(state) === 'bard' && state.inspirationSpent === null) || d.slots.some((max, i) => max && state.slotsSpent[i] === null) || Classes.resources(state).some(r => Classes.spent(state, r) === null) ? `<div class="banner"><p><b>Recursos sin confirmar.</b> Ingresá lo que te queda después de la pelea.</p>${button('Ajustar recursos', 'resources')}</div>` : ''}` +
     ammoBanner() +
     `${pendingBanner()}<section class="turn-console card"><div class="card-header"><div><p class="eyebrow">${c.active ? (on ? 'ES TU TURNO' : 'TURNO AJENO') : 'SEGUIMIENTO DE COMBATE'}</p><h2>${c.active ? 'Turno propio ' + c.turn : '¿Qué vas a hacer?'}</h2></div><div class="actions">${button(c.active ? 'Mi turno' : 'Iniciar mi turno', 'turn', '')}${on ? button('Terminar turno', 'combat-end') : ''}${c.active ? button('Salir de combate', 'combat-finish') : ''}</div></div><p class="small">${c.active ? '«Mi turno» recupera acción, adicional y reacción. Terminar tu turno conserva la reacción gastada.' : 'Activá el seguimiento cuando empiece tu turno. Fuera de combate podés consultar opciones y registrar recursos sin limitar acciones por turno.'}</p><div class="turn-status">${[
@@ -486,7 +498,7 @@ function combatHp() {
   const v = Companions.vitals(state);
   modal(
     'Puntos de golpe',
-    `<p>Actuales: <b>${v.hp ?? 'sin confirmar'} / ${v.maxHP}${state.wildShape ? ' PG bestia' : ''}</b> · Temporales: ${state.temp}</p><div class="hp-controls"><label class="visually-hidden" for="hp-amount">Cantidad</label><input class="control" id="hp-amount" type="number" min="1" max="9999" value="1"><label class="visually-hidden" for="hp-type">Tipo de daño</label><select class="control" id="hp-type"><option value="">Sin tipo</option>${Defenses.TYPES.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select>${button('Daño', 'damage', 'danger')}${button('Curar', 'heal')}</div><p class="small section-space">Ingresá el daño recibido; si elegís el tipo, se aplican tus resistencias, inmunidades y vulnerabilidades. Los PG temporales se descuentan primero. Si concentrás, se recuerda la salvación.</p><div class="actions">${button('PG temporales', 'temp')}${button('Ajustar todos los recursos', 'resources')}</div>`,
+    `<p>Actuales: <b>${v.hp ?? 'sin confirmar'} / ${v.maxHP}${state.wildShape ? ' PG bestia' : ''}</b> · Temporales: ${state.temp}</p><div class="hp-controls"><label class="visually-hidden" for="hp-amount">Cantidad</label><input class="control" id="hp-amount" type="number" min="1" max="9999" value="1"><label class="visually-hidden" for="hp-type">Tipo de daño</label><select class="control" id="hp-type"><option value="">Sin tipo</option>${Defenses.TYPES.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select>${button('Daño', 'damage', 'danger')}${button('Curar', 'heal')}</div><label class="check"><input id="hp-critical" type="checkbox">Daño de un golpe crítico</label><p class="small section-space">Ingresá el daño recibido; si elegís el tipo, se aplican tus resistencias, inmunidades y vulnerabilidades. Los PG temporales se descuentan primero. Si concentrás, se recuerda la salvación.</p><div class="actions">${button('PG temporales', 'temp')}${button('Ajustar todos los recursos', 'resources')}</div>`,
   );
 }
 function installCombatActions() {

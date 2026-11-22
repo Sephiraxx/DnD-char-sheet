@@ -646,6 +646,7 @@ const MonsterUI = (() => {
           'damage',
           {
             amount,
+            crit: Boolean(untouched && activePanel.last?.crit && !fd.has('half')),
             ...(parts ? { parts } : { type: a.dmg?.[0]?.[1] || '' }),
             source: tracker().entries.find(x => x.id === panel.entryId)?.name + ': ' + panel.name,
           },

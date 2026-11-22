@@ -21,10 +21,12 @@ const TableUI = (() => {
   let party = null,
     feed = [],
     loading = false,
+    refreshSequence = 0,
     error = '',
     unsubscribe = null,
     online = [],
-    booted = false;
+    booted = false,
+    observedTurn = null;
   const link = () => Cloud.link(KEY);
   // Lo que se eligió en el tablero (objetivo, distancia, flanqueo): las ventanas de ataque lo usan.
   let boardCtx = null;
@@ -216,7 +218,7 @@ const TableUI = (() => {
     const cards = party
       ? party.characters
           .map(c =>
-            PV.card(PV.summarize(c.data), {
+            PV.card(PV.rowSummary(c), {
               owner: memberName(c.owner_id),
               mine: c.id === mine,
               online: online.some(p => p.characterId === c.id),
@@ -264,26 +266,37 @@ const TableUI = (() => {
     const l = link();
     if (!l) return;
     loading = true;
+    const sequence = ++refreshSequence;
     try {
       const [p, ev] = await Promise.all([Cloud.party(l.campaignId), Cloud.events(l.campaignId)]);
+      if (sequence !== refreshSequence || link()?.campaignId !== l.campaignId) return;
       party = p;
       feed = ev;
+      recoverTurn(p);
       error = '';
       setTimeout(sessionSummary, 600);
     } catch (e) {
-      error = e.message;
+      if (sequence === refreshSequence) error = e.message;
+    } finally {
+      if (sequence === refreshSequence) {
+        loading = false;
+        redraw();
+      }
     }
-    loading = false;
-    redraw();
   }
 
+  const saveCommandError = 'La ficha no pudo guardarse. Liberá espacio para recibir la orden pendiente.';
   function applyCommand(ev) {
     const p = ev.payload || {};
     const apply = (label, fn) =>
-      commit(label, s => {
-        fn(s);
-        recordCommand(s, ev.id);
-      });
+      commit(
+        label,
+        s => {
+          fn(s);
+          if (ev.id) recordCommand(s, ev.id);
+        },
+        saveCommandError,
+      );
     const n = v => Math.max(0, Math.min(9999, Math.floor(Number(v) || 0)));
     switch (ev.kind) {
       case 'damage': {
@@ -298,13 +311,7 @@ const TableUI = (() => {
         const conc = state.concentration;
         let wild = null;
         apply((p.from || 'DM') + ': daño recibido ' + amount + (p.source ? ' (' + p.source + ')' : ''), s => {
-          wild = Companions.absorb(s, amount);
-          s.hp = Math.max(0, s.hp - wild.toCharacter);
-          if (s.hp === 0) {
-            s.concentration = null;
-            Combat.data(s).checks = [];
-            for (const c of ['Inconsciente', 'Derribado']) if (!s.conditions.includes(c)) s.conditions.push(c);
-          } else if (conc) Combat.data(s).checks.push(Math.max(10, Math.floor(amount / 2)));
+          wild = Combat.takeDamage(s, amount, Boolean(p.crit));
         });
         if (wild?.beast)
           return `${p.from ? p.from + ' le hizo' : 'El DM le aplicó'} ${amount} de daño${why} a tu forma salvaje${wild.reverted ? `: volvés a tu forma${wild.toCharacter ? ' y recibís ' + wild.toCharacter : ''}` : ''}.`;
@@ -316,6 +323,7 @@ const TableUI = (() => {
       case 'heal': {
         const amount = n(p.amount);
         if (!amount || state.hp === null) return 'Curación del DM pendiente: confirmá tus PG actuales.';
+        if (Combat.dead(state)) return 'Curación del DM pendiente: primero debe resolverse la resurrección.';
         apply((p.from || 'DM') + ': curación ' + amount, s => {
           Companions.heal(s, amount);
         });
@@ -327,8 +335,7 @@ const TableUI = (() => {
       case 'condition': {
         if (!CONDITIONS.includes(p.name)) return '';
         apply(`DM: ${p.on ? 'estado' : 'fin de estado'} ${p.name}`, s => {
-          s.conditions = s.conditions.filter(x => x !== p.name);
-          if (p.on) s.conditions.push(p.name);
+          Combat.condition(s, p.name, !!p.on);
         });
         return `El DM ${p.on ? 'te aplicó' : 'te quitó'}: ${p.name}.`;
       }
@@ -340,6 +347,7 @@ const TableUI = (() => {
           if (level === 6) {
             s.hp = 0;
             s.death = { success: 0, failure: 3 };
+            Combat.condition(s, 'Inconsciente', true);
           }
         });
         return `El DM ${level ? 'te dejó en agotamiento ' + level : 'te quitó el agotamiento'}.`;
@@ -366,13 +374,14 @@ const TableUI = (() => {
           typeof ItemRef !== 'undefined'
             ? ItemRef.rows(p.ref, { qty: n(p.qty) || 1, notes: String(p.notes || ''), uid })
             : null;
+        const from = p.from === 'Botín' ? 'Botín' : 'DM';
         if (made?.length) {
-          apply('DM: objeto recibido ' + made[0].name, s => {
+          apply(from + ': objeto recibido ' + made[0].name, s => {
             for (const r of made) s.inventory.push(r);
           });
-          return `El DM te entregó ${made[0].name}${made[0].magic?.attune ? '. Sintonizalo en Equipo para que funcione' : ''}.`;
+          return `${from}: recibiste ${made[0].name}${made[0].magic?.attune ? '. Sintonizalo en Equipo para que funcione' : ''}.`;
         }
-        apply('DM: objeto recibido ' + name, s =>
+        apply(from + ': objeto recibido ' + name, s =>
           s.inventory.push({
             id: uid(),
             name,
@@ -383,7 +392,7 @@ const TableUI = (() => {
             notes: String(p.notes || '').slice(0, 2000) || 'Entregado por el DM',
           }),
         );
-        return `El DM te entregó ${name}.`;
+        return `${from}: recibiste ${name}.`;
       }
       case 'rest':
         setTimeout(() => actions[p.type === 'long' ? 'long-rest' : 'short-rest']?.(), 50);
@@ -460,7 +469,7 @@ const TableUI = (() => {
         const msg = applyCommand(ev);
         if (typeof msg === 'string' && !msg.includes('pendiente')) {
           if (!(state.dmCommandsApplied || []).includes(ev.id))
-            commit('Orden del DM recibida', s => recordCommand(s, ev.id));
+            commit('Orden del DM recibida', s => recordCommand(s, ev.id), saveCommandError);
           ids.push(ev.id);
         }
         if (msg) messages.push(msg);
@@ -481,37 +490,79 @@ const TableUI = (() => {
     s.dmCommandsApplied = [...new Set([...(s.dmCommandsApplied || []), id])].slice(-500);
   }
 
-  function onTurn(ev) {
+  function recoverTurn(snapshot) {
+    const enc = snapshot.encounter;
+    if (!enc) return;
+    const current = snapshot.combatants?.find(c => c.id === enc.current_id);
+    onTurn(
+      {
+        kind: enc.active ? 'turn' : 'combat-end',
+        created_at: enc.updated_at,
+        payload: {
+          combatantId: enc.current_id,
+          characterId: current?.character_id,
+          name: current?.name,
+          round: enc.round,
+        },
+      },
+      false,
+    );
+  }
+  function onTurn(ev, announce = true) {
     const l = link(),
       p = ev.payload || {};
     if (!l) return;
+    const c = Combat.data(state);
+    const at = ev.created_at || '';
+    const key = [l.campaignId, ev.kind, p.round || 0, p.combatantId || p.characterId || '', at].join(':');
+    const scope = l.campaignId + ':' + l.characterId;
+    const latest = observedTurn?.scope === scope ? observedTurn.at : c.tableTurn?.at;
+    if (at && latest && Date.parse(at) < Date.parse(latest)) return;
+    if (at) observedTurn = { scope, at };
+    if (c.tableTurn?.key === key) return;
+    const remember = s => {
+      Combat.data(s).tableTurn = { key, at };
+    };
     if (ev.kind === 'combat-end') {
-      if (state.combatState?.active) commit('Fin del combate indicado por el DM', s => Combat.finish(s));
+      if (c.tableTurn && c.active)
+        commit('Fin del combate indicado por el DM', s => {
+          Combat.finish(s);
+          remember(s);
+        });
       return;
     }
     if (p.characterId === l.characterId) {
+      // Fichas anteriores ya pueden estar en el turno correcto. Conservá su acción al adoptar el identificador.
+      const adopt = !announce && !c.tableTurn && c.active && c.onTurn;
       let ended = [],
         fx = [];
-      // Igual que «Mi turno»: la pantalla de combate vuelve a la pestaña de acción.
-      combatTab = 'action';
-      combatLevel = 'all';
       commit('Turno indicado por el DM (ronda ' + (p.round || 1) + ')', s => {
-        fx = Combat.start(s) || [];
-        ended = Effects.tick(s);
+        if (!adopt) {
+          fx = Combat.start(s) || [];
+          ended = Effects.tick(s);
+        }
+        remember(s);
       });
-      location.hash = 'combat';
-      navigator.vibrate?.(200);
-      toast(
-        '¡Es tu turno!' +
-          (ended.length ? ' Terminó: ' + ended.join(', ') + '.' : '') +
-          (fx.length ? ' ' + fx.join('. ') + '.' : ''),
-      );
-    } else if (state.combatState?.onTurn || !state.combatState?.active) {
-      if (state.combatState?.onTurn) combatTab = 'reaction';
+      if (!adopt) {
+        combatTab = 'action';
+        combatLevel = 'all';
+        if (announce) {
+          location.hash = 'combat';
+          navigator.vibrate?.(200);
+        }
+        toast(
+          '¡Es tu turno!' +
+            (ended.length ? ' Terminó: ' + ended.join(', ') + '.' : '') +
+            (fx.length ? ' ' + fx.join('. ') + '.' : ''),
+        );
+      }
+    } else if (c.onTurn || !c.active || !c.tableTurn) {
+      if (c.onTurn) combatTab = 'reaction';
       let fx = [];
       commit('Turno de ' + (p.name || 'otro integrante'), s => {
         fx = Combat.end(s) || [];
         Combat.data(s).active = true;
+        remember(s);
       });
       if (fx.length) toast(fx.join('. ') + '.');
     }
@@ -521,7 +572,7 @@ const TableUI = (() => {
     const l = link();
     if (!l) return;
     globalThis.Board?.onParty(table);
-    if (table === 'resync') return catchUpCommands(l);
+    if (table === 'resync') return refresh().then(() => catchUpCommands(l));
     if (table === 'presence') {
       online = payload;
       redraw();
@@ -859,16 +910,16 @@ const TableUI = (() => {
     actions['combat-end'] = e => {
       const mine = isMyTurn(),
         l = link();
-      endTurn(e);
-      if (mine && l)
-        Cloud.advanceTurn(l.campaignId)
-          .then(n => toast('Turno de ' + n.name + '.'))
-          .catch(err => toast(err.message));
+      if (!mine || !l) return endTurn(e);
+      Cloud.advanceTurn(l.campaignId)
+        .then(() => refresh())
+        .catch(err => toast(err.message));
     };
     TableExtras.install({
       refresh: () => refresh(),
       campaignId: () => link()?.campaignId,
       characterId: () => link()?.characterId,
+      receiveCommands: () => catchUpCommands(),
     });
     Object.assign(actions, {
       // Desde el resumen de fin de sesión: lleva a «Tu acceso» en Mesa.
