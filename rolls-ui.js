@@ -143,8 +143,7 @@ const RollUI = (() => {
     }
     let mode = fd.get('adv') || '';
     if (heroic) mode = mode === 'dis' ? '' : 'adv';
-    const a = roll(20)[0],
-      b = mode ? roll(20)[0] : null;
+    const [a, b = null] = rollD20(mode ? 2 : 1);
     return {
       rolls: b === null ? [a] : [a, b],
       kept: mode === 'adv' ? Math.max(a, b) : mode === 'dis' ? Math.min(a, b) : a,

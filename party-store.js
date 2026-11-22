@@ -87,6 +87,7 @@
     localStorage.removeItem(item.key);
     localStorage.removeItem(item.key + '-previous');
     localStorage.removeItem(item.key + '-level-draft');
+    localStorage.removeItem(item.key + '-created-by');
   }
   // Reemplaza los datos de una ficha (por ejemplo, con su copia más nueva de la nube).
   function replace(id, s) {
@@ -106,7 +107,8 @@
     if (!item) throw Error('Personaje no encontrado.');
     const rest = entries.filter(x => x.id !== item.id);
     localStorage.setItem(INDEX, JSON.stringify(rest));
-    for (const suffix of ['', '-previous', '-level-draft', '-cloud']) localStorage.removeItem(item.key + suffix);
+    for (const suffix of ['', '-previous', '-level-draft', '-cloud', '-created-by'])
+      localStorage.removeItem(item.key + suffix);
     if (rest.length) localStorage.setItem(ACTIVE, rest[0].id);
     else localStorage.removeItem(ACTIVE);
     location.reload();

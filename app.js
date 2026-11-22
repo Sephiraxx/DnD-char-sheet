@@ -154,6 +154,11 @@ function roll(sides, count = 1) {
   }
   return a;
 }
+function rollD20(count = 1) {
+  const rate = window.Cloud?.checkDiceRate(KEY) || 0;
+  const faces = roll(20, count);
+  return rate ? faces.map(face => (roll(20)[0] <= rate ? Math.max(face, roll(20)[0]) : face)) : faces;
+}
 function number(fd, key, min, max, def) {
   const raw = fd.get(key);
   if ((raw === null || raw === '') && def !== undefined) return def;
@@ -1143,7 +1148,7 @@ const actions = {
           die = number(fd, 'dado', 4, 100),
           physical = fd.get('fisica') !== '',
           own = physical ? number(fd, 'fisica', n, n * die) : 0;
-        let a = physical ? [own] : roll(die, n),
+        let a = physical ? [own] : die === 20 ? rollD20(n) : roll(die, n),
           b = number(fd, 'modificador', -100, 100),
           sum = a.reduce((x, y) => x + y, 0) + b;
         commit(
@@ -1374,7 +1379,11 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) hideToast();
 });
 window.addEventListener('pageshow', hideToast);
+const refreshCheckDice = () => Cloud.refreshCheckDice(KEY).catch(() => {});
+window.addEventListener('online', refreshCheckDice);
+window.addEventListener('cloud-login', refreshCheckDice);
 window.addEventListener('storage', e => {
+  if (e.key === 'dnd-cloud-auth') refreshCheckDice();
   if (e.key === KEY && e.newValue) {
     try {
       state = R.validate(JSON.parse(e.newValue));
@@ -1389,6 +1398,7 @@ window.addEventListener('storage', e => {
 go();
 TableUI.boot();
 Cloud.backupMissing();
+refreshCheckDice();
 try {
   if (document.modelContext?.registerTool)
     document.modelContext.registerTool({

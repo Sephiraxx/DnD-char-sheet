@@ -177,7 +177,7 @@ const AttackUI = (() => {
     spendAction(item.name);
     const r =
         mine === null
-          ? A.rollAttack(p, adv, rnd)
+          ? A.rollAttack(p, adv, () => rollD20()[0])
           : {
               rolls: [mine],
               kept: mine,

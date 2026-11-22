@@ -559,6 +559,43 @@
     }
   };
   const localId = key => (key.startsWith('dnd-character-') ? key.slice('dnd-character-'.length) : 'darien');
+  const localCharacter = /^dnd-character-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
+  let activeDiceProfile = null;
+  let diceRequest = 0;
+  function profileOwner() {
+    if (!hasSession()) return null;
+    try {
+      const user = JSON.parse(localStorage.getItem('dnd-cloud-auth'))?.user;
+      return user?.email && !user.is_anonymous ? user.id : null;
+    } catch {
+      return null;
+    }
+  }
+  function noteCharacterCreation(id) {
+    const owner = profileOwner();
+    try {
+      if (owner) localStorage.setItem('dnd-character-' + id + '-created-by', owner);
+    } catch {}
+  }
+  function checkDiceRate(key) {
+    return activeDiceProfile?.key === key && activeDiceProfile.owner === profileOwner() ? activeDiceProfile.rate : 0;
+  }
+  async function refreshCheckDice(key) {
+    const request = ++diceRequest;
+    const owner = profileOwner();
+    if (!owner || !localCharacter.test(key)) {
+      activeDiceProfile = null;
+      return;
+    }
+    const pendingKey = key + '-created-by';
+    const created = localStorage.getItem(pendingKey) === owner;
+    const response = await (await api()).rpc('character_d20_profile', { p_local_id: localId(key), p_created: created });
+    if (response.error?.code === 'PGRST202') return;
+    const rate = check(response);
+    if (created) localStorage.removeItem(pendingKey);
+    if (request === diceRequest && owner === profileOwner() && Number.isInteger(rate) && rate >= 0 && rate <= 20)
+      activeDiceProfile = { key, owner, rate };
+  }
   function backupTimes() {
     try {
       return JSON.parse(localStorage.getItem(BACKUP_AT) || '{}') || {};
@@ -1378,6 +1415,9 @@
     pendingTable,
     clearPending,
     attach,
+    noteCharacterCreation,
+    refreshCheckDice,
+    checkDiceRate,
     currentUser,
     linkEmail,
     createAccount,

@@ -929,6 +929,7 @@ const Creator = (() => {
     if (typeof SheetStatus !== 'undefined') SheetStatus.addRaceSpells(s);
     R.validate(s);
     const id = CharacterStorage.add(s);
+    window.Cloud?.noteCharacterCreation?.(id);
     if (window.Cloud?.pendingTable?.()) localStorage.setItem('dnd-pending-attach-v1', id);
     try {
       localStorage.removeItem(DRAFT);
