@@ -68,7 +68,49 @@
       ],
       bonusDice: (s.bonusDice || []).map(b => 'd' + b.die + (b.reason ? ' · ' + b.reason : '')),
       inCombat: Boolean(c.active),
+      darkvision: Number(root.Campaign?.race?.(s)?.darkvision) || 0,
       gold: s.gold,
+    };
+  }
+
+  function rowSummary(row) {
+    if (row.data) return summarize(row.data);
+    const x = row.summary;
+    if (!x || x.broken) return { broken: true, name: row.name };
+    const n = (v, fallback = 0) => (Number.isFinite(v) ? v : fallback);
+    const text = v => (typeof v === 'string' ? v : '');
+    const strings = v => (Array.isArray(v) ? v.filter(x => typeof x === 'string').slice(0, 100) : []);
+    return {
+      name: row.name,
+      line: text(x.line),
+      race: text(x.race),
+      cls: /^[a-z]+$/.test(text(x.cls)) ? x.cls : '',
+      color: /^#[0-9a-f]{6}$/i.test(text(x.color)) ? x.color : '',
+      portrait: /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(text(x.portrait)) ? x.portrait : '',
+      hp: n(x.hp, null),
+      maxHP: n(x.maxHP, 1),
+      temp: n(x.temp),
+      ac: n(x.ac, 10),
+      initiative: n(x.initiative),
+      speed: n(x.speed, 30),
+      darkvision: n(x.darkvision),
+      dc: n(x.dc),
+      exhaustion: n(x.exhaustion),
+      passive: { perception: n(x.passive?.perception, 10), insight: n(x.passive?.insight, 10) },
+      death: { success: n(x.death?.success), failure: n(x.death?.failure) },
+      slots: Array.isArray(x.slots)
+        ? x.slots
+            .filter(k => k && Number.isInteger(k.level) && Number.isInteger(k.max))
+            .slice(0, 9)
+            .map(k => ({ level: k.level, max: k.max, left: n(k.left, null) }))
+        : [],
+      conditions: strings(x.conditions),
+      effects: strings(x.effects),
+      bonusDice: strings(x.bonusDice),
+      concentration: text(x.concentration),
+      onTurn: Boolean(x.onTurn),
+      heroic: Boolean(x.heroic),
+      caster: Boolean(x.caster),
     };
   }
 
@@ -288,6 +330,7 @@
     initiativeStrip,
     esc,
     summarize,
+    rowSummary,
     card,
     rollText,
     eventText,

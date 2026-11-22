@@ -571,7 +571,7 @@
     const key = row.id + '@' + row.updated_at;
     if (!summaries.has(key)) {
       for (const k of summaries.keys()) if (k.startsWith(row.id + '@')) summaries.delete(k);
-      summaries.set(key, PartyView.summarize(row.data));
+      summaries.set(key, PartyView.rowSummary(row));
     }
     return summaries.get(key);
   }
@@ -1552,7 +1552,7 @@
   function darkvision(t) {
     const row = (S.party?.characters || []).find(c => c.id === t.character_id);
     try {
-      return Number(globalThis.Campaign?.race?.(row?.data)?.darkvision) || 0;
+      return row ? summary(row).darkvision || 0 : 0;
     } catch {
       return 0;
     }

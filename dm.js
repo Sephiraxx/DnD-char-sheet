@@ -261,7 +261,7 @@ function draw() {
   const list = summaries();
   const t = tracker();
   $('#main').innerHTML =
-    `<div class="dm-head"><div><p class="eyebrow">MESA EN VIVO · ${list.length} ficha${list.length === 1 ? '' : 's'}</p><h1>${esc(party.campaign.name)}</h1><p class="small muted">${settingsSummary(Cloud.cleanSettings(party.campaign.settings))}</p></div><div class="dm-code"><span>CÓDIGO</span><b>${esc(party.campaign.code)}</b>${button('Copiar', 'copy-code', 'secondary', `data-code="${esc(party.campaign.code)}"`)}</div><div class="dm-toolbar">${button('Pedir tirada a todos', 'request', '')}${button('Tablero', 'board-open', '')}${button('Mensaje a todos', 'message')}${button('Descanso corto', 'rest-short')}${button('Descanso largo', 'rest-long')}<details class="dm-menu"><summary class="button secondary">Mesa ▾</summary><div class="dm-menu-list">${button('Ajustes de la mesa', 'settings')}${button('Mis mesas', 'home')}${button('Eliminar mesa', 'delete-table', 'danger', `data-id="${esc(party.campaign.id)}" data-name="${esc(party.campaign.name)}"`)}</div></details></div></div>
+    `<div class="dm-head"><div><p class="eyebrow">MESA EN VIVO · ${list.length} ficha${list.length === 1 ? '' : 's'}</p><h1>${esc(party.campaign.name)}</h1><p class="small muted">${settingsSummary(Cloud.cleanSettings(party.campaign.settings))}</p></div><div class="dm-code"><span>CÓDIGO</span><b>${esc(party.campaign.code)}</b>${button('Copiar', 'copy-code', 'secondary', `data-code="${esc(party.campaign.code)}"`)}</div><div class="dm-toolbar">${button('Pedir tirada a todos', 'request', '')}${button('Tablero', 'board-open', '')}${button('Mensaje a todos', 'message')}${button('Descanso corto', 'rest-short')}${button('Descanso largo', 'rest-long')}<details class="dm-menu"><summary class="button secondary">Mesa ▾</summary><div class="dm-menu-list">${button('Ajustes de la mesa', 'settings')}${button('Exportar campaña', 'export-campaign')}${button('Mis mesas', 'home')}${button('Eliminar mesa', 'delete-table', 'danger', `data-id="${esc(party.campaign.id)}" data-name="${esc(party.campaign.name)}"`)}</div></details></div></div>
   ${error ? `<div class="banner"><p>${esc(error)}</p>${button('Reintentar', 'refresh')}</div>` : ''}
   <div class="dm-layout"><div class="stack dm-main">
     <div class="party-grid">${
@@ -310,7 +310,7 @@ function drawHome() {
     `<div class="heading"><div><p class="eyebrow">PANTALLA DEL DM</p><h1>Tus mesas.</h1><p>Creá una mesa, compartí el código con la party y seguí sus fichas en vivo.</p></div></div>
   ${list}
   ${typeof EncounterGeneratorUI !== 'undefined' ? EncounterGeneratorUI.card() : ''}
-  <section class="card section-space dm-new"><h2>Nueva mesa</h2><form id="create-form" class="stack"><div class="form-grid">${field('Nombre de la campaña', 'name', '', 'text', 'required maxlength="100" placeholder="La maldición de Strahd"')}${field('Tu nombre', 'display', 'DM', 'text', 'maxlength="100"')}</div><details class="battle-rule"><summary>Libros, nivel inicial y reglas de la casa (opcional)</summary><div class="section-space">${settingsFields()}</div></details><div class="actions"><button class="button" type="submit">Crear mesa</button></div><p class="form-error" id="create-error" role="alert">${esc(error)}</p></form></section>
+  <section class="card section-space dm-new"><h2>Nueva mesa</h2><form id="create-form" class="stack"><div class="form-grid">${field('Nombre de la campaña', 'name', '', 'text', 'required maxlength="100" placeholder="La maldición de Strahd"')}${field('Tu nombre', 'display', 'DM', 'text', 'maxlength="100"')}</div><details class="battle-rule"><summary>Libros, nivel inicial y reglas de la casa (opcional)</summary><div class="section-space">${settingsFields()}</div></details><div class="actions"><button class="button" type="submit">Crear mesa</button>${button('Restaurar copia de campaña', 'import-campaign')}</div><p class="form-error" id="create-error" role="alert">${esc(error)}</p></form></section>
   <p class="small muted section-space">Tu acceso de DM queda guardado en este navegador. Guardalo con tu email para usarlo desde otro dispositivo.</p>${AccountUI.card('account')}`;
   if (!merged) {
     merged = true;
@@ -491,6 +491,46 @@ const actions = {
         toast('Ajustes guardados.');
       },
       'Guardar',
+    ),
+  'export-campaign': async trigger => {
+    trigger.disabled = true;
+    try {
+      const archive = await CampaignArchive.build(current, Encounters.list());
+      const a = document.createElement('a');
+      const blob = new Blob([JSON.stringify(archive)], { type: 'application/json' });
+      if (blob.size > CampaignArchive.MAX_FILE) throw Error('La copia supera 128 MB.');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'campaña-dnd.json';
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      toast('Copia de campaña descargada.');
+    } finally {
+      trigger.disabled = false;
+    }
+  },
+  'import-campaign': () =>
+    modal(
+      'Restaurar copia de campaña',
+      '<p>Creá una mesa nueva con los mapas, el diario de campaña, el homebrew de la mesa y los encuentros preparados de la copia.</p>' +
+        '<label class="field">Archivo de copia<input name="archive" type="file" accept=".json,application/json" required></label>' +
+        field('Nombre de la mesa nueva (opcional)', 'name', '', 'text', 'maxlength="100"'),
+      async fd => {
+        const file = fd.get('archive');
+        if (!file?.size || file.size > CampaignArchive.MAX_FILE) throw Error('Elegí una copia JSON de hasta 128 MB.');
+        let data;
+        try {
+          data = JSON.parse(await file.text());
+        } catch {
+          throw Error('El archivo no contiene JSON válido.');
+        }
+        const name = String(fd.get('name') || '').trim() || (String(data?.name || '') + ' (copia)').slice(0, 100);
+        const table = await CampaignArchive.restore(data, name);
+        await open(table.id);
+        toast('Campaña restaurada en una mesa nueva.');
+      },
+      'Restaurar en mesa nueva',
     ),
   'delete-table': e => {
     const { id, name } = e.dataset;

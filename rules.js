@@ -893,6 +893,7 @@
     if (new Set(ids).size !== ids.length) fail();
     for (let k of ['known', 'extras'])
       if (!list(o[k], 300) || new Set(o[k]).size !== o[k].length || o[k].some(x => !ids.includes(x))) fail();
+    if (o.ritualCasting !== undefined && !ids.includes(o.ritualCasting)) fail();
     if (o.known.some(x => o.extras.includes(x)) || !(o.concentration === null || ids.includes(o.concentration))) fail();
     if (!list(o.inventory, 1000)) fail();
     for (let x of o.inventory)
@@ -989,6 +990,7 @@
           Object.keys(c.rolled).length > 200 ||
           Object.entries(c.rolled).some(([k, v]) => !txt(k, 150) || !int(v, 0, 999)))) ||
       (c.extraRolls !== undefined && !int(c.extraRolls, 0, 99)) ||
+      (c.tableTurn !== undefined && (!c.tableTurn || !txt(c.tableTurn.key, 250) || !txt(c.tableTurn.at, 80))) ||
       (c.fxOnce !== undefined &&
         (!c.fxOnce ||
           typeof c.fxOnce !== 'object' ||

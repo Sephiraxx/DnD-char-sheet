@@ -1,6 +1,5 @@
 /* Crónica de la campaña: misiones, calendario del mundo y tiempo entre aventuras.
-   Se guarda dentro de los ajustes de la mesa (la party lee lo que el DM marca como compartido en pantalla;
-   los ajustes viajan completos, así que no es lugar para secretos de verdad). Lógica sin navegador. */
+   Se guarda dentro de los ajustes de la mesa. La migración 019 limita lo que llega a los jugadores. Lógica sin navegador. */
 (function (root) {
   'use strict';
   const txt = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '');

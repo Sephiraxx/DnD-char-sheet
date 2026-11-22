@@ -973,3 +973,202 @@ begin
 end $$;
 
 commit;
+
+-- Claiming loot and enqueueing its item command succeed or roll back together.
+begin;
+
+create or replace function public.claim_loot_for_delivery(p_loot uuid, p_character uuid) returns bigint
+language plpgsql security definer set search_path = public as $$
+declare
+  item loot%rowtype;
+  recipient characters%rowtype;
+  delivery bigint;
+begin
+  select * into item from loot where id = p_loot for update;
+  if not found or not is_member(item.campaign_id) then raise exception 'Ese objeto ya no está disponible.'; end if;
+  select * into recipient
+    from characters c where c.id = p_character and c.owner_id = auth.uid() and c.campaign_id = item.campaign_id;
+  if not found then raise exception 'Elegí una ficha propia de esta mesa.'; end if;
+  if item.claimed_character is not null then raise exception 'Alguien ya tomó ese objeto.'; end if;
+  if coalesce(item.data->>'for', '') not in ('', p_character::text) then
+    raise exception 'El objeto está reservado para otra ficha.';
+  end if;
+  update loot set claimed_character = p_character, claimed_name = recipient.name where id = p_loot;
+  insert into events (campaign_id, author_id, kind, target_character, payload)
+    values (item.campaign_id, auth.uid(), 'item', p_character, jsonb_build_object(
+      'name', item.name, 'qty', item.qty, 'notes', item.notes, 'ref', item.data->'ref', 'from', 'Botín'
+    )) returning id into delivery;
+  return delivery;
+end $$;
+
+revoke all on function public.claim_loot_for_delivery(uuid, uuid) from public;
+grant execute on function public.claim_loot_for_delivery(uuid, uuid) to authenticated;
+notify pgrst, 'reload schema';
+
+commit;
+
+-- The live party reads summaries. Only the owner and DM can query a full sheet.
+begin;
+
+alter table public.characters add column if not exists public_summary jsonb;
+alter table public.characters drop constraint if exists characters_summary_size;
+alter table public.characters add constraint characters_summary_size
+  check (public_summary is null or (jsonb_typeof(public_summary) = 'object' and octet_length(public_summary::text) <= 500000));
+
+create table if not exists public.character_summaries (
+  id uuid primary key references public.characters on delete cascade,
+  campaign_id uuid not null references public.campaigns on delete cascade,
+  owner_id uuid not null,
+  name text not null,
+  summary jsonb,
+  updated_at timestamptz not null
+);
+create index if not exists character_summaries_campaign on public.character_summaries (campaign_id);
+alter table public.character_summaries enable row level security;
+revoke all on public.character_summaries from anon, authenticated;
+grant select on public.character_summaries to authenticated;
+drop policy if exists summaries_select on public.character_summaries;
+create policy summaries_select on public.character_summaries for select using (public.is_member(campaign_id));
+
+create or replace function public.sync_character_summary() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  insert into character_summaries (id, campaign_id, owner_id, name, summary, updated_at)
+    values (new.id, new.campaign_id, new.owner_id, new.name, new.public_summary, new.updated_at)
+    on conflict (id) do update set campaign_id = excluded.campaign_id, owner_id = excluded.owner_id,
+      name = excluded.name, summary = excluded.summary, updated_at = excluded.updated_at;
+  return new;
+end $$;
+revoke all on function public.sync_character_summary() from public;
+drop trigger if exists sync_character_summary on public.characters;
+create trigger sync_character_summary after insert or update on public.characters
+  for each row execute function public.sync_character_summary();
+
+insert into public.character_summaries (id, campaign_id, owner_id, name, summary, updated_at)
+  select id, campaign_id, owner_id, name, public_summary, updated_at from public.characters on conflict (id) do nothing;
+
+do $$ begin
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'character_summaries') then
+    alter publication supabase_realtime add table public.character_summaries;
+  end if;
+end $$;
+
+drop policy if exists characters_select on public.characters;
+create policy characters_select on public.characters for select using (
+  owner_id = auth.uid() or public.is_dm(campaign_id)
+);
+
+drop policy if exists characters_update on public.characters;
+create policy characters_update on public.characters for update
+  using (owner_id = auth.uid()) with check (owner_id = auth.uid() and public.is_member(campaign_id));
+
+-- Campaign settings can contain private quests and GM notes. Players receive the allowlisted public fields.
+drop policy if exists campaigns_select on public.campaigns;
+create policy campaigns_select on public.campaigns for select using (dm_id = auth.uid());
+
+create or replace function public.campaign_for_member(p_campaign uuid) returns public.campaigns
+language plpgsql stable security definer set search_path = public as $$
+declare c campaigns;
+begin
+  if not is_member(p_campaign) then return null; end if;
+  select * into c from campaigns where id = p_campaign;
+  if c.dm_id <> auth.uid() then
+    c.settings := jsonb_build_object(
+      'sources', c.settings->'sources',
+      'startLevel', c.settings->'startLevel',
+      'rules', c.settings->'rules',
+      'abilities', c.settings->'abilities',
+      'session', c.settings->'session',
+      'calendar', c.settings->'calendar',
+      'quests', coalesce((
+        select jsonb_agg(q.value order by q.ordinality)
+          from jsonb_array_elements(
+            case when jsonb_typeof(c.settings->'quests') = 'array' then c.settings->'quests' else '[]'::jsonb end
+          ) with ordinality q(value, ordinality)
+          where q.value->'shared' = 'true'::jsonb
+      ), '[]'::jsonb)
+    );
+  end if;
+  return c;
+end $$;
+
+create or replace function public.join_campaign(p_code text, p_display text)
+returns public.campaigns language plpgsql security definer set search_path = public as $$
+declare c campaigns;
+begin
+  if auth.uid() is null then raise exception 'Sin sesión'; end if;
+  select * into c from campaigns where code = upper(trim(p_code));
+  if not found then raise exception 'No existe una mesa con ese código.'; end if;
+  insert into members (campaign_id, user_id, role, display_name)
+  values (c.id, auth.uid(), 'player', coalesce(trim(p_display), ''))
+  on conflict (campaign_id, user_id) do update set display_name = excluded.display_name;
+  -- Use a separate SQL statement in this non-stable function so the new membership is visible.
+  return campaign_for_member(c.id);
+end $$;
+
+create or replace function public.member_campaigns()
+returns table (id uuid, name text, code text, role text)
+language sql stable security definer set search_path = public as $$
+  select c.id, c.name, c.code, m.role
+  from campaigns c join members m on m.campaign_id = c.id where m.user_id = auth.uid()
+$$;
+
+revoke all on function public.campaign_for_member(uuid), public.member_campaigns() from public;
+grant execute on function public.campaign_for_member(uuid), public.member_campaigns() to authenticated;
+notify pgrst, 'reload schema';
+commit;
+
+-- Import a campaign archive into a newly created table. Map images are staged by the browser.
+begin;
+create or replace function public.restore_campaign_archive(
+  p_campaign uuid, p_settings jsonb, p_maps jsonb, p_tokens jsonb, p_homebrew jsonb, p_active uuid
+) returns void language plpgsql set search_path = public as $$
+begin
+  if not is_dm(p_campaign) then raise exception 'Solo el DM puede importar una copia.'; end if;
+  perform 1 from campaigns where id = p_campaign for update;
+  if not found or exists (select 1 from members where campaign_id = p_campaign and role <> 'dm')
+    or exists (select 1 from characters where campaign_id = p_campaign)
+    or exists (select 1 from maps where campaign_id = p_campaign)
+    or exists (select 1 from homebrew where campaign_id = p_campaign)
+    or exists (select 1 from boards where campaign_id = p_campaign)
+  then raise exception 'La copia debe importarse en una mesa nueva.'; end if;
+
+  if jsonb_typeof(p_settings) is distinct from 'object'
+    or jsonb_array_length(p_maps) > 200 or jsonb_array_length(p_tokens) > 2000
+    or jsonb_array_length(p_homebrew) > 500
+  then raise exception 'La copia de la mesa supera los límites.'; end if;
+
+  if exists (
+    select 1 from jsonb_to_recordset(p_maps) as m(image_path text)
+    where m.image_path is not null and public.folder_campaign(m.image_path) is distinct from p_campaign
+  ) then raise exception 'Una imagen no pertenece a esta mesa.'; end if;
+
+  update campaigns set settings = p_settings where id = p_campaign;
+  insert into maps (id, campaign_id, name, image_path, grid, terrain, fog, sort)
+    select id, p_campaign, name, image_path, grid, terrain, fog, sort
+    from jsonb_to_recordset(p_maps) as m(
+      id uuid, name text, image_path text, grid jsonb, terrain jsonb, fog jsonb, sort int
+    );
+
+  if (p_active is not null and not exists (select 1 from maps where id = p_active and campaign_id = p_campaign))
+    or exists (
+      select 1 from jsonb_to_recordset(p_tokens) as t(map_id uuid)
+      where not exists (select 1 from maps m where m.id = t.map_id and m.campaign_id = p_campaign)
+    )
+  then raise exception 'La copia apunta a un mapa que no existe en esta mesa.'; end if;
+
+  insert into map_tokens (campaign_id, map_id, kind, name, label, color, x, y, size, hidden, stage, elev)
+    select p_campaign, map_id, kind, name, label, color, x, y, size, hidden, stage, elev
+    from jsonb_to_recordset(p_tokens) as t(
+      map_id uuid, kind text, name text, label text, color text, x real, y real, size real,
+      hidden boolean, stage text, elev int
+    );
+  insert into homebrew (campaign_id, kind, name, data)
+    select p_campaign, kind, name, data from jsonb_to_recordset(p_homebrew) as h(kind text, name text, data jsonb);
+  insert into boards (campaign_id, map_id) values (p_campaign, p_active);
+end $$;
+
+revoke all on function public.restore_campaign_archive(uuid, jsonb, jsonb, jsonb, jsonb, uuid) from public;
+grant execute on function public.restore_campaign_archive(uuid, jsonb, jsonb, jsonb, jsonb, uuid) to authenticated;
+notify pgrst, 'reload schema';
+commit;
