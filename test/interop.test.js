@@ -43,7 +43,7 @@ test('D&D Beyond: arma un borrador con lo que reconoce y anota lo que falta', ()
     r = c.Interop.fromDDB(ddb, data);
   assert.equal(r.draft.name, 'Mira Piedraverde');
   assert.equal(r.draft.classId, 'wizard'); // la clase de más nivel
-  assert.equal(r.draft.level, 7);
+  assert.equal(r.draft.level, 5);
   assert.equal(r.draft.raceId, 'elf-high-PHB');
   assert.equal(r.draft.backgroundId, 'sage-PHB');
   assert.deepEqual({ ...r.draft.base }, { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 9 });

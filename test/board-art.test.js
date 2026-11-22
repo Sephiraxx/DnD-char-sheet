@@ -72,10 +72,11 @@ test('arte del tablero: el mismo mapa da el mismo dibujo y solo se repinta lo qu
 
 test('el arte del tablero se carga en las tres pantallas con mapa y queda disponible sin conexión', () => {
   const read = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
-  for (const f of ['index.html', 'dm.html', 'board.html']) {
+  for (const f of ['board-player.js', 'dm.html', 'board.html']) {
     const h = read(f);
     assert.ok(h.indexOf('board-art.js') > h.indexOf('board-core.js'), f);
     assert.ok(h.indexOf('board-art.js') < h.indexOf('./board.js'), f);
   }
+  assert.doesNotMatch(read('index.html'), /board-(?:art|core)\.js/);
   assert.match(read('sw.js'), /'\.\/board-art\.js'/);
 });

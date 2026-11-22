@@ -179,7 +179,7 @@ test('generador: tabernas y castillos de varios pisos quedan unidos por sus esca
 
 test('los muebles se cargan antes que el generador y el tablero, y quedan disponibles sin conexión', () => {
   const read = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
-  for (const f of ['index.html', 'dm.html', 'board.html']) {
+  for (const f of ['board-player.js', 'dm.html', 'board.html']) {
     const h = read(f);
     assert.ok(h.indexOf('board-props.js') > 0 && h.indexOf('board-props.js') < h.indexOf('board-gen.js'), f);
   }

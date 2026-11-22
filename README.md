@@ -181,13 +181,15 @@ Un mapa compartido para jugar en la mesa, en la tele o a distancia. El DM lo abr
 
 En **Mesa → Tu acceso** (o en la pantalla del DM) cada uno puede guardar su acceso con un email y una contraseña. En otro dispositivo, la pantalla inicial ofrece «¿Ya tenés una ficha en una mesa?»: se entra con esos datos y las fichas y mesas de esa cuenta se traen al dispositivo, sincronizadas.
 
-No se envían correos, así que no hay límite de envíos. Requisito en Supabase: **Authentication → Sign In / Providers → Email → Confirm email** desactivado. Si alguien olvida su contraseña, se la reinicia desde **Authentication → Users**.
+El alta no envía correos si **Authentication → Sign In / Providers → Email → Confirm email** está desactivado. **Olvidé mi contraseña** sí envía un enlace. Habilitá el envío a tus jugadores con SMTP propio en Supabase y comprobá que `recover.html` esté permitido en las URLs de redirección del paso 5.
 
 ## Guardado, copias y uso sin conexión
 
 Todo se guarda **en ese navegador y dispositivo**. Las fichas que están en una mesa compartida también se sincronizan con ella y, con el acceso guardado (email y contraseña), se abren en otros dispositivos. Sin mesa, GitHub Pages publica la aplicación pero no almacena ni sincroniza las fichas. Para trasladar una ficha usá **Personajes → Exportar personaje actual** e **Importar como personaje nuevo**. La importación tradicional de Mi ficha reemplaza solo la ficha activa, después de confirmar.
 
-Guardá copias JSON periódicas: borrar los datos del navegador elimina los guardados locales. Cambiar el dominio o navegador requiere exportar e importar. Después de una carga completa por HTTPS se puede volver a abrir sin conexión en navegadores compatibles. Los enlaces externos de referencia sí requieren conexión.
+Desde **Personajes → Exportar todas las fichas** podés bajar un archivo único. El botón de importación de la portada acepta tanto fichas sueltas como un archivo de todas las fichas. Las importaciones agregan copias locales.
+
+Guardá copias JSON periódicas: borrar los datos del navegador elimina los guardados locales. Cambiar el dominio o navegador requiere exportar e importar. Después de una carga completa por HTTPS la ficha puede volver a abrirse sin conexión en navegadores compatibles. Usá **Descargar catálogo y tablero** al pie de la ficha para guardar el catálogo completo y los archivos del tablero. La sincronización de la mesa y los enlaces externos requieren conexión.
 
 Los avisos temporales se cierran automáticamente o con ×. Si una actualización no aparece, cerrá las pestañas de la aplicación y abrila con conexión; no borres el almacenamiento.
 

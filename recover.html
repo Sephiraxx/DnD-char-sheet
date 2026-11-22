@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Recuperar acceso · Cuaderno de aventura</title>
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./theme.css" />
+    <script src="./config.js" defer></script>
+    <script src="./vendor/supabase.js" defer></script>
+    <script src="./recover.js" defer></script>
+  </head>
+  <body>
+    <main class="library-workspace">
+      <section class="card">
+        <h1>Recuperar acceso</h1>
+        <form id="recovery-form" hidden>
+          <label class="field"
+            >Contraseña nueva<input
+              name="password"
+              type="password"
+              required
+              minlength="6"
+              maxlength="72"
+              autocomplete="new-password"
+          /></label>
+          <label class="field"
+            >Repetí la contraseña<input
+              name="again"
+              type="password"
+              required
+              minlength="6"
+              maxlength="72"
+              autocomplete="new-password"
+          /></label>
+          <button type="submit" class="button">Cambiar contraseña</button>
+        </form>
+        <p id="recovery-status" role="status">Validando tu enlace…</p>
+        <a href="./">Volver a la ficha</a>
+      </section>
+    </main>
+  </body>
+</html>

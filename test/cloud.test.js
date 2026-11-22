@@ -227,12 +227,14 @@ test('overlapping flush calls await the same upload rather than reporting an ear
   g.Cloud.changed('k', { name: 'B' });
   const first = g.Cloud.flush();
   await begin;
+  g.Cloud.changed('k', { name: 'C' });
   const second = g.Cloud.flush();
   assert.equal(first, second);
-  assert.equal(g.Cloud.status(), 'syncing');
+  assert.equal(g.Cloud.status(), 'pending');
   release();
   assert.equal(await second, true);
-  assert.equal(db.characters[0].data.name, 'B');
+  assert.equal(db.characters[0].data.name, 'C');
+  assert.equal(g.Cloud.link('k').dirty, false);
 });
 
 test('reglas de características de la mesa: valores por defecto y saneado', () => {
@@ -255,4 +257,15 @@ test('reglas de características de la mesa: valores por defecto y saneado', () 
     plain(g.Cloud.cleanSettings({ abilities: { array: [30, 1] } }).abilities.array),
     [15, 14, 13, 12, 10, 8],
   );
+});
+
+test('la mesa conserva la ficha remota cuando existe una revisión concurrente', async () => {
+  const db = { characters: [{ id: 'ch', data: { name: 'Remota' }, updated_at: T1 }] };
+  const g = setup(db);
+  linkTo(g);
+  g.Cloud.changed('k', { name: 'Local' });
+  assert.equal(await g.Cloud.flush(), false);
+  assert.equal(g.Cloud.status(), 'conflict');
+  assert.equal(g.Cloud.link('k').dirty, true);
+  assert.equal(db.characters[0].data.name, 'Remota');
 });

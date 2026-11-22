@@ -8,11 +8,13 @@ const root = path.join(__dirname, '..');
 const SW = path.join(root, 'sw.js');
 
 function files(src = fs.readFileSync(SW, 'utf8')) {
-  const list = /const FILES = \[([\s\S]*?)\];/.exec(src)[1];
-  return [...list.matchAll(/'([^']+)'/g)].map(m => m[1]);
+  return [...src.matchAll(/const (?:FILES|OFFLINE_FILES) = \[([\s\S]*?)\];/g)].flatMap(([, list]) =>
+    [...list.matchAll(/'([^']+)'/g)].map(m => m[1]),
+  );
 }
 function digest(src = fs.readFileSync(SW, 'utf8')) {
   const hash = crypto.createHash('sha256');
+  hash.update(src.replace(/const BUILD = '[^']*';/, '').replace(/\r\n/g, '\n'));
   for (const f of files(src)) {
     if (f === './') continue;
     hash.update(f + '\0');

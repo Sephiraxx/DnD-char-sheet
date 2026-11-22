@@ -32,7 +32,7 @@ test('Garrote: con garrote o bastón usa SAB, d8 y arma mágica mientras dura', 
   assert.equal(before.ability, 'str');
   assert.equal(before.dice, '1d4');
   const sp = g.Rules.allSpells(s).find(x => x.id === 'shillelagh');
-  g.Effects.fromSpell(s, sp);
+  g.Effects.fromSpell(s, sp, { weaponId: club.id });
   assert.ok(g.Rules.validate(s));
   const on = g.Attacks.profile(s, club);
   assert.equal(on.ability, 'wis');
@@ -41,9 +41,13 @@ test('Garrote: con garrote o bastón usa SAB, d8 y arma mágica mientras dura', 
   assert.equal(on.dmgMod, 3);
   assert.equal(on.magical, true);
   assert.match(on.notes.join(), /Garrote/);
-  assert.equal(g.Attacks.profile(s, staff, { twoHands: true }).dice, '1d8');
+  assert.equal(g.Attacks.profile(s, staff).dice, '1d6');
   assert.equal(g.Attacks.profile(s, sickle).ability, 'str', 'solo garrote y bastón');
+  g.Effects.fromSpell(s, sp, { weaponId: staff.id });
+  assert.equal(g.Effects.list(s).length, 1);
+  assert.equal(g.Attacks.profile(s, club).dice, '1d4');
+  assert.equal(g.Attacks.profile(s, staff).dice, '1d8');
   // Dura un minuto: diez turnos.
   for (let i = 0; i < 10; i++) g.Effects.tick(s);
-  assert.equal(g.Attacks.profile(s, club).dice, '1d4');
+  assert.equal(g.Attacks.profile(s, staff).dice, '1d6');
 });

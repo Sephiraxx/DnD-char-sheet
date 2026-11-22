@@ -381,7 +381,7 @@ function combatView() {
      ? Effects.list(state)
          .map(
            x =>
-             `<div class="effect-note"><b>${esc(x.name)}</b><p>${esc(Effects.remaining(x))}${x.concentration ? ' · concentración' : ''}${x.from === 'dm' ? ' · del DM' : ''}</p>${button('Terminar', 'effect-end', 'secondary', `data-id="${esc(x.id)}"`)}</div>`,
+             `<div class="effect-note"><b>${esc(x.name)}</b><p>${esc(Effects.remaining(x))}${x.concentration ? ' · concentración' : ''}${x.from === 'dm' ? ' · del DM' : ''}</p>${button(x.spell === 'shillelagh' ? 'Soltar arma' : 'Terminar', 'effect-end', 'secondary', `data-id="${esc(x.id)}"`)}</div>`,
          )
          .join('')
      : '<p class="small">Los conjuros con duración se anotan al lanzarlos y descuentan una ronda al empezar tu turno.</p>'

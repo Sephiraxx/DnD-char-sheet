@@ -62,11 +62,53 @@
     speed: t => (mine(t) ? speed() : null),
     opportunity,
   };
+  const scripts = [
+    './board-core.js',
+    './board-art.js',
+    './board-props.js',
+    './board-gen.js',
+    './sigils.js',
+    './board.js',
+  ];
+  let loading;
+  function loadBoard() {
+    if (loading) return loading;
+    const load = (src, isStyle = false) =>
+      new Promise((resolve, reject) => {
+        const el = document.createElement(isStyle ? 'link' : 'script');
+        if (isStyle) {
+          el.rel = 'stylesheet';
+          el.href = src;
+        } else el.src = src;
+        el.onload = resolve;
+        el.onerror = () => {
+          el.remove();
+          reject(Error('No se pudo cargar el tablero. Revisá tu conexión y reintentá.'));
+        };
+        document.head.append(el);
+      });
+    loading = (async () => {
+      if (!document.querySelector('link[href="./board.css"]')) await load('./board.css', true);
+      for (const src of scripts) if (!document.querySelector('script[src="' + src + '"]')) await load(src);
+    })().catch(error => {
+      loading = null;
+      throw error;
+    });
+    return loading;
+  }
   Object.assign(actions, {
-    'board-open': () => {
+    'board-open': e => {
       const l = TableUI.link();
       if (!l) throw Error('Unite a una mesa para usar el tablero.');
-      Board.open(l.campaignId, hooks);
+      if (e) e.disabled = true;
+      loadBoard()
+        .then(() => {
+          if (TableUI.link()?.campaignId === l.campaignId) Board.open(l.campaignId, hooks);
+        })
+        .catch(error => toast(error.message))
+        .finally(() => {
+          if (e) e.disabled = false;
+        });
     },
   });
 })();

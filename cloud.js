@@ -25,9 +25,9 @@
   let client = null,
     loading = null,
     timer = null,
-    pending = null,
     status = 'idle';
-  const listeners = new Set();
+  const listeners = new Set(),
+    pending = new Map();
 
   function loadSdk() {
     if (root.supabase) return Promise.resolve();
@@ -152,6 +152,17 @@
     await backupAll().catch(() => 0);
     return root.CharacterStorage ? root.CharacterStorage.list().length : 0;
   }
+  async function requestPasswordReset(email) {
+    const captchaToken = cfg.captchaSiteKey && !isLocal() ? await captcha() : undefined;
+    check(
+      await (
+        await api()
+      ).auth.resetPasswordForEmail(email, {
+        redirectTo: new URL('./recover.html', location.href).href,
+        ...(captchaToken ? { captchaToken } : {}),
+      }),
+    );
+  }
   async function changePassword(password) {
     const r = await (await api()).auth.updateUser({ password });
     if (r.error) throw friendly(r.error);
@@ -275,7 +286,10 @@
   }
   function setLink(key, value) {
     if (value) localStorage.setItem(linkKey(key), JSON.stringify(value));
-    else localStorage.removeItem(linkKey(key));
+    else {
+      localStorage.removeItem(linkKey(key));
+      pending.delete(key);
+    }
   }
 
   function setStatus(next) {
@@ -435,12 +449,12 @@
     setStatus('idle');
   }
 
-  // Subida diferida de la ficha después de cada cambio guardado.
+  // El guardado local y la marca dirty permiten retomar las subidas al volver a abrir la ficha.
   function changed(key, state) {
     const l = link(key);
     if (!l) return;
     if (!l.dirty) setLink(key, { ...l, dirty: true });
-    pending = { key, state };
+    pending.set(key, state);
     setStatus('pending');
     clearTimeout(timer);
     timer = setTimeout(flush, 1200);
@@ -451,40 +465,63 @@
       uploadInFlight = null;
     }));
   }
+  async function readTableSheet(c, l) {
+    return check(await c.from('characters').select('data, updated_at').eq('id', l.characterId).maybeSingle());
+  }
   async function flushPending() {
     clearTimeout(timer);
-    if (!pending) return status !== 'offline';
-    const { key, state } = pending;
-    pending = null;
-    const l = link(key);
-    if (!l) return false;
+    let outcome = 'synced';
+    if (!pending.size) return !['offline', 'conflict', 'removed'].includes(status);
+    setStatus('syncing');
     try {
-      setStatus('syncing');
-      const row = check(
-        await (
-          await api()
-        )
-          .from('characters')
-          .update({ name: state.name, data: state })
-          .eq('id', l.characterId)
-          .select('updated_at')
-          .maybeSingle(),
-      );
-      if (!row) {
-        setLink(key, null);
-        setStatus('removed');
-        return false;
+      const c = await api();
+      for (const [key, state] of pending) {
+        pending.delete(key);
+        const l = link(key);
+        if (!l) continue;
+        try {
+          let row =
+            l.syncedAt &&
+            check(
+              await c
+                .from('characters')
+                .update({ name: state.name, data: state })
+                .eq('id', l.characterId)
+                .eq('updated_at', l.syncedAt)
+                .select('updated_at')
+                .maybeSingle(),
+            );
+          if (!row) {
+            const remote = await readTableSheet(c, l);
+            if (!remote) {
+              setLink(key, null);
+              pending.delete(key);
+              outcome = 'removed';
+              continue;
+            }
+            if (!sameSheet(remote.data, state)) {
+              pending.delete(key);
+              outcome = 'conflict';
+              continue;
+            }
+            row = remote;
+          }
+          const current = link(key);
+          if (current?.characterId === l.characterId)
+            setLink(key, { ...current, syncedAt: row.updated_at, dirty: pending.has(key) });
+        } catch (e) {
+          if (!pending.has(key)) pending.set(key, state);
+          throw e;
+        }
       }
-      if (!pending) setLink(key, { ...link(key), syncedAt: row.updated_at, dirty: false });
-      setStatus(pending ? 'pending' : 'synced');
-      return !pending;
-    } catch (e) {
-      pending ||= { key, state };
+    } catch {
       setStatus('offline');
       return false;
     }
+    setStatus(outcome);
+    return outcome === 'synced';
   }
-  if (typeof addEventListener === 'function') addEventListener('online', () => pending && flush());
+  if (typeof addEventListener === 'function') addEventListener('online', () => pending.size && flush());
 
   // ---------- Copia en la nube de cada ficha (también las que no están en una mesa) ----------
   // Solo con una sesión ya abierta en este navegador (mesa o acceso guardado): nunca crea una cuenta sola.
@@ -547,6 +584,13 @@
       localStorage.setItem(DIRTY, JSON.stringify(d));
     } catch {}
   }
+  function sameSheet(a, b) {
+    if (a === b) return true;
+    if (!a || !b || typeof a !== 'object' || typeof b !== 'object' || Array.isArray(a) !== Array.isArray(b))
+      return false;
+    const keys = Object.keys(a);
+    return keys.length === Object.keys(b).length && keys.every(k => Object.hasOwn(b, k) && sameSheet(a[k], b[k]));
+  }
   function backup(key, state) {
     if (!hasSession() || !key || !state) return;
     setDirty(localId(key), true);
@@ -554,35 +598,62 @@
     clearTimeout(backupTimer);
     backupTimer = setTimeout(() => flushBackups().catch(() => {}), 4000);
   }
-  async function flushBackups() {
+  let backupUpload = null;
+  function flushBackups() {
+    return (backupUpload ||= flushBackupQueue().finally(() => {
+      backupUpload = null;
+    }));
+  }
+  async function readBackup(c, id) {
+    return check(await c.from('backups').select('local_id, name, data, updated_at').eq('local_id', id).maybeSingle());
+  }
+  // La identidad de mesa viaja en la copia ya existente de JSONB.
+  function backupData(row) {
+    if (!row) return null;
+    const { backupTableCharacterId, ...sheet } = row.data;
+    return sheet;
+  }
+  async function writeBackup(c, id, data, expected) {
+    const name = String(data.name || '').slice(0, 100);
+    const table = c.from('backups');
+    const tableId =
+      link('dnd-character-' + id)?.characterId || (id === 'darien' ? link('darien-voss-2014-v1')?.characterId : '');
+    const payload = tableId ? { ...data, backupTableCharacterId: tableId } : data;
+    const q = expected
+      ? table.update({ name, data: payload }).eq('local_id', id).eq('updated_at', expected)
+      : table.upsert([{ local_id: id, name, data: payload }], {
+          onConflict: 'owner_id,local_id',
+          ignoreDuplicates: true,
+        });
+    const saved = check(await q.select('local_id, updated_at').maybeSingle());
+    const row = saved || (await readBackup(c, id));
+    if (!row || (!saved && !sameSheet(backupData(row), data))) return { conflict: row };
+    markBackup(id, row.updated_at);
+    if (!backupQueue.has(id)) setDirty(id, false);
+    return { saved: true };
+  }
+  async function flushBackupQueue() {
     clearTimeout(backupTimer);
     if (!backupQueue.size || !hasSession()) return 0;
-    const batch = [...backupQueue].map(([local_id, data]) => ({
-      local_id,
-      name: String(data.name || '').slice(0, 100),
-      data,
-    }));
-    backupQueue = new Map();
-    try {
-      const rows = check(
-        await (
-          await api()
-        )
-          .from('backups')
-          .upsert(batch, { onConflict: 'owner_id,local_id' })
-          .select('local_id, updated_at'),
-      );
-      for (const r of rows || []) {
-        markBackup(r.local_id, r.updated_at);
-        if (!backupQueue.has(r.local_id)) setDirty(r.local_id, false);
+    const c = await api();
+    let count = 0;
+    const failed = new Map();
+    let error;
+    for (const [id, data] of backupQueue) {
+      backupQueue.delete(id);
+      try {
+        const result = await writeBackup(c, id, data, backupTimes()[id]);
+        if (result.saved) count++;
+        else setDirty(id, true);
+      } catch (e) {
+        failed.set(id, data);
+        error ||= e;
       }
-      dispatchEvent(new CustomEvent('cloud-backup'));
-      return batch.length;
-    } catch (e) {
-      // Sin conexión o sin la tabla todavía: se reintenta en el próximo cambio o al volver la conexión.
-      for (const b of batch) if (!backupQueue.has(b.local_id)) backupQueue.set(b.local_id, b.data);
-      throw e;
     }
+    for (const [id, data] of failed) if (!backupQueue.has(id)) backupQueue.set(id, data);
+    dispatchEvent(new CustomEvent('cloud-backup'));
+    if (error) throw error;
+    return count;
   }
   // Copia ya todas las fichas del dispositivo.
   async function backupAll() {
@@ -590,7 +661,9 @@
       throw Error('Conectate a una mesa o guardá tu acceso para activar la copia en la nube.');
     for (const x of root.CharacterStorage.list()) {
       try {
-        backupQueue.set(localId(x.key), JSON.parse(localStorage.getItem(x.key)));
+        const id = localId(x.key);
+        backupQueue.set(id, JSON.parse(localStorage.getItem(x.key)));
+        setDirty(id, true);
       } catch {}
     }
     return flushBackups();
@@ -603,80 +676,87 @@
   async function syncBackups(only = '') {
     if (!(await currentUser()))
       throw Error('Creá una cuenta o conectate a una mesa para guardar tus fichas en la nube.');
-    // Los cambios pendientes de subir quedan marcados como «cambiados acá»; se deciden abajo.
+    await backupUpload?.catch(() => {});
     clearTimeout(backupTimer);
-    for (const id of backupQueue.keys()) setDirty(id, true);
-    backupQueue = new Map();
-    let q = (await api()).from('backups').select('local_id, name, data, updated_at');
+    const c = await api();
+    let q = c.from('backups').select('local_id, name, data, updated_at');
     if (only) q = q.eq('local_id', only);
     const cloud = new Map(check(await q).map(r => [r.local_id, r]));
     const times = backupTimes(),
       dirty = dirtySet(),
       active = root.CharacterStorage.activeKey(),
       out = { up: [], down: [], same: 0, conflicts: [], activeChanged: false };
-    const norm = d => {
-      try {
-        return JSON.stringify(root.Rules.validate(JSON.parse(JSON.stringify(d))));
-      } catch {
-        return JSON.stringify(d);
-      }
-    };
     for (const x of root.CharacterStorage.list()) {
       const id = localId(x.key);
       if (only && id !== only) continue;
+      const raw = localStorage.getItem(x.key);
       let local;
       try {
-        local = JSON.parse(localStorage.getItem(x.key));
+        local = JSON.parse(raw);
       } catch {
         continue;
       }
-      const r = cloud.get(id);
-      if (!r) {
-        out.up.push([id, local]);
-        continue;
-      }
-      if (norm(local) === norm(r.data)) {
+      if (!local) continue;
+      backupQueue.delete(id);
+      let r = cloud.get(id);
+      if (r && sameSheet(local, backupData(r))) {
         markBackup(id, r.updated_at);
         setDirty(id, false);
         out.same++;
         continue;
       }
-      const known = times[id],
-        cloudNewer = !known || new Date(r.updated_at) > new Date(known),
-        changedHere = !known || !!dirty[id];
-      if (!cloudNewer) out.up.push([id, local]);
-      else if (!changedHere) {
-        root.CharacterStorage.replace(id, r.data);
+      if (!r || r.updated_at === times[id]) {
+        setDirty(id, true);
+        const result = await writeBackup(c, id, local, r?.updated_at);
+        if (result.saved) {
+          out.up.push(local.name || 'Sin nombre');
+          continue;
+        }
+        r = result.conflict;
+        if (!r) throw Error('La copia cambió mientras se sincronizaba. Volvé a intentar.');
+      } else if (times[id] && !dirty[id] && !dirtySet()[id] && localStorage.getItem(x.key) === raw) {
+        root.CharacterStorage.replace(id, backupData(r));
         markBackup(id, r.updated_at);
         setDirty(id, false);
         out.down.push(r.data.name || x.name);
         if (x.key === active) out.activeChanged = true;
-      } else out.conflicts.push({ id, name: x.name, cloudName: r.data?.name || r.name, cloudAt: r.updated_at });
+        continue;
+      }
+      out.conflicts.push({ id, name: x.name, cloudName: r.data?.name || r.name, cloudAt: r.updated_at });
     }
-    for (const [id, data] of out.up) backupQueue.set(id, data);
-    if (backupQueue.size) await flushBackups();
-    out.up = out.up.map(([, d]) => d.name || 'Sin nombre');
+    if (backupQueue.size) backupTimer = setTimeout(() => flushBackups().catch(() => {}), 4000);
     return out;
   }
   // Conflicto resuelto por la persona: 'here' sube la de este dispositivo, 'cloud' la reemplaza por la de la nube.
-  async function resolveBackup(id, keep) {
+  async function resolveBackup(id, keep, expected) {
     const x = root.CharacterStorage.list().find(e => localId(e.key) === id);
     if (!x) throw Error('Esa ficha ya no está en este dispositivo.');
+    await backupUpload?.catch(() => {});
+    const c = await api();
+    const r = await readBackup(c, id);
+    if (!r || (expected && expected !== r.updated_at))
+      throw Error('La copia cambió. Volvé a sincronizar para revisar la versión actual.');
+    backupQueue.delete(id);
     if (keep === 'here') {
-      backupQueue.set(id, JSON.parse(localStorage.getItem(x.key)));
-      await flushBackups();
+      const result = await writeBackup(c, id, JSON.parse(localStorage.getItem(x.key)), r.updated_at);
+      if (!result.saved) throw Error('La copia cambió. Volvé a sincronizar para revisar la versión actual.');
       return false;
     }
-    const r = check(await (await api()).from('backups').select('data, updated_at').eq('local_id', id).maybeSingle());
-    if (!r) throw Error('Esa copia ya no está en la nube.');
-    root.CharacterStorage.replace(id, r.data);
+    root.CharacterStorage.replace(id, backupData(r));
     markBackup(id, r.updated_at);
     setDirty(id, false);
     return x.key === root.CharacterStorage.activeKey();
   }
   async function backups() {
     if (!(await currentUser())) return [];
-    return check(await (await api()).from('backups').select('local_id, name, updated_at').order('name'));
+    return check(
+      await (
+        await api()
+      )
+        .from('backups')
+        .select('local_id, name, updated_at, table_character_id:data->>backupTableCharacterId')
+        .order('name'),
+    );
   }
   // Trae una copia al dispositivo: con el mismo id local, así las copias siguientes actualizan la misma fila.
   async function restoreBackup(local_id) {
@@ -684,7 +764,7 @@
       await (await api()).from('backups').select('local_id, data, updated_at').eq('local_id', local_id).maybeSingle(),
     );
     if (!row) throw Error('Esa copia ya no está en la nube.');
-    const id = root.CharacterStorage.add(row.data, row.local_id === 'darien' ? undefined : row.local_id);
+    const id = root.CharacterStorage.add(backupData(row), row.local_id);
     markBackup(row.local_id, row.updated_at);
     return id;
   }
@@ -696,9 +776,10 @@
   // Al abrir la app: las fichas que nunca se copiaron (por ejemplo, creadas antes de tener sesión) se suben.
   function backupMissing() {
     if (!hasSession()) return;
-    const done = backupTimes();
+    const done = backupTimes(),
+      dirty = dirtySet();
     for (const x of root.CharacterStorage.list())
-      if (!done[localId(x.key)])
+      if (!done[localId(x.key)] || dirty[localId(x.key)])
         try {
           backupQueue.set(localId(x.key), JSON.parse(localStorage.getItem(x.key)));
         } catch {}
@@ -716,14 +797,13 @@
       setLink(key, null);
       return { action: 'removed', link: l };
     }
-    const remoteNewer = new Date(row.updated_at) > new Date(l.syncedAt);
+    const remoteNewer = row.updated_at !== l.syncedAt;
     if (remoteNewer && l.dirty) return { action: 'conflict', remote: row.data, updatedAt: row.updated_at };
     if (remoteNewer) return { action: 'pull', remote: row.data, updatedAt: row.updated_at };
     return { action: l.dirty ? 'push' : 'none' };
   }
   function acceptRemote(key, updatedAt) {
-    clearTimeout(timer);
-    pending = null;
+    pending.delete(key);
     const l = link(key);
     if (l) setLink(key, { ...l, syncedAt: updatedAt, dirty: false });
     setStatus('synced');
@@ -1227,6 +1307,7 @@
     linkEmail,
     createAccount,
     changePassword,
+    requestPasswordReset,
     signIn,
     myCharacters,
     myDmTables,

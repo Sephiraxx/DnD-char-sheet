@@ -32,6 +32,8 @@ test('agotamiento: velocidad, PG máximos, descanso largo y límites', () => {
   );
   const t = { ...s, exhaustion: 2 };
   g.Classes.reset(t, 'long');
+  assert.equal(t.exhaustion, 2);
+  g.Classes.reset(t, 'long', { ateAndDrank: true });
   assert.equal(t.exhaustion, 1);
   g.Classes.reset(t, 'short');
   assert.equal(t.exhaustion, 1);

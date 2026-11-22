@@ -77,17 +77,16 @@
         }))
         .filter(x => x.name)
         .sort((a, b) => b.level - a.level),
-      total = classes.reduce((a, x) => a + x.level, 0),
       main = classes[0],
       cls = main && Object.entries(data.classes || {}).find(([, v]) => norm(v.english || v.name) === norm(main.name));
     if (cls) {
       draft.classId = cls[0];
       matched.push(`Clase: ${cls[1].name || main.name}`);
     } else if (main) missing.push(`Clase «${main.name}»: elegila a mano.`);
-    draft.level = Math.max(1, Math.min(20, total || 1));
+    draft.level = Math.max(1, Math.min(20, main?.level || 1));
     if (classes.length > 1)
       missing.push(
-        `Multiclase (${classes.map(x => `${x.name} ${x.level}`).join(' / ')}): el creador arma ${main.name}; sumá las otras clases desde «Clase» al terminar.`,
+        `Multiclase (${classes.map(x => `${x.name} ${x.level}`).join(' / ')}): el creador arma ${main.name} ${main.level}; completá los niveles restantes desde «Clase» al terminar.`,
       );
     if (main?.sub) missing.push(`Subclase «${main.sub}»: elegila en el paso de clase o al subir de nivel.`);
 

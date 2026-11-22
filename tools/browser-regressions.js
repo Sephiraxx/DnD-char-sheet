@@ -20,7 +20,8 @@ const TYPES = {
 
 function serve() {
   const server = http.createServer((req, res) => {
-    const file = path.join(ROOT, decodeURIComponent(new URL(req.url, 'http://x').pathname));
+    const pathname = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+    const file = path.join(ROOT, pathname === '/' ? '/index.html' : pathname);
     if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
       res.writeHead(404);
       return res.end();
@@ -54,6 +55,18 @@ async function main() {
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.goto(base + 'index.html');
+    check('Inicio: el tablero no se carga junto con la ficha', await page.evaluate(() => !window.Board));
+    await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+    const offline = () =>
+      page.evaluate(async () => {
+        const worker = await navigator.serviceWorker.ready;
+        const scope = new URL(worker.scope);
+        return Boolean(await caches.match(new URL('./official-monsters-data.js', scope)));
+      });
+    check('Sin conexión: el bestiario completo se descarga a pedido', !(await offline()));
+    await page.click('#offline-download');
+    await page.waitForFunction(() => document.getElementById('offline-status').textContent.includes('guardados'));
+    check('Sin conexión: la descarga deja el bestiario guardado', await offline());
     // Una ficha guardada como lo haría la app.
     await page.evaluate(s => {
       const id = CharacterStorage.add(Rules.validate(s));
@@ -228,6 +241,18 @@ async function main() {
     );
 
     // 9. Mapas: cada tipo del generador se dibuja completo, y las luces alumbran en la oscuridad.
+    await page.evaluate(() => {
+      Cloud.enabled = false;
+      TableUI.link = () => ({ campaignId: 'test-board' });
+      const trigger = document.createElement('button');
+      trigger.textContent = 'Abrir tablero de prueba';
+      trigger.dataset.action = 'board-open';
+      document.body.prepend(trigger);
+    });
+    await page.getByRole('button', { name: 'Abrir tablero de prueba' }).click();
+    await page.waitForSelector('#board-embed:not([hidden])');
+    check('El tablero se carga al abrirlo desde la ficha', await page.evaluate(() => Board.isOpen()));
+    await page.evaluate(() => Board.close());
     const maps = await page.evaluate(() => {
       const out = [];
       for (const [type] of BoardGen.TYPES) {
@@ -321,6 +346,12 @@ async function main() {
       const width = await page.evaluate(() => document.documentElement.scrollWidth);
       check(`«${file}» abre y entra en 390 px`, width <= 391, 'mide ' + width);
     }
+    await page.goto(base + 'recover.html');
+    await page.waitForFunction(() => document.getElementById('recovery-status').textContent.includes('no es válido'));
+    check(
+      'Recuperación: un enlace sin token no abre el formulario',
+      !(await page.locator('#recovery-form').isVisible()),
+    );
     check('Sin errores de JavaScript', !errors.length, errors.join(' | '));
   } finally {
     await browser.close();

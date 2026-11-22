@@ -1,13 +1,12 @@
 #!/bin/sh
-# Prueba el esquema de Supabase y los permisos del tablero en un Postgres local (no toca la mesa real).
-# Uso: PGHOST=… PGPORT=… PGUSER=… tools/test-sql.sh   (necesita psql y un usuario que pueda crear bases)
-set -e
+# Usa una base temporal independiente para probar el esquema y los permisos.
+set -eu
 cd "$(dirname "$0")/.."
-DB=dnd_schema_test
-psql -q -c "drop database if exists $DB" -c "create database $DB"
-P="psql -q -v ON_ERROR_STOP=1 -d $DB"
-$P -f supabase/tests/supabase-stub.sql 2>/dev/null
-$P -f supabase/schema.sql >/dev/null 2>&1
-for f in supabase/migrations/*.sql; do $P -f "$f" >/dev/null 2>&1; done
-for f in supabase/tests/*-rls.sql; do $P -f "$f" 2>&1 | grep -E 'ok:|FALLA|ERROR'; done
-psql -q -c "drop database $DB"
+db="dnd_schema_test_$$"
+createdb "$db"
+trap 'dropdb --if-exists "$db"' EXIT
+psql -q -v ON_ERROR_STOP=1 -d "$db" -f supabase/tests/supabase-stub.sql
+psql -q -v ON_ERROR_STOP=1 -d "$db" -f supabase/schema.sql
+for file in supabase/migrations/*.sql supabase/tests/*-rls.sql; do
+  psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$file"
+done

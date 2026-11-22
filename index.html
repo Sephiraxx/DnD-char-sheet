@@ -20,7 +20,6 @@
     <link rel="stylesheet" href="./polish.css" />
     <link rel="stylesheet" href="./creature-fx.css" />
     <link rel="stylesheet" href="./creator.css" />
-    <link rel="stylesheet" href="./board.css" />
     <link rel="stylesheet" href="./theme.css" />
     <script src="./catalog.js" defer></script>
     <script src="./class-data.js" defer></script>
@@ -92,12 +91,6 @@
     <script src="./print-sheet.js" defer></script>
     <script src="./sheet-status.js" defer></script>
     <script src="./app.js" defer></script>
-    <script src="./board-core.js" defer></script>
-    <script src="./board-art.js" defer></script>
-    <script src="./board-props.js" defer></script>
-    <script src="./board-gen.js" defer></script>
-    <script src="./sigils.js" defer></script>
-    <script src="./board.js" defer></script>
     <script src="./board-player.js" defer></script>
     <script src="./overlay-focus.js" defer></script>
     <script src="./creator.js" defer></script>
@@ -143,6 +136,8 @@
       <footer class="page-footer">
         <a href="./compendium.html">Libros y catálogo</a> ·
         <span id="copy-footer">Tus fichas se guardan en este dispositivo.</span>
+        <button type="button" class="text-btn" id="offline-download" hidden>Descargar catálogo y tablero</button>
+        <span id="offline-status" role="status"></span>
         <button class="text-btn" data-action="backup">Exportar</button> ·
         <button class="text-btn" data-action="sources">Reglas y créditos</button>
       </footer>
