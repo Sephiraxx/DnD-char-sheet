@@ -145,9 +145,12 @@
     }
     // Garrote (Shillelagh): con garrote o bastón, característica de lanzamiento, d8 y arma mágica.
     const shillelagh =
-      !item.unarmed && ['club', 'quarterstaff'].includes(item.equipmentId) && root.Effects?.active(s, 'shillelagh');
+      !item.unarmed &&
+      ['club', 'quarterstaff'].includes(item.equipmentId) &&
+      item.qty > 0 &&
+      root.Effects?.active(s, 'shillelagh', item.id);
     if (shillelagh && cfg.ability === 'auto') {
-      const cast = root.Classes?.casting(root.Classes.spellCaster(s, 'shillelagh'))?.ability || 'wis';
+      const cast = shillelagh.ability;
       if (mods[cast] > mods[ability]) ability = cast;
     }
     const prof = cfg.proficient === 'auto' ? item.unarmed || proficient(s, w) : cfg.proficient;

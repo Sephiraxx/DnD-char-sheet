@@ -12,10 +12,16 @@ function fakeSupabase(db) {
     const run = () => {
       const all = (db[table] ||= []);
       const match = r => q.filters.every(([k, v]) => r[k] === v);
+      if (q.op === 'update') {
+        const found = all.filter(match);
+        for (const row of found) Object.assign(row, q.patch, { updated_at: new Date().toISOString() });
+        return found.map(row => ({ ...row }));
+      }
       if (q.op === 'upsert') {
-        const out = q.rows.map(row => {
+        const out = q.rows.flatMap(row => {
           const at = new Date().toISOString(),
             old = all.find(r => r.local_id === row.local_id);
+          if (old && q.ignoreDuplicates) return [];
           if (old) Object.assign(old, row, { updated_at: at });
           else all.push({ ...row, updated_at: at });
           return { local_id: row.local_id, updated_at: at };
@@ -29,7 +35,8 @@ function fakeSupabase(db) {
       return all.filter(match).map(r => ({ ...r }));
     };
     const api = {
-      upsert: rows => ((q.op = 'upsert'), (q.rows = rows), api),
+      upsert: (rows, opts) => ((q.op = 'upsert'), (q.rows = rows), (q.ignoreDuplicates = opts.ignoreDuplicates), api),
+      update: patch => ((q.op = 'update'), (q.patch = patch), api),
       delete: () => ((q.op = 'delete'), api),
       select: () => api,
       order: () => api,
@@ -133,6 +140,8 @@ test('«Subir ficha» sube lo cambiado acá, trae lo cambiado en otro dispositiv
   await b.Cloud.flushBackups();
   a.localStorage.setItem('dnd-character-' + id, JSON.stringify({ ...s, name: 'Lyra en el teléfono', hp: 9 }));
   a.Cloud.backup('dnd-character-' + id, { ...s, name: 'Lyra en el teléfono', hp: 9 });
+  assert.equal(await a.Cloud.flushBackups(), 0, 'la copia automática respeta revisiones');
+  assert.equal(a.Cloud.copyState('dnd-character-' + id).pending, true);
   r = await a.Cloud.syncBackups();
   assert.equal(r.conflicts.length, 1);
   assert.equal(r.conflicts[0].id, id);
@@ -141,4 +150,19 @@ test('«Subir ficha» sube lo cambiado acá, trae lo cambiado en otro dispositiv
   assert.equal(JSON.parse(a.localStorage.getItem('dnd-character-' + id)).hp, 1);
   r = await a.Cloud.syncBackups();
   assert.equal(r.conflicts.length, 0);
+});
+
+test('al reabrir se encolan cambios pendientes aunque ya exista una copia', async () => {
+  const s = load().Rules.validate(fixture('wizard-3.json'));
+  const at = '2026-01-01T00:00:00Z';
+  const db = { backups: [{ local_id: 'one', name: s.name, data: s, updated_at: at }] };
+  const g = setup(db);
+  g.localStorage.setItem('dnd-cloud-auth', '{}');
+  g.localStorage.setItem('dnd-backup-at-v1', JSON.stringify({ one: at }));
+  g.localStorage.setItem('dnd-backup-dirty-v1', JSON.stringify({ one: true }));
+  g.CharacterStorage.add({ ...s, hp: 5 }, 'one');
+  g.Cloud.backupMissing();
+  assert.equal(await g.Cloud.flushBackups(), 1);
+  assert.equal(db.backups[0].data.hp, 5);
+  assert.equal(g.Cloud.copyState('dnd-character-one').pending, false);
 });

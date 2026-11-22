@@ -71,17 +71,23 @@ function persist(before) {
   if (!state || !KEY) throw Error('Creá o importá un personaje primero.');
   try {
     if (rawBroken) throw Error('Resguardá o reemplazá la ficha dañada desde Mi ficha.');
-    if (before) localStorage.setItem(BACKUP, JSON.stringify(before));
     localStorage.setItem(KEY, JSON.stringify(state));
-    $('#save-status').textContent = 'Guardado en este dispositivo';
-    storageIssue = '';
-    Cloud.changed(KEY, state);
-    Cloud.backup(KEY, state);
   } catch (e) {
     storageIssue = rawBroken ? e.message : 'No se pudo guardar. Tu ficha sigue abierta: exportá una copia.';
     $('#save-status').textContent = 'Sin guardar';
     toast(storageIssue);
+    return false;
   }
+  if (before) {
+    try {
+      localStorage.setItem(BACKUP, JSON.stringify(before));
+    } catch {}
+  }
+  $('#save-status').textContent = 'Guardado en este dispositivo';
+  storageIssue = '';
+  Cloud.changed(KEY, state);
+  Cloud.backup(KEY, state);
+  return true;
 }
 function commit(label, fn, requireSaved = false) {
   if (!state || !KEY) throw Error('Creá o importá un personaje primero.');
@@ -115,9 +121,10 @@ function commit(label, fn, requireSaved = false) {
   history.push(before);
   history = history.slice(-20);
   state = next;
-  if (!requireSaved) persist(before);
-  TableUI.watch(before, next);
+  const saved = requireSaved || persist(before);
+  if (saved) TableUI.watch(before, next);
   render();
+  return saved;
 }
 function download(name, data, type = 'application/json') {
   const a = document.createElement('a');
@@ -305,7 +312,7 @@ function noteValue(f) {
 }
 function noteStatus(f) {
   const d = draftOf(f);
-  return d !== null && d !== (state?.[f] || '') ? 'Sin guardar…' : 'Se guarda solo mientras escribís.';
+  return d !== null ? 'Sin guardar…' : 'Se guarda solo mientras escribís.';
 }
 function setNoteStatus(f, text) {
   const el = document.querySelector(`[data-autosave-status="${f}"]`);
@@ -317,14 +324,18 @@ function flushNotes() {
   for (const f of Object.keys(AUTOSAVE)) {
     const d = draftOf(f);
     if (d === null) continue;
-    if (d !== (state[f] || '')) {
+    if (storageIssue || d !== (state[f] || '')) {
       const label = AUTOSAVE[f] + ' guardadas';
       try {
-        commit(label, s => {
+        const saved = commit(label, s => {
           s[f] = d;
           const last = s.log[0];
           if (last?.text === label && Date.now() - new Date(last.date) < 30 * 60000) s.log.shift();
         });
+        if (!saved) {
+          setNoteStatus(f, 'No se pudo guardar. Se conservó el borrador.');
+          continue;
+        }
       } catch (e) {
         setNoteStatus(f, 'No se pudo guardar: ' + e.message);
         continue;
@@ -481,6 +492,8 @@ function go() {
   flushNotes();
   view = location.hash.slice(1);
   if (!navs.some(x => x[0] === view)) view = 'combat';
+  if (state && ['spells', 'gear', 'character', 'traits', 'class'].includes(view))
+    globalThis.OfficialContent?.ready().catch(() => {});
   query = '';
   filter = 'all';
   render();
@@ -603,6 +616,17 @@ function cast(id, ritual = false) {
         'maxlength="150" placeholder="La coraza del guardia"',
       ) +
       '<p class="small">El daño inicial es automático. En tus turnos siguientes podés repetirlo con una acción adicional, sin otro espacio, mientras mantengas concentración y siga siendo el mismo objeto.</p>';
+  if (sp.id === 'shillelagh') {
+    const weapons = Effects.shillelaghTargets(state);
+    if (!weapons.length) throw Error('Agregá un garrote o bastón a tu equipo primero.');
+    html += select(
+      'Arma empuñada',
+      'shillelaghWeapon',
+      weapons.map(w => [w.id, w.name]),
+      weapons[0].id,
+    );
+    html += '<p class="small">Cuando sueltes el arma, usá «Soltar arma» en En curso.</p>';
+  }
   if (!ritual && MM) html += MM.castFields(state, sp);
   if (onlyQuick)
     html += `<div class="banner"><p>${esc(reason)} Solo podés lanzarlo con <b>Conjuro acelerado</b>.</p></div>`;
@@ -637,7 +661,12 @@ function cast(id, ritual = false) {
         s => {
           Combat.cast(s, now, slot, ritual);
           if (mm?.cost) MM.pay(s, mm.cost);
-          if (!ritual) Effects.fromSpell(s, now, { slot: castLevel, object: fd.get('heatObject') || '' });
+          if (!ritual)
+            Effects.fromSpell(s, now, {
+              slot: castLevel,
+              object: fd.get('heatObject') || '',
+              weaponId: fd.get('shillelaghWeapon'),
+            });
           const target = String(fd.get('ventaja') || '').trim();
           if (sp.id === 'silvery' && target) {
             const effects = Combat.data(s).effects;
@@ -751,23 +780,22 @@ function shortRest() {
 }
 function longRest() {
   if (state.hp === 0) throw Error('Para obtener los beneficios del descanso largo debés iniciarlo con al menos 1 PG.');
-  let d = R.stats(state);
   modal(
     'Descanso largo completado',
-    `<p>Recuperás todos tus PG, espacios y recursos de clase con recuperación por descanso. Recuperás hasta <b>${Math.max(1, Math.floor(R.totalLevel(state) / 2))} Dados de Golpe gastados</b>.</p>${state.hdSpent === null ? field('Dados de Golpe disponibles antes del descanso', 'dados', '', 'number', `min="0" max="${R.totalLevel(state)}" required`) : ''}<label class="check"><input name="completo" type="checkbox" required>Confirmo que completé un descanso válido y lo inicié con al menos 1 PG.</label><p class="small">Se limpian PG temporales y concentración. Las condiciones se conservan para que revises su duración.</p>`,
+    `<p>Recuperás todos tus PG, espacios y recursos de clase con recuperación por descanso. Recuperás hasta <b>${Math.max(1, Math.floor(R.totalLevel(state) / 2))} Dados de Golpe gastados</b>.</p>${state.hdSpent === null ? field('Dados de Golpe disponibles antes del descanso', 'dados', '', 'number', `min="0" max="${R.totalLevel(state)}" required`) : ''}<label class="check"><input name="completo" type="checkbox" required>Confirmo que completé un descanso válido y lo inicié con al menos 1 PG.</label>${state.exhaustion ? '<label class="check"><input name="ateAndDrank" type="checkbox">Comí y bebí durante el descanso. Reduce el agotamiento en un nivel.</label>' : ''}<p class="small">Se limpian PG temporales y concentración. Las condiciones se conservan para que revises su duración.</p>`,
     fd => {
       let charged = [];
       commit('Descanso largo completado', s => {
         if (s.hdSpent === null) s.hdSpent = R.totalLevel(s) - number(fd, 'dados', 0, R.totalLevel(s));
         Classes.recoverHitDice(s, Math.max(1, Math.floor(R.totalLevel(s) / 2)));
-        s.hp = d.maxHP;
         s.temp = 0;
         s.inspirationSpent = 0;
         s.slotsSpent = Array(9).fill(0);
         s.reactionUsed = false;
         s.concentration = null;
         s.combatState = Combat.fresh();
-        Classes.reset(s, 'long');
+        Classes.reset(s, 'long', { ateAndDrank: fd.has('ateAndDrank') });
+        Effects.tick(s, 8 * 600);
         // Después del descanso: si bajó el agotamiento de 4, el máximo vuelve a ser el completo.
         s.hp = R.stats(s).maxHP;
         s.death = { success: 0, failure: 0 };
@@ -1309,6 +1337,7 @@ document.addEventListener('click', e => {
         'party',
         'party-create',
         'party-import',
+        'party-export',
         'party-open',
         'account',
         'table-pending-cancel',

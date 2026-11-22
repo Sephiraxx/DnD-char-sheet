@@ -62,6 +62,7 @@ const TableUI = (() => {
     syncing: 'Mesa: sincronizando…',
     synced: 'Mesa: sincronizada',
     offline: 'Mesa: sin conexión, se subirá luego',
+    conflict: 'Mesa: hay dos versiones de la ficha. Tocá para revisarlas.',
     removed: 'Mesa: la ficha ya no está en la mesa',
   };
   function showStatus(s = Cloud.status()) {
@@ -75,6 +76,9 @@ const TableUI = (() => {
       el.id = 'cloud-status';
       el.href = '#table';
       el.className = 'cloud-status';
+      el.addEventListener('click', () => {
+        if (Cloud.status() === 'conflict') connect();
+      });
       document.getElementById('save-status').after(el);
     }
     el.textContent = STATUS[s] || STATUS.synced;

@@ -620,7 +620,7 @@
     s.classSpent = s.classSpent || {};
     s.classSpent[rid] = spent(s, res) + n;
   }
-  function reset(s, type) {
+  function reset(s, type, { ateAndDrank = false } = {}) {
     s.raging = false;
     delete s.symbiotic;
     // Los estados de subclase (Canto del filo, Forma del pavor…) no sobreviven a un descanso.
@@ -635,7 +635,7 @@
       delete s.fontSlots;
       delete s.forgeBlessing;
       // Un descanso largo (con comida y bebida) baja un nivel de agotamiento.
-      if (s.exhaustion) s.exhaustion--;
+      if (s.exhaustion && ateAndDrank) s.exhaustion--;
     }
     s.classSpent = s.classSpent || {};
     for (const res of resources(s)) if (type === 'long' || res.reset === 'short') s.classSpent[res.id] = 0;

@@ -114,6 +114,7 @@ const InteropUI = (() => {
             skillNames: Object.fromEntries(Rules.skills.map(([k, l]) => [k, l])),
             sources,
           });
+        globalThis.OfficialContent?.ready().catch(() => {});
         Creator.startWith(r.draft, { matched: r.matched, missing: r.missing });
       },
       'Importar',

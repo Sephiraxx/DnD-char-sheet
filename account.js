@@ -1,6 +1,6 @@
 /* Cuenta con email y contraseña: crearla (con o sin mesa) vincula las fichas de este dispositivo, y entrar
    con ella en otro dispositivo las trae.
-   No se envían correos; si alguien olvida la contraseña, se la reinicia desde el panel de Supabase. */
+   El correo se usa para recuperar el acceso. */
 const AccountUI = (() => {
   'use strict';
   const esc = PartyView.esc;
@@ -52,10 +52,9 @@ const AccountUI = (() => {
     const here = localIds(),
       times = Cloud.backupTimes(),
       mine = CharacterStorage.list(),
-      copied = mine.filter(x => times[x.key.startsWith('dnd-character-') ? x.key.slice(14) : 'darien']).length,
-      // Las fichas de mesa ya se ofrecen arriba con «Traer a este dispositivo»: no se repiten como copia.
-      tableNames = new Set((rows || []).map(r => r.name)),
-      away = list.filter(r => !here.has(r.local_id) && !tableNames.has(r.name));
+      copied = mine.filter(x => times[x.id]).length,
+      tableIds = new Set(rows.map(r => r.id)),
+      away = list.filter(r => !here.has(r.local_id) && !tableIds.has(r.table_character_id));
     const last = Object.values(times).sort().at(-1);
     return `<div class="cloud-backup"><h3>Copia en la nube</h3>${
       opening
@@ -81,7 +80,7 @@ const AccountUI = (() => {
   const form = (mode, label, { newPassword = false } = {}) =>
     `<form class="account-form" data-account="${mode}"><div class="form-grid">${mode === 'password' ? '' : `<label class="field">Email<input type="email" name="email" required maxlength="200" autocomplete="email" placeholder="tu@email.com"></label>`}<label class="field">Contraseña<input type="password" name="password" required minlength="6" maxlength="72" autocomplete="${newPassword ? 'new-password' : 'current-password'}"></label>${newPassword && mode !== 'password' ? `<label class="field">Repetí la contraseña<input type="password" name="again" required minlength="6" maxlength="72" autocomplete="new-password"></label>` : ''}</div><div class="actions"><button class="button" type="submit">${label}</button></div><p class="form-error" role="alert"></p></form>`;
   const loginBlock = intro =>
-    `<p>${intro}</p>${form('login', 'Entrar')}<p class="small muted">Si no te acordás de la contraseña, todavía no hay recuperación por correo: pedile a quien administra la aplicación que la reinicie.</p>`;
+    `<p>${intro}</p>${form('login', 'Entrar')}<details class="battle-rule"><summary>Olvidé mi contraseña</summary><form class="account-form" data-account="reset"><label class="field">Email de tu cuenta<input type="email" name="email" required maxlength="200" autocomplete="email"></label><button class="button secondary" type="submit">Enviar enlace de recuperación</button><p class="form-error" role="status"></p></form></details>`;
 
   // Cuenta nueva: guarda todas las fichas de este dispositivo en ella, sin necesidad de una mesa.
   const fichas = () => {
@@ -168,6 +167,12 @@ const AccountUI = (() => {
     btn.disabled = true;
     out.textContent = 'Un momento…';
     try {
+      if (f.dataset.account === 'reset') {
+        await Cloud.requestPasswordReset(email);
+        out.textContent = 'Si ese email tiene una cuenta, vas a recibir un enlace para cambiar la contraseña.';
+        btn.disabled = false;
+        return;
+      }
       if (f.dataset.account === 'create') {
         const n = await Cloud.createAccount(email, password);
         if (typeof toast === 'function') toast(`Cuenta creada: ${email}.${n ? ` ${n} ficha(s) vinculada(s).` : ''}`);
@@ -243,7 +248,8 @@ const AccountUI = (() => {
       `<fieldset class="sync-conflict"><legend><b>${esc(c.name)}</b> cambió acá y en otro dispositivo</legend><label class="check"><input type="radio" name="keep-${esc(c.id)}" value="here" checked>Quedarme con la de este dispositivo (se sube)</label><label class="check"><input type="radio" name="keep-${esc(c.id)}" value="cloud">Usar la de la nube${c.cloudName && c.cloudName !== c.name ? ` («${esc(c.cloudName)}»)` : ''} · ${esc(when(c.cloudAt))}</label></fieldset>`;
     const run = async fd => {
       let reload = r.activeChanged;
-      for (const c of r.conflicts) reload = (await Cloud.resolveBackup(c.id, fd.get('keep-' + c.id))) || reload;
+      for (const c of r.conflicts)
+        reload = (await Cloud.resolveBackup(c.id, fd.get('keep-' + c.id), c.cloudAt)) || reload;
       notify('Fichas sincronizadas.');
       if (reload) setTimeout(() => location.reload(), 900);
       else refill();

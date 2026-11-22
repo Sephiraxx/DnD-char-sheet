@@ -73,7 +73,7 @@ test('generador de mapas: cavernas y mazmorras quedan conectadas', () => {
 
 test('el generador se carga en las pantallas con mapa y queda disponible sin conexión', () => {
   const read = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
-  for (const f of ['index.html', 'dm.html', 'board.html']) {
+  for (const f of ['board-player.js', 'dm.html', 'board.html']) {
     const h = read(f);
     assert.ok(
       h.indexOf('board-gen.js') > h.indexOf('board-art.js') && h.indexOf('board-gen.js') < h.indexOf('./board.js'),

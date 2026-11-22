@@ -345,11 +345,5 @@
         : '') + html(itemTexts.get(id)),
   };
   if (root.OfficialContentData && root.Catalog && root.ClassData && root.CampaignData) apply();
-  // En el navegador, los textos largos llegan solos cuando la página ya terminó de cargar.
-  if (typeof document !== 'undefined' && typeof root.addEventListener === 'function' && !textsApplied) {
-    const later = () => setTimeout(() => loadTexts().catch(() => {}), 0);
-    if (document.readyState === 'complete') later();
-    else root.addEventListener('load', later, { once: true });
-  }
   if (typeof module !== 'undefined' && module.exports) module.exports = root.OfficialContent;
 })(typeof window !== 'undefined' ? window : globalThis);

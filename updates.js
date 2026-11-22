@@ -41,6 +41,36 @@
   sw.register('./sw.js')
     .then(reg => {
       registration = reg;
+      const download = document.getElementById('offline-download');
+      if (download) {
+        download.hidden = false;
+        download.addEventListener('click', async () => {
+          const status = document.getElementById('offline-status');
+          const worker = sw.controller || reg.active;
+          if (!worker) {
+            status.textContent = 'El guardado sin conexión todavía se está preparando.';
+            return;
+          }
+          download.disabled = true;
+          status.textContent = 'Descargando catálogo y tablero…';
+          const channel = new MessageChannel();
+          const finish = ok => {
+            clearTimeout(timeout);
+            channel.port1.close();
+            download.disabled = false;
+            status.textContent = ok
+              ? 'Catálogo y archivos del tablero guardados en este dispositivo.'
+              : 'No se pudo completar la descarga. Revisá tu conexión y reintentá.';
+          };
+          const timeout = setTimeout(() => finish(false), 120000);
+          channel.port1.onmessage = event => finish(event.data === true);
+          try {
+            worker.postMessage('download-offline', [channel.port2]);
+          } catch {
+            finish(false);
+          }
+        });
+      }
       if (reg.waiting) offer(reg.waiting);
       reg.addEventListener('updatefound', () => {
         const worker = reg.installing;

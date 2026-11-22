@@ -1,26 +1,22 @@
 const PREFIX = 'darien:' + self.registration.scope + ':';
 // BUILD es un resumen del contenido de FILES: lo escribe `npm run stamp` y los tests fallan si quedó viejo.
-const BUILD = 'a405bcc9f030';
+const BUILD = '5e549dfe2f1b';
 const CACHE = PREFIX + BUILD;
 const FILES = [
   './',
   './index.html',
+  './recover.html',
+  './recover.js',
   './style.css',
   './rules.js',
   './class-data.js',
   './book-content-data.js',
   './book-content.js',
   './official-content-data.js',
-  './official-text-data.js',
-  './official-monsters-data.js',
   './shared-spell-data.js',
   './shared-reference-data.js',
-  './shared-reference-text.js',
   './content-index.js',
   './official-content.js',
-  './monsters-data.js',
-  './compendium.html',
-  './compendium.js',
   './homebrew.js',
   './homebrew-ui.js',
   './library.css',
@@ -100,28 +96,36 @@ const FILES = [
   './monsters-ui.js',
   './encounters.js',
   './encounter-generator.js',
-  './encounter-tables-data.js',
-  './curated-encounter-data.js',
   './encounter-generator-ui.js',
   './sessions.js',
   './chronicle.js',
   './shop.js',
   './dm-reference.js',
   './dm-tools-ui.js',
-  './board.html',
-  './board.js',
   './board-player.js',
   './board-dm.js',
+  './library-core.js',
+  './library-ui.js',
+  './library-text.js',
+  './vendor/supabase.js',
+];
+const OFFLINE_FILES = [
+  './compendium.html',
+  './compendium.js',
+  './official-text-data.js',
+  './official-monsters-data.js',
+  './monsters-data.js',
+  './shared-reference-text.js',
+  './encounter-tables-data.js',
+  './curated-encounter-data.js',
+  './board.html',
+  './board.js',
   './board-core.js',
   './board-art.js',
   './board-props.js',
   './board-gen.js',
   './sigils.js',
-  './library-core.js',
-  './library-ui.js',
-  './library-text.js',
   './board.css',
-  './vendor/supabase.js',
 ];
 // En la compu de desarrollo se sigue pidiendo todo a la red para ver los cambios al recargar.
 const DEV = /^(localhost|127\.|\[::1\]$)/.test(self.location.hostname) || self.location.hostname.endsWith('.localhost');
@@ -138,6 +142,18 @@ self.addEventListener('install', event => {
 });
 self.addEventListener('message', event => {
   if (event.data === 'skip-waiting') self.skipWaiting();
+  const port = event.ports?.[0];
+  if (event.data === 'download-offline' && port) {
+    event.waitUntil(
+      caches
+        .open(CACHE)
+        .then(cache => cache.addAll(OFFLINE_FILES.map(f => new Request(f, { cache: 'reload' }))))
+        .then(
+          () => port.postMessage(true),
+          () => port.postMessage(false),
+        ),
+    );
+  }
 });
 self.addEventListener('activate', event => {
   event.waitUntil(

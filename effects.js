@@ -27,11 +27,26 @@
   // `link` identifica un efecto lanzado por otro (personaje:conjuro): relanzarlo lo reemplaza.
   function add(
     s,
-    { name, rounds = null, concentration = null, from = 'self', link = null, casting = null, spell = null },
+    {
+      name,
+      rounds = null,
+      concentration = null,
+      from = 'self',
+      link = null,
+      casting = null,
+      spell = null,
+      weaponId = null,
+      ability = null,
+    },
   ) {
     const id = 'fx-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     s.timedEffects = [
-      ...list(s).filter(x => !(concentration && x.concentration === concentration) && !(link && x.link === link)),
+      ...list(s).filter(
+        x =>
+          !(concentration && x.concentration === concentration) &&
+          !(link && x.link === link) &&
+          !(spell === 'shillelagh' && x.spell === spell),
+      ),
       {
         id,
         name: String(name).slice(0, 100),
@@ -40,19 +55,29 @@
         from,
         ...(link ? { link: String(link).slice(0, 120) } : {}),
         ...(spell ? { spell: String(spell).slice(0, 60) } : {}),
+        ...(weaponId ? { weaponId, ability } : {}),
         ...(casting ? { casting: structuredClone(casting) } : {}),
       },
     ].slice(-30);
   }
   // Al lanzar un conjuro con duración se anota su efecto, ligado a la concentración si corresponde.
+  const shillelaghTargets = s =>
+    (s.inventory || []).filter(x => x.qty > 0 && ['club', 'quarterstaff'].includes(x.equipmentId));
   function fromSpell(s, sp, opts = {}) {
     const rounds = roundsFrom(sp.duration);
     if (rounds === 0 || rounds === 1) return;
     if (!sp.concentration && rounds === null) return;
+    const weapon = sp.id === 'shillelagh' ? shillelaghTargets(s).find(x => x.id === opts.weaponId) : null;
+    if (sp.id === 'shillelagh' && !weapon) throw Error('Elegí el garrote o bastón que estás empuñando.');
     add(s, {
-      name: sp.name,
-      // Garrote (Shillelagh) cambia los ataques con garrote o bastón mientras dura.
-      ...(sp.id === 'shillelagh' ? { spell: sp.id } : {}),
+      name: weapon ? sp.name + ' · ' + weapon.name : sp.name,
+      ...(weapon
+        ? {
+            spell: sp.id,
+            weaponId: weapon.id,
+            ability: sp.castAbility || root.Classes.casting(root.Classes.spellCaster(s, sp.id)).ability,
+          }
+        : {}),
       rounds,
       concentration: sp.concentration ? sp.id : null,
       ...(sp.id === 'heat-metal'
@@ -102,11 +127,11 @@
     return { sp: { ...info.sp, castAbility: info.ability }, slot, object: info.object };
   }
   // Al empezar tu turno pasa una ronda. Devuelve los nombres de los efectos que terminaron.
-  function tick(s) {
+  function tick(s, rounds = 1) {
     const ended = [];
     s.timedEffects = list(s).filter(x => {
       if (x.rounds === null) return true;
-      x.rounds--;
+      x.rounds -= rounds;
       if (x.rounds > 0) return true;
       ended.push(x.name);
       if (x.concentration && x.concentration === s.concentration) {
@@ -120,7 +145,11 @@
   // Los efectos de concentración terminan cuando termina (o cambia) la concentración.
   function sync(s) {
     if (!list(s).length) return;
-    s.timedEffects = list(s).filter(x => !x.concentration || x.concentration === s.concentration);
+    s.timedEffects = list(s).filter(
+      x =>
+        (!x.concentration || x.concentration === s.concentration) &&
+        (x.spell !== 'shillelagh' || shillelaghTargets(s).some(w => w.id === x.weaponId)),
+    );
   }
   function remaining(x) {
     if (x.rounds === null) return 'sin duración fija';
@@ -145,6 +174,10 @@
             (x.concentration === null || typeof x.concentration === 'string') &&
             (x.link === undefined || (typeof x.link === 'string' && x.link.length <= 120)) &&
             (x.spell === undefined || (typeof x.spell === 'string' && x.spell.length <= 60)) &&
+            (x.weaponId === undefined ||
+              (typeof x.weaponId === 'string' &&
+                x.weaponId.length <= 100 &&
+                ['str', 'dex', 'con', 'int', 'wis', 'cha'].includes(x.ability))) &&
             ['self', 'dm'].includes(x.from) &&
             (x.casting === undefined ||
               (x.casting &&
@@ -160,7 +193,8 @@
     );
   }
   // ¿Hay un efecto propio activo de ese conjuro?
-  const active = (s, spellId) => list(s).some(x => x.from === 'self' && x.spell === spellId && x.rounds !== 0);
+  const active = (s, spellId, weaponId) =>
+    list(s).find(x => x.from === 'self' && x.spell === spellId && x.rounds !== 0 && x.weaponId === weaponId);
   root.Effects = {
     roundsFrom,
     list,
@@ -174,6 +208,7 @@
     remaining,
     valid,
     active,
+    shillelaghTargets,
   };
   if (typeof module !== 'undefined') module.exports = root.Effects;
 })(typeof window !== 'undefined' ? window : globalThis);

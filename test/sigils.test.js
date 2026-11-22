@@ -49,7 +49,7 @@ test('emblemas: el tipo de criatura se reconoce por el nombre, en castellano o i
 });
 
 test('los emblemas se cargan antes del tablero y quedan disponibles sin conexión', () => {
-  for (const f of ['index.html', 'dm.html', 'board.html']) {
+  for (const f of ['board-player.js', 'dm.html', 'board.html']) {
     const h = read(f);
     assert.ok(h.indexOf('./sigils.js') > 0 && h.indexOf('./sigils.js') < h.indexOf('./board.js'), f);
   }

@@ -47,7 +47,7 @@ const PartyUI = (() => {
         })
         .join(
           '',
-        )}</div><div class="actions section-space">${button('Crear personaje', 'party-create', '')}${button('Importar como personaje nuevo', 'party-import')}${button('Importar de D&D Beyond', 'interop-import')}${state ? button('Exportar personaje actual', 'backup') : ''}${accountReady() ? button('Tu cuenta', 'account') : ''}</div>`,
+        )}</div><div class="actions section-space">${button('Crear personaje', 'party-create', '')}${button('Importar ficha o copia de todas', 'party-import')}${button('Importar de D&D Beyond', 'interop-import')}${state ? button('Exportar personaje actual', 'backup') : ''}${items.length ? button('Exportar todas las fichas', 'party-export') : ''}${accountReady() ? button('Tu cuenta', 'account') : ''}</div>`,
     );
   }
   // ---------- Dónde vive cada ficha ----------
@@ -1069,6 +1069,7 @@ const PartyUI = (() => {
           C.spendHitDice(s, used, n);
           s.hp = Math.min(d.maxHP, s.hp + heal);
           C.reset(s, 'short');
+          Effects.tick(s, 600);
           s.extraResources.forEach(r => {
             if (r.reset === 'short') r.spent = 0;
           });
@@ -1296,7 +1297,10 @@ const PartyUI = (() => {
       'party-feature': e => useFeature(e.dataset.id),
       party: list,
       account,
-      'party-create': () => Creator.start(),
+      'party-create': () => {
+        Creator.start();
+        if (globalThis.OfficialContent) OfficialContent.ready().catch(() => {});
+      },
       'party-open': e => CharacterStorage.activate(e.dataset.id),
       'party-delete': e =>
         confirmAction(
@@ -1308,6 +1312,13 @@ const PartyUI = (() => {
           },
           'Eliminar',
         ),
+      'party-export': () => {
+        flushNotes();
+        const characters = CharacterStorage.list().map(x =>
+          x.key === KEY && state ? state : JSON.parse(localStorage.getItem(x.key)),
+        );
+        download('fichas-de-aventura.json', JSON.stringify({ format: 'dnd-char-sheet', version: 1, characters }));
+      },
       'party-import': () => {
         const el = document.createElement('input');
         el.type = 'file';
@@ -1316,10 +1327,16 @@ const PartyUI = (() => {
           try {
             const file = el.files[0];
             if (!file) return;
-            if (file.size > 2 * 1024 * 1024) throw Error('La ficha supera 2 MB.');
-            const s = R.validate(JSON.parse(await file.text()));
-            const id = CharacterStorage.add(s);
-            CharacterStorage.activate(id);
+            if (file.size > 16 * 1024 * 1024) throw Error('La copia supera 16 MB.');
+            const parsed = JSON.parse(await file.text());
+            if (parsed?.format === 'dnd-char-sheet') {
+              if (parsed.version !== 1) throw Error('Versión de copia incompatible.');
+              const ids = CharacterStorage.addMany(parsed.characters);
+              CharacterStorage.activate(ids[0]);
+            } else {
+              if (file.size > 2 * 1024 * 1024) throw Error('La ficha supera 2 MB.');
+              CharacterStorage.activate(CharacterStorage.add(parsed));
+            }
           } catch (e) {
             toast('No se importó: ' + e.message);
           }

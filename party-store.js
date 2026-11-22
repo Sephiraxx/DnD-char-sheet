@@ -46,22 +46,31 @@
       }
     }
   }
-  function add(s, wanted) {
-    const entries = list(),
-      id =
-        wanted && /^[a-zA-Z0-9-]{1,80}$/.test(wanted) && !entries.some(x => x.id === wanted)
-          ? wanted
-          : crypto.randomUUID(),
-      key = 'dnd-character-' + id;
-    if (entries.length >= 100) throw Error('Exportá o eliminá una ficha antes de agregar más.');
-    localStorage.setItem(key, JSON.stringify(root.Rules.validate(s)));
+  function addMany(sheets, wanted) {
+    const entries = list();
+    if (!Array.isArray(sheets) || !sheets.length) throw Error('La copia no contiene fichas.');
+    if (entries.length + sheets.length > 100) throw Error('Exportá o eliminá una ficha antes de agregar más.');
+    const validated = sheets.map(s => root.Rules.validate(s));
+    const added = [];
     try {
-      localStorage.setItem(INDEX, JSON.stringify([...entries, { id, key, name: s.name }]));
+      for (const sheet of validated) {
+        const id =
+          wanted && validated.length === 1 && /^[a-zA-Z0-9-]{1,80}$/.test(wanted) && !entries.some(x => x.id === wanted)
+            ? wanted
+            : crypto.randomUUID();
+        const key = 'dnd-character-' + id;
+        localStorage.setItem(key, JSON.stringify(sheet));
+        added.push({ id, key, name: sheet.name });
+      }
+      localStorage.setItem(INDEX, JSON.stringify([...entries, ...added]));
     } catch (e) {
-      localStorage.removeItem(key);
+      for (const item of added) localStorage.removeItem(item.key);
       throw e;
     }
-    return id;
+    return added.map(item => item.id);
+  }
+  function add(s, wanted) {
+    return addMany([s], wanted)[0];
   }
   function activate(id) {
     const entries = list();
@@ -102,5 +111,5 @@
     else localStorage.removeItem(ACTIVE);
     location.reload();
   }
-  root.CharacterStorage = { list, activeKey, add, activate, remove, removeActive, replace };
+  root.CharacterStorage = { list, activeKey, add, addMany, activate, remove, removeActive, replace };
 })(typeof window !== 'undefined' ? window : globalThis);
