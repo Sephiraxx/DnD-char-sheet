@@ -41,6 +41,21 @@
       !array(archive.prepared, 500)
     )
       invalid();
+    const npcIds = new Set();
+    if (!array(archive.npcs ?? [], 500)) invalid();
+    for (const npc of archive.npcs || []) {
+      if (
+        !object(npc) ||
+        !text(npc.id, 100) ||
+        !npc.id ||
+        npcIds.has(npc.id) ||
+        !object(npc.data) ||
+        (npc.data.friendlyNpc === true) === (npc.data.enemyNpc === true)
+      )
+        invalid();
+      root.Rules.validate(structuredClone(npc.data));
+      npcIds.add(npc.id);
+    }
     const ids = new Set();
     for (const m of archive.maps) {
       if (
@@ -97,7 +112,9 @@
         !e.name.trim() ||
         !text(e.notes ?? '', 16000) ||
         !array(e.monsters, 500) ||
-        e.monsters.some(m => !object(m) || !text(m.name, 100) || !text(m.uid, 100))
+        e.monsters.some(
+          m => !object(m) || !text(m.name, 100) || !text(m.uid, 100) || (m.npcId != null && !npcIds.has(m.npcId)),
+        )
       )
         invalid();
     return archive;
@@ -116,6 +133,14 @@
     const p = await root.Cloud.party(id);
     if (!p.viewerIsDM) throw Error('Solo el DM puede descargar esta copia.');
     const b = await root.Cloud.board(id);
+    const npcs = [...(p.characters || []), ...(p.enemyNpcs || [])]
+      .filter(
+        row => row.owner_id === p.campaign.dm_id && (row.data?.friendlyNpc === true || row.data?.enemyNpc === true),
+      )
+      .map(row => ({ id: row.id, data: row.data }));
+    const npcIds = new Set(npcs.map(npc => npc.id));
+    const encounters = prepared.map(e => ({ ...e, monsters: e.monsters.filter(m => !m.npcId || npcIds.has(m.npcId)) }));
+    const stages = new Set(encounters.flatMap(e => e.monsters.map(m => 'enc:' + e.id + ':' + m.uid)));
     const maps = [];
     for (const m of b.maps) {
       const image = m.image_path ? await imageData(await root.Cloud.downloadMapImage(m.image_path)) : null;
@@ -129,12 +154,14 @@
       maps,
       active: b.board?.map_id || null,
       tokens: b.tokens.flatMap(t => {
+        if (t.stage?.startsWith('enc:'))
+          return stages.has(t.stage) ? [{ ...tokenFields(t), kind: 'monster', hidden: true }] : [];
         if (t.character_id) return [];
-        if (t.stage?.startsWith('enc:')) return [{ ...tokenFields(t), hidden: true }];
         return !t.combatant_id && ['npc', 'object'].includes(t.kind) ? [tokenFields(t)] : [];
       }),
       homebrew: p.homebrew.map(homebrewFields),
-      prepared,
+      prepared: encounters,
+      npcs,
     });
   }
 
@@ -163,7 +190,6 @@
         );
         maps.push({ id: ids.get(m.id), ...mapFields(m), terrain: { ...m.terrain, links }, image_path });
       }
-      localStorage.setItem(preparedKey, JSON.stringify(archive.prepared.map(e => ({ ...e, launched: false }))));
       await cloud.restoreCampaignArchive(campaign.id, {
         settings: { ...cloud.cleanSettings(archive.settings), session: null },
         maps,
@@ -171,6 +197,26 @@
         homebrew: archive.homebrew.map(homebrewFields),
         active: ids.get(archive.active) || null,
       });
+      const npcIds = new Map();
+      for (const npc of archive.npcs || []) {
+        const data = root.Rules.validate(structuredClone(npc.data));
+        data.combatState = root.Combat.fresh();
+        delete data.dmCommandsApplied;
+        const id = data.enemyNpc
+          ? await cloud.createEnemyNpc(campaign, data)
+          : (await cloud.createFriendlyNpc(campaign, data)).id;
+        npcIds.set(npc.id, id);
+      }
+      localStorage.setItem(
+        preparedKey,
+        JSON.stringify(
+          archive.prepared.map(e => ({
+            ...e,
+            launched: false,
+            monsters: e.monsters.map(m => (m.npcId ? { ...m, npcId: npcIds.get(m.npcId) } : m)),
+          })),
+        ),
+      );
       return campaign;
     } catch (error) {
       try {

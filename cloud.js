@@ -995,11 +995,77 @@
     if (!ids.length) return;
     check(await (await api()).from('events').update({ applied_at: new Date().toISOString() }).in('id', ids));
   }
+  // Apply damage for a hostile sheet that the DM does not have loaded.
+  async function applyUnloadedEnemyDamage(campaignId, ids) {
+    if (!ids.length) return false;
+    const c = await api();
+    const events = check(
+      await c
+        .from('events')
+        .select('*')
+        .eq('campaign_id', campaignId)
+        .in('target_character', ids)
+        .eq('kind', 'damage')
+        .is('applied_at', null)
+        .order('id'),
+    );
+    let changed = false;
+    for (const id of new Set(events.map(e => e.target_character))) {
+      const pending = events.filter(e => e.target_character === id).slice(0, 100);
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const row = check(
+          await c
+            .from('characters')
+            .select('data, updated_at')
+            .eq('campaign_id', campaignId)
+            .eq('id', id)
+            .maybeSingle(),
+        );
+        if (row?.data?.enemyNpc !== true || row.data.hp === null) break;
+        const sheet = root.Rules.validate(row.data);
+        const seen = new Set(sheet.dmCommandsApplied || []);
+        const missing = pending.filter(e => !seen.has(e.id));
+        if (missing.length) {
+          for (const e of missing) {
+            const p = e.payload || {};
+            const amount = Math.min(9999, root.Defenses.apply(sheet, root.Defenses.partsOf(p)).total);
+            if (amount) {
+              root.Combat.takeDamage(sheet, amount, Boolean(p.crit));
+              sheet.log.unshift({
+                date: e.created_at,
+                text: (p.from || 'Mesa') + ': daño recibido ' + amount + (p.source ? ' (' + p.source + ')' : ''),
+              });
+            }
+            seen.add(e.id);
+          }
+          sheet.log = sheet.log.slice(0, 100);
+          sheet.dmCommandsApplied = [...seen].slice(-500);
+          root.Rules.validate(sheet);
+          const saved = check(
+            await c
+              .from('characters')
+              .update(sheetPayload(sheet, true))
+              .eq('id', id)
+              .eq('updated_at', row.updated_at)
+              .select('id')
+              .maybeSingle(),
+          );
+          if (!saved) continue;
+          changed = true;
+        }
+        await markApplied(pending.map(e => e.id));
+        break;
+      }
+    }
+    return changed;
+  }
+
   // ---------- Combate compartido ----------
   // Orden de iniciativa igual al del servidor (advance_turn).
-  const order = list =>
+  const order = (list, active = false) =>
     [...list].sort(
       (a, b) =>
+        (active ? (a.round_priority ?? Infinity) - (b.round_priority ?? Infinity) : 0) ||
         (a.turn_priority ?? Infinity) - (b.turn_priority ?? Infinity) ||
         (b.init ?? -999) - (a.init ?? -999) ||
         b.tiebreak - a.tiebreak ||
@@ -1231,7 +1297,13 @@
   // Al lanzar: cada criatura nueva ocupa su ficha preparada (y aparece donde la dejó el DM).
   async function linkStaged(campaignId, links) {
     const c = await api();
-    for (const l of links)
+    for (const l of links) {
+      if (l.npcId) {
+        check(
+          await c.rpc('link_prepared_npc', { p_campaign: campaignId, p_stage: l.stage, p_combatant: l.combatantId }),
+        );
+        continue;
+      }
       check(
         await c
           .from('map_tokens')
@@ -1239,6 +1311,7 @@
           .eq('campaign_id', campaignId)
           .eq('stage', l.stage),
       );
+    }
   }
   async function uploadMapImage(campaignId, blob, ext = 'webp') {
     const path = campaignId + '/' + crypto.randomUUID() + '.' + ext;
@@ -1480,6 +1553,7 @@
     post,
     pendingCommands,
     markApplied,
+    applyUnloadedEnemyDamage,
     removeCharacter,
     deleteCampaign,
     subscribe,

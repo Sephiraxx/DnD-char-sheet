@@ -71,3 +71,56 @@ test('campaign restore preserves map links, copies the image, and cleans up on f
   assert.equal(g.localStorage.getItem(key), null);
   assert.deepEqual(cleanup, [image, campaign.id]);
 });
+
+test('campaign backup restores both NPC sides and remaps prepared encounters', async () => {
+  const { LOGIC, fixture } = require('./load');
+  const g = load([...LOGIC, 'campaign-archive.js']);
+  const sheet = g.Rules.validate(fixture('wizard-3.json'));
+  const ally = { id: 'old-ally', owner_id: 'dm', data: { ...sheet, friendlyNpc: true } };
+  const enemy = { id: 'old-enemy', owner_id: 'dm', data: { ...sheet, enemyNpc: true, dmCommandsApplied: [3] } };
+  const saved = [];
+  g.Cloud = {
+    party: async () => ({
+      campaign: { name: 'Posada', dm_id: 'dm', settings: {} },
+      viewerIsDM: true,
+      characters: [ally, { id: 'ordinary-pc', owner_id: 'player', data: sheet }],
+      enemyNpcs: [enemy],
+      homebrew: [],
+    }),
+    board: async () => ({ maps: [], tokens: [] }),
+    createCampaign: async () => ({ id: 'restored-table' }),
+    cleanSettings: settings => settings,
+    restoreCampaignArchive: async () => {},
+    createFriendlyNpc: async (table, data) => {
+      saved.push(data);
+      return { id: 'new-ally' };
+    },
+    createEnemyNpc: async (table, data) => {
+      saved.push(data);
+      return 'new-enemy';
+    },
+  };
+  const prep = {
+    id: 'enc',
+    name: 'Batalla',
+    monsters: [
+      { uid: 'a', name: 'A', npcId: ally.id },
+      { uid: 'b', name: 'B', npcId: enemy.id },
+    ],
+  };
+  const archive = await g.CampaignArchive.build('table', [prep]);
+  assert.deepEqual(
+    Array.from(archive.npcs, row => row.id),
+    ['old-ally', 'old-enemy'],
+  );
+  await g.CampaignArchive.restore(archive, 'Copia');
+  assert.equal(saved[0].friendlyNpc, true);
+  assert.equal(saved[1].enemyNpc, true);
+  assert.equal(saved[1].dmCommandsApplied, undefined);
+  assert.equal(saved[0].hp, sheet.hp);
+  const [restored] = JSON.parse(g.localStorage.getItem('dnd-dm-prepared-restored-table'));
+  assert.deepEqual(
+    restored.monsters.map(m => m.npcId),
+    ['new-ally', 'new-enemy'],
+  );
+});

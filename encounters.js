@@ -128,11 +128,14 @@ const Encounters = (() => {
         ? items
             .map(enc => {
               const groups = new Map();
-              for (const m of enc.monsters) groups.set(m.name, [...(groups.get(m.name) || []), m]);
+              for (const m of enc.monsters) {
+                const key = m.npcId ? 'npc:' + m.npcId : 'creature:' + m.name;
+                groups.set(key, [...(groups.get(key) || []), m]);
+              }
               const rows = [...groups.entries()]
                 .map(
-                  ([name, ms]) =>
-                    `<div class="list-row"><span>${ms.length > 1 ? ms.length + ' × ' : ''}<b>${esc(name)}</b> <span class="small muted">· PG ${esc(ms.map(m => m.hp).join(', '))} · CA ${esc(ms[0].ac)}</span></span>${button('×', 'prep-remove', 'text-btn', `data-id="${enc.id}" data-name="${esc(name)}" aria-label="Quitar ${esc(name)}"`)}</div>`,
+                  ([, ms]) =>
+                    `<div class="list-row"><span>${ms.length > 1 ? ms.length + ' × ' : ''}<b>${esc(ms[0].name)}</b> <span class="small muted">· PG ${esc(ms.map(m => m.hp).join(', '))} · CA ${esc(ms[0].ac)}</span></span>${button('×', 'prep-remove', 'text-btn', `data-id="${enc.id}" data-name="${esc(ms[0].name)}" data-npc="${esc(ms[0].npcId || '')}" aria-label="Quitar ${esc(ms[0].name)}"`)}</div>`,
                 )
                 .join('');
               const diff =
@@ -148,7 +151,7 @@ const Encounters = (() => {
               const sum = [n ? `${n} ${n === 1 ? 'criatura' : 'criaturas'}` : 'sin criaturas', d?.label]
                 .filter(Boolean)
                 .join(' · ');
-              return `<details class="prepared" data-id="${enc.id}"${opened.has(enc.id) ? ' open' : ''}><summary class="prepared-head"><span class="prepared-title"><b>${esc(enc.name)}</b> <span class="tag">${esc(STYLES[enc.style]?.[1] || '')}</span>${enc.launched ? ' <span class="tag">Ya lanzado</span>' : ''}<span class="small muted prepared-sum${d ? ' difficulty ' + esc(d.label.toLowerCase()) : ''}">${esc(sum)}</span></span></summary><div class="prepared-body">${rows || '<p class="small muted">Sin criaturas todavía.</p>'}${enc.notes ? `<details class="section-space"><summary>Notas privadas del encuentro</summary><p class="encounter-notes">${esc(enc.notes)}</p></details>` : ''}${diff}<div class="actions">${button('Criatura del catálogo', 'prep-srd', 'secondary', `data-id="${enc.id}"`)}${typeof EncounterGeneratorUI !== 'undefined' ? button('Generar desde tablas', 'encgen-open', 'secondary', `data-id="${enc.id}"`) : ''}${button('Criatura propia', 'prep-custom', 'secondary', `data-id="${enc.id}"`)}${button('Ver animación', 'prep-preview', 'secondary', `data-id="${enc.id}"`)}${button('Editar', 'prep-edit', 'secondary', `data-id="${enc.id}"`)}${button('Eliminar', 'prep-delete', 'secondary', `data-id="${enc.id}"`)}${button(enc.launched ? 'Lanzar otra vez' : '¡Lanzar!', 'prep-launch', '', `data-id="${enc.id}" ${enc.monsters.length ? '' : 'disabled'}`)}${button('Lanzar y elegir iniciativa', 'prep-launch-mode', 'secondary', `data-id="${enc.id}" ${enc.monsters.length ? '' : 'disabled'}`)}</div></div></details>`;
+              return `<details class="prepared" data-id="${enc.id}"${opened.has(enc.id) ? ' open' : ''}><summary class="prepared-head"><span class="prepared-title"><b>${esc(enc.name)}</b> <span class="tag">${esc(STYLES[enc.style]?.[1] || '')}</span>${enc.launched ? ' <span class="tag">Ya lanzado</span>' : ''}<span class="small muted prepared-sum${d ? ' difficulty ' + esc(d.label.toLowerCase()) : ''}">${esc(sum)}</span></span></summary><div class="prepared-body">${rows || '<p class="small muted">Sin criaturas todavía.</p>'}${enc.notes ? `<details class="section-space"><summary>Notas privadas del encuentro</summary><p class="encounter-notes">${esc(enc.notes)}</p></details>` : ''}${diff}<div class="actions">${button('Criatura del catálogo', 'prep-srd', 'secondary', `data-id="${enc.id}"`)}${typeof EncounterGeneratorUI !== 'undefined' ? button('Generar desde tablas', 'encgen-open', 'secondary', `data-id="${enc.id}"`) : ''}${button('PNJ guardados', 'prep-npc', 'secondary', `data-id="${enc.id}"`)}${button('Criatura propia', 'prep-custom', 'secondary', `data-id="${enc.id}"`)}${button('Ver animación', 'prep-preview', 'secondary', `data-id="${enc.id}"`)}${button('Editar', 'prep-edit', 'secondary', `data-id="${enc.id}"`)}${button('Eliminar', 'prep-delete', 'secondary', `data-id="${enc.id}"`)}${button(enc.launched ? 'Lanzar otra vez' : '¡Lanzar!', 'prep-launch', '', `data-id="${enc.id}" ${enc.monsters.length ? '' : 'disabled'}`)}${button('Lanzar y elegir iniciativa', 'prep-launch-mode', 'secondary', `data-id="${enc.id}" ${enc.monsters.length ? '' : 'disabled'}`)}</div></div></details>`;
             })
             .join('')
         : '<p class="muted">Todavía no preparaste encuentros.</p>'
@@ -214,6 +217,7 @@ const Encounters = (() => {
   async function launch(id, askInitiative = true) {
     const enc = get(id);
     if (!enc?.monsters.length) throw Error('Agregá criaturas al encuentro primero.');
+    const npcs = new Map(enc.monsters.filter(m => m.npcId).map(m => [m.npcId, DmFriendlyUI.rowFor(m.npcId)]));
     const active = party.encounter?.active;
     const custom = party.encounter?.initiative_mode && party.encounter.initiative_mode !== 'individual';
     if (active && !askInitiative) throw Error('Terminá el combate antes de cambiar la iniciativa.');
@@ -223,7 +227,20 @@ const Encounters = (() => {
     await actions['init-party']();
     await encounterChange(async () => {
       const groups = new Map();
-      for (const m of enc.monsters) groups.set(m.name, [...(groups.get(m.name) || []), m]);
+      for (const m of enc.monsters) {
+        if (!m.npcId) {
+          groups.set(m.name, [...(groups.get(m.name) || []), m]);
+          continue;
+        }
+        const row = npcs.get(m.npcId);
+        links.push({
+          stage: 'enc:' + enc.id + ':' + m.uid,
+          combatantId: await DmFriendlyUI.addToTracker(row.id),
+          npcId: row.id,
+          name: row.name,
+          label: initials(row.name),
+        });
+      }
       for (const [name, ms] of groups) {
         const names = await MonsterUI.claimNames(name, ms.length);
         for (let i = 0; i < ms.length; i++) {
@@ -302,6 +319,36 @@ const Encounters = (() => {
         save(list().filter(x => x.id !== e.dataset.id));
       },
       'prep-srd': e => MonsterUI.picker(e.dataset.id),
+      'prep-npc': e => {
+        const id = e.dataset.id;
+        const existing = new Set(get(id).monsters.map(m => m.npcId));
+        const roster = [
+          ...party.characters.filter(row => FriendlyNPC.ownedByDM(row, party.campaign)),
+          ...(party.enemyNpcs || []),
+        ].filter(row => !existing.has(row.id));
+        if (!roster.length) return toast('No hay más PNJ guardados para agregar.');
+        modal(
+          'PNJ guardados',
+          roster
+            .map(
+              row =>
+                `<label class="check"><input type="checkbox" name="npc" value="${esc(row.id)}">${esc(row.name)} · ${row.data.enemyNpc ? 'enemigo' : 'aliado'}</label>`,
+            )
+            .join(''),
+          fd => {
+            const rows = roster.filter(row => fd.getAll('npc').includes(row.id));
+            if (!rows.length) throw Error('Elegí al menos un PNJ.');
+            addMonsters(
+              id,
+              rows.map(row => {
+                const x = PV.summarize(row.data);
+                return { npcId: row.id, name: row.name, hp: x.hp, ac: x.ac, initMod: x.initiative };
+              }),
+            );
+          },
+          'Agregar',
+        );
+      },
       'prep-custom': e =>
         modal(
           'Criatura propia',
@@ -325,7 +372,14 @@ const Encounters = (() => {
           },
           'Agregar',
         ),
-      'prep-remove': e => update(e.dataset.id, x => (x.monsters = x.monsters.filter(m => m.name !== e.dataset.name))),
+      'prep-remove': e =>
+        update(
+          e.dataset.id,
+          x =>
+            (x.monsters = x.monsters.filter(m =>
+              e.dataset.npc ? m.npcId !== e.dataset.npc : m.npcId || m.name !== e.dataset.name,
+            )),
+        ),
       'prep-launch': e => launch(e.dataset.id),
       'prep-launch-mode': e => launch(e.dataset.id, false),
       // Solo en esta pantalla: no avisa a los jugadores.
