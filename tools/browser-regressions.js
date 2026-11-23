@@ -409,6 +409,75 @@ async function main() {
         );
       }, playerId),
     );
+    await dm.getByRole('button', { name: 'Cerrar ficha de aliado' }).click();
+    const representative = await dm.evaluate(saved => {
+      const player = { id: crypto.randomUUID(), owner_id: 'jugador', name: 'Lyra', data: { ...saved, name: 'Lyra' } };
+      party.characters.push(player);
+      party.combatants.push({
+        id: player.id,
+        character_id: player.id,
+        kind: 'pc',
+        name: player.name,
+        init: null,
+        tiebreak: 2,
+      });
+      for (const name of ['Guardia', 'Lobo'])
+        party.combatants.push({ id: crypto.randomUUID(), kind: 'monster', name, init: 15, tiebreak: 1 });
+      Cloud.post = async (campaignId, kind, payload, options) => ({
+        id: 9001,
+        kind,
+        payload,
+        target_character: options.target,
+      });
+      Cloud.setInitiativeOrder = async (campaignId, mode, ids) => {
+        for (const row of party.combatants) row.turn_priority = ids.indexOf(row.id);
+        party.encounter = { initiative_mode: mode };
+      };
+      draw();
+      return player.id;
+    }, fixture);
+    await dm.getByRole('button', { name: 'Modo de iniciativa' }).click();
+    await dm.locator('#dialog-form [name=mode]').selectOption('alternating');
+    await dm.locator('#dialog-form [name=roller]').selectOption(representative);
+    await dm.getByRole('button', { name: 'Pedir tirada al representante' }).click();
+    check(
+      'Iniciativa alternada: el pedido se envía al representante',
+      await dm.evaluate(id => feed.find(e => e.id === 9001)?.target_character === id, representative),
+    );
+    await dm.evaluate(
+      id =>
+        onChange('events', {
+          eventType: 'INSERT',
+          new: {
+            id: 9002,
+            kind: 'roll-response',
+            author_id: 'jugador',
+            payload: {
+              requestId: 9001,
+              characterId: id,
+              character: 'Lyra',
+              label: 'Iniciativa de la party',
+              total: 19,
+            },
+          },
+        }),
+      representative,
+    );
+    await dm.locator('#dialog-form [name=dm-total]').fill('10');
+    await dm.getByRole('button', { name: 'Subir Lyra' }).click();
+    const preview = await dm.locator('[data-init-preview]').textContent();
+    await dm.getByRole('button', { name: 'Guardar iniciativa' }).click();
+    await dm.waitForFunction(() => party.encounter?.initiative_mode === 'alternating');
+    check(
+      'Iniciativa alternada: guarda el orden que vio el DM',
+      preview ===
+        (await dm.evaluate(() =>
+          tracker()
+            .entries.map(e => e.name)
+            .join(' → '),
+        )) && preview.startsWith('Lyra →'),
+      preview,
+    );
     await dm.close();
     check('Sin errores de JavaScript', !errors.length, errors.join(' | '));
   } finally {

@@ -976,9 +976,11 @@
   const order = list =>
     [...list].sort(
       (a, b) =>
+        (a.turn_priority ?? Infinity) - (b.turn_priority ?? Infinity) ||
         (b.init ?? -999) - (a.init ?? -999) ||
         b.tiebreak - a.tiebreak ||
-        String(a.created_at).localeCompare(b.created_at),
+        String(a.created_at).localeCompare(b.created_at) ||
+        String(a.id).localeCompare(b.id),
     );
   async function addCombatant(campaignId, row, secret = null) {
     const c = await api();
@@ -1004,6 +1006,20 @@
   }
   async function advanceTurn(campaignId) {
     return check(await (await api()).rpc('advance_turn', { p_campaign: campaignId }));
+  }
+  async function setInitiativeOrder(campaignId, mode, ids) {
+    const result = await (
+      await api()
+    ).rpc('set_initiative_order', {
+      p_campaign: campaignId,
+      p_mode: mode,
+      p_order: ids,
+    });
+    if (result.error?.code === 'PGRST202') {
+      if (mode === 'individual') return;
+      throw Error('Para usar esta regla de iniciativa, ejecutá la migración 021 en Supabase.');
+    }
+    check(result);
   }
   let hiddenTurnsSupport = false;
   async function hiddenTurnsReady() {
@@ -1374,6 +1390,7 @@
     updateSecret,
     removeCombatant,
     advanceTurn,
+    setInitiativeOrder,
     hiddenTurnsReady,
     endCombat,
     resolveAttack,

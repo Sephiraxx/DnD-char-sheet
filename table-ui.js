@@ -141,7 +141,12 @@ const TableUI = (() => {
         characterId: c.character_id,
         current: Boolean(enc?.active && enc.current_id === c.id),
       }));
-    return { active: Boolean(enc?.active), round: enc?.round || 0, entries };
+    return {
+      active: Boolean(enc?.active),
+      round: enc?.round || 0,
+      entries,
+      mode: enc?.initiative_mode || 'individual',
+    };
   }
   const isMyTurn = () => {
     const l = link();
@@ -171,7 +176,7 @@ const TableUI = (() => {
     return `<div class="initiative-strip">${e.active ? `<b>Ronda ${e.round}</b>` : '<b>Iniciativa</b>'}${e.entries
       .map(
         x =>
-          `<span class="chip ${x.current ? 'current' : ''} ${x.status === 'derrotado' ? 'defeated' : ''}">${x.init ?? '—'} · ${PV.esc(x.name)}${x.characterId && x.characterId === mine ? ' (vos)' : ''}${x.kind === 'monster' ? ` <em class="status-${x.status.replace(/ /g, '-')}">${CREATURE_STATUS[x.status] || x.status}</em>` : ''}${x.conditions.length ? ` <em class="chip-conds">${PV.esc(x.conditions.join(', '))}</em>` : ''}</span>`,
+          `<span class="chip ${x.current ? 'current' : ''} ${x.status === 'derrotado' ? 'defeated' : ''}">${e.mode === 'individual' ? (x.init ?? '—') + ' · ' : ''}${PV.esc(x.name)}${x.characterId && x.characterId === mine ? ' (vos)' : ''}${x.kind === 'monster' ? ` <em class="status-${x.status.replace(/ /g, '-')}">${CREATURE_STATUS[x.status] || x.status}</em>` : ''}${x.conditions.length ? ` <em class="chip-conds">${PV.esc(x.conditions.join(', '))}</em>` : ''}</span>`,
       )
       .join('')}</div>`;
   }
