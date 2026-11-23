@@ -1247,6 +1247,69 @@
     };
   }
 
+  // ---------- Preparación privada de la mesa (migración 024) ----------
+  const preparedTable = 'prepared_encounters';
+  function checkPrepared(result) {
+    if (['42P01', 'PGRST205'].includes(result.error?.code))
+      throw Error('Falta ejecutar la migración 024 en Supabase para sincronizar los encuentros.');
+    return check(result);
+  }
+  async function importPreparedEncounters(campaignId, drafts) {
+    if (!drafts.length) return;
+    checkPrepared(
+      await (await api()).from(preparedTable).upsert(
+        drafts.map(data => ({ campaign_id: campaignId, id: data.id, data })),
+        { onConflict: 'campaign_id,id', ignoreDuplicates: true },
+      ),
+    );
+  }
+  async function preparedEncounters(campaignId) {
+    const c = await api();
+    const key = 'dnd-dm-prepared-' + campaignId;
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const drafts = JSON.parse(raw);
+      if (!Array.isArray(drafts)) throw Error('No se pudo leer la copia de encuentros de este dispositivo.');
+      await importPreparedEncounters(
+        campaignId,
+        drafts.map(draft => ({
+          ...draft,
+          monsters: (draft.monsters || []).map((m, i) => ({ ...m, uid: m.uid || 'legacy-' + i })),
+        })),
+      );
+      if (localStorage.getItem(key) === raw) localStorage.removeItem(key);
+    }
+    const rows = [];
+    for (let from = 0; ; from += 200) {
+      const page = checkPrepared(
+        await c
+          .from(preparedTable)
+          .select('data,revision')
+          .eq('campaign_id', campaignId)
+          .not('data', 'is', null)
+          .order('created_at')
+          .order('id')
+          .range(from, from + 199),
+      );
+      rows.push(...page);
+      if (page.length < 200) return rows;
+    }
+  }
+  async function savePreparedEncounter(campaignId, id, data, revision = null) {
+    const table = (await api()).from(preparedTable);
+    if (revision === null)
+      return checkPrepared(await table.insert({ campaign_id: campaignId, id, data }).select('data,revision').single());
+    return checkPrepared(
+      await table
+        .update({ data, revision: revision + 1 })
+        .eq('campaign_id', campaignId)
+        .eq('id', id)
+        .eq('revision', revision)
+        .select('data,revision')
+        .maybeSingle(),
+    );
+  }
+
   // ---------- Tablero (migración 008): mapas, fichas sobre el mapa y niebla ----------
   async function board(campaignId) {
     const c = await api();
@@ -1260,7 +1323,9 @@
   }
   async function saveMap(campaignId, row, id = null) {
     const c = await api();
-    const q = id ? c.from('maps').update(row).eq('id', id) : c.from('maps').insert({ ...row, campaign_id: campaignId });
+    const q = id
+      ? c.from('maps').update(row).eq('campaign_id', campaignId).eq('id', id)
+      : c.from('maps').insert({ ...row, campaign_id: campaignId });
     return check(await q.select().single());
   }
   async function deleteMap(id, imagePath) {
@@ -1470,6 +1535,9 @@
     stagedTokens,
     linkStaged,
     board,
+    preparedEncounters,
+    importPreparedEncounters,
+    savePreparedEncounter,
     saveMap,
     deleteMap,
     setBoardMap,

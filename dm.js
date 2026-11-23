@@ -180,6 +180,7 @@ async function send(kind, payload, target = null, visibility = 'all') {
 }
 
 async function open(id) {
+  if (current !== id && $('#modal').open) $('#modal').close();
   current = id;
   party = null;
   feed = [];
@@ -189,22 +190,42 @@ async function open(id) {
   draw();
   unsubscribe?.();
   try {
-    [party, feed] = await Promise.all([Cloud.party(id), Cloud.events(id, 100)]);
-    if (party.campaign.dm_id !== (await Cloud.user()).id) throw Error('Esta mesa la dirige otra cuenta.');
+    const me = await Cloud.user();
+    const [data, events] = await Promise.all([Cloud.party(id), Cloud.events(id, 100)]);
+    if (id !== current) return;
+    if (data.campaign.dm_id !== me.id) throw Error('Esta mesa la dirige otra cuenta.');
+    [party, feed] = [data, events];
     Cloud.rememberDmTable(party.campaign);
-    unsubscribe = await Cloud.subscribe(id, onChange, { role: 'dm' });
+    const stop = await Cloud.subscribe(
+      id,
+      (table, payload) => {
+        if (id === current) return onChange(table, payload);
+      },
+      { role: 'dm' },
+    );
+    if (id !== current) return stop();
+    unsubscribe = stop;
+    syncPrepared();
     refreshEnemyDamage();
   } catch (e) {
+    if (id !== current) return;
     error = e.message;
   }
   draw();
 }
+function syncPrepared() {
+  if (party && typeof Encounters !== 'undefined') return Encounters.sync(current);
+}
 async function refresh() {
+  const id = current;
   try {
-    [party, feed] = await Promise.all([Cloud.party(current), Cloud.events(current, 100)]);
+    const data = await Promise.all([Cloud.party(id), Cloud.events(id, 100)]);
+    if (id !== current) return;
+    [party, feed] = data;
     DmInitiative.onFeed(feed);
     error = '';
   } catch (e) {
+    if (id !== current) return;
     error = e.message;
   }
   draw();
@@ -226,7 +247,7 @@ function refreshEnemyDamage() {
 function onChange(table, payload) {
   if (table === 'resync') {
     globalThis.Board?.onParty(table);
-    return current ? refresh().then(refreshEnemyDamage) : Promise.resolve();
+    return current ? Promise.all([refresh().then(refreshEnemyDamage), syncPrepared()]) : Promise.resolve();
   }
   globalThis.Board?.onParty(table);
   if (table === 'presence') {
@@ -333,7 +354,7 @@ function drawHome() {
             `<section class="card dm-table-card"><p class="eyebrow">MESA</p><h2>${esc(x.name)}</h2><p class="small muted">Código <b class="table-code">${esc(x.code)}</b></p><div class="actions">${button('Abrir', 'open', '', `data-id="${x.id}"`)}${button('Olvidar', 'forget', 'text-btn', `data-id="${x.id}"`)}${button('Eliminar', 'delete-table', 'text-btn danger-text', `data-id="${x.id}" data-name="${esc(x.name)}"`)}</div></section>`,
         )
         .join('')}</div>`
-    : '<p class="muted">Todavía no creaste mesas en este dispositivo.</p>';
+    : '<p class="muted">Tus mesas aparecen acá al entrar con tu acceso de DM.</p>';
   $('#main').innerHTML =
     `<div class="heading"><div><p class="eyebrow">PANTALLA DEL DM</p><h1>Tus mesas.</h1><p>Creá una mesa, compartí el código con la party y seguí sus fichas en vivo.</p></div></div>
   ${list}
@@ -350,7 +371,8 @@ function drawHome() {
 let merged = false;
 addEventListener('cloud-login', () => {
   merged = false;
-  if (!current) drawHome();
+  if (current) open(current);
+  else drawHome();
 });
 
 // Salvaciones que pidieron los jugadores y todavía no se resolvieron.
@@ -529,7 +551,7 @@ const actions = {
   'export-campaign': async trigger => {
     trigger.disabled = true;
     try {
-      const archive = await CampaignArchive.build(current, Encounters.list());
+      const archive = await CampaignArchive.build(current);
       const a = document.createElement('a');
       const blob = new Blob([JSON.stringify(archive)], { type: 'application/json' });
       if (blob.size > CampaignArchive.MAX_FILE) throw Error('La copia supera 128 MB.');
@@ -1015,11 +1037,18 @@ Cloud.onStatus(() => {});
 TableExtras.install({ refresh: () => refresh(), campaignId: () => current, characterId: () => null });
 // Al volver a la pestaña (o desbloquear el celular), se pone al día con la mesa.
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && current) refresh();
+  if (!document.hidden && current) {
+    refresh();
+    syncPrepared();
+  }
 });
+window.addEventListener('online', syncPrepared);
 const hashId = location.hash.includes('=') ? '' : location.hash.slice(1);
 const start = hashId || localStorage.getItem('dnd-dm-last');
 if (Cloud.enabled && start) open(start);
 else draw();
 // Si la mesa cargó antes que encuentros y sesiones (scripts posteriores), se redibuja con sus tarjetas.
-document.addEventListener('DOMContentLoaded', () => draw());
+document.addEventListener('DOMContentLoaded', () => {
+  draw();
+  syncPrepared();
+});

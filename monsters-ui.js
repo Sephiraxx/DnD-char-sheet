@@ -341,14 +341,13 @@ const MonsterUI = (() => {
     const items = [...pick.tray.entries()].filter(([, n]) => n > 0);
     if (!items.length) throw Error('Elegí al menos una criatura.');
     const hpOf = m => (pick.hp === 'roll' ? Math.max(1, rollDice(m.hd).total) : m.hp);
-    let total = 0;
-    for (const [id, n] of items) {
-      const m = byId(id),
-        saves = saveBonuses(m);
-      total += n;
-      if (target) Encounters.addMonsters(target, preparedRows([[id, n]], pick.hp));
-      else {
-        const names = await claimNames(m.name, n);
+    const total = items.reduce((sum, [, n]) => sum + n, 0);
+    if (target) await Encounters.addMonsters(target, preparedRows(items, pick.hp));
+    else {
+      for (const [id, n] of items) {
+        const m = byId(id),
+          saves = saveBonuses(m),
+          names = await claimNames(m.name, n);
         for (let i = 0; i < n; i++) {
           const hp = hpOf(m);
           await Cloud.addCombatant(

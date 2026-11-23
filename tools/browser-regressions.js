@@ -359,7 +359,31 @@ async function main() {
       route.fulfill({ contentType: 'application/javascript', body: 'window.CLOUD_CONFIG = {};' }),
     );
     await dm.goto(base + 'dm.html');
-    const playerId = await dm.evaluate(saved => {
+    const drafts = new Map();
+    const boards = new Map();
+    const readDrafts = id => Array.from(drafts.get(id)?.values() || []);
+    const readBoard = id => boards.get(id) || { board: null, maps: [], tokens: [] };
+    await dm.exposeFunction('readDrafts', readDrafts);
+    await dm.exposeFunction('saveDraft', (id, key, data, revision) => {
+      if (!drafts.has(id)) drafts.set(id, new Map());
+      const list = drafts.get(id);
+      if (revision !== null && list.get(key)?.revision !== revision) return null;
+      const saved = { data, revision: (revision || 0) + 1 };
+      if (data) list.set(key, saved);
+      else list.delete(key);
+      return saved;
+    });
+    await dm.exposeFunction('readBoard', readBoard);
+    await dm.exposeFunction('saveMap', (id, row, key) => {
+      if (!boards.has(id)) boards.set(id, readBoard(id));
+      const board = boards.get(id);
+      const prior = board.maps.find(m => m.id === key);
+      const saved = { ...prior, ...row, id: key || 'map-' + (board.maps.length + 1) };
+      board.maps = [...board.maps.filter(m => m.id !== saved.id), saved];
+      return saved;
+    });
+    await dm.exposeFunction('setMap', (id, map_id) => (boards.get(id).board = { campaign_id: id, map_id }));
+    const playerId = await dm.evaluate(async saved => {
       const id = CharacterStorage.add(Rules.validate(saved));
       localStorage.setItem('dnd-party-active-v1', id);
       const campaign = { id: crypto.randomUUID(), name: 'Prueba', code: 'ALLY', dm_id: 'dm', settings: {} };
@@ -368,6 +392,8 @@ async function main() {
       Cloud.party = async () => snapshot;
       Cloud.events = async () => [];
       Cloud.post = async () => ({});
+      Cloud.preparedEncounters = window.readDrafts;
+      Cloud.savePreparedEncounter = window.saveDraft;
       Cloud.createFriendlyNpc = async (table, data) => {
         const row = { id: crypto.randomUUID(), owner_id: table.dm_id, name: data.name, data, updated_at: '2026-01-01' };
         snapshot.characters.push(row);
@@ -376,6 +402,7 @@ async function main() {
       Cloud.addCombatant = async (campaignId, data) => snapshot.combatants.push({ ...data, campaign_id: campaignId });
       current = campaign.id;
       party = snapshot;
+      await Encounters.sync();
       draw();
       return id;
     }, fixture);
@@ -558,6 +585,7 @@ async function main() {
     await dm.getByLabel('Tizne · aliado').check();
     await dm.getByLabel('Varka · enemigo').check();
     await dm.locator('#dialog-form').getByRole('button', { name: 'Agregar', exact: true }).click();
+    await dm.waitForFunction(() => Encounters.list()[0]?.monsters.length === 2);
     check(
       'Encuentros preparados: reutilizan las fichas aliada y enemiga',
       await dm.evaluate(() => {
@@ -629,6 +657,77 @@ async function main() {
         );
       }),
     );
+    await dm.evaluate(() => {
+      Cloud.user = async () => ({ id: 'dm' });
+      Cloud.board = window.readBoard;
+      Cloud.subscribeBoard = async () => ({ send() {}, close() {} });
+      Cloud.addTokens = async () => [];
+      Cloud.saveMap = window.saveMap;
+      Cloud.setBoardMap = window.setMap;
+    });
+    await dm.getByRole('button', { name: 'Tablero', exact: true }).click();
+    await dm.locator('[data-action=bd-maps]').click();
+    await dm.getByRole('button', { name: '+ Nuevo mapa' }).click();
+    await dm.getByLabel('En blanco, para pintar el terreno').check();
+    await dm.locator('#dialog-form [name=name]').fill('Mapa entre dispositivos');
+    await dm.getByRole('button', { name: 'Crear mapa', exact: true }).click();
+    await dm.waitForFunction(() => Board._state().board?.map_id);
+    await dm.evaluate(() => {
+      let failed = false;
+      Cloud.saveMap = async (...args) => {
+        if (!failed) {
+          failed = true;
+          throw Error('Corte de conexión de prueba');
+        }
+        return window.saveMap(...args);
+      };
+    });
+    await dm.locator('[data-action=bd-tool][data-tool=fog]').click();
+    await dm.getByLabel('Niebla activa').check();
+    await dm.getByText('Cambios del mapa pendientes:', { exact: false }).waitFor();
+    await dm.evaluate(() => dispatchEvent(new Event('online')));
+    await dm.waitForFunction(
+      () => Board._state().maps[0]?.fog?.on === true && !Object.keys(Board._state().pending).length,
+    );
+    const sharedParty = await dm.evaluate(() => party);
+
+    const device = await browser.newPage({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+    device.on('pageerror', e => errors.push(e.message));
+    await device.exposeFunction('readDrafts', readDrafts);
+    await device.exposeFunction('readBoard', readBoard);
+    await device.route('**/config.js', route =>
+      route.fulfill({ contentType: 'application/javascript', body: 'window.CLOUD_CONFIG = {};' }),
+    );
+    await device.goto(base + 'dm.html');
+    await device.evaluate(async snapshot => {
+      Cloud.enabled = true;
+      Cloud.party = async () => snapshot;
+      Cloud.user = async () => ({ id: 'dm' });
+      Cloud.events = async () => [];
+      Cloud.subscribe = async () => () => {};
+      Cloud.subscribeBoard = async () => ({ send() {}, close() {} });
+      Cloud.addTokens = async () => [];
+      Cloud.applyUnloadedEnemyDamage = async () => false;
+      Cloud.preparedEncounters = window.readDrafts;
+      Cloud.board = window.readBoard;
+      await open(snapshot.campaign.id);
+    }, sharedParty);
+    await device.locator('.prepared-head').filter({ hasText: 'La emboscada' }).waitFor();
+    check(
+      'Otro dispositivo: carga el encuentro preparado y sus dos PNJ desde la mesa',
+      await device.evaluate(() => Encounters.list()[0]?.monsters.length === 2),
+    );
+    await device.getByRole('button', { name: 'Tablero', exact: true }).click();
+    await device.locator('.board-title b').filter({ hasText: 'Mapa entre dispositivos' }).waitFor();
+    check(
+      'Otro dispositivo: abre el mapa creado por el DM sin copiar datos del navegador',
+      await device.evaluate(() => Board._state().maps.some(m => m.name === 'Mapa entre dispositivos')),
+    );
+    check(
+      'Otro dispositivo: recibe la niebla guardada tras recuperar la conexión',
+      await device.evaluate(() => Board._state().fogOn),
+    );
+    await device.close();
     await dm.close();
     check('Sin errores de JavaScript', !errors.length, errors.join(' | '));
   } finally {

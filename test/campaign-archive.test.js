@@ -36,7 +36,7 @@ test('campaign restore preserves map links, copies the image, and cleans up on f
   const campaign = { id: 'new-table' };
   const image = 'new-table/image.png';
   const cleanup = [];
-  let restored;
+  let restored, prepared;
   g.Cloud = {
     createCampaign: async () => campaign,
     cleanSettings: settings => settings,
@@ -50,6 +50,7 @@ test('campaign restore preserves map links, copies the image, and cleans up on f
       assert.equal(id, campaign.id);
       restored = data;
     },
+    importPreparedEncounters: async (id, rows) => (prepared = rows),
     removeMapImages: async paths => cleanup.push(...paths),
     deleteCampaign: async id => cleanup.push(id),
   };
@@ -61,14 +62,12 @@ test('campaign restore preserves map links, copies the image, and cleans up on f
   assert.equal(restored.maps[0].terrain.links['0,0'], restored.maps[1].id);
   assert.equal(restored.tokens[0].map_id, restored.maps[1].id);
   assert.equal(restored.settings.quests[0].shared, false);
-  const key = 'dnd-dm-prepared-' + campaign.id;
-  assert.equal(JSON.parse(g.localStorage.getItem(key))[0].launched, false);
+  assert.equal(prepared[0].launched, false);
 
   g.Cloud.restoreCampaignArchive = async () => {
     throw Error('Import interrupted');
   };
   await assert.rejects(g.CampaignArchive.restore(archive, 'Copia'), /Import interrupted/);
-  assert.equal(g.localStorage.getItem(key), null);
   assert.deepEqual(cleanup, [image, campaign.id]);
 });
 
@@ -79,6 +78,7 @@ test('campaign backup restores both NPC sides and remaps prepared encounters', a
   const ally = { id: 'old-ally', owner_id: 'dm', data: { ...sheet, friendlyNpc: true } };
   const enemy = { id: 'old-enemy', owner_id: 'dm', data: { ...sheet, enemyNpc: true, dmCommandsApplied: [3] } };
   const saved = [];
+  let restored;
   g.Cloud = {
     party: async () => ({
       campaign: { name: 'Posada', dm_id: 'dm', settings: {} },
@@ -88,6 +88,8 @@ test('campaign backup restores both NPC sides and remaps prepared encounters', a
       homebrew: [],
     }),
     board: async () => ({ maps: [], tokens: [] }),
+    preparedEncounters: async () => [{ data: prep, revision: 1 }],
+    importPreparedEncounters: async (id, drafts) => ([restored] = drafts),
     createCampaign: async () => ({ id: 'restored-table' }),
     cleanSettings: settings => settings,
     restoreCampaignArchive: async () => {},
@@ -108,7 +110,7 @@ test('campaign backup restores both NPC sides and remaps prepared encounters', a
       { uid: 'b', name: 'B', npcId: enemy.id },
     ],
   };
-  const archive = await g.CampaignArchive.build('table', [prep]);
+  const archive = await g.CampaignArchive.build('table');
   assert.deepEqual(
     Array.from(archive.npcs, row => row.id),
     ['old-ally', 'old-enemy'],
@@ -118,9 +120,8 @@ test('campaign backup restores both NPC sides and remaps prepared encounters', a
   assert.equal(saved[1].enemyNpc, true);
   assert.equal(saved[1].dmCommandsApplied, undefined);
   assert.equal(saved[0].hp, sheet.hp);
-  const [restored] = JSON.parse(g.localStorage.getItem('dnd-dm-prepared-restored-table'));
   assert.deepEqual(
-    restored.monsters.map(m => m.npcId),
+    Array.from(restored.monsters, m => m.npcId),
     ['new-ally', 'new-enemy'],
   );
 });
