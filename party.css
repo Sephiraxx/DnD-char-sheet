@@ -789,3 +789,20 @@
 .dm-ally-sheet [data-action='import'] {
   display: none;
 }
+
+.init-side-order {
+  padding-left: 1.7rem;
+  margin-block: 0.5rem;
+}
+.init-side-order li {
+  padding-block: 0.25rem;
+}
+.init-side-order .actions {
+  display: inline-flex;
+  vertical-align: middle;
+  gap: 0.25rem;
+}
+.init-side-order .icon-btn {
+  min-width: 2.2rem;
+  min-height: 2.2rem;
+}

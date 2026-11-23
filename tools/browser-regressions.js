@@ -409,6 +409,147 @@ async function main() {
         );
       }, playerId),
     );
+    await dm.getByRole('button', { name: 'Cerrar ficha de aliado' }).click();
+    const representative = await dm.evaluate(saved => {
+      const player = { id: crypto.randomUUID(), owner_id: 'jugador', name: 'Lyra', data: { ...saved, name: 'Lyra' } };
+      party.characters.push(player);
+      party.combatants.push({
+        id: player.id,
+        character_id: player.id,
+        kind: 'pc',
+        name: player.name,
+        init: null,
+        tiebreak: 2,
+      });
+      for (const name of ['Guardia', 'Lobo'])
+        party.combatants.push({ id: crypto.randomUUID(), kind: 'monster', name, init: 15, tiebreak: 1 });
+      Cloud.post = async (campaignId, kind, payload, options) => ({
+        id: 9001,
+        kind,
+        payload,
+        target_character: options.target,
+      });
+      Cloud.setInitiativeOrder = async (campaignId, mode, ids) => {
+        for (const row of party.combatants) row.turn_priority = ids.indexOf(row.id);
+        party.encounter = { initiative_mode: mode };
+      };
+      draw();
+      return player.id;
+    }, fixture);
+    await dm.getByRole('button', { name: 'Modo de iniciativa' }).click();
+    await dm.locator('#dialog-form [name=mode]').selectOption('alternating');
+    await dm.locator('#dialog-form [name=roller]').selectOption(representative);
+    await dm.getByRole('button', { name: 'Pedir tirada al representante' }).click();
+    check(
+      'Iniciativa alternada: el pedido se envía al representante',
+      await dm.evaluate(id => feed.find(e => e.id === 9001)?.target_character === id, representative),
+    );
+    await dm.evaluate(
+      id =>
+        onChange('events', {
+          eventType: 'INSERT',
+          new: {
+            id: 9002,
+            kind: 'roll-response',
+            author_id: 'jugador',
+            payload: {
+              requestId: 9001,
+              characterId: id,
+              character: 'Lyra',
+              label: 'Iniciativa de la party',
+              total: 19,
+            },
+          },
+        }),
+      representative,
+    );
+    await dm.locator('#dialog-form [name=dm-total]').fill('10');
+    await dm.getByRole('button', { name: 'Subir Lyra' }).click();
+    const preview = await dm.locator('[data-init-preview]').textContent();
+    await dm.getByRole('button', { name: 'Guardar iniciativa' }).click();
+    await dm.waitForFunction(() => party.encounter?.initiative_mode === 'alternating');
+    check(
+      'Iniciativa alternada: guarda el orden que vio el DM',
+      preview ===
+        (await dm.evaluate(() =>
+          tracker()
+            .entries.map(e => e.name)
+            .join(' → '),
+        )) && preview.startsWith('Lyra →'),
+      preview,
+    );
+    await dm.evaluate(() => {
+      party.viewerIsDM = true;
+      party.enemyNpcs = [];
+      Cloud.createEnemyNpc = async (table, data) => {
+        const row = { id: crypto.randomUUID(), owner_id: table.dm_id, name: data.name, data, updated_at: '2026-01-01' };
+        party.enemyNpcs.push(row);
+        return row.id;
+      };
+      Cloud.addEnemyNpcToInitiative = async (id, init, hidden) => {
+        const row = party.enemyNpcs.find(e => e.id === id);
+        party.combatants.push({ id, character_id: id, kind: 'monster', name: row.name, init, hidden, status: 'ileso' });
+      };
+    });
+    await dm.getByRole('button', { name: 'Nuevo enemigo' }).click();
+    await dm.locator('#dialog-form [name=name]').fill('Varka');
+    await dm.locator('#dialog-form [name=class]').selectOption('wizard');
+    await dm.locator('#dialog-form [name=level]').fill('3');
+    await dm.locator('#dialog-form [name=race]').selectOption('kobold-base-MPMM');
+    await dm.locator('#dialog-form [name=spell-add]').selectOption('magic-missile');
+    await dm.getByRole('button', { name: 'Crear enemigo' }).click();
+    const enemyCard = dm.locator('.dm-ally-row').filter({ hasText: 'Varka' });
+    await enemyCard.getByRole('button', { name: 'Sumar a iniciativa' }).click();
+    await dm.getByLabel('Ocultar al enemigo hasta revelarlo').check();
+    await dm.getByRole('button', { name: 'Sumar', exact: true }).click();
+    await dm.waitForFunction(() => party.combatants.some(e => e.kind === 'monster'));
+    check(
+      'PNJ enemigo: se guarda separado de la party y entra oculto como criatura',
+      await dm.evaluate(() => {
+        const row = party.enemyNpcs[0];
+        const entry = party.combatants.find(c => c.character_id === row.id);
+        return (
+          row.data.enemyNpc && entry.kind === 'monster' && entry.hidden && !party.characters.some(c => c.id === row.id)
+        );
+      }),
+    );
+    await enemyCard.getByRole('button', { name: 'Controlar' }).click();
+    await npc.locator('#active-character-name').filter({ hasText: 'Varka' }).waitFor();
+    const snapshot = await dm.evaluate(() => party);
+    await npc.locator('body').evaluate((body, data) => {
+      Cloud.enabled = true;
+      Cloud.reconcile = async () => ({ action: 'none' });
+      Cloud.party = async () => data;
+      Cloud.events = async () => [];
+      Cloud.pendingCommands = async () => [];
+      Cloud.subscribe = async () => () => {};
+      window.npcTestEvents = [];
+      Cloud.post = async (campaign, kind, payload, opts) => {
+        window.npcTestEvents.push({ kind, payload, opts });
+        return { id: window.npcTestEvents.length };
+      };
+      TableUI.boot();
+    }, snapshot);
+    await npc.locator('body').evaluate(async () => {
+      for (let i = 0; i < 12 && !TableUI.targets().monsters.some(x => x.player); i++)
+        await new Promise(resolve => setTimeout(resolve, 50));
+    });
+    check(
+      'PNJ enemigo: puede atacar a un aliado de la party y enviarle daño',
+      await npc.locator('body').evaluate(async () => {
+        const target = TableUI.targets().monsters.find(x => x.name === 'Tizne' && x.player);
+        if (!target || !Classes.usable(state).includes('magic-missile')) return false;
+        const result = await TableUI.resolveTarget(target.id, 25, 20, 'Ataque de prueba');
+        await TableUI.damageTarget(target.id, 6, 'Daño de prueba', { crit: true, type: 'fire' });
+        return (
+          result.hit &&
+          window.npcTestEvents.some(
+            e =>
+              e.kind === 'damage' && e.opts.target === target.id && e.payload.amount === 6 && e.payload.crit === true,
+          )
+        );
+      }),
+    );
     await dm.close();
     check('Sin errores de JavaScript', !errors.length, errors.join(' | '));
   } finally {

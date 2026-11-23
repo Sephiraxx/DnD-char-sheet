@@ -157,6 +157,7 @@ function tracker() {
     entries,
     turn: enc?.active ? entries.findIndex(e => e.id === enc.current_id) : -1,
     round: enc?.active ? enc.round : 0,
+    mode: enc?.initiative_mode || 'individual',
   };
 }
 // Cambios del encuentro: se guardan en la base y se recarga la mesa.
@@ -169,7 +170,7 @@ async function encounterChange(fn) {
 const notesKey = () => 'dnd-dm-notes-' + current;
 
 // ---------- Datos ----------
-const characterById = id => party?.characters.find(c => c.id === id);
+const characterById = id => party?.characters.find(c => c.id === id) || party?.enemyNpcs?.find(c => c.id === id);
 const summaries = () => (party?.characters || []).map(c => ({ row: c, x: PV.summarize(c.data) }));
 async function send(kind, payload, target = null, visibility = 'all') {
   const ev = await Cloud.post(current, kind, payload, { target, visibility });
@@ -200,6 +201,7 @@ async function open(id) {
 async function refresh() {
   try {
     [party, feed] = await Promise.all([Cloud.party(current), Cloud.events(current, 100)]);
+    DmInitiative.onFeed(feed);
     error = '';
   } catch (e) {
     error = e.message;
@@ -218,12 +220,13 @@ function onChange(table, payload) {
     return;
   }
   if (table === 'characters' && party) {
-    if (payload.eventType === 'DELETE') party.characters = party.characters.filter(c => c.id !== payload.old.id);
-    else {
-      const row = payload.new;
-      party.characters = [...party.characters.filter(c => c.id !== row.id), row].sort((a, b) =>
-        a.name.localeCompare(b.name, 'es'),
-      );
+    const row = payload.eventType === 'DELETE' ? payload.old : payload.new;
+    party.characters = party.characters.filter(c => c.id !== row.id);
+    party.enemyNpcs = (party.enemyNpcs || []).filter(c => c.id !== row.id);
+    if (payload.eventType !== 'DELETE') {
+      const roster = FriendlyNPC.enemyOfDM(row, party.campaign) ? party.enemyNpcs : party.characters;
+      roster.push(row);
+      roster.sort((a, b) => a.name.localeCompare(b.name, 'es'));
     }
     draw();
   } else if (table === 'events' && payload.eventType === 'INSERT') {
@@ -232,13 +235,14 @@ function onChange(table, payload) {
     // Las respuestas de iniciativa completan el orden automáticamente.
     if (ev.kind === 'roll-response') {
       const req = feed.find(x => x.id === ev.payload.requestId);
-      if (req?.payload.type === 'initiative') {
+      if (req?.payload.type === 'initiative' && !req.payload.groupInitiative) {
         const e = tracker().entries.find(x => x.characterId === ev.payload.characterId);
         if (e)
           Cloud.updateCombatant(e.id, { init: ev.payload.total })
             .then(refresh)
             .catch(err => toast(err.message));
       }
+      DmInitiative.onFeed(feed);
       toast(`${ev.payload.character}: ${ev.payload.label} ${ev.payload.total}`);
     }
     draw();
@@ -284,6 +288,11 @@ function draw() {
   </div><div class="stack dm-combat">
     ${savesCard()}
     ${DmFriendlyUI.card(allies, t.entries)}
+    ${DmFriendlyUI.card(
+      (party.enemyNpcs || []).map(row => ({ row, x: PV.summarize(row.data) })),
+      t.entries,
+      true,
+    )}
     ${initiativeCard(t)}
     ${typeof Encounters !== 'undefined' ? Encounters.card() : ''}
     ${typeof DmTools !== 'undefined' ? DmTools.tools() : ''}
@@ -415,15 +424,17 @@ function initiativeCard(t) {
         ? `${x.hp ?? '—'}/${x.maxHP} PG · CA ${x.ac}${x.conditions.length ? ' · ' + esc(x.conditions.join(', ')) : ''}`
         : `CA ${e.ac ?? '—'} · ${STATUS_LABEL[e.status] || e.status}${e.hidden ? ' · oculta' : ''}${e.conditions.length ? ' · ' + esc(e.conditions.join(', ')) : ''}${e.max ? `<span class="monster-hpbar" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Math.round(((e.hp ?? e.max) / e.max) * 100)))}%"></i></span>` : ''}`;
       const down = x ? x.hp === 0 : e.hp === 0;
-      return `<li class="${i === t.turn ? 'current' : ''} ${down ? 'down' : ''} ${e.characterId ? 'pc' : ''} ${e.hidden ? 'hidden-combatant' : ''}"><span class="init">${e.init ?? '—'}</span><span class="who"><b>${e.monsterId ? `<button type="button" class="text-btn monster-name" data-action="monster-open" data-entry="${e.id}">${esc(e.name)}</button>` : esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
-        e.characterId
+      return `<li class="${i === t.turn ? 'current' : ''} ${down ? 'down' : ''} ${e.kind === 'pc' ? 'pc' : ''} ${e.hidden ? 'hidden-combatant' : ''}"><span class="init">${t.mode === 'individual' ? (e.init ?? '—') : i + 1}</span><span class="who"><b>${e.monsterId ? `<button type="button" class="text-btn monster-name" data-action="monster-open" data-entry="${e.id}">${esc(e.name)}</button>` : esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
+        e.kind === 'pc'
           ? `<span class="init-actions">${FriendlyNPC.ownedByDM(pc || {}, party.campaign) ? button('Controlar', 'npc-control', 'text-btn', `data-id="${e.characterId}"`) : ''}${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}`
-          : `<label class="hp-edit"><span>PG</span><input type="number" aria-label="PG de ${esc(e.name)}" data-monster-hp="${e.id}" value="${e.hp ?? ''}" min="0" max="99999"><span>/ ${e.max ?? '—'}</span></label><span class="init-actions">${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}${button('Estados', 'init-conditions', 'text-btn', `data-entry="${e.id}"`)}${button(e.hidden ? 'Mostrar' : 'Ocultar', 'init-hide', 'text-btn', `data-entry="${e.id}"`)}`
+          : e.characterId
+            ? `<span class="init-actions">${button('Controlar', 'npc-control', 'text-btn', `data-id="${e.characterId}"`)}${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}${button(e.hidden ? 'Mostrar' : 'Ocultar', 'init-hide', 'text-btn', `data-entry="${e.id}"`)}`
+            : `<label class="hp-edit"><span>PG</span><input type="number" aria-label="PG de ${esc(e.name)}" data-monster-hp="${e.id}" value="${e.hp ?? ''}" min="0" max="99999"><span>/ ${e.max ?? '—'}</span></label><span class="init-actions">${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}${button('Estados', 'init-conditions', 'text-btn', `data-entry="${e.id}"`)}${button(e.hidden ? 'Mostrar' : 'Ocultar', 'init-hide', 'text-btn', `data-entry="${e.id}"`)}`
       }${button('×', 'init-remove', 'text-btn', `data-entry="${e.id}" aria-label="Quitar ${esc(e.name)}"`)}</span></span></li>`;
     })
     .join('');
-  return `<section class="card"><div class="card-header"><h2>Iniciativa${t.round ? ' · ronda ' + t.round : ''}</h2></div>
-  <div class="initiative-tools">${button('Agregar party', 'init-party')}${button('Pedir iniciativa', 'init-request')}${button('Monstruo del SRD', 'init-monster-srd')}${button('Criatura propia', 'init-monster')}${t.entries.some(e => e.hidden) ? button('Revelar ocultas', 'init-reveal') : ''}</div>
+  return `<section class="card"><div class="card-header"><h2>Iniciativa${t.round ? ' · ronda ' + t.round : ''}</h2><span class="small muted">${DmInitiative.labels[t.mode]}</span></div>
+  <div class="initiative-tools">${button('Agregar party', 'init-party')}${t.mode === 'individual' ? button('Pedir iniciativa', 'init-request') : ''}${party.encounter?.active ? '' : button('Modo de iniciativa', 'init-mode')}${button('Monstruo del SRD', 'init-monster-srd')}${button('Criatura propia', 'init-monster')}${t.entries.some(e => e.hidden) ? button('Revelar ocultas', 'init-reveal') : ''}</div>
   ${typeof MonsterUI !== 'undefined' ? MonsterUI.difficultyLine(t) : ''}${items ? `<ol class="initiative-list section-space">${items}</ol>` : '<p class="muted section-space">Agregá a la party y a las criaturas. Las tiradas de iniciativa de los jugadores se completan solas.</p>'}
   ${t.entries.length ? `<div class="actions section-space">${button(t.turn < 0 ? 'Empezar combate' : 'Siguiente turno', 'init-next', '')}${t.turn >= 0 ? button('Terminar combate', 'init-end') : ''}${button('Vaciar', 'init-clear')}</div><p class="small muted">Cuando un jugador toca «Terminar turno», la iniciativa avanza sola. Los turnos de criaturas los pasás vos.</p>` : ''}</section>`;
 }
@@ -480,6 +491,7 @@ const actions = {
   },
   open: e => open(e.dataset.id),
   'npc-new': () => DmFriendlyUI.create(),
+  'enemy-npc-new': () => DmFriendlyUI.create(true),
   'npc-control': e => DmFriendlyUI.control(e.dataset.id),
   'npc-init': e => DmFriendlyUI.initiative(e.dataset.id),
   settings: () =>
@@ -803,6 +815,7 @@ const actions = {
             tiebreak: x.initiative,
           });
     }),
+  'init-mode': () => DmInitiative.setup(),
   'init-request': async () => {
     await actions['init-party']();
     await send('roll-request', { type: 'initiative', id: '', label: 'Iniciativa' });
@@ -864,6 +877,8 @@ const actions = {
     return encounterChange(async () => {
       if (party?.encounter?.active) await Cloud.endCombat(current);
       for (const e of tracker().entries) await Cloud.removeCombatant(e.id);
+      if (party?.encounter?.initiative_mode && party.encounter.initiative_mode !== 'individual')
+        await Cloud.setInitiativeOrder(current, 'individual', []);
     });
   },
   'bonus-die': e => {

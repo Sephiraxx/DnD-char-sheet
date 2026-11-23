@@ -1118,6 +1118,159 @@ grant execute on function public.campaign_for_member(uuid), public.member_campai
 notify pgrst, 'reload schema';
 commit;
 
+-- DM-owned sheets for enemies. Their character data and exact resources stay private.
+begin;
+alter table public.characters add column if not exists enemy_npc boolean not null default false;
+
+create or replace function public.sync_character_summary() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.enemy_npc then
+    delete from character_summaries where id = new.id;
+  else
+    insert into character_summaries (id, campaign_id, owner_id, name, summary, updated_at)
+      values (new.id, new.campaign_id, new.owner_id, new.name, new.public_summary, new.updated_at)
+      on conflict (id) do update set campaign_id = excluded.campaign_id, owner_id = excluded.owner_id,
+        name = excluded.name, summary = excluded.summary, updated_at = excluded.updated_at;
+  end if;
+  return new;
+end $$;
+delete from public.character_summaries s using public.characters c where s.id = c.id and c.enemy_npc;
+
+create or replace function public.check_enemy_npc() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if exists (
+    select 1 from characters c join campaigns t on t.id = c.campaign_id
+    where c.id = new.id and c.enemy_npc
+      and (t.dm_id <> c.owner_id or c.data->'enemyNpc' is distinct from 'true'::jsonb)
+  ) then raise exception 'Solo el DM puede guardar PNJ enemigos.'; end if;
+  return new;
+end $$;
+revoke all on function public.check_enemy_npc() from public;
+drop trigger if exists check_enemy_npc on public.characters;
+create constraint trigger check_enemy_npc after insert or update on public.characters
+  deferrable initially deferred for each row execute function public.check_enemy_npc();
+
+create or replace function public.create_enemy_npc(p_campaign uuid, p_data jsonb, p_summary jsonb) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare result uuid;
+begin
+  if not is_dm(p_campaign) then raise exception 'Solo el DM puede crear PNJ enemigos.'; end if;
+  if p_data->'enemyNpc' is distinct from 'true'::jsonb or jsonb_typeof(p_summary) is distinct from 'object'
+  then raise exception 'Ficha de enemigo inválida.'; end if;
+  insert into characters (campaign_id, owner_id, name, data, public_summary, enemy_npc)
+    values (p_campaign, auth.uid(), p_data->>'name', p_data, p_summary, true)
+    returning id into result;
+  return result;
+end $$;
+revoke all on function public.create_enemy_npc(uuid, jsonb, jsonb) from public;
+grant execute on function public.create_enemy_npc(uuid, jsonb, jsonb) to authenticated;
+
+-- Copy only the values the combat tracker needs. The summary stays on the private character row.
+create or replace function public.project_enemy_npc(p_id uuid, p_summary jsonb) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  max_hp int := greatest(1, least(99999, (p_summary->>'maxHP')::int));
+  hp int := greatest(0, least(max_hp, (p_summary->>'hp')::int));
+  ac int := greatest(0, least(40, (p_summary->>'ac')::int));
+  saves jsonb;
+begin
+  select coalesce(jsonb_object_agg(pair->>0,pair->1),'{}'::jsonb) into saves
+    from jsonb_array_elements(coalesce(p_summary->'saves', '[]'::jsonb)) pair;
+  insert into combatant_secrets (combatant_id,campaign_id,hp,max_hp,ac,saves)
+    select id,campaign_id,hp,max_hp,ac,saves from combatants where character_id = p_id and kind = 'monster'
+    on conflict (combatant_id) do update set hp = excluded.hp, max_hp = excluded.max_hp, ac = excluded.ac, saves = excluded.saves
+    where (combatant_secrets.hp, combatant_secrets.max_hp, combatant_secrets.ac, combatant_secrets.saves)
+      is distinct from (excluded.hp, excluded.max_hp, excluded.ac, excluded.saves);
+  update combatants set conditions = array(select jsonb_array_elements_text(coalesce(p_summary->'conditions','[]'::jsonb)))
+    where character_id = p_id and kind = 'monster'
+      and conditions is distinct from array(select jsonb_array_elements_text(coalesce(p_summary->'conditions','[]'::jsonb)));
+end $$;
+revoke all on function public.project_enemy_npc(uuid, jsonb) from public;
+
+create or replace function public.sync_enemy_npc() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.enemy_npc and new.public_summary is distinct from old.public_summary then
+    perform project_enemy_npc(new.id, new.public_summary);
+  end if;
+  return new;
+end $$;
+revoke all on function public.sync_enemy_npc() from public;
+drop trigger if exists sync_enemy_npc on public.characters;
+create trigger sync_enemy_npc after update on public.characters for each row execute function public.sync_enemy_npc();
+
+create or replace function public.add_enemy_npc_to_initiative(p_character uuid, p_init int, p_hidden boolean) returns void
+language plpgsql security definer set search_path = public as $$
+declare c characters;
+begin
+  select * into c from characters where id = p_character and enemy_npc for update;
+  if not found or not is_dm(c.campaign_id) then raise exception 'PNJ enemigo no encontrado.'; end if;
+  insert into combatants (id, campaign_id, kind, character_id, name, init, tiebreak, hidden)
+    values (c.id, c.campaign_id, 'monster', c.id, c.name, p_init, (c.public_summary->>'initiative')::int, p_hidden)
+    on conflict (id) do nothing;
+  perform project_enemy_npc(c.id, c.public_summary);
+end $$;
+revoke all on function public.add_enemy_npc_to_initiative(uuid, int, boolean) from public;
+grant execute on function public.add_enemy_npc_to_initiative(uuid, int, boolean) to authenticated;
+
+create or replace function public.resolve_attack(p_target uuid, p_total int, p_natural int, p_label text, p_attacker text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  c combatants;
+  s combatant_secrets;
+  hit boolean;
+begin
+  select * into c from combatants where id = p_target;
+  if not found or not is_member(c.campaign_id) or (not is_dm(c.campaign_id) and combatant_is_hidden(c.id))
+    then raise exception 'Objetivo no encontrado.'; end if;
+  if c.kind <> 'monster' then raise exception 'Solo se resuelven así los ataques contra criaturas.'; end if;
+  select * into s from combatant_secrets where combatant_id = p_target;
+  hit := p_natural = 20 or (p_natural <> 1 and p_total >= coalesce(s.ac, 10));
+  insert into events (campaign_id, author_id, kind, payload)
+    values (c.campaign_id, auth.uid(), 'attack', jsonb_build_object(
+      'attacker', left(coalesce(p_attacker, ''), 100), 'target', c.name, 'targetId', c.id,
+      'label', left(coalesce(p_label, ''), 120), 'total', p_total, 'natural', p_natural, 'hit', hit));
+  return jsonb_build_object('hit', hit, 'name', c.name, 'status', c.status);
+end $$;
+
+create or replace function public.damage_combatant(p_target uuid, p_amount int, p_label text, p_attacker text, p_details jsonb)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  c combatants;
+  amount int := greatest(0, least(coalesce(p_amount, 0), 9999));
+begin
+  select * into c from combatants where id = p_target;
+  if not found or not is_member(c.campaign_id) or (not is_dm(c.campaign_id) and combatant_is_hidden(c.id))
+    then raise exception 'Objetivo no encontrado.'; end if;
+  if c.kind <> 'monster' then raise exception 'Solo se aplica así el daño a criaturas.'; end if;
+  if c.character_id is not null and exists (select 1 from characters where id = c.character_id and enemy_npc) then
+    if amount > 0 then
+      insert into events(campaign_id,author_id,kind,target_character,visibility,payload)
+        values (c.campaign_id,auth.uid(),'damage',c.character_id,'dm',jsonb_build_object(
+          'amount',amount,'source',left(coalesce(p_label,''),120),'from',left(coalesce(p_attacker,''),100),
+          'crit',coalesce(p_details->'crit' = 'true'::jsonb,false),'type',left(coalesce(p_details->>'type',''),40)));
+    end if;
+    return jsonb_build_object('name',c.name,'status',c.status,'pending',amount > 0);
+  end if;
+  update combatant_secrets set hp = greatest(0, hp - amount) where combatant_id = p_target;
+  select * into c from combatants where id = p_target;
+  insert into events (campaign_id, author_id, kind, payload)
+    values (c.campaign_id, auth.uid(), 'creature-damage', jsonb_build_object(
+      'attacker', left(coalesce(p_attacker, ''), 100), 'target', c.name, 'targetId', c.id,
+      'label', left(coalesce(p_label, ''), 120), 'amount', amount, 'status', c.status));
+  return jsonb_build_object('name', c.name, 'status', c.status);
+end $$;
+revoke all on function public.damage_combatant(uuid, int, text, text, jsonb) from public;
+grant execute on function public.damage_combatant(uuid, int, text, text, jsonb) to authenticated;
+create or replace function public.damage_combatant(p_target uuid, p_amount int, p_label text, p_attacker text)
+returns jsonb language sql security definer set search_path = public as $$
+  select public.damage_combatant(p_target, p_amount, p_label, p_attacker, '{}'::jsonb);
+$$;
+notify pgrst, 'reload schema';
+commit;
+
 -- Import a campaign archive into a newly created table. Map images are staged by the browser.
 begin;
 create or replace function public.restore_campaign_archive(
@@ -1170,5 +1323,116 @@ end $$;
 
 revoke all on function public.restore_campaign_archive(uuid, jsonb, jsonb, jsonb, jsonb, uuid) from public;
 grant execute on function public.restore_campaign_archive(uuid, jsonb, jsonb, jsonb, jsonb, uuid) to authenticated;
+notify pgrst, 'reload schema';
+commit;
+
+-- Turn priority is separate from the actual initiative roll.
+begin;
+alter table public.combatants add column if not exists turn_priority double precision;
+alter table public.encounters add column if not exists initiative_mode text not null default 'individual';
+alter table public.encounters drop constraint if exists encounters_initiative_mode_check;
+alter table public.encounters add constraint encounters_initiative_mode_check
+  check (initiative_mode in ('individual', 'alternating', 'boss'));
+
+create or replace function public.set_initiative_order(p_campaign uuid, p_mode text, p_order uuid[]) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  running boolean;
+  players int;
+  monsters int;
+begin
+  if not is_dm(p_campaign) then raise exception 'Solo el DM puede elegir la iniciativa.'; end if;
+  if p_mode is null or p_mode not in ('individual', 'alternating', 'boss') then
+    raise exception 'Modo de iniciativa desconocido.';
+  end if;
+  insert into encounters (campaign_id) values (p_campaign) on conflict (campaign_id) do nothing;
+  select active into running from encounters where campaign_id = p_campaign for update;
+  if running then raise exception 'Terminá el combate antes de cambiar la iniciativa.'; end if;
+
+  if p_mode <> 'individual' then
+    select count(*) filter (where kind = 'pc'), count(*) filter (where kind = 'monster')
+      into players, monsters from combatants
+      where campaign_id = p_campaign and not (kind = 'monster' and status = 'derrotado');
+    if players = 0 or monsters = 0 or (p_mode = 'boss' and monsters <> 1) then
+      raise exception 'Revisá cuántos aliados y enemigos hay en la iniciativa.';
+    end if;
+    if p_order is null or cardinality(p_order) <> players + monsters or (
+      select count(distinct c.id) from combatants c
+      where c.id = any(p_order) and c.campaign_id = p_campaign
+        and not (c.kind = 'monster' and c.status = 'derrotado')
+    ) <> players + monsters then
+      raise exception 'La lista de combatientes cambió. Volvé a abrir la configuración.';
+    end if;
+  end if;
+
+  update combatants set turn_priority = null where campaign_id = p_campaign and turn_priority is not null;
+  if p_mode <> 'individual' then
+    -- Public sort keys have no rank gaps that would reveal how many turns are hidden.
+    with keys as materialized (
+      select random() as priority from unnest(p_order)
+    ), positions as (
+      select priority, row_number() over (order by priority) as position from keys
+    )
+    update combatants c set turn_priority = p.priority
+      from unnest(p_order) with ordinality ordered(id, position)
+      join positions p using (position)
+      where c.id = ordered.id and c.campaign_id = p_campaign;
+  end if;
+  update encounters set initiative_mode = p_mode, updated_at = now() where campaign_id = p_campaign;
+end $$;
+revoke all on function public.set_initiative_order(uuid, text, uuid[]) from public;
+grant execute on function public.set_initiative_order(uuid, text, uuid[]) to authenticated;
+
+create or replace function public.advance_turn(p_campaign uuid) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  e encounters; cur combatants; nxt combatants; ids uuid[]; eligible uuid[]; next_id uuid;
+  i int; r int; concealed boolean;
+begin
+  if not is_member(p_campaign) then raise exception 'No sos parte de esta mesa.'; end if;
+  if is_dm(p_campaign) then
+    insert into encounters (campaign_id) values (p_campaign) on conflict (campaign_id) do nothing;
+  end if;
+  select * into e from encounters where campaign_id = p_campaign for update;
+  if e.active is true and e.current_id is not null then
+    select * into cur from combatants where id = e.current_id;
+    if not is_dm(p_campaign) and not coalesce(cur.kind = 'pc' and owns_character(cur.character_id), false) then
+      raise exception 'Solo quien tiene el turno o el DM pueden pasarlo.';
+    end if;
+  elsif not is_dm(p_campaign) then raise exception 'El combate todavía no empezó.'; end if;
+
+  select array_agg(id order by turn_priority nulls last, init desc nulls last, tiebreak desc, created_at, id)
+    into ids from combatants where campaign_id = p_campaign;
+  select array_agg(id order by position) into eligible
+    from unnest(ids) with ordinality ordered(id, position) join combatants using (id)
+    where not (kind = 'monster' and status = 'derrotado');
+  if eligible is null then raise exception 'No hay nadie en la iniciativa.'; end if;
+  if e.active is not true then
+    if e.initiative_mode <> 'individual' and exists (
+      select 1 from combatants where id = any(eligible) and turn_priority is null
+    ) then raise exception 'Revisá el modo de iniciativa: hay combatientes nuevos sin posición.'; end if;
+    r := 1;
+    next_id := eligible[1];
+  else
+    r := greatest(e.round, 1);
+    i := array_position(ids, e.current_id);
+    if i is not null then
+      select id into next_id from unnest(ids) with ordinality ordered(id, position)
+        where position > i and id = any(eligible) order by position limit 1;
+      if next_id is null then r := r + 1; end if;
+    end if;
+    next_id := coalesce(next_id, eligible[1]);
+  end if;
+
+  update encounters set active = true, round = r, current_id = next_id, updated_at = now()
+    where campaign_id = p_campaign;
+  select * into nxt from combatants where id = next_id;
+  concealed := combatant_is_hidden(nxt.id);
+  insert into events (campaign_id, author_id, kind, payload)
+    values (p_campaign, auth.uid(), 'turn', jsonb_build_object(
+      'combatantId', nxt.id, 'characterId', case when concealed then null else nxt.character_id end,
+      'name', case when concealed then 'Turno oculto' else nxt.name end, 'hidden', concealed, 'round', r));
+  return jsonb_build_object('id', nxt.id, 'name', case when concealed and not is_dm(p_campaign) then 'Turno oculto' else nxt.name end, 'hidden', concealed, 'round', r);
+end $$;
 notify pgrst, 'reload schema';
 commit;

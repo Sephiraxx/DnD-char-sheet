@@ -200,7 +200,11 @@
     const memberName = id => party?.members.find(m => m.user_id === id)?.display_name || '';
     const p = ev.payload || {},
       who = p.character || memberName(ev.author_id) || 'Alguien',
-      target = party?.characters.find(c => c.id === ev.target_character)?.name || p.targetName || '';
+      target =
+        party?.characters.find(c => c.id === ev.target_character)?.name ||
+        party?.enemyNpcs?.find(c => c.id === ev.target_character)?.name ||
+        p.targetName ||
+        '';
     switch (ev.kind) {
       case 'roll':
         return `<b>${esc(who)}</b> · ${rollText(p)}`;

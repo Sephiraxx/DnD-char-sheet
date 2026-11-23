@@ -307,7 +307,19 @@
         }
         if (!tok) {
           const p = BC.freeSpot(g, [...on, ...rows], { x: g.cols - 2, y: Math.floor(g.rows / 2) }, t);
-          rows.push(tokenRow({ kind: 'monster', combatant_id: c.id, name: c.name, hidden: c.hidden, ...p }, map));
+          rows.push(
+            tokenRow(
+              {
+                kind: 'monster',
+                combatant_id: c.id,
+                character_id: c.character_id,
+                name: c.name,
+                hidden: c.hidden,
+                ...p,
+              },
+              map,
+            ),
+          );
         } else if (lastHidden.has(c.id) && lastHidden.get(c.id) !== c.hidden && tok.hidden !== c.hidden) {
           // El DM reveló (o volvió a ocultar) la criatura en el combate: la ficha la sigue.
           await Cloud.updateToken(tok.id, { hidden: c.hidden });
@@ -531,7 +543,10 @@
     const enc = S.party?.encounter,
       current = enc?.active ? (S.party.combatants || []).find(c => c.id === enc.current_id) : null;
     if (t.character_id) {
-      const row = (S.party?.characters || []).find(c => c.id === t.character_id);
+      const rows = playerView()
+        ? S.party?.characters || []
+        : [...(S.party?.characters || []), ...(S.party?.enemyNpcs || [])];
+      const row = rows.find(c => c.id === t.character_id);
       if (row) {
         const x = summary(row);
         if (!x.broken) {

@@ -148,7 +148,7 @@ const Encounters = (() => {
               const sum = [n ? `${n} ${n === 1 ? 'criatura' : 'criaturas'}` : 'sin criaturas', d?.label]
                 .filter(Boolean)
                 .join(' · ');
-              return `<details class="prepared" data-id="${enc.id}"${opened.has(enc.id) ? ' open' : ''}><summary class="prepared-head"><span class="prepared-title"><b>${esc(enc.name)}</b> <span class="tag">${esc(STYLES[enc.style]?.[1] || '')}</span>${enc.launched ? ' <span class="tag">Ya lanzado</span>' : ''}<span class="small muted prepared-sum${d ? ' difficulty ' + esc(d.label.toLowerCase()) : ''}">${esc(sum)}</span></span></summary><div class="prepared-body">${rows || '<p class="small muted">Sin criaturas todavía.</p>'}${enc.notes ? `<details class="section-space"><summary>Notas privadas del encuentro</summary><p class="encounter-notes">${esc(enc.notes)}</p></details>` : ''}${diff}<div class="actions">${button('Criatura del catálogo', 'prep-srd', 'secondary', `data-id="${enc.id}"`)}${typeof EncounterGeneratorUI !== 'undefined' ? button('Generar desde tablas', 'encgen-open', 'secondary', `data-id="${enc.id}"`) : ''}${button('Criatura propia', 'prep-custom', 'secondary', `data-id="${enc.id}"`)}${button('Ver animación', 'prep-preview', 'secondary', `data-id="${enc.id}"`)}${button('Editar', 'prep-edit', 'secondary', `data-id="${enc.id}"`)}${button('Eliminar', 'prep-delete', 'secondary', `data-id="${enc.id}"`)}${button(enc.launched ? 'Lanzar otra vez' : '¡Lanzar!', 'prep-launch', '', `data-id="${enc.id}" ${enc.monsters.length ? '' : 'disabled'}`)}</div></div></details>`;
+              return `<details class="prepared" data-id="${enc.id}"${opened.has(enc.id) ? ' open' : ''}><summary class="prepared-head"><span class="prepared-title"><b>${esc(enc.name)}</b> <span class="tag">${esc(STYLES[enc.style]?.[1] || '')}</span>${enc.launched ? ' <span class="tag">Ya lanzado</span>' : ''}<span class="small muted prepared-sum${d ? ' difficulty ' + esc(d.label.toLowerCase()) : ''}">${esc(sum)}</span></span></summary><div class="prepared-body">${rows || '<p class="small muted">Sin criaturas todavía.</p>'}${enc.notes ? `<details class="section-space"><summary>Notas privadas del encuentro</summary><p class="encounter-notes">${esc(enc.notes)}</p></details>` : ''}${diff}<div class="actions">${button('Criatura del catálogo', 'prep-srd', 'secondary', `data-id="${enc.id}"`)}${typeof EncounterGeneratorUI !== 'undefined' ? button('Generar desde tablas', 'encgen-open', 'secondary', `data-id="${enc.id}"`) : ''}${button('Criatura propia', 'prep-custom', 'secondary', `data-id="${enc.id}"`)}${button('Ver animación', 'prep-preview', 'secondary', `data-id="${enc.id}"`)}${button('Editar', 'prep-edit', 'secondary', `data-id="${enc.id}"`)}${button('Eliminar', 'prep-delete', 'secondary', `data-id="${enc.id}"`)}${button(enc.launched ? 'Lanzar otra vez' : '¡Lanzar!', 'prep-launch', '', `data-id="${enc.id}" ${enc.monsters.length ? '' : 'disabled'}`)}${button('Lanzar y elegir iniciativa', 'prep-launch-mode', 'secondary', `data-id="${enc.id}" ${enc.monsters.length ? '' : 'disabled'}`)}</div></div></details>`;
             })
             .join('')
         : '<p class="muted">Todavía no preparaste encuentros.</p>'
@@ -211,9 +211,14 @@ const Encounters = (() => {
       toast(e.message);
     }
   }
-  async function launch(id) {
+  async function launch(id, askInitiative = true) {
     const enc = get(id);
     if (!enc?.monsters.length) throw Error('Agregá criaturas al encuentro primero.');
+    const active = party.encounter?.active;
+    const custom = party.encounter?.initiative_mode && party.encounter.initiative_mode !== 'individual';
+    if (active && !askInitiative) throw Error('Terminá el combate antes de cambiar la iniciativa.');
+    const requestIndividual = askInitiative && !(active && custom);
+    if (requestIndividual && custom) await encounterChange(() => Cloud.setInitiativeOrder(current, 'individual', []));
     const links = [];
     await actions['init-party']();
     await encounterChange(async () => {
@@ -239,9 +244,12 @@ const Encounters = (() => {
     });
     await placeOnBoard(enc, links);
     await announce(enc.style, enc.cry, enc.monsters.length, await themeFor(enc));
-    await send('roll-request', { type: 'initiative', id: '', label: 'Iniciativa' });
+    if (requestIndividual) await send('roll-request', { type: 'initiative', id: '', label: 'Iniciativa' });
     update(id, e => (e.launched = true));
-    toast(`«${enc.name}» en juego: ${enc.monsters.length} criatura(s). Se pidió iniciativa.`);
+    toast(
+      `«${enc.name}» en juego: ${enc.monsters.length} criatura(s).${requestIndividual ? ' Se pidió iniciativa.' : ''}`,
+    );
+    if (!askInitiative) DmInitiative.setup(party.encounter?.initiative_mode === 'boss' ? 'boss' : 'alternating');
   }
   // Aviso con animación en todas las pantallas (jugadores y DM).
   async function announce(style, cry, count, look = {}) {
@@ -319,6 +327,7 @@ const Encounters = (() => {
         ),
       'prep-remove': e => update(e.dataset.id, x => (x.monsters = x.monsters.filter(m => m.name !== e.dataset.name))),
       'prep-launch': e => launch(e.dataset.id),
+      'prep-launch-mode': e => launch(e.dataset.id, false),
       // Solo en esta pantalla: no avisa a los jugadores.
       'prep-preview': async e => {
         const enc = get(e.dataset.id);
