@@ -178,21 +178,26 @@ const AttackUI = (() => {
     const r =
         mine === null
           ? A.rollAttack(p, adv, rnd)
-          : {
+          : (k => ({
               rolls: [mine],
-              kept: mine,
-              total: mine + p.toHit,
-              crit: mine >= (p.crit || 20),
-              fumble: mine === 1,
+              kept: k,
+              ...(k !== mine ? { raised: mine } : {}),
+              total: k + p.toHit,
+              crit: k >= (p.crit || 20),
+              fumble: k === 1,
               physical: true,
-            },
+            }))(Math.max(mine, p.floor || 0)),
       n = session.mode === 'action' ? A.attacksPerAction(state) : 1;
     r.total += extra.total;
     session.attacks++;
     session.last = r.fumble ? null : { crit: r.crit, profile: p };
     const label = `Ataque ${session.attacks}${n > 1 ? ' de ' + n : ''}`;
     const dice =
-      (r.rolls.length > 1 ? `d20 ${r.rolls.join(' / ')} → ${r.kept}` : `d20 ${r.kept}`) +
+      (r.raised !== undefined
+        ? `d20 ${r.rolls.join(' / ')} → ${r.kept} (mínimo de la ficha)`
+        : r.rolls.length > 1
+          ? `d20 ${r.rolls.join(' / ')} → ${r.kept}`
+          : `d20 ${r.kept}`) +
       (r.physical ? ' (dado físico)' : '') +
       extra.text;
     const entry = {

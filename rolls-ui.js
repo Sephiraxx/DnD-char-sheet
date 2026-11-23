@@ -133,27 +133,37 @@ const RollUI = (() => {
       )}</fieldset>${state.heroicInspiration ? '<label class="check"><input type="checkbox" name="heroic">Usar mi Inspiración del DM (ventaja; se gasta)</label>' : ''}${ctx.kind ? bonusFields(ctx.kind, ctx.skill) : ''}${extra}<details class="physical-dice"><summary>Uso mis propios dados</summary><p class="small">Anotá el d20 que quedó (con ventaja o desventaja, el que conservás). La ficha suma tus bonos.</p>${field('Mi d20', 'myD20', '', 'number', 'min="1" max="20" inputmode="numeric"')}</details>`;
   }
   // Resuelve el d20 según el formulario. Devuelve { rolls, kept, physical, heroic }.
+  // Mínimo de la ficha (regla de la casa): un d20 menor cuenta como ese número.
+  function floored(r) {
+    const f = R.d20Floor(state);
+    if (f && r.kept < f) return { ...r, raised: r.kept, kept: f };
+    return r;
+  }
   function readD20(fd) {
     const own = fd.get('myD20');
     const heroic = fd.has('heroic');
     if (own !== null && own !== '') {
       const n = Number(own);
       if (!Number.isInteger(n) || n < 1 || n > 20) throw Error('Tu d20 va de 1 a 20.');
-      return { rolls: [n], kept: n, physical: true, heroic };
+      return floored({ rolls: [n], kept: n, physical: true, heroic });
     }
     let mode = fd.get('adv') || '';
     if (heroic) mode = mode === 'dis' ? '' : 'adv';
     const a = roll(20)[0],
       b = mode ? roll(20)[0] : null;
-    return {
+    return floored({
       rolls: b === null ? [a] : [a, b],
       kept: mode === 'adv' ? Math.max(a, b) : mode === 'dis' ? Math.min(a, b) : a,
       physical: false,
       heroic,
-    };
+    });
   }
   const diceText = r =>
-    (r.rolls.length > 1 ? `d20 ${r.rolls.join(' / ')} → ${r.kept}` : `d20 ${r.kept}`) +
+    (r.raised !== undefined
+      ? `d20 ${r.rolls.join(' / ')} → ${r.kept} (mínimo de la ficha)`
+      : r.rolls.length > 1
+        ? `d20 ${r.rolls.join(' / ')} → ${r.kept}`
+        : `d20 ${r.kept}`) +
     (r.physical ? ' (dado físico)' : '') +
     (r.heroic ? ' (Inspiración)' : '');
 
@@ -898,6 +908,22 @@ const RollUI = (() => {
     );
   }
   function install() {
+    // Regla de la casa solo para esta ficha: ningún d20 suyo baja del número elegido.
+    actions['d20-floor'] = () =>
+      modal(
+        'Mínimo en el d20',
+        `<p class="small">Solo para ${esc(state.name || 'esta ficha')}: en ataques, salvaciones, pruebas, iniciativa y salvaciones de muerte, un d20 menor cuenta como este número (también con ventaja o desventaja, y con dados físicos). Dejalo vacío para quitarlo.</p>${field('Mínimo (2 a 20)', 'floor', R.d20Floor(state) || '', 'number', 'min="2" max="20" inputmode="numeric"')}`,
+        fd => {
+          const v = String(fd.get('floor') || '').trim(),
+            n = v === '' ? 0 : Number(v);
+          if (v !== '' && (!Number.isInteger(n) || n < 2 || n > 20)) throw Error('Elegí un número de 2 a 20.');
+          commit(n ? `Mínimo en el d20: ${n}` : 'Sin mínimo en el d20', s => {
+            if (n) s.d20Floor = n;
+            else delete s.d20Floor;
+          });
+        },
+        'Guardar',
+      );
     // Al marcar uno más del límite, se desmarca el que estaba primero (con límite 1 funciona como elegir uno).
     globalThis.document?.addEventListener('change', e => {
       const box = e.target.closest?.('fieldset[data-max]');

@@ -215,6 +215,7 @@
       // Daño extra opcional de la subclase (Golpe divino, Furia divina…): la persona lo marca al tirar daño.
       riders: root.SubclassFX?.riders(s, { melee }) || [],
       crit: critOn,
+      floor: R().d20Floor(s),
       gwf,
       weapon: w,
       magical: Boolean(shillelagh || item.magic || cfg.magic),
@@ -286,10 +287,13 @@
   function rollAttack(p, adv, rnd) {
     const a = d(20, rnd),
       b = adv ? d(20, rnd) : null;
-    const kept = adv === 'adv' ? Math.max(a, b) : adv === 'dis' ? Math.min(a, b) : a;
+    const natural = adv === 'adv' ? Math.max(a, b) : adv === 'dis' ? Math.min(a, b) : a,
+      // Mínimo de la ficha (regla de la casa): un d20 menor cuenta como ese número.
+      kept = Math.max(natural, p.floor || 0);
     return {
       rolls: b === null ? [a] : [a, b],
       kept,
+      ...(kept !== natural ? { raised: natural } : {}),
       total: kept + p.toHit,
       crit: kept >= (p.crit || 20),
       fumble: kept === 1,

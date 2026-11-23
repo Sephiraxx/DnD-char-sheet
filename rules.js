@@ -823,6 +823,8 @@
     if (o.inspirationSpent !== null && !int(o.inspirationSpent, 0, stats(o).inspirationMax)) fail();
     if (o.hdSpent !== null && !int(o.hdSpent, 0, totalLevel(o))) fail();
     if (o.heroicInspiration !== undefined && typeof o.heroicInspiration !== 'boolean') fail();
+    // Regla de la casa de esta ficha: ningún d20 suyo baja de este número.
+    if (o.d20Floor !== undefined && !int(o.d20Floor, 2, 20)) fail();
     if (o.encumbranceVariant !== undefined && typeof o.encumbranceVariant !== 'boolean') fail();
     if (o.ammoUsed !== undefined) {
       if (
@@ -1149,6 +1151,8 @@
     });
     return parts.filter(Boolean).length > 1 ? 'Por espacio · ' + parts.filter(Boolean).join(' · ') : '';
   }
+  // Mínimo del d20 de esta ficha (0 = sin mínimo) y el resultado ya ajustado.
+  const d20Floor = s => (Number.isInteger(s?.d20Floor) ? s.d20Floor : 0);
   const api = {
     hasSkill,
     hasExpertise,
@@ -1181,6 +1185,7 @@
     halfProf,
     initiativeParts,
     partsText,
+    d20Floor,
     passive,
     saveBonus,
     allSpells,

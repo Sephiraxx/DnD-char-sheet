@@ -804,6 +804,7 @@ const Campaign = (() => {
       <p><b>Habilitados ahora</b> (${now.length})${since.length ? ` <span class="small">· ${since.join(' · ')}</span>` : ''}</p>${chips(now)}
       ${table ? `<p class="small">Está en la mesa «${esc(table)}»: al unirse tomó los libros que eligió el DM.</p>` : ''}
       <p><b>Reglas opcionales:</b> rasgos opcionales de clase de Tasha ${s.optionalClassFeatures ? '<b>activados</b>' : 'desactivados'} <span class="small muted">(se cambian en Clase → Subclase y Pericias)</span>.</p>
+      <p><b>Mínimo en el d20:</b> ${s.d20Floor ? `<b>${s.d20Floor}</b>: ningún d20 de esta ficha baja de ${s.d20Floor}` : 'ninguno'} ${typeof button === 'function' ? button(s.d20Floor ? 'Cambiar' : 'Poner un mínimo', 'd20-floor', 'secondary') : ''}</p>
       ${used.length ? `<p><b>Homebrew que usa:</b> ${esc(used.join(', '))}.</p>` : ''}
       <h3 class="section-space">Qué permite cada libro</h3><p class="small">En total: ${total('Subclases de tu clase')} subclases de su clase, ${total('Razas')} razas, ${total('Trasfondos')} trasfondos, ${total('Dotes')} dotes y ${total('Conjuros de tu clase')} conjuros de su lista. Lo que no está habilitado se puede sumar igual como Extra del DM.</p>
       <div class="books-list">${books

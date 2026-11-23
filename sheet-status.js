@@ -63,6 +63,8 @@ const SheetStatus = (() => {
         rs.map(x => x.name + (x.uses ? ` (${x.uses})` : '')).join(', ') + ' en tus conjuros.',
       ]);
     for (const f of FeatFX.report(s)) if (f.auto.length) out.push([f.name, f.auto.join(' · ') + '.']);
+    if (s.d20Floor)
+      out.push(['Mínimo en el d20', `Ningún d20 de esta ficha baja de ${s.d20Floor} (regla de la casa).`]);
     // Rasgos de subclase que la ficha ya aplica, y las velocidades y sentidos que suman.
     if (globalThis.SubclassFX) {
       for (const f of SubclassFX.report(s)) if (f.auto) out.push([f.name, f.auto]);
