@@ -2,22 +2,24 @@
 const DmFriendlyUI = (() => {
   'use strict';
 
-  function card(list, entries) {
-    return `<section class="card"><div class="card-header"><h2>PNJ aliados</h2>${button('Nuevo aliado', 'npc-new', '')}</div>${
+  function card(list, entries, enemy = false) {
+    return `<section class="card"><div class="card-header"><h2>${enemy ? 'PNJ enemigos' : 'PNJ aliados'}</h2>${button(enemy ? 'Nuevo enemigo' : 'Nuevo aliado', enemy ? 'enemy-npc-new' : 'npc-new', '')}</div>${
       list
         .map(({ row, x }) => {
           const data = `data-id="${esc(row.id)}"`;
-          return `<div class="dm-ally-row"><div><strong>${esc(row.name)}</strong><p class="small muted">${esc(x.line)} · ${esc(x.race)} · ${x.hp ?? '—'}/${x.maxHP ?? '—'} PG</p></div><div class="actions">${button('Controlar', 'npc-control', '', data)}${
+          const pending =
+            enemy && feed.some(e => e.kind === 'damage' && e.target_character === row.id && e.applied_at === null);
+          return `<div class="dm-ally-row"><div><strong>${esc(row.name)}</strong><p class="small muted">${esc(x.line)} · ${esc(x.race)} · ${x.hp ?? '—'}/${x.maxHP ?? '—'} PG${pending ? ' · Daño pendiente' : ''}</p></div><div class="actions">${button('Controlar', 'npc-control', '', data)}${
             entries.some(e => e.characterId === row.id)
               ? '<span class="small muted">En iniciativa</span>'
               : button('Sumar a iniciativa', 'npc-init', 'secondary', data)
           }${button('Quitar', 'kick', 'text-btn', data)}</div></div>`;
         })
-        .join('') || '<p class="small muted">Creá aliados con su ficha de combate, conjuros y recursos de clase.</p>'
+        .join('') || '<p class="small muted">Creá PNJ con su ficha de combate, conjuros y recursos de clase.</p>'
     }</section>`;
   }
 
-  async function create() {
+  async function create(enemy = false) {
     const campaign = party.campaign;
     await OfficialContent.ready();
     const { classes, races } = FriendlyNPC.choices();
@@ -28,9 +30,10 @@ const DmFriendlyUI = (() => {
       level: Number(fd.get('level')),
       raceId: fd.get('race'),
       campaignSources: Cloud.cleanSettings(campaign.settings).sources,
+      enemy,
     });
     modal(
-      'Nuevo PNJ aliado',
+      enemy ? 'Nuevo PNJ enemigo' : 'Nuevo PNJ aliado',
       `${field('Nombre', 'name', '', 'text', 'maxlength="100" required')}
       <div class="form-grid">${select(
         'Clase',
@@ -43,11 +46,11 @@ const DmFriendlyUI = (() => {
       <div id="dm-ally-spells"></div>`,
       async fd => {
         const s = FriendlyNPC.create(read(fd), selected);
-        await Cloud.createFriendlyNpc(campaign, s);
+        await (enemy ? Cloud.createEnemyNpc(campaign, s) : Cloud.createFriendlyNpc(campaign, s));
         if (current === campaign.id) await refresh();
-        toast('PNJ aliado guardado en la mesa.');
+        toast('PNJ guardado en la mesa.');
       },
-      'Crear aliado',
+      enemy ? 'Crear enemigo' : 'Crear aliado',
     );
     const form = $('#dialog-form');
     const pane = $('#dm-ally-spells');
@@ -95,7 +98,8 @@ const DmFriendlyUI = (() => {
 
   function rowFor(id) {
     const row = characterById(id);
-    if (!row || !FriendlyNPC.ownedByDM(row, party.campaign)) throw Error('Ese PNJ aliado ya no está en la mesa.');
+    if (!row || !(FriendlyNPC.ownedByDM(row, party.campaign) || FriendlyNPC.enemyOfDM(row, party.campaign)))
+      throw Error('Ese PNJ ya no está en la mesa.');
     return row;
   }
 
@@ -120,6 +124,15 @@ const DmFriendlyUI = (() => {
     const row = rowFor(id);
     if (tracker().entries.some(e => e.characterId === id)) return;
     const modifier = PV.summarize(row.data).initiative;
+    if (row.data.enemyNpc === true) {
+      modal(
+        'Sumar a ' + row.name + ' a iniciativa',
+        '<label class="check"><input type="checkbox" name="hidden">Ocultar al enemigo hasta revelarlo</label>',
+        fd => encounterChange(() => Cloud.addEnemyNpcToInitiative(id, d20() + modifier, fd.has('hidden'))),
+        'Sumar',
+      );
+      return;
+    }
     await encounterChange(() =>
       Cloud.addCombatant(current, {
         id,

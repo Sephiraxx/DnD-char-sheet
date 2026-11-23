@@ -209,7 +209,7 @@ const AttackUI = (() => {
     });
     // Con objetivo, el impacto lo decide el servidor (CA oculta); sin objetivo, la mesa.
     const verdict = foe
-      ? Cloud.resolveAttack(target, r.total, r.kept, 'Ataque con ' + item.name, state.name).catch(err => {
+      ? TableUI.resolveTarget(target, r.total, r.kept, 'Ataque con ' + item.name, r.crit).catch(err => {
           toast(err.message);
           return null;
         })
@@ -293,7 +293,7 @@ const AttackUI = (() => {
     };
     const target = session.target;
     const applied = target
-      ? Cloud.damageCombatant(target, dmg.total, 'Daño con ' + item.name, state.name).catch(err => {
+      ? TableUI.damageTarget(target, dmg.total, 'Daño con ' + item.name, { crit, type: p.type }).catch(err => {
           toast(err.message);
           return null;
         })
@@ -310,7 +310,7 @@ const AttackUI = (() => {
       }),
       applied,
     ]).then(([, out]) => {
-      if (out) entry.html += ` → ${esc(out.name)}: <b>${esc(TableUI.statusLabel(out.status))}</b>`;
+      if (out) entry.html += ` → ${esc(out.name)}: <b>${esc(TableUI.damageLabel(out))}</b>`;
       session.log.unshift(entry);
       drawLog();
     });

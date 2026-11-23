@@ -36,7 +36,8 @@
   const controlledId = () => (location.search ? new URLSearchParams(location.search).get('aliado') : null);
   function controlledKey(entries, id) {
     const key = entries.find(x => x.id === id)?.key;
-    return key && JSON.parse(localStorage.getItem(key))?.friendlyNpc === true ? key : null;
+    const sheet = key ? JSON.parse(localStorage.getItem(key)) : null;
+    return sheet?.friendlyNpc === true || sheet?.enemyNpc === true ? key : null;
   }
   function activeKey() {
     try {

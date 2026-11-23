@@ -464,11 +464,13 @@ const RollUI = (() => {
       );
     // Conjuros de salvación de un objetivo (o pocos): una sola lista con el límite.
     const max = targetLimit(sp, spellSession?.slot ?? sp.level);
-    if (info.save && Number.isFinite(max) && (t.monsters.length || t.allies.length))
-      return `<fieldset class="target-list" data-max="${max}"><legend>${max === 1 ? 'Objetivo (uno solo)' : 'Objetivos (hasta ' + max + ')'}</legend>${t.monsters.map(m => who('mon:' + m.id, m.name + ' · ' + TableUI.statusLabel(m.status), m.id === TableUI.boardContext()?.combatantId)).join('')}${t.allies.map(a => who('pc:' + a.characterId, a.name)).join('')}</fieldset><p class="small muted">El DM tira la salvación de las criaturas; un aliado la tira en su ficha.</p>`;
+    const creatures = t.monsters.filter(x => !x.player);
+    const sheets = [...t.monsters.filter(x => x.player).map(x => ({ characterId: x.id, name: x.name })), ...t.allies];
+    if (info.save && Number.isFinite(max) && (creatures.length || sheets.length))
+      return `<fieldset class="target-list" data-max="${max}"><legend>${max === 1 ? 'Objetivo (uno solo)' : 'Objetivos (hasta ' + max + ')'}</legend>${creatures.map(m => who('mon:' + m.id, m.name + ' · ' + TableUI.statusLabel(m.status), m.id === TableUI.boardContext()?.combatantId)).join('')}${sheets.map(a => who('pc:' + a.characterId, a.name)).join('')}</fieldset><p class="small muted">El DM tira la salvación de las criaturas. Cada personaje tira la suya en su ficha.</p>`;
     // Conjuros de salvación de área: criaturas, y aliados o vos si quedan dentro.
-    if (info.save && (t.monsters.length || t.allies.length))
-      return `${t.monsters.length ? `<fieldset class="target-list"><legend>Criaturas (el DM tira sus salvaciones)</legend>${t.monsters.map(m => who('mon:' + m.id, m.name + ' · ' + TableUI.statusLabel(m.status), m.id === TableUI.boardContext()?.combatantId)).join('')}</fieldset>` : ''}<fieldset class="target-list"><legend>También en el área (cada uno tira su salvación)</legend>${who('self', 'Vos (' + state.name + ')')}${t.allies.map(a => who('pc:' + a.characterId, a.name)).join('')}</fieldset>`;
+    if (info.save && (creatures.length || sheets.length))
+      return `${creatures.length ? `<fieldset class="target-list"><legend>Criaturas (el DM tira sus salvaciones)</legend>${creatures.map(m => who('mon:' + m.id, m.name + ' · ' + TableUI.statusLabel(m.status), m.id === TableUI.boardContext()?.combatantId)).join('')}</fieldset>` : ''}<fieldset class="target-list"><legend>También en el área (cada uno tira su salvación)</legend>${who('self', 'Vos (' + state.name + ')')}${sheets.map(a => who('pc:' + a.characterId, a.name)).join('')}</fieldset>`;
     // Daño automático (Proyectil mágico…): se elige la criatura que lo recibe.
     if (info.dice && !info.heal && !info.attack && !info.save && t.monsters.length)
       return select(
@@ -619,7 +621,7 @@ const RollUI = (() => {
     const target = fd.get('target') || '';
     spellSession.hitTarget = null;
     const verdict = target
-      ? Cloud.resolveAttack(target, total, r.kept, 'Ataque con ' + sp.name, state.name).catch(err => {
+      ? TableUI.resolveTarget(target, total, r.kept, 'Ataque con ' + sp.name, crit).catch(err => {
           toast(err.message);
           return null;
         })
@@ -796,14 +798,12 @@ const RollUI = (() => {
     }
     const autoTarget = !info.attack && !info.save && !info.heal ? fd.get('target') : '';
     if (spellSession.hitTarget || autoTarget) {
-      const out = await Cloud.damageCombatant(
-        spellSession.hitTarget || autoTarget,
-        total,
-        'Daño con ' + sp.name,
-        state.name,
-      );
+      const out = await TableUI.damageTarget(spellSession.hitTarget || autoTarget, total, 'Daño con ' + sp.name, {
+        crit: Boolean(spellSession.crit),
+        type: info.types?.length === 1 ? info.types[0] : '',
+      });
       spellSession.hitTarget = null;
-      return ` → ${esc(out.name)}: <b>${esc(TableUI.statusLabel(out.status))}</b>`;
+      return ` → ${esc(out.name)}: <b>${esc(TableUI.damageLabel(out))}</b>`;
     }
     const foes = who
       .filter(w => w.startsWith('mon:'))
@@ -811,7 +811,11 @@ const RollUI = (() => {
       .filter(Boolean);
     const allies = who
       .filter(w => w.startsWith('pc:'))
-      .map(w => t.allies.find(a => a.characterId === w.slice(3)))
+      .map(w => {
+        const id = w.slice(3);
+        const pc = t.monsters.find(a => a.player && a.id === id);
+        return pc ? { characterId: pc.id, name: pc.name } : t.allies.find(a => a.characterId === id);
+      })
       .filter(Boolean);
     if (info.save && (foes.length || allies.length || who.includes('self'))) {
       const l = TableUI.link();

@@ -170,7 +170,7 @@ async function encounterChange(fn) {
 const notesKey = () => 'dnd-dm-notes-' + current;
 
 // ---------- Datos ----------
-const characterById = id => party?.characters.find(c => c.id === id);
+const characterById = id => party?.characters.find(c => c.id === id) || party?.enemyNpcs?.find(c => c.id === id);
 const summaries = () => (party?.characters || []).map(c => ({ row: c, x: PV.summarize(c.data) }));
 async function send(kind, payload, target = null, visibility = 'all') {
   const ev = await Cloud.post(current, kind, payload, { target, visibility });
@@ -220,12 +220,13 @@ function onChange(table, payload) {
     return;
   }
   if (table === 'characters' && party) {
-    if (payload.eventType === 'DELETE') party.characters = party.characters.filter(c => c.id !== payload.old.id);
-    else {
-      const row = payload.new;
-      party.characters = [...party.characters.filter(c => c.id !== row.id), row].sort((a, b) =>
-        a.name.localeCompare(b.name, 'es'),
-      );
+    const row = payload.eventType === 'DELETE' ? payload.old : payload.new;
+    party.characters = party.characters.filter(c => c.id !== row.id);
+    party.enemyNpcs = (party.enemyNpcs || []).filter(c => c.id !== row.id);
+    if (payload.eventType !== 'DELETE') {
+      const roster = FriendlyNPC.enemyOfDM(row, party.campaign) ? party.enemyNpcs : party.characters;
+      roster.push(row);
+      roster.sort((a, b) => a.name.localeCompare(b.name, 'es'));
     }
     draw();
   } else if (table === 'events' && payload.eventType === 'INSERT') {
@@ -287,6 +288,11 @@ function draw() {
   </div><div class="stack dm-combat">
     ${savesCard()}
     ${DmFriendlyUI.card(allies, t.entries)}
+    ${DmFriendlyUI.card(
+      (party.enemyNpcs || []).map(row => ({ row, x: PV.summarize(row.data) })),
+      t.entries,
+      true,
+    )}
     ${initiativeCard(t)}
     ${typeof Encounters !== 'undefined' ? Encounters.card() : ''}
     ${typeof DmTools !== 'undefined' ? DmTools.tools() : ''}
@@ -418,10 +424,12 @@ function initiativeCard(t) {
         ? `${x.hp ?? '—'}/${x.maxHP} PG · CA ${x.ac}${x.conditions.length ? ' · ' + esc(x.conditions.join(', ')) : ''}`
         : `CA ${e.ac ?? '—'} · ${STATUS_LABEL[e.status] || e.status}${e.hidden ? ' · oculta' : ''}${e.conditions.length ? ' · ' + esc(e.conditions.join(', ')) : ''}${e.max ? `<span class="monster-hpbar" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Math.round(((e.hp ?? e.max) / e.max) * 100)))}%"></i></span>` : ''}`;
       const down = x ? x.hp === 0 : e.hp === 0;
-      return `<li class="${i === t.turn ? 'current' : ''} ${down ? 'down' : ''} ${e.characterId ? 'pc' : ''} ${e.hidden ? 'hidden-combatant' : ''}"><span class="init">${t.mode === 'individual' ? (e.init ?? '—') : i + 1}</span><span class="who"><b>${e.monsterId ? `<button type="button" class="text-btn monster-name" data-action="monster-open" data-entry="${e.id}">${esc(e.name)}</button>` : esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
-        e.characterId
+      return `<li class="${i === t.turn ? 'current' : ''} ${down ? 'down' : ''} ${e.kind === 'pc' ? 'pc' : ''} ${e.hidden ? 'hidden-combatant' : ''}"><span class="init">${t.mode === 'individual' ? (e.init ?? '—') : i + 1}</span><span class="who"><b>${e.monsterId ? `<button type="button" class="text-btn monster-name" data-action="monster-open" data-entry="${e.id}">${esc(e.name)}</button>` : esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
+        e.kind === 'pc'
           ? `<span class="init-actions">${FriendlyNPC.ownedByDM(pc || {}, party.campaign) ? button('Controlar', 'npc-control', 'text-btn', `data-id="${e.characterId}"`) : ''}${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}`
-          : `<label class="hp-edit"><span>PG</span><input type="number" aria-label="PG de ${esc(e.name)}" data-monster-hp="${e.id}" value="${e.hp ?? ''}" min="0" max="99999"><span>/ ${e.max ?? '—'}</span></label><span class="init-actions">${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}${button('Estados', 'init-conditions', 'text-btn', `data-entry="${e.id}"`)}${button(e.hidden ? 'Mostrar' : 'Ocultar', 'init-hide', 'text-btn', `data-entry="${e.id}"`)}`
+          : e.characterId
+            ? `<span class="init-actions">${button('Controlar', 'npc-control', 'text-btn', `data-id="${e.characterId}"`)}${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}${button(e.hidden ? 'Mostrar' : 'Ocultar', 'init-hide', 'text-btn', `data-entry="${e.id}"`)}`
+            : `<label class="hp-edit"><span>PG</span><input type="number" aria-label="PG de ${esc(e.name)}" data-monster-hp="${e.id}" value="${e.hp ?? ''}" min="0" max="99999"><span>/ ${e.max ?? '—'}</span></label><span class="init-actions">${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}${button('Estados', 'init-conditions', 'text-btn', `data-entry="${e.id}"`)}${button(e.hidden ? 'Mostrar' : 'Ocultar', 'init-hide', 'text-btn', `data-entry="${e.id}"`)}`
       }${button('×', 'init-remove', 'text-btn', `data-entry="${e.id}" aria-label="Quitar ${esc(e.name)}"`)}</span></span></li>`;
     })
     .join('');
@@ -483,6 +491,7 @@ const actions = {
   },
   open: e => open(e.dataset.id),
   'npc-new': () => DmFriendlyUI.create(),
+  'enemy-npc-new': () => DmFriendlyUI.create(true),
   'npc-control': e => DmFriendlyUI.control(e.dataset.id),
   'npc-init': e => DmFriendlyUI.initiative(e.dataset.id),
   settings: () =>
