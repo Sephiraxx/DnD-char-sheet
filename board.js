@@ -289,7 +289,10 @@
         on = S.tokens.filter(x => x.map_id === map),
         rows = [];
       for (const c of S.party.characters || [])
-        if (!on.some(x => x.character_id === c.id)) {
+        if (
+          !on.some(x => x.character_id === c.id) &&
+          (c.data?.friendlyNpc !== true || S.party.combatants?.some(x => x.character_id === c.id))
+        ) {
           const p = BC.freeSpot(g, [...on, ...rows], { x: 1, y: Math.floor(g.rows / 2) }, t);
           rows.push(tokenRow({ kind: 'pc', character_id: c.id, name: c.name, ...p }, map));
         }

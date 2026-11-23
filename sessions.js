@@ -40,32 +40,41 @@ const Sessions = (() => {
   }
   // Experiencia sugerida: criaturas del SRD derrotadas en la iniciativa, repartidas entre la party.
   function suggestedXp() {
-    const pcs = party?.characters.length || 0,
-      down = tracker().entries.filter(e => e.monsterId && e.status === 'derrotado');
-    if (!pcs || !down.length || typeof MonsterUI === 'undefined') return null;
+    const down = tracker().entries.filter(e => e.monsterId && e.status === 'derrotado');
+    if (!down.length || typeof MonsterUI === 'undefined') return null;
     const total = down.reduce((a, e) => a + MonsterUI.xp(e.monsterId), 0);
-    return total ? { total, each: Math.floor(total / pcs), count: down.length } : null;
+    return total ? { total, count: down.length } : null;
   }
   async function end() {
     const cur = settings().session;
     if (!cur) throw Error('No hay una sesión en curso.');
     if (typeof MonsterUI !== 'undefined') await MonsterUI.load();
     const min = minutesSince(cur.start),
-      hint = suggestedXp();
+      hint = suggestedXp(),
+      roster = party.characters.slice(),
+      present = new Set(
+        tracker()
+          .entries.filter(e => e.kind === 'pc')
+          .map(e => e.characterId),
+      ),
+      selected = row => !FriendlyNPC.ownedByDM(row, party.campaign) || present.has(row.id),
+      shares = roster.filter(selected).length;
     modal(
       'Terminar sesión ' + cur.n,
-      `<p>Duración: <b>${duration(min)}</b>.</p>${field('Experiencia para cada personaje (PX)', 'xp', hint?.each || 0, 'number', 'min="0" max="1000000" inputmode="numeric"')}${hint ? `<p class="small">Sugerido: ${hint.count} criatura(s) derrotada(s) en la iniciativa dan ${hint.total} PX, ${hint.each} por personaje. Sumá los PX por objetivos o rol si los das.</p>` : '<p class="small">Dejalo en 0 si juegan por hitos.</p>'}<label class="check"><input type="checkbox" name="levelUp">Habilitar la subida de nivel para todos</label><label class="field">Notas de la sesión (opcional, las ven los jugadores)<textarea name="notes" maxlength="1000" placeholder="Llegaron a Phandalin y rescataron a Sildar."></textarea></label><p class="small">Cada jugador ve un resumen. A quien no guardó su acceso con email se le pide que lo guarde para no perder su ficha. Quien no esté conectado recibe la experiencia al abrir su ficha.</p>`,
+      `<p>Duración: <b>${duration(min)}</b>.</p>${field('Experiencia para cada personaje (PX)', 'xp', hint && shares ? Math.floor(hint.total / shares) : 0, 'number', 'min="0" max="1000000" inputmode="numeric"')}<fieldset><legend>Quiénes reciben PX</legend>${roster.map(row => `<label class="check"><input type="checkbox" name="recipient" value="${esc(row.id)}" ${selected(row) ? 'checked' : ''}>${esc(row.name)}</label>`).join('')}</fieldset>${hint ? `<p class="small">Sugerido: ${hint.count} criatura(s) derrotada(s) en la iniciativa dan ${hint.total} PX. Se dividen entre las fichas marcadas. Sumá los PX por objetivos o rol si los das.</p>` : '<p class="small">Dejalo en 0 si juegan por hitos.</p>'}<label class="check"><input type="checkbox" name="levelUp">Habilitar la subida de nivel para todos</label><label class="field">Notas de la sesión (opcional, las ven los jugadores)<textarea name="notes" maxlength="1000" placeholder="Llegaron a Phandalin y rescataron a Sildar."></textarea></label><p class="small">Cada jugador ve un resumen. A quien no guardó su acceso con email se le pide que lo guarde para no perder su ficha. Quien no esté conectado recibe la experiencia al abrir su ficha.</p>`,
       async fd => {
         const xp = int(fd, 'xp', 0, 1000000),
           levelUp = fd.has('levelUp'),
           notes = String(fd.get('notes') || '')
             .trim()
             .slice(0, 1000);
+        const recipients = new Set(fd.getAll('recipient'));
+        if (xp && !party.characters.some(c => recipients.has(c.id))) throw Error('Elegí quiénes reciben los PX.');
         for (const c of party.characters) {
-          if (xp) await send('xp', { amount: xp, session: cur.n }, c.id);
+          if (xp && recipients.has(c.id)) await send('xp', { amount: xp, session: cur.n }, c.id);
           if (levelUp) await send('level', { session: cur.n }, c.id);
         }
-        await send('session-end', { n: cur.n, minutes: min, xp, levelUp, notes });
+        await send('session-end', { n: cur.n, minutes: min, xp, recipients: [...recipients], levelUp, notes });
         await saveSettings({
           session: null,
           log: [
@@ -78,6 +87,17 @@ const Sessions = (() => {
       },
       'Terminar sesión',
     );
+    if (hint) {
+      const form = $('#dialog-form');
+      const xp = form.elements.namedItem('xp');
+      let edited = false;
+      xp.addEventListener('input', () => (edited = true));
+      form.addEventListener('change', e => {
+        if (edited || e.target.name !== 'recipient') return;
+        const n = new FormData(form).getAll('recipient').length;
+        xp.value = n ? Math.floor(hint.total / n) : 0;
+      });
+    }
   }
   Object.assign(actions, { 'session-start': start, 'session-end': end });
   return { card };

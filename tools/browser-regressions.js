@@ -550,6 +550,85 @@ async function main() {
         );
       }),
     );
+    await dm.getByRole('button', { name: 'Cerrar ficha de aliado' }).click();
+    await dm.getByRole('button', { name: 'Preparar encuentro' }).click();
+    await dm.locator('#dialog-form [name=name]').fill('La emboscada');
+    await dm.getByRole('button', { name: 'Crear', exact: true }).click();
+    await dm.getByRole('button', { name: 'PNJ guardados' }).click();
+    await dm.getByLabel('Tizne · aliado').check();
+    await dm.getByLabel('Varka · enemigo').check();
+    await dm.locator('#dialog-form').getByRole('button', { name: 'Agregar', exact: true }).click();
+    check(
+      'Encuentros preparados: reutilizan las fichas aliada y enemiga',
+      await dm.evaluate(() => {
+        const [encounter] = Encounters.list();
+        return (
+          encounter.monsters.length === 2 &&
+          encounter.monsters[0].npcId === party.characters.find(c => c.name === 'Tizne').id &&
+          encounter.monsters[1].npcId === party.enemyNpcs[0].id
+        );
+      }),
+    );
+    await dm.evaluate(() => {
+      const waiting = { ...party.characters.find(c => c.name === 'Tizne'), id: crypto.randomUUID(), name: 'Yara' };
+      party.characters.push(waiting);
+      party.campaign.settings.session = { n: 1, start: new Date().toISOString() };
+      Cloud.updateSettings = async (id, value) => value;
+      window.sessionPosts = [];
+      Cloud.post = async (id, kind, payload, options) => {
+        const event = { id: 9100 + window.sessionPosts.length, kind, payload, target_character: options?.target };
+        window.sessionPosts.push(event);
+        return event;
+      };
+      draw();
+    });
+    await dm.getByRole('button', { name: 'Terminar sesión' }).click();
+    check(
+      'Reparto de PX: marca a la party activa y deja fuera los aliados en reserva',
+      (await dm.getByLabel('Lyra', { exact: true }).isChecked()) &&
+        (await dm.getByLabel('Tizne', { exact: true }).isChecked()) &&
+        !(await dm.getByLabel('Yara', { exact: true }).isChecked()),
+    );
+    await dm.getByLabel('Tizne', { exact: true }).uncheck();
+    await dm.locator('#dialog-form [name=xp]').fill('30');
+    await dm.locator('#dialog-form').getByRole('button', { name: 'Terminar sesión' }).click();
+    await dm.waitForFunction(() => window.sessionPosts.some(e => e.kind === 'session-end'));
+    check(
+      'Reparto de PX: el DM puede quitar a un aliado y otorgar PX solo a la ficha elegida',
+      await dm.evaluate(id => {
+        const xp = window.sessionPosts.filter(e => e.kind === 'xp');
+        const summary = window.sessionPosts.find(e => e.kind === 'session-end');
+        return (
+          xp.length === 1 &&
+          xp[0].target_character === id &&
+          xp[0].payload.amount === 30 &&
+          summary.payload.recipients.join() === id
+        );
+      }, representative),
+    );
+    await dm.evaluate(() => {
+      Cloud.stagedTokens = async () => {
+        const [encounter] = Encounters.list();
+        return encounter.monsters.map(row => ({ map_id: 'map', stage: 'enc:' + encounter.id + ':' + row.uid }));
+      };
+      Cloud.linkStaged = async (id, links) => (window.stagedNpcLinks = links);
+      Cloud.board = async () => ({ maps: [{ id: 'map', name: 'Bosque' }], board: { map_id: 'map' } });
+    });
+    await dm.getByRole('button', { name: '¡Lanzar!', exact: true }).click();
+    await dm.waitForFunction(() => Encounters.list()[0]?.launched);
+    check(
+      'Encuentros preparados: lanzar reutiliza las entradas de iniciativa y enlaza las posiciones de ambos PNJ',
+      await dm.evaluate(() => {
+        const links = window.stagedNpcLinks;
+        return (
+          links.length === 2 &&
+          links.every(link => {
+            const entries = party.combatants.filter(c => c.character_id === link.npcId);
+            return entries.length === 1 && entries[0].id === link.combatantId;
+          })
+        );
+      }),
+    );
     await dm.close();
     check('Sin errores de JavaScript', !errors.length, errors.join(' | '));
   } finally {

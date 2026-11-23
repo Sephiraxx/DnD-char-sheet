@@ -105,6 +105,7 @@ const DmFriendlyUI = (() => {
 
   // Mantener la ficha montada al cerrar permite que termine el guardado y reciba curaciones.
   async function control(id) {
+    await enemyDamageJob;
     const row = rowFor(id);
     const camp = party.campaign;
     const localId = Cloud.restore({ ...row, campaign_id: camp.id, campaigns: camp });
@@ -114,36 +115,45 @@ const DmFriendlyUI = (() => {
       if (frame.contentWindow?.Cloud) await frame.contentWindow.Cloud.flush();
       frame.dataset.ally = id;
       frame.src = './index.html?aliado=' + encodeURIComponent(localId) + '#combat';
+      refreshEnemyDamage();
     }
     panel.querySelector('h2').textContent = row.name;
     frame.title = 'Ficha de ' + row.name;
     panel.showModal();
   }
 
-  async function initiative(id) {
+  async function addToTracker(id, hidden = false) {
     const row = rowFor(id);
-    if (tracker().entries.some(e => e.characterId === id)) return;
+    const existing = tracker().entries.find(e => e.characterId === id);
+    if (existing) return existing.id;
     const modifier = PV.summarize(row.data).initiative;
+    const init = d20() + modifier;
     if (row.data.enemyNpc === true) {
-      modal(
-        'Sumar a ' + row.name + ' a iniciativa',
-        '<label class="check"><input type="checkbox" name="hidden">Ocultar al enemigo hasta revelarlo</label>',
-        fd => encounterChange(() => Cloud.addEnemyNpcToInitiative(id, d20() + modifier, fd.has('hidden'))),
-        'Sumar',
-      );
-      return;
+      await Cloud.addEnemyNpcToInitiative(id, init, hidden);
+      return id;
     }
-    await encounterChange(() =>
-      Cloud.addCombatant(current, {
-        id,
-        kind: 'pc',
-        character_id: id,
-        name: row.name,
-        tiebreak: modifier,
-        init: d20() + modifier,
-      }),
-    );
+    const added = await Cloud.addCombatant(current, {
+      id,
+      kind: 'pc',
+      character_id: id,
+      name: row.name,
+      tiebreak: modifier,
+      init,
+    });
+    return added.id;
   }
 
-  return { card, create, control, initiative };
+  function initiative(id) {
+    const row = rowFor(id);
+    if (row.data.enemyNpc)
+      return modal(
+        'Sumar a ' + row.name + ' a iniciativa',
+        '<label class="check"><input type="checkbox" name="hidden">Ocultar al enemigo hasta revelarlo</label>',
+        fd => encounterChange(() => addToTracker(id, fd.has('hidden'))),
+        'Sumar',
+      );
+    return encounterChange(() => addToTracker(id));
+  }
+
+  return { card, create, control, initiative, addToTracker, rowFor };
 })();

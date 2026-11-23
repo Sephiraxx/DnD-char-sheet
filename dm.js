@@ -134,7 +134,7 @@ function settingsSummary(st) {
 function tracker() {
   const sec = new Map((party?.secrets || []).map(x => [x.combatant_id, x]));
   const enc = party?.encounter;
-  const entries = Cloud.order(party?.combatants || []).map(c => {
+  const entries = Cloud.order(party?.combatants || [], enc?.active).map(c => {
     const x = sec.get(c.id) || {};
     return {
       id: c.id,
@@ -193,6 +193,7 @@ async function open(id) {
     if (party.campaign.dm_id !== (await Cloud.user()).id) throw Error('Esta mesa la dirige otra cuenta.');
     Cloud.rememberDmTable(party.campaign);
     unsubscribe = await Cloud.subscribe(id, onChange, { role: 'dm' });
+    refreshEnemyDamage();
   } catch (e) {
     error = e.message;
   }
@@ -208,10 +209,24 @@ async function refresh() {
   }
   draw();
 }
+let enemyDamageJob = Promise.resolve();
+function refreshEnemyDamage() {
+  const id = current;
+  enemyDamageJob = enemyDamageJob
+    .catch(() => {})
+    .then(async () => {
+      if (id !== current || !party?.viewerIsDM) return;
+      const loaded = $('#dm-ally-control iframe')?.dataset.ally;
+      const ids = (party.enemyNpcs || []).map(row => row.id).filter(npc => npc !== loaded);
+      if ((await Cloud.applyUnloadedEnemyDamage(id, ids)) && id === current) await refresh();
+    })
+    .catch(err => toast(err.message));
+  return enemyDamageJob;
+}
 function onChange(table, payload) {
   if (table === 'resync') {
     globalThis.Board?.onParty(table);
-    return current ? refresh() : Promise.resolve();
+    return current ? refresh().then(refreshEnemyDamage) : Promise.resolve();
   }
   globalThis.Board?.onParty(table);
   if (table === 'presence') {
@@ -232,6 +247,7 @@ function onChange(table, payload) {
   } else if (table === 'events' && payload.eventType === 'INSERT') {
     const ev = payload.new;
     feed = [ev, ...feed.filter(x => x.id !== ev.id)].slice(0, 200);
+    if (ev.kind === 'damage' && party?.enemyNpcs?.some(row => row.id === ev.target_character)) refreshEnemyDamage();
     // Las respuestas de iniciativa completan el orden automáticamente.
     if (ev.kind === 'roll-response') {
       const req = feed.find(x => x.id === ev.payload.requestId);
@@ -870,7 +886,10 @@ const actions = {
     const entry = tracker().entries.find(x => x.id === e.dataset.entry);
     return encounterChange(() => Cloud.updateCombatant(entry.id, { hidden: !entry.hidden }));
   },
-  'init-next': () => encounterChange(() => Cloud.advanceTurn(current)),
+  'init-next': async () => {
+    await refreshEnemyDamage();
+    await encounterChange(() => Cloud.advanceTurn(current));
+  },
   'init-end': () => encounterChange(() => Cloud.endCombat(current)),
   'init-clear': () => {
     if (!confirm('¿Vaciar la iniciativa? Se quitan todas las criaturas y personajes del encuentro.')) return;
