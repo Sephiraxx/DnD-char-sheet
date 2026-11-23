@@ -258,7 +258,9 @@ function draw() {
   if (!party)
     return ($('#main').innerHTML =
       `<section class="card"><p>${error ? esc(error) : 'Cargando la mesa…'}</p>${error ? button('Volver a mis mesas', 'home') : ''}</section>`);
-  const list = summaries();
+  const roster = summaries();
+  const allies = roster.filter(({ row }) => FriendlyNPC.ownedByDM(row, party.campaign));
+  const list = roster.filter(({ row }) => !FriendlyNPC.ownedByDM(row, party.campaign));
   const t = tracker();
   $('#main').innerHTML =
     `<div class="dm-head"><div><p class="eyebrow">MESA EN VIVO · ${list.length} ficha${list.length === 1 ? '' : 's'}</p><h1>${esc(party.campaign.name)}</h1><p class="small muted">${settingsSummary(Cloud.cleanSettings(party.campaign.settings))}</p></div><div class="dm-code"><span>CÓDIGO</span><b>${esc(party.campaign.code)}</b>${button('Copiar', 'copy-code', 'secondary', `data-code="${esc(party.campaign.code)}"`)}</div><div class="dm-toolbar">${button('Pedir tirada a todos', 'request', '')}${button('Tablero', 'board-open', '')}${button('Mensaje a todos', 'message')}${button('Descanso corto', 'rest-short')}${button('Descanso largo', 'rest-long')}<details class="dm-menu"><summary class="button secondary">Mesa ▾</summary><div class="dm-menu-list">${button('Ajustes de la mesa', 'settings')}${button('Exportar campaña', 'export-campaign')}${button('Mis mesas', 'home')}${button('Eliminar mesa', 'delete-table', 'danger', `data-id="${esc(party.campaign.id)}" data-name="${esc(party.campaign.name)}"`)}</div></details></div></div>
@@ -281,6 +283,7 @@ function draw() {
     ${feedCard()}
   </div><div class="stack dm-combat">
     ${savesCard()}
+    ${DmFriendlyUI.card(allies, t.entries)}
     ${initiativeCard(t)}
     ${typeof Encounters !== 'undefined' ? Encounters.card() : ''}
     ${typeof DmTools !== 'undefined' ? DmTools.tools() : ''}
@@ -414,7 +417,7 @@ function initiativeCard(t) {
       const down = x ? x.hp === 0 : e.hp === 0;
       return `<li class="${i === t.turn ? 'current' : ''} ${down ? 'down' : ''} ${e.characterId ? 'pc' : ''} ${e.hidden ? 'hidden-combatant' : ''}"><span class="init">${e.init ?? '—'}</span><span class="who"><b>${e.monsterId ? `<button type="button" class="text-btn monster-name" data-action="monster-open" data-entry="${e.id}">${esc(e.name)}</button>` : esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
         e.characterId
-          ? `<span class="init-actions">${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}`
+          ? `<span class="init-actions">${FriendlyNPC.ownedByDM(pc || {}, party.campaign) ? button('Controlar', 'npc-control', 'text-btn', `data-id="${e.characterId}"`) : ''}${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}`
           : `<label class="hp-edit"><span>PG</span><input type="number" aria-label="PG de ${esc(e.name)}" data-monster-hp="${e.id}" value="${e.hp ?? ''}" min="0" max="99999"><span>/ ${e.max ?? '—'}</span></label><span class="init-actions">${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}${button('Estados', 'init-conditions', 'text-btn', `data-entry="${e.id}"`)}${button(e.hidden ? 'Mostrar' : 'Ocultar', 'init-hide', 'text-btn', `data-entry="${e.id}"`)}`
       }${button('×', 'init-remove', 'text-btn', `data-entry="${e.id}" aria-label="Quitar ${esc(e.name)}"`)}</span></span></li>`;
     })
@@ -476,6 +479,9 @@ const actions = {
     draw();
   },
   open: e => open(e.dataset.id),
+  'npc-new': () => DmFriendlyUI.create(),
+  'npc-control': e => DmFriendlyUI.control(e.dataset.id),
+  'npc-init': e => DmFriendlyUI.initiative(e.dataset.id),
   settings: () =>
     modal(
       'Ajustes de la mesa',
@@ -789,7 +795,7 @@ const actions = {
     encounterChange(async () => {
       const t = tracker();
       for (const { row, x } of summaries())
-        if (!t.entries.some(e => e.characterId === row.id))
+        if (!FriendlyNPC.ownedByDM(row, party.campaign) && !t.entries.some(e => e.characterId === row.id))
           await Cloud.addCombatant(current, {
             kind: 'pc',
             character_id: row.id,

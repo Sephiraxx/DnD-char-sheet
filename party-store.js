@@ -33,10 +33,17 @@
     }
     return entries;
   }
+  const controlledId = () => (location.search ? new URLSearchParams(location.search).get('aliado') : null);
+  function controlledKey(entries, id) {
+    const key = entries.find(x => x.id === id)?.key;
+    return key && JSON.parse(localStorage.getItem(key))?.friendlyNpc === true ? key : null;
+  }
   function activeKey() {
     try {
-      const entries = list(),
-        id = localStorage.getItem(ACTIVE);
+      const entries = list();
+      const controlled = controlledId();
+      if (controlled !== null) return controlledKey(entries, controlled);
+      const id = localStorage.getItem(ACTIVE);
       return entries.find(x => x.id === id)?.key || entries[0]?.key || null;
     } catch {
       try {
@@ -75,6 +82,10 @@
   function activate(id) {
     const entries = list();
     if (!entries.some(x => x.id === id)) throw Error('Personaje no encontrado.');
+    if (controlledId() !== null) {
+      location.replace('./index.html?aliado=' + encodeURIComponent(id) + '#combat');
+      return;
+    }
     localStorage.setItem(ACTIVE, id);
     location.reload();
   }
@@ -100,6 +111,7 @@
   }
   // Borra el personaje abierto y abre otro (o la portada si no queda ninguno).
   function removeActive() {
+    if (controlledId() !== null) throw Error('Quitá a este PNJ desde la pantalla del DM.');
     const entries = list(),
       key = activeKey(),
       item = entries.find(x => x.key === key);

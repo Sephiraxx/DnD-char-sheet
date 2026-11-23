@@ -47,6 +47,7 @@ const navs = [
   ['journal', '≡', 'Diario'],
   ['table', '⚑', 'Mesa'],
 ];
+if (new URLSearchParams(location.search).has('aliado')) document.body.classList.add('dm-ally-sheet');
 function hideToast() {
   clearTimeout(toastTimer);
   const el = $('#toast');

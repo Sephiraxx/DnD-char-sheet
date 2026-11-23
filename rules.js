@@ -730,6 +730,7 @@
     const list = (v, n) => Array.isArray(v) && v.length <= n;
     const finite = (v, a, b) => typeof v === 'number' && Number.isFinite(v) && v >= a && v <= b;
     if (!o || o.schema !== 1 || !int(o.level, 1, 20) || !txt(o.name, 100)) fail();
+    if (o.friendlyNpc !== undefined && typeof o.friendlyNpc !== 'boolean') fail();
     if (o.portrait !== undefined && o.portrait !== null) {
       const p = o.portrait;
       if (

@@ -757,3 +757,35 @@
   border-left: 2px solid var(--gold);
   padding-left: 10px;
 }
+
+/* Ficha de un aliado abierta desde la pantalla del DM. */
+.dm-ally-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.dm-ally-row:last-child {
+  border-bottom: 0;
+}
+.dm-ally-row p {
+  margin: 0.2rem 0 0;
+}
+#dm-ally-control {
+  width: min(1120px, calc(100% - 16px));
+  max-height: 96dvh;
+}
+#dm-ally-control iframe {
+  display: block;
+  width: 100%;
+  height: min(78dvh, 850px);
+  border: 0;
+}
+.dm-ally-sheet [data-action='party'],
+.dm-ally-sheet [data-action='reset'],
+.dm-ally-sheet [data-action='import'] {
+  display: none;
+}
