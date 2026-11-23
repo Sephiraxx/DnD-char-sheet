@@ -478,6 +478,78 @@ async function main() {
         )) && preview.startsWith('Lyra →'),
       preview,
     );
+    await dm.evaluate(() => {
+      party.viewerIsDM = true;
+      party.enemyNpcs = [];
+      Cloud.createEnemyNpc = async (table, data) => {
+        const row = { id: crypto.randomUUID(), owner_id: table.dm_id, name: data.name, data, updated_at: '2026-01-01' };
+        party.enemyNpcs.push(row);
+        return row.id;
+      };
+      Cloud.addEnemyNpcToInitiative = async (id, init, hidden) => {
+        const row = party.enemyNpcs.find(e => e.id === id);
+        party.combatants.push({ id, character_id: id, kind: 'monster', name: row.name, init, hidden, status: 'ileso' });
+      };
+    });
+    await dm.getByRole('button', { name: 'Nuevo enemigo' }).click();
+    await dm.locator('#dialog-form [name=name]').fill('Varka');
+    await dm.locator('#dialog-form [name=class]').selectOption('wizard');
+    await dm.locator('#dialog-form [name=level]').fill('3');
+    await dm.locator('#dialog-form [name=race]').selectOption('kobold-base-MPMM');
+    await dm.locator('#dialog-form [name=spell-add]').selectOption('magic-missile');
+    await dm.getByRole('button', { name: 'Crear enemigo' }).click();
+    const enemyCard = dm.locator('.dm-ally-row').filter({ hasText: 'Varka' });
+    await enemyCard.getByRole('button', { name: 'Sumar a iniciativa' }).click();
+    await dm.getByLabel('Ocultar al enemigo hasta revelarlo').check();
+    await dm.getByRole('button', { name: 'Sumar', exact: true }).click();
+    await dm.waitForFunction(() => party.combatants.some(e => e.kind === 'monster'));
+    check(
+      'PNJ enemigo: se guarda separado de la party y entra oculto como criatura',
+      await dm.evaluate(() => {
+        const row = party.enemyNpcs[0];
+        const entry = party.combatants.find(c => c.character_id === row.id);
+        return (
+          row.data.enemyNpc && entry.kind === 'monster' && entry.hidden && !party.characters.some(c => c.id === row.id)
+        );
+      }),
+    );
+    await enemyCard.getByRole('button', { name: 'Controlar' }).click();
+    await npc.locator('#active-character-name').filter({ hasText: 'Varka' }).waitFor();
+    const snapshot = await dm.evaluate(() => party);
+    await npc.locator('body').evaluate((body, data) => {
+      Cloud.enabled = true;
+      Cloud.reconcile = async () => ({ action: 'none' });
+      Cloud.party = async () => data;
+      Cloud.events = async () => [];
+      Cloud.pendingCommands = async () => [];
+      Cloud.subscribe = async () => () => {};
+      window.npcTestEvents = [];
+      Cloud.post = async (campaign, kind, payload, opts) => {
+        window.npcTestEvents.push({ kind, payload, opts });
+        return { id: window.npcTestEvents.length };
+      };
+      TableUI.boot();
+    }, snapshot);
+    await npc.locator('body').evaluate(async () => {
+      for (let i = 0; i < 12 && !TableUI.targets().monsters.some(x => x.player); i++)
+        await new Promise(resolve => setTimeout(resolve, 50));
+    });
+    check(
+      'PNJ enemigo: puede atacar a un aliado de la party y enviarle daño',
+      await npc.locator('body').evaluate(async () => {
+        const target = TableUI.targets().monsters.find(x => x.name === 'Tizne' && x.player);
+        if (!target || !Classes.usable(state).includes('magic-missile')) return false;
+        const result = await TableUI.resolveTarget(target.id, 25, 20, 'Ataque de prueba');
+        await TableUI.damageTarget(target.id, 6, 'Daño de prueba', { crit: true, type: 'fire' });
+        return (
+          result.hit &&
+          window.npcTestEvents.some(
+            e =>
+              e.kind === 'damage' && e.opts.target === target.id && e.payload.amount === 6 && e.payload.crit === true,
+          )
+        );
+      }),
+    );
     await dm.close();
     check('Sin errores de JavaScript', !errors.length, errors.join(' | '));
   } finally {

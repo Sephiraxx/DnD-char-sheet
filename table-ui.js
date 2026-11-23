@@ -31,10 +31,8 @@ const TableUI = (() => {
   // Lo que se eligió en el tablero (objetivo, distancia, flanqueo): las ventanas de ataque lo usan.
   let boardCtx = null;
   const boardContext = () => boardCtx;
-  const preferredTarget = list => {
-    const id = boardCtx?.combatantId;
-    return list.some(f => f.id === id) ? id : list[0]?.id;
-  };
+  const preferredTarget = list =>
+    list.find(f => f.id === (f.player ? boardCtx?.characterId : boardCtx?.combatantId))?.id || list[0]?.id;
 
   // Ids de órdenes ya aplicadas en este dispositivo, para no aplicarlas dos veces.
   const appliedKey = () => KEY + '-cloud-applied';
@@ -150,11 +148,24 @@ const TableUI = (() => {
   }
   const isMyTurn = () => {
     const l = link();
-    return Boolean(l && encounter().entries.some(e => e.current && e.characterId === l.characterId));
+    const enc = party?.encounter;
+    return Boolean(
+      l && enc?.active && party.combatants?.some(e => e.id === enc.current_id && e.character_id === l.characterId),
+    );
   };
   // Objetivos posibles: criaturas visibles en pie, aliados de la mesa y vos.
   function targets() {
     const l = link();
+    const enemy = state?.enemyNpc === true && party?.viewerIsDM && party.enemyNpcs?.some(c => c.id === l?.characterId);
+    if (enemy)
+      return {
+        monsters: party.characters
+          .map(row => ({ row, x: PV.rowSummary(row) }))
+          .filter(({ x }) => !x.broken)
+          .map(({ row, x }) => ({ id: row.id, name: row.name, player: true, ac: x.ac, status: 'Ficha' })),
+        allies: party.enemyNpcs.filter(c => c.id !== l.characterId).map(c => ({ characterId: c.id, name: c.name })),
+        selfId: l.characterId,
+      };
     return {
       monsters: encounter().entries.filter(e => e.kind === 'monster' && e.status !== 'derrotado'),
       allies: (party?.characters || [])
@@ -162,6 +173,29 @@ const TableUI = (() => {
         .map(c => ({ characterId: c.id, name: c.name })),
       selfId: l?.characterId || null,
     };
+  }
+  async function resolveTarget(id, total, natural, label, crit = false) {
+    const player = targets().monsters.find(e => e.id === id && e.player);
+    if (!player) return Cloud.resolveAttack(id, total, natural, label, state.name);
+    const hit = natural !== 1 && (crit || natural === 20 || total >= player.ac);
+    await Cloud.post(link().campaignId, 'attack', {
+      attacker: state.name,
+      target: player.name,
+      targetId: id,
+      label,
+      total,
+      natural,
+      hit,
+    });
+    return { hit, name: player.name };
+  }
+  async function damageTarget(id, amount, label, details = {}) {
+    const target = targets().monsters.find(e => e.id === id);
+    if (!target?.player)
+      return Cloud.damageCombatant(id, amount, label, state.name, target?.characterId ? details : undefined);
+    const player = target;
+    if (amount > 0) await sendTo(id, 'damage', { ...details, amount, source: label });
+    return { name: player.name, pending: amount > 0 };
   }
   // Curaciones, efectos y dados para otro jugador: su ficha los aplica al recibirlos.
   function sendTo(characterId, kind, payload) {
@@ -781,7 +815,14 @@ const TableUI = (() => {
   function shareRoll(payload, visibility = 'all') {
     const l = link();
     if (!l) return;
-    Cloud.post(l.campaignId, 'roll', { character: state.name, characterId: l.characterId, ...payload }, { visibility })
+    Cloud.post(
+      l.campaignId,
+      'roll',
+      { character: state.name, characterId: l.characterId, ...payload },
+      {
+        visibility: state.enemyNpc === true && party?.viewerIsDM ? 'dm' : visibility,
+      },
+    )
       .then(ev => {
         feed = [ev, ...feed.filter(x => x.id !== ev.id)];
       })
@@ -1019,6 +1060,9 @@ const TableUI = (() => {
     isMyTurn,
     link,
     statusLabel: st => CREATURE_STATUS[st] || st,
+    damageLabel: out => (out.pending ? 'Daño enviado' : CREATURE_STATUS[out.status] || out.status || 'Sin daño'),
+    resolveTarget,
+    damageTarget,
     areaSave,
     watch,
     shareRoll,

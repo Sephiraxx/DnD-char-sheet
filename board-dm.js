@@ -55,6 +55,8 @@
     }
     const m = monsterOf(entry);
     const stats = `<div class="dm-dock-stats"><span><b>${esc(entry.name)}</b></span><span>PG ${entry.hp ?? '—'}/${entry.max ?? '—'}</span>${entry.ac ? `<span>CA ${entry.ac}</span>` : ''}${m ? `<span>${esc(m.speed)}</span>` : ''}${entry.conditions.length ? `<span>${esc(entry.conditions.join(', '))}</span>` : ''}</div>`;
+    if (entry.characterId)
+      return `${head}${stats}<div class="actions section-space">${button('Controlar', 'npc-control', '', `data-id="${entry.characterId}"`)}</div>${next}`;
     if (!m)
       return `${head}${stats}<p class="small muted">${entry.monsterId ? 'Cargando sus acciones…' : 'Criatura sin estadísticas del SRD: resolvé sus ataques a mano.'}</p>${next}`;
     const list = (arr, kind, title) =>

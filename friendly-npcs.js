@@ -20,6 +20,7 @@
   const scores = [15, 14, 13, 12, 10, 8];
   const byName = (a, b) => a.name.localeCompare(b.name, 'es');
   const ownedByDM = (row, camp) => row.owner_id === camp.dm_id && row.data?.friendlyNpc === true;
+  const enemyOfDM = (row, camp) => row.owner_id === camp.dm_id && row.data?.enemyNpc === true;
 
   function choices() {
     return {
@@ -113,6 +114,10 @@
 
   function create(input, selected) {
     const s = baseSheet(input);
+    if (input.enemy) {
+      delete s.friendlyNpc;
+      s.enemyNpc = true;
+    }
     if (!s.name || s.name.length > 100) throw Error('Poné un nombre de hasta 100 caracteres.');
     const { type, limit, pool } = spellOptions(s);
     const ids = new Set(selected);
@@ -134,5 +139,5 @@
     return root.Rules.validate(s);
   }
 
-  root.FriendlyNPC = { choices, ownedByDM, baseSheet, spellOptions, create };
+  root.FriendlyNPC = { choices, ownedByDM, enemyOfDM, baseSheet, spellOptions, create };
 })(typeof window !== 'undefined' ? window : globalThis);

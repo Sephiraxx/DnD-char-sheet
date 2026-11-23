@@ -254,7 +254,8 @@
   // Guarda una ficha de la mesa en este dispositivo (vinculada) y devuelve su id local.
   function restore(row) {
     for (const x of root.CharacterStorage.list()) if (link(x.key)?.characterId === row.id) return x.id;
-    const id = root.CharacterStorage.add(row.data, row.data.friendlyNpc === true ? row.id : undefined),
+    const npc = row.data.friendlyNpc === true || row.data.enemyNpc === true;
+    const id = root.CharacterStorage.add(row.data, npc ? row.id : undefined),
       key = 'dnd-character-' + id;
     setLink(key, {
       campaignId: row.campaign_id,
@@ -472,6 +473,28 @@
         .insert({ campaign_id: campaign.id, ...fields })
         .select('id')
         .single(),
+    );
+  }
+  async function createEnemyNpc(campaign, state) {
+    const r = await (
+      await api()
+    ).rpc('create_enemy_npc', {
+      p_campaign: campaign.id,
+      p_data: state,
+      p_summary: sheetPayload(state, true).public_summary,
+    });
+    if (r.error?.code === 'PGRST202') throw Error('Para crear PNJ enemigos, ejecutá la migración 022 en Supabase.');
+    return check(r);
+  }
+  async function addEnemyNpcToInitiative(id, initiative, hidden) {
+    return check(
+      await (
+        await api()
+      ).rpc('add_enemy_npc_to_initiative', {
+        p_character: id,
+        p_init: initiative,
+        p_hidden: hidden,
+      }),
     );
   }
   async function leave(key) {
@@ -920,7 +943,8 @@
     return {
       campaign,
       members,
-      characters,
+      characters: characters.filter(c => !(dm && c.owner_id === campaign.dm_id && c.data?.enemyNpc === true)),
+      enemyNpcs: dm ? characters.filter(c => c.owner_id === campaign.dm_id && c.data?.enemyNpc === true) : [],
       loot,
       homebrew,
       combatants,
@@ -1048,12 +1072,14 @@
       }),
     );
   }
-  async function damageCombatant(target, amount, label, attacker) {
-    return check(
-      await (
-        await api()
-      ).rpc('damage_combatant', { p_target: target, p_amount: amount, p_label: label, p_attacker: attacker }),
-    );
+  async function damageCombatant(target, amount, label, attacker, details) {
+    const c = await api();
+    const args = { p_target: target, p_amount: amount, p_label: label, p_attacker: attacker };
+    if (details) {
+      const r = await c.rpc('damage_combatant', { ...args, p_details: details });
+      if (r.error?.code !== 'PGRST202') return check(r);
+    }
+    return check(await c.rpc('damage_combatant', args));
   }
 
   // ---------- Botín de la party ----------
@@ -1410,6 +1436,8 @@
     clearPending,
     attach,
     createFriendlyNpc,
+    createEnemyNpc,
+    addEnemyNpcToInitiative,
     currentUser,
     linkEmail,
     createAccount,
