@@ -24,6 +24,7 @@
     board: null,
     maps: [],
     tokens: [],
+    prepared: [],
     mapId: null, // mapa que se está viendo (el DM puede editar uno que no está en la mesa)
     grid: BC.normGrid(),
     terrain: '',
@@ -130,6 +131,22 @@
   const origin = () => (S.img ? { x: S.grid.ox, y: S.grid.oy } : { x: 0, y: 0 });
   const worldSize = () =>
     S.img ? { w: S.img.width, h: S.img.height } : { w: S.grid.cols * CELL, h: S.grid.rows * CELL };
+  function rememberMaps(rows) {
+    const maps = new Map(S.maps.map(row => [row.id, row]));
+    for (const row of rows) maps.set(row.id, row);
+    S.maps = [...maps.values()].sort((a, b) => a.sort - b.sort || a.created_at?.localeCompare(b.created_at));
+  }
+  async function refreshPrepared() {
+    if (STANDALONE && S.isDM && !TV) {
+      const id = S.id;
+      try {
+        const rows = await Cloud.preparedEncounters(id);
+        if (id === S.id) S.prepared = rows.map(row => row.data);
+      } catch (err) {
+        if (id === S.id) toast(err.message);
+      }
+    }
+  }
 
   async function start() {
     if (!Cloud.enabled) {
@@ -144,10 +161,14 @@
       );
       return;
     }
+    const id = S.id;
     try {
-      S.me = await Cloud.user();
-      S.party = await Cloud.party(S.id);
+      const me = await Cloud.user();
+      const party = await Cloud.party(id);
+      if (id !== S.id) return;
+      Object.assign(S, { me, party });
     } catch (e) {
+      if (id !== S.id) return;
       return joinForm(e.message);
     }
     // Abierto desde la ficha de un jugador (actorId), siempre es la vista del jugador: aunque la cuenta
@@ -155,9 +176,11 @@
     S.isDM = S.party.campaign.dm_id === S.me.id && !H.actorId;
     if (TV) S.asPlayer = true;
     try {
-      const data = await Cloud.board(S.id);
+      const data = await Cloud.board(id);
+      if (id !== S.id) return;
       Object.assign(S, { board: data.board, maps: data.maps, tokens: data.tokens });
     } catch (e) {
+      if (id !== S.id) return;
       message(
         `<h1>El tablero todavía no está instalado</h1><p>${esc(e.message)}</p><p class="small">Quien administra la mesa tiene que ejecutar <code>supabase/migrations/008_board.sql</code> en Supabase (SQL Editor) una sola vez.</p>`,
       );
@@ -166,9 +189,12 @@
     document.body.classList.toggle('board-tv', TV);
     resize();
     await openMap(activeId() || (S.isDM && !TV ? S.maps[0]?.id : null));
-    S.channel = await Cloud.subscribeBoard(S.id, onBoard, onMessage);
+    const channel = await Cloud.subscribeBoard(id, onBoard, onMessage);
+    if (id !== S.id) return channel.close();
+    S.channel = channel;
     // Dentro de la ficha o la pantalla del DM, la página ya escucha la mesa y avisa con Board.onParty.
     if (STANDALONE) await Cloud.subscribe(S.id, onParty);
+    await refreshPrepared();
     if (S.isDM && !TV) ensureTokens();
     turnChanged();
     ui();
@@ -206,6 +232,7 @@
     ui();
   }
   function loadMapFields(m) {
+    if (m && S.pending[m.id]) m = { ...m, ...S.pending[m.id].patch };
     S.grid = BC.normGrid(m?.grid || {});
     S.terrain = BC.cells(S.grid, m?.terrain?.cells || '');
     S.walls = Array.isArray(m?.terrain?.walls) ? m.terrain.walls : [];
@@ -234,14 +261,18 @@
     S.dirty = true;
   }
   async function reload() {
+    const id = S.id;
     try {
-      const data = await Cloud.board(S.id);
+      const data = await Cloud.board(id);
+      if (id !== S.id) return;
       const keep = S.mapId;
       Object.assign(S, { board: data.board, maps: data.maps, tokens: data.tokens });
-      const want = !S.isDM || TV ? activeId() : S.maps.some(m => m.id === keep) ? keep : activeId();
+      const want =
+        !S.isDM || TV ? activeId() : S.maps.some(m => m.id === keep) ? keep : activeId() || S.maps[0]?.id || null;
       if (want !== S.mapId || (currentMap()?.image_path || '') !== S.imgPath) await openMap(want);
       else loadMapFields(currentMap());
     } catch (e) {
+      if (id !== S.id) return;
       toast(e.message);
     }
     ui();
@@ -252,21 +283,28 @@
     const id = S.mapId;
     if (!id) return;
     S.editedAt = performance.now();
-    S.pending[id] = { ...(S.pending[id] || {}), ...patch };
+    S.pending[id] = { campaign: S.id, patch: { ...S.pending[id]?.patch, ...patch } };
     clearTimeout(S.saveTimer);
     S.saveTimer = setTimeout(flushSave, 450);
   }
-  async function flushSave() {
-    const all = S.pending;
-    S.pending = {};
-    for (const [id, patch] of Object.entries(all)) {
-      try {
-        const row = await Cloud.saveMap(S.id, patch, id);
-        S.maps = S.maps.map(m => (m.id === id ? row : m));
-      } catch (e) {
-        toast('No se guardó el mapa: ' + e.message);
+  let savingMaps;
+  function flushSave() {
+    clearTimeout(S.saveTimer);
+    return (savingMaps ||= (async () => {
+      const failed = new Set();
+      let next;
+      while ((next = Object.entries(S.pending).find(([id]) => !failed.has(id)))) {
+        const [id, write] = next;
+        try {
+          const row = await Cloud.saveMap(write.campaign, write.patch, id);
+          if (S.pending[id] === write) delete S.pending[id];
+          if (write.campaign === S.id) rememberMaps([row]);
+        } catch (e) {
+          failed.add(id);
+          toast('Cambios del mapa pendientes: ' + e.message);
+        }
       }
-    }
+    })().finally(() => (savingMaps = null)));
   }
   const fogPatch = () => ({ fog: { on: S.fogOn, revealed: BC.fogEncode(S.fog) } });
   const terrainPatch = () => ({
@@ -394,7 +432,7 @@
         if (S.mapId === p.old.id) openMap(activeId());
       } else {
         const row = p.new;
-        S.maps = [...S.maps.filter(m => m.id !== row.id), row].sort((a, b) => a.sort - b.sort);
+        rememberMaps([row]);
         // Ecos de mis propios guardados: no pisan lo que sigo pintando.
         const mine = S.isDM && performance.now() - (S.editedAt || 0) < 2500;
         if (row.id === S.mapId && !S.pending[row.id] && !mine) {
@@ -1398,6 +1436,7 @@
     }
     press = null;
     S.dirty = true;
+    if (S.pending[S.mapId]) flushSave();
   }
   onCanvas('pointerup', endPointer);
   onCanvas('pointercancel', endPointer);
@@ -2030,7 +2069,7 @@
     const back = S.isDM ? `./dm.html#${encodeURIComponent(S.id)}` : './#table';
     $('#board-top').innerHTML = TV
       ? `<span class="board-title">${esc(m?.name || 'Esperando un mapa…')}</span><button type="button" class="icon-btn" data-action="bd-fullscreen" title="Pantalla completa" aria-label="Pantalla completa">⛶</button>`
-      : `${STANDALONE ? `<a class="icon-btn" href="${back}" aria-label="Volver" title="Volver">←</a>` : `<button type="button" class="icon-btn" data-action="bd-close" aria-label="Cerrar el tablero" title="Volver">←</button>`}<div class="board-title"><span class="eyebrow">${esc(S.party?.campaign.name || 'TABLERO')}</span><b>${esc(m?.name || (S.isDM ? 'Sin mapa' : 'Esperando al DM'))}</b>${S.isDM && m ? `<span class="tag ${live ? '' : 'warn'}">${live ? 'En la mesa' : 'Solo vos'}</span>` : ''}</div><div class="board-top-actions">${S.isDM ? (m && !live ? button('Mostrar a la mesa', 'go-live', '') : '') + button('Mapas', 'maps') + button(S.asPlayer ? 'Vista DM' : 'Ver como jugador', 'as-player') + button('📺 Tele', 'tv') : button(S.follow ? 'Siguiendo al DM' : 'Seguir al DM', 'follow')}${typeof Sound !== 'undefined' ? Sound.toggleHTML() : ''}<button type="button" class="icon-btn" data-action="bd-fit" title="Ver todo el mapa" aria-label="Ver todo el mapa">⤢</button></div>`;
+      : `${STANDALONE ? `<a class="icon-btn" href="${back}" aria-label="Volver" title="Volver">←</a>` : `<button type="button" class="icon-btn" data-action="bd-close" aria-label="Cerrar el tablero" title="Volver">←</button>`}<div class="board-title"><span class="eyebrow">${esc(S.party?.campaign.name || 'TABLERO')}</span><b>${esc(m?.name || (S.isDM ? 'Sin mapa' : 'Esperando al DM'))}</b>${S.isDM && m ? `<span class="tag ${live ? '' : 'warn'}">${live ? 'En la mesa' : 'Solo el DM'}</span>` : ''}</div><div class="board-top-actions">${S.isDM ? (m && !live ? button('Mostrar a la mesa', 'go-live', '') : '') + button('Mapas', 'maps') + button(S.asPlayer ? 'Vista DM' : 'Ver como jugador', 'as-player') + button('📺 Tele', 'tv') : button(S.follow ? 'Siguiendo al DM' : 'Seguir al DM', 'follow')}${typeof Sound !== 'undefined' ? Sound.toggleHTML() : ''}<button type="button" class="icon-btn" data-action="bd-fit" title="Ver todo el mapa" aria-label="Ver todo el mapa">⤢</button></div>`;
   }
   function tools() {
     if (TV) return ($('#board-tools').innerHTML = '');
@@ -2221,6 +2260,7 @@
       } else if (a === 'tool') {
         S.tool = el.dataset.tool;
         if (S.tool !== 'tokens') S.sel = S.sel && S.tool === 'move' ? S.sel : null;
+        if (S.tool === 'enc') await refreshPrepared();
       } else if (a === 'fit') fit();
       else if (a === 'panel-min') S.panelMin = !S.panelMin;
       else if (a === 'enc-place') await placeEncounter(el.dataset.id);
@@ -2230,8 +2270,10 @@
       else if (a === 'fullscreen') document.documentElement.requestFullscreen?.();
       else if (a === 'follow') S.follow = !S.follow;
       else if (a === 'as-player') S.asPlayer = !S.asPlayer;
-      else if (a === 'maps') return mapsDialog();
-      else if (a === 'tv') return tvDialog();
+      else if (a === 'maps') {
+        await reload();
+        return mapsDialog();
+      } else if (a === 'tv') return tvDialog();
       else if (a === 'go-live') await goLive(S.mapId);
       else if (a === 'area-kind') S.area.kind = el.dataset.v;
       else if (a === 'area-feet') S.area.feet = Number(el.dataset.v);
@@ -2282,12 +2324,15 @@
         await openMap(el.dataset.id);
         await goLive(el.dataset.id);
       } else if (a === 'map-new') return newMapDialog();
-      else if (a === 'map-gen') return genDialog();
-      else if (a === 'map-edit') return mapEditDialog(S.maps.find(m => m.id === el.dataset.id));
+      else if (a === 'map-gen') {
+        await refreshPrepared();
+        return genDialog();
+      } else if (a === 'map-edit') return mapEditDialog(S.maps.find(m => m.id === el.dataset.id));
       else if (a === 'map-delete') {
         const m = S.maps.find(x => x.id === el.dataset.id);
         if (!confirm(`¿Eliminar el mapa «${m.name}»? Se borran su imagen, su niebla y sus fichas.`)) return;
         await Cloud.deleteMap(m.id, m.image_path);
+        delete S.pending[m.id];
         S.maps = S.maps.filter(x => x.id !== m.id);
         if (S.mapId === m.id) await openMap(activeId());
         return mapsDialog();
@@ -2346,7 +2391,7 @@
     const live = activeId();
     modal(
       'Mapas de la mesa',
-      `<p class="small">Preparalos antes de la sesión: los jugadores solo ven el que está <b>en la mesa</b>.</p><div class="board-maps">${
+      `<p class="small">Los mapas se guardan en esta mesa. Los jugadores solo ven el que está <b>en la mesa</b>.</p><div class="board-maps">${
         S.maps
           .map(
             m =>
@@ -2365,22 +2410,18 @@
   }
 
   // ---------- Encuentros preparados sobre el mapa ----------
-  // Se arman en la pantalla del DM (en este dispositivo). Acá se colocan como fichas ocultas marcadas
+  // Se arman en la pantalla del DM. Acá se colocan como fichas ocultas marcadas
   // «enc:<encuentro>:<criatura>»; al lanzarlos, cada criatura del combate ocupa su ficha y aparece donde quedó.
   function prepared() {
-    try {
-      const v = JSON.parse(localStorage.getItem('dnd-dm-prepared-' + S.id) || '[]');
-      return Array.isArray(v) ? v : [];
-    } catch {
-      return [];
-    }
+    if (!S.isDM || TV) return [];
+    return typeof Encounters === 'undefined' ? S.prepared : Encounters.list(S.id);
   }
   const groupTokens = (encId, map = S.mapId) =>
     S.tokens.filter(k => k.map_id === map && String(k.stage || '').startsWith('enc:' + encId + ':'));
   function encounterPanel() {
     const list = prepared();
     if (!list.length)
-      return '<p class="small">Todavía no hay encuentros preparados en este dispositivo. Armalos en la pantalla del DM («Encuentros preparados») y volvé acá para colocarlos.</p>';
+      return '<p class="small">Todavía no hay encuentros preparados en esta mesa. Armalos en la pantalla del DM y volvé acá para colocarlos.</p>';
     return `<p class="small muted">Las criaturas quedan ocultas hasta que lanzás el encuentro desde la pantalla del DM: ahí aparecen donde las dejaste.</p><div class="board-enc-list">${list
       .map(e => {
         const here = groupTokens(e.id),
@@ -2535,7 +2576,7 @@
             const links = Object.fromEntries(Object.entries(f.links).map(([k, to]) => [k, made[to].id]));
             made[i] = await Cloud.saveMap(S.id, { terrain: { ...made[i].terrain, links } }, made[i].id);
           }
-        S.maps = [...S.maps, ...made];
+        rememberMaps(made);
         await openMap(made[0].id);
         if (!activeId()) await goLive(made[0].id);
         const enc = String(fd.get('enc') || '');
@@ -2672,7 +2713,7 @@
         }
         row.fog = { on: false };
         const made = await Cloud.saveMap(S.id, row);
-        S.maps = [...S.maps, made];
+        rememberMaps([made]);
         await openMap(made.id);
         if (!activeId()) await goLive(made.id);
         toast(kind === 'image' ? 'Mapa listo. Revisá la cuadrícula en «Mapas → Ajustes».' : 'Mapa listo.');
@@ -2931,6 +2972,18 @@
     S.dirty = true;
   });
   const failed = e => message(`<h1>No se pudo abrir el tablero</h1><p>${esc(e.message)}</p>`);
+  async function reconnectBoard() {
+    if (!mounted || !S.id || !shown) return;
+    await flushSave();
+    await refreshPrepared();
+    await reload();
+  }
+  window.addEventListener('online', reconnectBoard);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (mounted) flushSave();
+    } else reconnectBoard();
+  });
   if (STANDALONE) {
     window.addEventListener('hashchange', () => location.reload());
     mount();
@@ -2960,6 +3013,7 @@
         board: null,
         maps: [],
         tokens: [],
+        prepared: [],
         mapId: null,
         sel: null,
         target: null,
@@ -2970,9 +3024,11 @@
     } else {
       resize();
       ui();
+      reconnectBoard();
     }
   }
   function close() {
+    flushSave();
     const host = $('#board-embed');
     if (host) host.hidden = true;
     shown = false;

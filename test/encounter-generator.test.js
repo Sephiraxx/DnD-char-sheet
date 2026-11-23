@@ -117,7 +117,8 @@ test('creatures are explicit DM choices; narrative and missing blocks remain not
 
 function dmContext() {
   const g = context(),
-    sent = [];
+    sent = [],
+    drafts = new Map();
   Object.assign(g, {
     actions: {},
     current: 'qa-table',
@@ -133,6 +134,13 @@ function dmContext() {
     addEventListener() {},
     send: (...args) => sent.push(args),
     Cloud: {
+      preparedEncounters: async () => Array.from(drafts.values()),
+      savePreparedEncounter: async (campaign, id, data, revision) => {
+        const row = { data, revision: (revision || 0) + 1 };
+        if (data) drafts.set(id, row);
+        else drafts.delete(id);
+        return row;
+      },
       addCombatant: () => {
         throw Error('Unexpected live write');
       },
@@ -142,7 +150,7 @@ function dmContext() {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), g);
   g.MonsterUI = vm.runInContext('MonsterUI', g);
   g.Encounters = vm.runInContext('Encounters', g);
-  return { g, sent };
+  return { g, sent, drafts };
 }
 
 test('the shared generator loads without waiting for account or private-library access', async () => {
@@ -156,7 +164,7 @@ test('the shared generator loads without waiting for account or private-library 
   assert.ok(g.MonsterUI.byId(g.BookContentData.monsters[0].id));
 });
 
-test('generated drafts use catalogue statistics and save privately without initiative, announcements or live writes', () => {
+test('generated drafts use catalogue statistics and save privately without initiative or announcements', async () => {
   const { g, sent } = dmContext(),
     m = g.MonsterData.find(m => m.english === 'Goblin' || m.id === 'goblin');
   const rows = g.MonsterUI.preparedRows([[m.id, 3]]);
@@ -165,7 +173,8 @@ test('generated drafts use catalogue statistics and save privately without initi
   assert.equal(rows[0].hp, m.hp);
   assert.equal(rows[0].initMod, Math.floor((m.ab[1] - 10) / 2));
   assert.equal(Object.keys(rows[0].saves).length, 6);
-  const id = g.Encounters.addGenerated('qa-table', null, {
+  await g.Encounters.sync();
+  const id = await g.Encounters.addGenerated('qa-table', null, {
     name: 'Bosque',
     notes: 'Un encuentro amistoso <sin combate>.',
     monsters: rows,
@@ -179,7 +188,7 @@ test('generated drafts use catalogue statistics and save privately without initi
   assert.equal(sent.length, 0);
   assert.match(g.Encounters.card(), /&lt;sin combate&gt;/);
   const originalIds = saved.monsters.map(m => m.uid).join(',');
-  g.Encounters.addGenerated('qa-table', id, { name: 'Bosque', notes: 'Segunda escena.', monsters: [] });
+  await g.Encounters.addGenerated('qa-table', id, { name: 'Bosque', notes: 'Segunda escena.', monsters: [] });
   assert.equal(
     g.Encounters.get(id)
       .monsters.map(m => m.uid)
@@ -190,19 +199,24 @@ test('generated drafts use catalogue statistics and save privately without initi
   assert.equal(sent.length, 0);
 });
 
-test('narrative drafts, old encounters and campaign boundaries survive preparation and editing', () => {
-  const { g } = dmContext();
-  g.localStorage.setItem(
-    'dnd-dm-prepared-qa-table',
-    JSON.stringify([{ id: 'old', name: 'Anterior', style: 'battle', monsters: [], launched: false }]),
-  );
+test('narrative drafts and campaign boundaries survive preparation and editing', async () => {
+  const { g, drafts } = dmContext();
+  drafts.set('old', {
+    data: { id: 'old', name: 'Anterior', style: 'battle', monsters: [], launched: false },
+    revision: 1,
+  });
+  await g.Encounters.sync();
   assert.match(g.Encounters.card(), /Anterior/);
-  const id = g.Encounters.addGenerated('qa-table', null, { name: 'Huellas', notes: 'Solo rastros.', monsters: [] });
+  const id = await g.Encounters.addGenerated('qa-table', null, {
+    name: 'Huellas',
+    notes: 'Solo rastros.',
+    monsters: [],
+  });
   assert.equal(g.Encounters.get(id).monsters.length, 0);
   let edit;
   g.modal = (title, body, submit) => (edit = submit);
   g.actions['prep-edit']({ dataset: { id } });
-  edit(
+  await edit(
     new Map([
       ['name', 'Huellas editadas'],
       ['style', 'ambush'],
@@ -210,12 +224,12 @@ test('narrative drafts, old encounters and campaign boundaries survive preparati
     ]),
   );
   assert.equal(g.Encounters.get(id).notes, 'Notas nuevas');
-  assert.throws(
+  await assert.rejects(
     () => g.Encounters.addGenerated('other', id, { name: 'Wrong', notes: '', monsters: [] }),
     /Abrí la mesa/,
   );
   g.current = null;
-  assert.throws(
+  await assert.rejects(
     () => g.Encounters.addGenerated(null, null, { name: 'Wrong', notes: '', monsters: [] }),
     /Abrí la mesa/,
   );

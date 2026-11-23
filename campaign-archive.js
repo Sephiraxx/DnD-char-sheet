@@ -129,10 +129,13 @@
     });
   }
 
-  async function build(id, prepared) {
+  async function build(id) {
     const p = await root.Cloud.party(id);
     if (!p.viewerIsDM) throw Error('Solo el DM puede descargar esta copia.');
-    const b = await root.Cloud.board(id);
+    const [b, prepared] = await Promise.all([
+      root.Cloud.board(id),
+      root.Cloud.preparedEncounters(id).then(rows => rows.map(row => row.data)),
+    ]);
     const npcs = [...(p.characters || []), ...(p.enemyNpcs || [])]
       .filter(
         row => row.owner_id === p.campaign.dm_id && (row.data?.friendlyNpc === true || row.data?.enemyNpc === true),
@@ -172,7 +175,6 @@
     const campaign = await cloud.createCampaign(name.trim(), 'DM');
     const ids = new Map(archive.maps.map(m => [m.id, crypto.randomUUID()]));
     const images = [];
-    const preparedKey = 'dnd-dm-prepared-' + campaign.id;
     try {
       const maps = [];
       for (const m of archive.maps) {
@@ -207,20 +209,17 @@
           : (await cloud.createFriendlyNpc(campaign, data)).id;
         npcIds.set(npc.id, id);
       }
-      localStorage.setItem(
-        preparedKey,
-        JSON.stringify(
-          archive.prepared.map(e => ({
-            ...e,
-            launched: false,
-            monsters: e.monsters.map(m => (m.npcId ? { ...m, npcId: npcIds.get(m.npcId) } : m)),
-          })),
-        ),
+      await cloud.importPreparedEncounters(
+        campaign.id,
+        archive.prepared.map(e => ({
+          ...e,
+          launched: false,
+          monsters: e.monsters.map(m => (m.npcId ? { ...m, npcId: npcIds.get(m.npcId) } : m)),
+        })),
       );
       return campaign;
     } catch (error) {
       try {
-        localStorage.removeItem(preparedKey);
         if (images.length) await cloud.removeMapImages(images);
         await cloud.deleteCampaign(campaign.id);
       } catch {

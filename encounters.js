@@ -1,4 +1,4 @@
-/* Encuentros preparados del DM: se arman antes (solo en este dispositivo, nadie los ve) y se lanzan con un botón.
+/* Encuentros preparados del DM: se arman antes y solo los ve el DM y se lanzan con un botón.
    Al lanzar: entra la party, entran todas las criaturas, se pide iniciativa y cada pantalla muestra la animación. */
 const Encounters = (() => {
   'use strict';
@@ -35,42 +35,78 @@ const Encounters = (() => {
     ['fey', 'Feérico'],
     ['celestial', 'Celestial'],
   ];
-  const key = () => 'dnd-dm-prepared-' + current;
-  // Cada criatura tiene un id propio: el tablero la coloca en el mapa antes de lanzar el encuentro.
+  // El tablero usa estos ids para encontrar las fichas ocultas.
   const uid = () => 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-  function list() {
-    try {
-      const v = JSON.parse(localStorage.getItem(key()) || '[]');
-      if (!Array.isArray(v)) return [];
-      let changed = false;
-      for (const enc of v)
-        for (const m of enc.monsters || [])
-          if (!m.uid) {
-            m.uid = uid();
-            changed = true;
+  let snapshot = { id: null, rows: [], error: '' };
+  let queue = Promise.resolve();
+  function enqueue(fn) {
+    const job = queue.then(fn);
+    queue = job.catch(() => {});
+    return job;
+  }
+  function sync(id = current) {
+    return enqueue(async () => {
+      if (!id || id !== current) return;
+      try {
+        const rows = await Cloud.preparedEncounters(id);
+        if (id === current) {
+          const changed =
+            snapshot.id !== id || snapshot.error || JSON.stringify(snapshot.rows) !== JSON.stringify(rows);
+          if (changed) {
+            snapshot = { id, rows, error: '' };
+            draw();
           }
-      if (changed) localStorage.setItem(key(), JSON.stringify(v));
-      return v;
-    } catch {
-      return [];
-    }
+        }
+      } catch (err) {
+        if (id === current && (snapshot.id !== id || snapshot.error !== err.message)) {
+          snapshot = { id, rows: snapshot.id === id ? snapshot.rows : [], error: err.message };
+          draw();
+        }
+      }
+    });
   }
-  function save(items) {
-    localStorage.setItem(key(), JSON.stringify(items));
-    draw();
-  }
+  const list = (id = current) => (snapshot.id === id ? snapshot.rows.map(row => row.data) : []);
   const get = id => list().find(x => x.id === id);
-  function update(id, fn) {
-    const items = list(),
-      enc = items.find(x => x.id === id);
-    if (!enc) throw Error('Ese encuentro ya no está.');
-    fn(enc);
-    save(items);
+  function save(campaignId, id, make, previous) {
+    return enqueue(async () => {
+      if (campaignId !== current || snapshot.id !== campaignId || snapshot.error)
+        throw Error('Volvé a sincronizar los encuentros de esta mesa.');
+      const row = snapshot.rows.find(item => item.data.id === id);
+      if (previous && JSON.stringify(row?.data) !== JSON.stringify(previous))
+        throw Error('El encuentro cambió en otro dispositivo. Volvé a abrirlo para editarlo.');
+      const data = make(row?.data);
+      const saved = await Cloud.savePreparedEncounter(campaignId, id, data, row?.revision ?? null);
+      if (campaignId !== current) return;
+      if (!saved) {
+        sync(campaignId);
+        throw Error('El encuentro cambió en otro dispositivo. Volvé a abrirlo para editarlo.');
+      }
+      const index = row ? snapshot.rows.indexOf(row) : snapshot.rows.length;
+      snapshot.rows.splice(index, row ? 1 : 0, ...(saved.data ? [saved] : []));
+      draw();
+      return id;
+    });
+  }
+  function create(value) {
+    return save(current, value.id, () => value);
+  }
+  function update(id, fn, previous) {
+    return save(
+      current,
+      id,
+      value => {
+        if (!value) throw Error('Ese encuentro ya no está.');
+        const changed = structuredClone(value);
+        fn(changed);
+        return changed;
+      },
+      previous,
+    );
   }
   function addMonsters(id, rows) {
-    update(id, enc => enc.monsters.push(...rows.map(m => ({ ...m, uid: m.uid || uid() }))));
+    return update(id, enc => enc.monsters.push(...rows.map(m => ({ ...m, uid: m.uid || uid() }))));
   }
-  function addGenerated(campaignId, target, draft) {
+  async function addGenerated(campaignId, target, draft) {
     if (!current || !party || campaignId !== current) throw Error('Abrí la mesa donde querés guardar el encuentro.');
     const notes = String(draft.notes || '').trim(),
       name = String(draft.name || '').trim();
@@ -84,7 +120,7 @@ const Encounters = (() => {
       throw Error('Revisá el nombre, las notas y la cantidad de criaturas.');
     const monsters = draft.monsters.map(m => ({ ...m, uid: uid() }));
     if (target) {
-      update(target, enc => {
+      await update(target, enc => {
         if ([enc.notes, notes].filter(Boolean).join('\n\n').length > 16000)
           throw Error('Las notas del encuentro admiten hasta 16000 caracteres.');
         enc.monsters.push(...monsters);
@@ -94,7 +130,7 @@ const Encounters = (() => {
     }
     const id = 'enc-' + uid();
     setOpen(id, true);
-    save([...list(), { id, name, notes, style: 'battle', cry: '', theme: '', monsters, launched: false }]);
+    await create({ id, name, notes, style: 'battle', cry: '', theme: '', monsters, launched: false });
     return id;
   }
 
@@ -123,7 +159,14 @@ const Encounters = (() => {
     );
   function card() {
     const items = list();
-    return `<section class="card prepared-card"><div class="card-header"><h2>Encuentros preparados</h2><div class="actions">${button('Preparar encuentro', 'prep-new')}${typeof EncounterGeneratorUI !== 'undefined' ? button('Generar encuentro', 'encgen-open') : ''}</div></div><p class="small muted">Armalos antes de la sesión: se guardan en este dispositivo y los jugadores no ven nada hasta que tocás «¡Lanzar!».</p>${
+    const ready = snapshot.id === current && !snapshot.error;
+    const status =
+      snapshot.id !== current
+        ? '<p class="small muted">Cargando encuentros…</p>'
+        : snapshot.error
+          ? `<p class="form-error">${esc(snapshot.error)}</p>${button('Reintentar', 'prep-sync')}`
+          : '';
+    return `<section class="card prepared-card"><div class="card-header"><h2>Encuentros preparados</h2><div class="actions">${button('Preparar encuentro', 'prep-new', 'secondary', ready ? '' : 'disabled')}${typeof EncounterGeneratorUI !== 'undefined' ? button('Generar encuentro', 'encgen-open') : ''}</div></div><p class="small muted">Se guardan en la mesa y aparecen al entrar con tu acceso de DM en otro dispositivo.</p>${status}${
       items.length
         ? items
             .map(enc => {
@@ -135,7 +178,7 @@ const Encounters = (() => {
               const rows = [...groups.entries()]
                 .map(
                   ([, ms]) =>
-                    `<div class="list-row"><span>${ms.length > 1 ? ms.length + ' × ' : ''}<b>${esc(ms[0].name)}</b> <span class="small muted">· PG ${esc(ms.map(m => m.hp).join(', '))} · CA ${esc(ms[0].ac)}</span></span>${button('×', 'prep-remove', 'text-btn', `data-id="${enc.id}" data-name="${esc(ms[0].name)}" data-npc="${esc(ms[0].npcId || '')}" aria-label="Quitar ${esc(ms[0].name)}"`)}</div>`,
+                    `<div class="list-row"><span>${ms.length > 1 ? ms.length + ' × ' : ''}<b>${esc(ms[0].name)}</b> <span class="small muted">· PG ${esc(ms.map(m => m.hp).join(', '))} · CA ${esc(ms[0].ac)}</span></span>${button('×', 'prep-remove', 'text-btn', `data-id="${esc(enc.id)}" data-name="${esc(ms[0].name)}" data-npc="${esc(ms[0].npcId || '')}" aria-label="Quitar ${esc(ms[0].name)}"`)}</div>`,
                 )
                 .join('');
               const diff =
@@ -151,10 +194,12 @@ const Encounters = (() => {
               const sum = [n ? `${n} ${n === 1 ? 'criatura' : 'criaturas'}` : 'sin criaturas', d?.label]
                 .filter(Boolean)
                 .join(' · ');
-              return `<details class="prepared" data-id="${enc.id}"${opened.has(enc.id) ? ' open' : ''}><summary class="prepared-head"><span class="prepared-title"><b>${esc(enc.name)}</b> <span class="tag">${esc(STYLES[enc.style]?.[1] || '')}</span>${enc.launched ? ' <span class="tag">Ya lanzado</span>' : ''}<span class="small muted prepared-sum${d ? ' difficulty ' + esc(d.label.toLowerCase()) : ''}">${esc(sum)}</span></span></summary><div class="prepared-body">${rows || '<p class="small muted">Sin criaturas todavía.</p>'}${enc.notes ? `<details class="section-space"><summary>Notas privadas del encuentro</summary><p class="encounter-notes">${esc(enc.notes)}</p></details>` : ''}${diff}<div class="actions">${button('Criatura del catálogo', 'prep-srd', 'secondary', `data-id="${enc.id}"`)}${typeof EncounterGeneratorUI !== 'undefined' ? button('Generar desde tablas', 'encgen-open', 'secondary', `data-id="${enc.id}"`) : ''}${button('PNJ guardados', 'prep-npc', 'secondary', `data-id="${enc.id}"`)}${button('Criatura propia', 'prep-custom', 'secondary', `data-id="${enc.id}"`)}${button('Ver animación', 'prep-preview', 'secondary', `data-id="${enc.id}"`)}${button('Editar', 'prep-edit', 'secondary', `data-id="${enc.id}"`)}${button('Eliminar', 'prep-delete', 'secondary', `data-id="${enc.id}"`)}${button(enc.launched ? 'Lanzar otra vez' : '¡Lanzar!', 'prep-launch', '', `data-id="${enc.id}" ${enc.monsters.length ? '' : 'disabled'}`)}${button('Lanzar y elegir iniciativa', 'prep-launch-mode', 'secondary', `data-id="${enc.id}" ${enc.monsters.length ? '' : 'disabled'}`)}</div></div></details>`;
+              return `<details class="prepared" data-id="${esc(enc.id)}"${opened.has(enc.id) ? ' open' : ''}><summary class="prepared-head"><span class="prepared-title"><b>${esc(enc.name)}</b> <span class="tag">${esc(STYLES[enc.style]?.[1] || '')}</span>${enc.launched ? ' <span class="tag">Ya lanzado</span>' : ''}<span class="small muted prepared-sum${d ? ' difficulty ' + esc(d.label.toLowerCase()) : ''}">${esc(sum)}</span></span></summary><div class="prepared-body">${rows || '<p class="small muted">Sin criaturas todavía.</p>'}${enc.notes ? `<details class="section-space"><summary>Notas privadas del encuentro</summary><p class="encounter-notes">${esc(enc.notes)}</p></details>` : ''}${diff}<div class="actions">${button('Criatura del catálogo', 'prep-srd', 'secondary', `data-id="${esc(enc.id)}"`)}${typeof EncounterGeneratorUI !== 'undefined' ? button('Generar desde tablas', 'encgen-open', 'secondary', `data-id="${esc(enc.id)}"`) : ''}${button('PNJ guardados', 'prep-npc', 'secondary', `data-id="${esc(enc.id)}"`)}${button('Criatura propia', 'prep-custom', 'secondary', `data-id="${esc(enc.id)}"`)}${button('Ver animación', 'prep-preview', 'secondary', `data-id="${esc(enc.id)}"`)}${button('Editar', 'prep-edit', 'secondary', `data-id="${esc(enc.id)}"`)}${button('Eliminar', 'prep-delete', 'secondary', `data-id="${esc(enc.id)}"`)}${button(enc.launched ? 'Lanzar otra vez' : '¡Lanzar!', 'prep-launch', '', `data-id="${esc(enc.id)}" ${enc.monsters.length ? '' : 'disabled'}`)}${button('Lanzar y elegir iniciativa', 'prep-launch-mode', 'secondary', `data-id="${esc(enc.id)}" ${enc.monsters.length ? '' : 'disabled'}`)}</div></div></details>`;
             })
             .join('')
-        : '<p class="muted">Todavía no preparaste encuentros.</p>'
+        : ready
+          ? '<p class="muted">Todavía no preparaste encuentros.</p>'
+          : ''
     }</section>`;
   }
 
@@ -262,7 +307,7 @@ const Encounters = (() => {
     await placeOnBoard(enc, links);
     await announce(enc.style, enc.cry, enc.monsters.length, await themeFor(enc));
     if (requestIndividual) await send('roll-request', { type: 'initiative', id: '', label: 'Iniciativa' });
-    update(id, e => (e.launched = true));
+    await update(id, e => (e.launched = true));
     toast(
       `«${enc.name}» en juego: ${enc.monsters.length} criatura(s).${requestIndividual ? ' Se pidió iniciativa.' : ''}`,
     );
@@ -297,26 +342,30 @@ const Encounters = (() => {
 
   function install() {
     Object.assign(actions, {
+      'prep-sync': () => sync(),
       'prep-new': () =>
         modal(
           'Preparar encuentro',
           form() + '<p class="small">Después agregá las criaturas. Su iniciativa se tira al lanzarlo.</p>',
-          fd => {
+          async fd => {
             const v = read(fd);
             if (!v.name) throw Error('Ponele un nombre.');
-            const id = 'enc-' + Date.now().toString(36);
+            const id = 'enc-' + uid();
             setOpen(id, true);
-            save([...list(), { id, ...v, monsters: [], launched: false }]);
+            await create({ id, ...v, monsters: [], launched: false });
           },
           'Crear',
         ),
       'prep-edit': e => {
         const enc = get(e.dataset.id);
-        modal('Editar encuentro', form(enc), fd => update(enc.id, x => Object.assign(x, read(fd))), 'Guardar');
+        modal('Editar encuentro', form(enc), fd => update(enc.id, x => Object.assign(x, read(fd)), enc), 'Guardar');
       },
       'prep-delete': e => {
         if (!confirm('¿Eliminar este encuentro preparado?')) return;
-        save(list().filter(x => x.id !== e.dataset.id));
+        return save(current, e.dataset.id, row => {
+          if (!row) throw Error('Ese encuentro ya no está.');
+          return null;
+        });
       },
       'prep-srd': e => MonsterUI.picker(e.dataset.id),
       'prep-npc': e => {
@@ -338,7 +387,7 @@ const Encounters = (() => {
           fd => {
             const rows = roster.filter(row => fd.getAll('npc').includes(row.id));
             if (!rows.length) throw Error('Elegí al menos un PNJ.');
-            addMonsters(
+            return addMonsters(
               id,
               rows.map(row => {
                 const x = PV.summarize(row.data);
@@ -357,7 +406,7 @@ const Encounters = (() => {
             const n = int(fd, 'count', 1, 20),
               name = String(fd.get('name')).trim();
             if (!name) throw Error('Ponele un nombre.');
-            addMonsters(
+            return addMonsters(
               e.dataset.id,
               Array.from({ length: n }, () => ({
                 name,
@@ -396,5 +445,5 @@ const Encounters = (() => {
     });
   }
   install();
-  return { card, get, list, addMonsters, addGenerated, STYLES };
+  return { card, get, list, sync, addMonsters, addGenerated, STYLES };
 })();
