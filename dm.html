@@ -52,6 +52,8 @@
     <script src="./party-store.js" defer></script>
     <script src="./account.js" defer></script>
     <script src="./campaign-archive.js" defer></script>
+    <script src="./friendly-npcs.js" defer></script>
+    <script src="./dm-friendly-ui.js" defer></script>
     <script src="./dm.js" defer></script>
     <script src="./monsters-ui.js" defer></script>
     <script src="./library-core.js" defer></script>
@@ -88,6 +90,13 @@
       <main id="main" tabindex="-1"></main>
     </div>
     <dialog id="modal" aria-labelledby="dialog-title"><div id="modal-content"></div></dialog>
+    <dialog id="dm-ally-control" aria-labelledby="dm-ally-title">
+      <header class="modal-head">
+        <h2 id="dm-ally-title">PNJ aliado</h2>
+        <form method="dialog"><button class="icon-btn" aria-label="Cerrar ficha de aliado">×</button></form>
+      </header>
+      <iframe title="Ficha de PNJ aliado"></iframe>
+    </dialog>
     <div id="toast" hidden role="status" aria-live="polite"></div>
     <noscript>Activá JavaScript para usar la pantalla del DM.</noscript>
   </body>

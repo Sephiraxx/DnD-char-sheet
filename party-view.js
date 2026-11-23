@@ -36,6 +36,7 @@
       cls: (v => v?.cls?.id || v?.classId || '')(root.Classes?.views(s)[0]),
       color: /^#[0-9a-f]{6}$/i.test(s.sheetColor || '') ? s.sheetColor : '',
       race: s.race || '',
+      friendlyNpc: s.friendlyNpc === true,
       level: root.Rules.totalLevel(s),
       hp: s.wildShape ? s.wildShape.hp : s.hp,
       maxHP: s.wildShape ? s.wildShape.maxHp : st.maxHP,
@@ -84,6 +85,7 @@
       name: row.name,
       line: text(x.line),
       race: text(x.race),
+      friendlyNpc: x.friendlyNpc === true,
       cls: /^[a-z]+$/.test(text(x.cls)) ? x.cls : '',
       color: /^#[0-9a-f]{6}$/i.test(text(x.color)) ? x.color : '',
       portrait: /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(text(x.portrait)) ? x.portrait : '',
@@ -127,6 +129,7 @@
     const hpKnown = x.hp !== null && x.hp !== undefined;
     const pct = hpKnown ? Math.max(0, Math.min(100, Math.round((x.hp / x.maxHP) * 100))) : 0;
     const chips = [
+      x.friendlyNpc ? '<span class="chip">PNJ aliado</span>' : '',
       x.exhaustion ? `<span class="chip warn">Agotamiento ${x.exhaustion}</span>` : '',
       ...x.conditions.map(c => `<span class="chip warn">${esc(c)}</span>`),
       x.concentration ? `<span class="chip">Concentración: ${esc(x.concentration)}</span>` : '',

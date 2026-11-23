@@ -254,7 +254,7 @@
   // Guarda una ficha de la mesa en este dispositivo (vinculada) y devuelve su id local.
   function restore(row) {
     for (const x of root.CharacterStorage.list()) if (link(x.key)?.characterId === row.id) return x.id;
-    const id = root.CharacterStorage.add(row.data),
+    const id = root.CharacterStorage.add(row.data, row.data.friendlyNpc === true ? row.id : undefined),
       key = 'dnd-character-' + id;
     setLink(key, {
       campaignId: row.campaign_id,
@@ -459,6 +459,20 @@
     });
     setStatus('synced');
     return { ...camp, settings: cleanSettings(camp.settings) };
+  }
+  async function createFriendlyNpc(campaign, state) {
+    const me = await user();
+    if (!campaign?.id || campaign.dm_id !== me.id || state?.friendlyNpc !== true)
+      throw Error('Solo el DM puede crear PNJ aliados de esta mesa.');
+    const c = await api();
+    const fields = sheetPayload(state, await supportsPrivateTables(c));
+    return check(
+      await c
+        .from('characters')
+        .insert({ campaign_id: campaign.id, ...fields })
+        .select('id')
+        .single(),
+    );
   }
   async function leave(key) {
     const l = link(key);
@@ -1378,6 +1392,7 @@
     pendingTable,
     clearPending,
     attach,
+    createFriendlyNpc,
     currentUser,
     linkEmail,
     createAccount,

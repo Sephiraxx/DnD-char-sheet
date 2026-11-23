@@ -352,6 +352,64 @@ async function main() {
       'Recuperación: un enlace sin token no abre el formulario',
       !(await page.locator('#recovery-form').isVisible()),
     );
+    // Flujo de aliado en la pantalla del DM, con las escrituras del servidor simuladas.
+    const dm = await browser.newPage({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+    dm.on('pageerror', e => errors.push(e.message));
+    await dm.route('**/config.js', route =>
+      route.fulfill({ contentType: 'application/javascript', body: 'window.CLOUD_CONFIG = {};' }),
+    );
+    await dm.goto(base + 'dm.html');
+    const playerId = await dm.evaluate(saved => {
+      const id = CharacterStorage.add(Rules.validate(saved));
+      localStorage.setItem('dnd-party-active-v1', id);
+      const campaign = { id: crypto.randomUUID(), name: 'Prueba', code: 'ALLY', dm_id: 'dm', settings: {} };
+      const snapshot = { campaign, members: [], characters: [], combatants: [], secrets: [], loot: [], homebrew: [] };
+      Cloud.enabled = true;
+      Cloud.party = async () => snapshot;
+      Cloud.events = async () => [];
+      Cloud.post = async () => ({});
+      Cloud.createFriendlyNpc = async (table, data) => {
+        const row = { id: crypto.randomUUID(), owner_id: table.dm_id, name: data.name, data, updated_at: '2026-01-01' };
+        snapshot.characters.push(row);
+        return row;
+      };
+      Cloud.addCombatant = async (campaignId, data) => snapshot.combatants.push({ ...data, campaign_id: campaignId });
+      current = campaign.id;
+      party = snapshot;
+      draw();
+      return id;
+    }, fixture);
+    await dm.getByRole('button', { name: 'Nuevo aliado' }).click();
+    await dm.locator('#dialog-form [name=name]').fill('Tizne');
+    await dm.locator('#dialog-form [name=class]').selectOption('wizard');
+    await dm.locator('#dialog-form [name=level]').fill('3');
+    await dm.locator('#dialog-form [name=race]').selectOption('kobold-base-MPMM');
+    await dm.locator('#dialog-form [name=spell-add]').selectOption('magic-missile');
+    await dm.getByRole('button', { name: 'Crear aliado' }).click();
+    await dm.getByRole('button', { name: 'Sumar a iniciativa' }).click();
+    check(
+      'PNJ aliado: la iniciativa lo incorpora como objetivo amigo',
+      await dm.evaluate(() => {
+        const npc = party.characters[0],
+          entry = party.combatants[0];
+        return entry?.kind === 'pc' && entry.character_id === npc.id && npc.data.prepared.includes('magic-missile');
+      }),
+    );
+    await dm.locator('.dm-ally-row [data-action=npc-control]').click();
+    const npc = dm.frameLocator('#dm-ally-control iframe');
+    await npc.locator('#active-character-name').filter({ hasText: 'Tizne' }).waitFor();
+    check(
+      'PNJ aliado: el DM controla la ficha sin cambiar de personaje activo',
+      await npc.locator('body').evaluate((body, player) => {
+        const sheet = JSON.parse(localStorage.getItem(CharacterStorage.activeKey()));
+        return (
+          body.classList.contains('dm-ally-sheet') &&
+          sheet.friendlyNpc &&
+          localStorage.getItem('dnd-party-active-v1') === player
+        );
+      }, playerId),
+    );
+    await dm.close();
     check('Sin errores de JavaScript', !errors.length, errors.join(' | '));
   } finally {
     await browser.close();
