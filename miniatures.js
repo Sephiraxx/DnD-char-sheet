@@ -28,8 +28,47 @@
       heavy: 'Corpulenta',
     },
     ears: { auto: 'Según la raza', round: 'Redondas', elf: 'Puntiagudas', horns: 'Cuernos' },
-    hair: { crop: 'Corto', long: 'Largo', crest: 'Cresta', bald: 'Rapado' },
-    outfit: { tunic: 'Túnica corta', armor: 'Armadura', robe: 'Vestiduras', cloak: 'Capa de viaje' },
+    hair: {
+      crop: 'Corto',
+      long: 'Largo',
+      crest: 'Cresta',
+      bald: 'Rapado',
+      curls: 'Rizos',
+      bun: 'Rodete',
+      braid: 'Trenza lateral',
+      ponytail: 'Cola alta',
+      bob: 'Melena corta',
+      locs: 'Rastas',
+    },
+    outfit: {
+      tunic: 'Túnica corta',
+      armor: 'Armadura',
+      robe: 'Vestiduras',
+      cloak: 'Capa de viaje',
+      vestments: 'Vestiduras con estola',
+      doublet: 'Jubón',
+      coat: 'Abrigo largo',
+      tabard: 'Tabardo',
+      leathers: 'Cuero de explorador',
+    },
+    headwear: {
+      none: 'Sin cubrir',
+      hood: 'Capucha de viaje',
+      cowl: 'Capucha profunda',
+      hat: 'Sombrero de ala ancha',
+      circlet: 'Diadema',
+    },
+    eyewear: {
+      none: 'Ninguno',
+      round: 'Anteojos redondos',
+      square: 'Anteojos rectangulares',
+      monocle: 'Monóculo',
+      patch: 'Parche',
+    },
+    scar: { none: 'Ninguna', brow: 'Sobre la ceja', cheek: 'En la mejilla', claw: 'Tres marcas de garra' },
+    beard: { none: 'Ninguna', short: 'Barba corta', braided: 'Barba trenzada', moustache: 'Bigote' },
+    neck: { none: 'Ninguno', scarf: 'Bufanda', pendant: 'Medallón', skull: 'Símbolo de calavera' },
+    belt: { none: 'Ninguno', pouch: 'Bolsa de monedas', satchel: 'Morral cruzado', vials: 'Frascos de alquimia' },
     gear: {
       lute: 'Laúd',
       shield: 'Escudo',
@@ -120,6 +159,13 @@
     height: 170,
     build: 'regular',
     ears: 'auto',
+    headwear: 'none',
+    eyewear: 'none',
+    scar: 'none',
+    beard: 'none',
+    neck: 'none',
+    belt: 'none',
+    headColor: '#30303d',
     hair: 'crop',
     outfit: 'tunic',
     gear: 'none',
@@ -133,8 +179,9 @@
   function clean(raw) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
     const result = { ...defaults };
-    for (const [key, options] of Object.entries(parts)) if (Object.hasOwn(options, raw[key])) result[key] = raw[key];
-    for (const key of ['skin', 'cloth', 'hairColor', 'accent'])
+    for (const [key, options] of Object.entries(parts))
+      if (typeof raw[key] === 'string' && Object.hasOwn(options, raw[key])) result[key] = raw[key];
+    for (const key of ['skin', 'cloth', 'hairColor', 'accent', 'headColor'])
       if (typeof raw[key] === 'string' && /^#[0-9a-f]{6}$/i.test(raw[key])) result[key] = raw[key].toLowerCase();
     if (Number.isInteger(raw.height) && raw.height >= 50 && raw.height <= 300) result.height = raw.height;
     if (Number.isInteger(raw.facing)) result.facing = ((raw.facing % 360) + 360) % 360;
@@ -175,7 +222,7 @@
       gear: sheet.classId === 'bard' ? 'lute' : 'none',
     });
   }
-  function draw(ctx, raw, size, headwear) {
+  function draw(ctx, raw, size, headwear, closeUp = false) {
     const m = clean(raw);
     if (!m) return;
     const mesh = root.MiniatureMesh.create(m.facing);
@@ -208,7 +255,7 @@
     const chestY = 1.48 + lift,
       shoulderZ = b.lean + (ready ? 0.075 : 0.015);
     const armor = m.outfit === 'armor' || m.race === 'warforged',
-      robe = m.outfit === 'robe';
+      robe = ['robe', 'vestments', 'coat'].includes(m.outfit);
     for (const side of [-1, 1]) {
       const forward = side === -1;
       const foot = [side * b.stance, 0.26, forward ? stride : -stride];
@@ -252,7 +299,21 @@
       0,
       0,
       [
-        [robe ? 0.34 : b.pelvis - 0.17, hip + (robe ? 0.14 : 0.055), robe ? 0.31 : 0.22, -0.018, robe ? -0.055 : 0],
+        ...(['vestments', 'coat'].includes(m.outfit)
+          ? [
+              [0.31, hip + 0.164, 0.36, -0.014, 0.018],
+              [b.knee, hip + 0.146, 0.34, -0.01, 0.04 + stride * 0.2],
+              [b.pelvis - 0.1, hip + 0.068, 0.263, 0, 0.027],
+            ]
+          : [
+              [
+                robe ? 0.34 : b.pelvis - 0.17,
+                hip + (robe ? 0.14 : 0.055),
+                robe ? 0.31 : 0.22,
+                -0.018,
+                robe ? -0.055 : 0,
+              ],
+            ]),
         [b.pelvis, hip, 0.2 + (b.hip - 0.28) * 0.55],
         [beltY, waist, b.belly, 0, bellyZ],
         [beltY + 0.075, (waist * 2 + chest) / 3, b.belly * 1.04, 0, bellyZ],
@@ -273,6 +334,7 @@
       leather,
     );
     oval(0, beltY + 0.025, bellyZ + b.belly + 0.013, 0.057, 0.042, 0.018, gold);
+    root.MiniatureWardrobe.clothing(mesh, m, { chest, chestY, shoulderZ, hip, waist, beltY, belly: b.belly, bellyZ });
     limb([0, chestY + 0.07, shoulderZ], [0, chestY + 0.24, shoulderZ], 0.14, 0.125, skin);
     // Broche del cuello y costura de los hombros, visibles por encima del cinturón.
     for (const side of [-1, 1]) {
@@ -312,7 +374,7 @@
         [-0.25, 0.115, 0.14, 0, 0.03],
         [-0.16, 0.223, 0.21],
         [0.02, 0.265, 0.24],
-        ...(m.hair === 'bald'
+        ...(m.hair === 'bald' || ['hood', 'cowl', 'hat'].includes(m.headwear)
           ? [
               [0.17, 0.24, 0.215],
               [0.24, 0.16, 0.15],
@@ -383,7 +445,8 @@
         gold,
         8,
       );
-    if (m.hair !== 'bald') {
+    const covered = ['hood', 'cowl', 'hat'].includes(m.headwear);
+    if (m.hair !== 'bald' && !covered) {
       form(
         0,
         head + 0.075,
@@ -410,6 +473,7 @@
       if (m.hair === 'crest') oval(0, head + 0.24, -0.013, 0.1, 0.16, 0.218, m.hairColor);
       if (m.hair === 'crop') oval(-0.102, head + 0.09, 0.13, 0.143, 0.076, 0.117, m.hairColor);
     }
+    root.MiniatureWardrobe.face(mesh, m, head, covered);
     headwear?.(mesh, head);
     mesh.offset(gripX - 0.48, lift, gripZ - 0.23);
     if (m.gear === 'staff') {
@@ -572,7 +636,12 @@
       for (let i = 1; i < bow.length; i++) limb(bow[i - 1], bow[i], 0.027, 0.027, leather);
       limb(bow[0], bow.at(-1), 0.008, 0.008, '#e1d4b4');
     }
-    mesh.paint(ctx, size, 0.376);
+    mesh.offset(0, 0, 0);
+    if (closeUp) mesh.paint(ctx, size, 1.04, [0, head, shoulderZ]);
+    else mesh.paint(ctx, size, 0.376);
+  }
+  function drawFace(ctx, raw, size) {
+    draw(ctx, raw, size, null, true);
   }
   const sprites = new Map();
   function cachedSprite(key, model, render) {
@@ -591,5 +660,5 @@
   function creatureSprite(key) {
     return cachedSprite(key, key, root.CreatureMiniatures.draw);
   }
-  root.Miniatures = { parts, defaults, initial, clean, draw, sprite, creatureSprite };
+  root.Miniatures = { parts, defaults, initial, clean, draw, drawFace, sprite, creatureSprite };
 })(globalThis);

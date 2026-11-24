@@ -248,16 +248,42 @@ const Persona = (() => {
       gender: 'Género',
       build: 'Complexión',
       ears: 'Orejas y cuernos',
-      hair: 'Pelo',
+      hair: 'Peinado',
+      beard: 'Vello facial',
+      scar: 'Cicatriz',
+      headwear: 'Prenda de cabeza',
+      eyewear: 'Anteojos y parches',
+      neck: 'Cuello',
+      belt: 'Accesorio de cintura',
       outfit: 'Ropa',
       gear: 'Arma o accesorio',
       pose: 'Postura',
     };
     const pick = key => select(labels[key], key, Object.entries(Miniatures.parts[key]), model[key]);
-    const colors = { skin: 'Piel', hairColor: 'Pelo', cloth: 'Ropa', accent: 'Detalles' };
-    const knobs = Object.entries(colors)
-      .map(([k, l]) => field(l, k, model[k], 'color'))
-      .join('');
+    const colors = {
+      skin: 'Piel',
+      hairColor: 'Cabello',
+      cloth: 'Tela',
+      headColor: 'Capucha o sombrero',
+      accent: 'Detalles',
+    };
+    const group = (title, controls) =>
+      `<fieldset class="mini-group"><legend>${title}</legend><div class="form-grid">${controls}</div></fieldset>`;
+    const choices = keys => keys.map(pick).join('');
+    const body = group(
+      'Cuerpo',
+      pick('race') +
+        field('Altura (cm)', 'height', model.height, 'number', 'min="50" max="300" step="1" required') +
+        choices(['gender', 'build', 'ears', 'pose']),
+    );
+    const dress = group('Vestuario', choices(['outfit', 'headwear', 'neck', 'belt', 'gear']));
+    const face = group('Rostro y cabello', choices(['hair', 'beard', 'scar', 'eyewear']));
+    const palette = group(
+      'Colores',
+      Object.entries(colors)
+        .map(([key, label]) => field(label, key, model[key], 'color'))
+        .join(''),
+    );
     const read = fd =>
       Miniatures.clean({
         ...Object.fromEntries(fd),
@@ -266,7 +292,7 @@ const Persona = (() => {
       });
     modal(
       'Miniatura del personaje',
-      `<div class="mini-workbench"><div class="mini-stand"><canvas id="mini-preview" width="360" height="360" aria-label="Vista previa de la miniatura"></canvas><label class="field">Girar miniatura<input type="range" name="facing" min="0" max="359" value="${model.facing}"></label></div><div class="mini-parts"><div class="form-grid">${pick('race')}${field('Altura (cm)', 'height', model.height, 'number', 'min="50" max="300" step="1" required')}${['gender', 'build', 'ears', 'hair', 'outfit', 'gear', 'pose'].map(pick).join('')}</div><div class="mini-colors">${knobs}</div></div></div>${state.miniature ? button('Quitar miniatura', 'persona-mini-remove', 'secondary') : ''}`,
+      `<div class="mini-workbench"><div class="mini-stand"><canvas id="mini-preview" width="360" height="360" aria-label="Vista previa de la miniatura"></canvas><label class="field">Girar miniatura<input type="range" name="facing" min="0" max="359" value="${model.facing}"></label><button type="button" class="button secondary mini-zoom" data-mini-zoom aria-pressed="false">Acercar al rostro</button></div><div class="mini-parts">${dress}<button type="button" class="button secondary mini-preset" data-mini-hooded>Usar atuendo encapuchado</button>${face}${body}${palette}</div></div>${state.miniature ? button('Quitar miniatura', 'persona-mini-remove', 'secondary') : ''}`,
       fd => {
         const mini = read(fd);
         commit('Miniatura actualizada', s => {
@@ -278,11 +304,28 @@ const Persona = (() => {
     const form = document.getElementById('dialog-form'),
       canvas = form.querySelector('#mini-preview'),
       ctx = canvas.getContext('2d');
+    const zoom = form.querySelector('[data-mini-zoom]');
     const preview = () => {
       if (!form.elements.height.validity.valid) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      Miniatures.draw(ctx, read(new FormData(form)), canvas.width);
+      const render = zoom.getAttribute('aria-pressed') === 'true' ? Miniatures.drawFace : Miniatures.draw;
+      render(ctx, read(new FormData(form)), canvas.width);
     };
+    zoom.addEventListener('click', () => {
+      zoom.setAttribute('aria-pressed', String(zoom.getAttribute('aria-pressed') !== 'true'));
+      preview();
+    });
+    form.querySelector('[data-mini-hooded]').addEventListener('click', () => {
+      const vestments = {
+        outfit: 'vestments',
+        headwear: 'cowl',
+        cloth: '#37323f',
+        headColor: '#242530',
+        accent: '#b6a589',
+      };
+      for (const [key, value] of Object.entries(vestments)) form.elements.namedItem(key).value = value;
+      preview();
+    });
     form.addEventListener('input', preview);
     preview();
   }

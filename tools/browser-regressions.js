@@ -228,7 +228,26 @@ async function main() {
     await page.getByLabel('Altura (cm)').fill('187');
     await page.getByLabel('Arma o accesorio').selectOption('hammer');
     const miniSnapshot = () => page.locator('#mini-preview').evaluate(c => c.toDataURL());
+    const plainMini = await miniSnapshot();
+    await page.getByLabel(/^Peinado/).selectOption('braid');
+    await page.getByLabel(/^Cicatriz/).selectOption('claw');
+    await page.getByLabel('Anteojos y parches').selectOption('round');
+    await page.getByLabel(/^Cuello/).selectOption('pendant');
+    await page.getByRole('button', { name: 'Usar atuendo encapuchado' }).click();
     const firstMini = await miniSnapshot();
+    check(
+      'Miniaturas: el atuendo cambia el dibujo y conserva cara y arma',
+      firstMini !== plainMini &&
+        (await page.getByLabel('Anteojos y parches').inputValue()) === 'round' &&
+        (await page.getByLabel('Arma o accesorio').inputValue()) === 'hammer',
+    );
+    const zoom = page.getByRole('button', { name: 'Acercar al rostro' });
+    await zoom.click();
+    check(
+      'Miniaturas: acercamiento al rostro',
+      firstMini !== (await miniSnapshot()) && (await zoom.getAttribute('aria-pressed')) === 'true',
+    );
+    await zoom.click();
     await page.locator('[name=facing]').focus();
     await page.locator('[name=facing]').press('End');
     check('Miniaturas: la vista previa gira en el editor', firstMini !== (await miniSnapshot()));
@@ -241,6 +260,18 @@ async function main() {
         (await page.getByLabel('Género').inputValue()) === 'woman' &&
         (await page.getByLabel('Altura (cm)').inputValue()) === '187' &&
         (await page.getByLabel('Arma o accesorio').inputValue()) === 'hammer',
+    );
+    check(
+      'Miniaturas: el vestuario, la cicatriz y el pelo se conservan tras recargar',
+      await page
+        .locator('#dialog-form')
+        .evaluate(f =>
+          ['cowl', 'vestments', 'pendant', 'round', 'claw', 'braid', '#242530'].every(
+            (v, i) =>
+              f.elements.namedItem(['headwear', 'outfit', 'neck', 'eyewear', 'scar', 'hair', 'headColor'][i]).value ===
+              v,
+          ),
+        ),
     );
     await page.getByRole('button', { name: 'Quitar miniatura' }).click();
     await page.getByRole('button', { name: 'Crear miniatura' }).waitFor();
@@ -1032,7 +1063,7 @@ async function main() {
       await overlays.locator('.clock-sky.day').isVisible(),
     );
     const hero = displayParty.characters.find(c => c.id === representative);
-    hero.data.miniature = { race: 'elf', gear: 'lute', height: 182 };
+    hero.data.miniature = { race: 'elf', gear: 'lute', height: 182, headwear: 'cowl', neck: 'skull', scar: 'claw' };
     await display.evaluate(
       ({ character, map }) => {
         const sprite = Miniatures.sprite;
@@ -1069,7 +1100,14 @@ async function main() {
     await display.waitForFunction(() => window.seenMini?.gear === 'lute');
     check(
       'Miniaturas: la pantalla de jugadores dibuja la figura de la ficha vinculada',
-      await display.evaluate(() => window.seenMini.race === 'elf' && window.seenMini.height === 182),
+      await display.evaluate(
+        () =>
+          window.seenMini.race === 'elf' &&
+          window.seenMini.height === 182 &&
+          window.seenMini.headwear === 'cowl' &&
+          window.seenMini.neck === 'skull' &&
+          window.seenMini.scar === 'claw',
+      ),
     );
     await display.evaluate(map => {
       const sprite = Miniatures.creatureSprite;

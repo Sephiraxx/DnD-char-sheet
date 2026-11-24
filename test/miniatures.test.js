@@ -42,7 +42,7 @@ test('todas las razas y armas se dibujan con geometría finita', () => {
     for (const gear of Object.keys(M.parts.gear)) M.draw(ctx, { race, gear, facing: 130 }, 128);
 });
 
-function capture(draw) {
+function capture(draw, colors) {
   const polys = [];
   const ctx = {
     save() {},
@@ -51,7 +51,9 @@ function capture(draw) {
     scale() {},
     closePath() {},
     stroke() {},
-    fill() {},
+    fill() {
+      if (colors) colors.push(this.fillStyle);
+    },
     beginPath() {
       polys.push([]);
     },
@@ -66,6 +68,49 @@ function capture(draw) {
   draw(ctx);
   return polys;
 }
+test('la ropa y el rostro de una miniatura se conservan al guardar y compartir la ficha', () => {
+  const ctx = load();
+  require('vm').runInContext(
+    require('fs').readFileSync(require('path').join(__dirname, '../party-view.js'), 'utf8'),
+    ctx,
+  );
+  const Mini = ctx.Miniatures,
+    old = Mini.clean({ hair: 'crest', outfit: 'armor', gear: 'shield' });
+  for (const key of ['headwear', 'neck', 'belt', 'eyewear', 'scar', 'beard']) assert.equal(old[key], 'none');
+  assert.equal(old.hair, 'crest');
+  const raw = {
+    ...old,
+    outfit: 'vestments',
+    headwear: 'cowl',
+    headColor: '#20242A',
+    neck: 'skull',
+    belt: 'vials',
+    hair: 'braid',
+    eyewear: 'round',
+    scar: 'claw',
+    beard: 'short',
+  };
+  const sheet = ctx.Rules.validate({ ...fixture('wizard-3.json'), miniature: raw });
+  const expected = Mini.clean(raw);
+  assert.deepEqual(ctx.PartyView.rowSummary({ summary: ctx.PartyView.summarize(sheet) }).miniature, expected);
+  assert.equal(expected.headColor, '#20242a');
+  assert.equal(Mini.clean({ ...raw, headwear: 'bad', headColor: 'bad' }).headwear, 'none');
+  assert.equal(Mini.clean({ ...raw, headColor: 'bad' }).headColor, Mini.defaults.headColor);
+});
+test('cada opción de vestuario, pelo y rostro cambia la figura renderizada', () => {
+  const digest = model => {
+    const colors = [];
+    const geometry = capture(ctx => M.draw(ctx, model, 128), colors);
+    return require('crypto')
+      .createHash('sha256')
+      .update(JSON.stringify([geometry, colors]))
+      .digest('hex');
+  };
+  for (const key of ['outfit', 'hair', 'headwear', 'eyewear', 'scar', 'beard', 'neck', 'belt']) {
+    const hashes = Object.keys(M.parts[key]).map(value => digest({ [key]: value }));
+    assert.equal(new Set(hashes).size, hashes.length, key);
+  }
+});
 test('la complexión cambia la silueta en cada vista y conserva la forma del cráneo', () => {
   for (const facing of [0, 90, 180]) {
     const outlines = new Set();
