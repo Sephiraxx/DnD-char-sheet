@@ -1176,8 +1176,8 @@
   areas('circle', 60, 'circle-of-death otilukes-freezing-sphere maddening-darkness sunburst');
   areas('circle', 15, 'darkness');
   areas('circle', 20, 'sleep silence fog-cloud');
-  areas('cube', 20, 'web entangle faerie-fire');
-  areas('cube', 30, 'hypnotic-pattern');
+  areas('cube', 20, 'web entangle faeriefire');
+  areas('cube', 30, 'hypnotic');
   areas('cube', 10, 'grease');
   areas('cone', 15, 'burning-hands frost-fingers spray-of-cards');
   areas('cone', 30, 'rimes-binding-ice pulse-wave');
