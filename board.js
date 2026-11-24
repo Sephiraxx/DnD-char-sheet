@@ -2297,19 +2297,29 @@
       return `<li><b>${esc(pc.name || row.name)}</b><span>${esc(hp)}</span>${meter}</li>`;
     });
     const enc = party.encounter;
-    const initiative = Cloud.order(
-      party.combatants.filter(c => !c.hidden),
-      enc?.active,
-    ).map((c, i) => {
-      const current = enc?.active && enc.current_id === c.id;
-      const value = (enc?.initiative_mode || 'individual') === 'individual' ? (c.init ?? '—') : i + 1;
-      return `<li${current ? ' aria-current="step"' : ''}><span class="screen-init">${esc(value)}</span><b>${esc(c.name)}</b>${current ? '<small>Turno</small>' : ''}</li>`;
-    });
+    const initiative = enc?.active
+      ? Cloud.order(
+          party.combatants.filter(c => !c.hidden),
+          true,
+        ).map(c => {
+          const name = c.name || 'Sin nombre';
+          const initial = Array.from(name.trim())[0]?.toLocaleUpperCase('es') || '·';
+          return `<li${enc.current_id === c.id ? ' aria-current="step"' : ''}><span class="screen-initial" aria-hidden="true">${esc(initial)}</span><b>${esc(name)}</b></li>`;
+        })
+      : [];
     const el = $('#player-screen-party');
     el.hidden = false;
-    el.innerHTML = `<section><h2>Fecha del mundo</h2><p class="screen-date">${date ? esc(Chronicle.dateText(date)) : 'Sin fecha'}</p><p>${date?.time ? `<time>${esc(date.time)}</time>` : 'Hora sin definir'}</p></section>
-      <section><h2>Party</h2>${roster.length ? `<ul class="screen-roster">${roster.join('')}</ul>` : '<p>Sin personajes en la mesa.</p>'}</section>
-      <section><h2>Iniciativa${enc?.active ? ` · ronda ${esc(enc.round)}` : ''}</h2>${initiative.length ? `<ol>${initiative.join('')}</ol>` : '<p>Sin iniciativa.</p>'}</section>`;
+    el.querySelector('.screen-clock').innerHTML =
+      `${date?.time ? `<time>${esc(date.time)}</time>` : ''}${date ? `<span>${esc(Chronicle.dateText(date))}</span>` : ''}`;
+    const cards = el.querySelector('.screen-roster');
+    cards.innerHTML = roster.join('');
+    cards.hidden = !roster.length;
+    const order = el.querySelector('.screen-initiative');
+    const previous = order.querySelector('[aria-current]')?.textContent;
+    order.innerHTML = initiative.join('');
+    order.hidden = !initiative.length;
+    const active = order.querySelector('[aria-current]');
+    if (active && active.textContent !== previous) active.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
   function topBar() {
     const m = currentMap(),

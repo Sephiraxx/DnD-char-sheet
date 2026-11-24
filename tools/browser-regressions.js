@@ -963,14 +963,35 @@ async function main() {
       await display.evaluate(() => Board._state().casts.every(c => c.kind === 'lightning')),
     );
     await display.waitForFunction(() => Board._state().casts.length === 0);
-    const sidebar = display.locator('#player-screen-party');
+    const overlays = display.locator('#player-screen-party');
     check(
-      'Pantalla para jugadores: muestra fecha, PG, ronda y turno sin revelar la criatura oculta',
-      (await sidebar.innerText()).includes('4 de Mes 1, año 930') &&
-        (await sidebar.innerText()).includes('ronda 2') &&
-        (await sidebar.locator('meter').count()) > 0 &&
-        (await sidebar.locator('[aria-current]').innerText()).includes('Lyra') &&
-        !(await sidebar.innerText()).includes('Acechador secreto'),
+      'Pantalla para jugadores: muestra fecha, PG e iniciativa con inicial y nombre, sin revelar criaturas ocultas',
+      (await overlays.innerText()).includes('4 de Mes 1, año 930') &&
+        (await overlays.locator('.screen-initiative li').allTextContents()).join(',') === 'LLyra' &&
+        (await overlays.locator('meter').count()) > 0 &&
+        (await overlays.locator('[aria-current]').innerText()).includes('Lyra') &&
+        !(await overlays.innerText()).includes('Acechador secreto'),
+    );
+    check(
+      'Pantalla para jugadores: el mapa ocupa todo el ancho con reloj, party e iniciativa superpuestos',
+      await display.evaluate(() => {
+        const rect = sel => document.querySelector(sel).getBoundingClientRect();
+        const map = rect('#board'),
+          clock = rect('.screen-clock'),
+          party = rect('.screen-roster'),
+          turns = rect('.screen-initiative');
+        return (
+          Math.abs(map.width - document.documentElement.clientWidth) <= 1 &&
+          clock.left - map.left < 32 &&
+          clock.top - map.top < 32 &&
+          getComputedStyle(document.querySelector('.screen-clock')).backgroundColor === 'rgba(0, 0, 0, 0)' &&
+          map.bottom - party.bottom < 32 &&
+          Math.abs((party.left + party.right - map.left - map.right) / 2) < 2 &&
+          map.right - turns.right < 32 &&
+          turns.bottom <= party.top &&
+          turns.top >= clock.bottom
+        );
+      }),
     );
     await device.evaluate(cal => {
       party.campaign.settings.calendar = cal;
@@ -982,17 +1003,25 @@ async function main() {
     // El servidor simulado devuelve la hora guardada cuando la otra pestaña recibe el aviso.
     displayParty.campaign.settings.calendar.time = '23:15';
     await device.getByRole('button', { name: 'Guardar', exact: true }).click();
-    await sidebar.locator('time').filter({ hasText: '23:15' }).waitFor();
+    await overlays.locator('time').filter({ hasText: '23:15' }).waitFor();
     const hero = displayParty.characters.find(c => c.id === representative);
     hero.updated_at = 'updated';
     hero.data.hp = 0;
     displayParty.encounter.current_id = 'hidden';
     await display.evaluate(() => window.partyChanged('characters'));
-    await sidebar.locator('meter[value="0"]').first().waitFor();
+    await overlays.locator('meter[value="0"]').first().waitFor();
     check(
       'Pantalla para jugadores: los PG en cero y el turno oculto se actualizan en vivo',
-      (await sidebar.locator('li').filter({ hasText: 'Lyra' }).locator('meter[value="0"]').count()) === 1 &&
-        (await sidebar.locator('[aria-current]').count()) === 0,
+      (await overlays.locator('li').filter({ hasText: 'Lyra' }).locator('meter[value="0"]').count()) === 1 &&
+        (await overlays.locator('[aria-current]').count()) === 0,
+    );
+    displayParty.encounter.active = false;
+    await display.evaluate(() => window.partyChanged('encounter'));
+    await overlays.locator('.screen-initiative').waitFor({ state: 'hidden' });
+    check(
+      'Pantalla para jugadores: al terminar la iniciativa se retira la lista aunque queden combatientes',
+      (await overlays.locator('.screen-initiative li').count()) === 0 &&
+        (await overlays.locator('.screen-roster').isVisible()),
     );
     displayBoard = { board: { map_id: null }, maps: [{ id: 'prep', name: 'Mapa secreto' }], tokens: [] };
     await display.evaluate(
@@ -1002,7 +1031,7 @@ async function main() {
     await display.locator('#screen-map-empty').waitFor();
     check(
       'Pantalla para jugadores: sin mapa público sigue mostrando la party y oculta los mapas preparados',
-      (await sidebar.isVisible()) && !(await display.locator('body').innerText()).includes('Mapa secreto'),
+      (await overlays.isVisible()) && !(await display.locator('body').innerText()).includes('Mapa secreto'),
     );
     await device.evaluate(() => {
       Object.defineProperty(navigator, 'userAgent', { value: 'Mozilla/5.0 (Linux; Android) Mobile' });
