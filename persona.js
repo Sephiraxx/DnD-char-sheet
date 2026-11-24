@@ -263,6 +263,7 @@ const Persona = (() => {
     const pick = key => select(labels[key], key, Object.entries(Miniatures.parts[key]), model[key]);
     const colors = {
       skin: 'Piel',
+      woodColor: 'Madera',
       hairColor: 'Cabello',
       cloth: 'Tela',
       headColor: 'Capucha o sombrero',
@@ -306,12 +307,43 @@ const Persona = (() => {
       canvas = form.querySelector('#mini-preview'),
       ctx = canvas.getContext('2d');
     const zoom = form.querySelector('[data-mini-zoom]');
-    const preview = () => {
-      if (!form.elements.height.validity.valid) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const render = zoom.getAttribute('aria-pressed') === 'true' ? Miniatures.drawFace : Miniatures.draw;
-      render(ctx, read(new FormData(form)), canvas.width);
+    const skinLabel = form.elements.skin.closest('label').firstChild;
+    const woodField = form.elements.woodColor.closest('label');
+    const materials = race => {
+      skinLabel.textContent = race === 'warforged' ? 'Hierro' : 'Piel';
+      woodField.hidden = race !== 'warforged';
     };
+    materials(model.race);
+    const motion = matchMedia('(prefers-reduced-motion: reduce)');
+    let timer;
+    const preview = () => {
+      clearTimeout(timer);
+      if (!form.elements.height.validity.valid) return;
+      const mini = read(new FormData(form));
+      const closeUp = zoom.getAttribute('aria-pressed') === 'true';
+      const animated = !closeUp && Miniatures.hasSword(mini) && !motion.matches;
+      let previousFrame;
+      const paint = () => {
+        if (!form.isConnected || !form.closest('dialog')?.open) return;
+        const frame = animated ? Miniatures.swordFrame(performance.now()) : 0;
+        if (frame !== previousFrame) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          Miniatures.draw(ctx, mini, canvas.width, null, closeUp, frame);
+          previousFrame = frame;
+        }
+        if (animated) timer = setTimeout(paint, 100);
+      };
+      paint();
+    };
+    motion.addEventListener('change', preview);
+    form.closest('dialog').addEventListener(
+      'close',
+      () => {
+        clearTimeout(timer);
+        motion.removeEventListener('change', preview);
+      },
+      { once: true },
+    );
     zoom.addEventListener('click', () => {
       zoom.setAttribute('aria-pressed', String(zoom.getAttribute('aria-pressed') !== 'true'));
       preview();
@@ -339,6 +371,7 @@ const Persona = (() => {
             control.value = next[key] ?? Miniatures.defaults[key];
           }
         }
+        materials(race);
         previousRace = race;
       }
       preview();

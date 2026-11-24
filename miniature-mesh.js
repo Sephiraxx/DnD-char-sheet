@@ -13,8 +13,10 @@
       ox = 0,
       oy = 0,
       oz = 0,
-      handedness = 1;
-    function offset(x, y, z, side = 1) {
+      handedness = 1,
+      tilt = null;
+    function offset(x, y, z, side = 1, angle = 0, pitch = 0) {
+      tilt = angle || pitch ? [Math.cos(angle), Math.sin(angle), Math.cos(pitch), Math.sin(pitch)] : null;
       handedness = side;
       ox = x;
       oy = y;
@@ -24,6 +26,12 @@
       scale = value;
     }
     function camera([x, y, z]) {
+      if (tilt) {
+        const [ca, sa, cp, sp] = tilt;
+        const up = y * cp - z * sp;
+        z = y * sp + z * cp;
+        [x, y] = [x * ca + up * sa, up * ca - x * sa];
+      }
       x = x * handedness + ox;
       y += oy;
       z += oz;

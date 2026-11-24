@@ -2303,3 +2303,7 @@ button.cc-stat {
     height: 9rem;
   }
 }
+
+.mini-parts .field[hidden] {
+  display: none;
+}
