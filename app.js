@@ -155,6 +155,9 @@ function roll(sides, count = 1) {
   }
   return a;
 }
+function characterD20(value = roll(20)[0]) {
+  return Equipment.adjustD20(state, value, sides => roll(sides)[0]);
+}
 function number(fd, key, min, max, def) {
   const raw = fd.get(key);
   if ((raw === null || raw === '') && def !== undefined) return def;
@@ -1144,7 +1147,8 @@ const actions = {
           die = number(fd, 'dado', 4, 100),
           physical = fd.get('fisica') !== '',
           own = physical ? number(fd, 'fisica', n, n * die) : 0;
-        let a = physical ? [own] : roll(die, n),
+        const raw = physical ? [own] : roll(die, n),
+          a = die === 20 && (!physical || n === 1) ? raw.map(value => characterD20(value)) : raw,
           b = number(fd, 'modificador', -100, 100),
           sum = a.reduce((x, y) => x + y, 0) + b;
         commit(

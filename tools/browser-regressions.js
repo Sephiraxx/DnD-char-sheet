@@ -154,6 +154,51 @@ async function main() {
       check(`Teléfono: «${route}» entra en 390 px`, width <= 391, 'mide ' + width);
     }
 
+    await page.goto(base + 'index.html?abrir#gear');
+    await page.getByRole('button', { name: 'Añadir del catálogo' }).click();
+    const sermon = page.locator('#dialog-form [name=equipmentId] option[value=sermon]');
+    const itemSearch = page.getByRole('searchbox', { name: 'Buscar objeto' });
+    const keptPrivate = (await sermon.count()) === 0;
+    await itemSearch.fill('Sermo');
+    check('Equipo: el objeto oculto requiere su nombre completo', keptPrivate && (await sermon.count()) === 0);
+    await itemSearch.fill('Sermon');
+    await page.locator('#dialog-form').getByRole('button', { name: 'Guardar' }).click();
+    await page.getByRole('button', { name: 'Sermon', exact: true }).waitFor();
+    await page.reload();
+    await page.getByRole('button', { name: 'Sermon', exact: true }).waitFor();
+    check(
+      'Sermon: el efecto persiste con la ficha y solo cambia los d20 bajos',
+      await page.evaluate(() => {
+        const originalRandom = crypto.getRandomValues;
+        const values = [0, 6, 1, 0, 19, 0, 0];
+        crypto.getRandomValues = array => {
+          array[0] = values.shift();
+          return array;
+        };
+        try {
+          const lower = characterD20(1);
+          const upper = characterD20(13);
+          const naturalHigh = characterD20(18);
+          const form = new FormData();
+          form.set('adv', 'dis');
+          const result = RollUI.readD20(form);
+          return (
+            lower === 14 &&
+            upper === 20 &&
+            naturalHigh === 18 &&
+            result.kept === 14 &&
+            result.rolls.join() === '14,20' &&
+            roll(8)[0] === 1 &&
+            roll(20)[0] === 1
+          );
+        } finally {
+          crypto.getRandomValues = originalRandom;
+        }
+      }),
+    );
+    await page.getByRole('button', { name: 'Restar Sermon' }).click();
+    check('Sermon: al quitarlo se vuelve a tirar normalmente', (await page.evaluate(() => characterD20(1))) === 1);
+
     // 7. Identidad visual: la clase tiñe la ficha y el jugador puede elegir otro color.
     await page.goto(base + 'index.html?abrir#character');
     await page.waitForSelector('#persona-card');

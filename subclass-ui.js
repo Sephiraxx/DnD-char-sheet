@@ -167,7 +167,7 @@ const SubclassUI = (() => {
             result = (result ? result + ' · ' : '') + c.name + ' en Compañeros';
           }
           if (u.portent) {
-            s.portent = roll(20, u.portent(again.x));
+            s.portent = Array.from({ length: u.portent(again.x) }, () => characterD20());
             result = 'tus d20 de Presagio: ' + s.portent.join(', ');
           }
           if (u.slots) result = `recuperás espacios que sumen hasta ${u.slots(r.x)} niveles (ajustalos en Recursos)`;

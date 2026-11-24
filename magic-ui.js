@@ -241,7 +241,7 @@ const MagicUI = (() => {
           : ''
       }${sp.concentration && state.concentration ? `<p class="small">Al lanzarlo termina tu concentración en ${esc(Rules.allSpells(state).find(s => s.id === state.concentration)?.name || 'otro conjuro')}.</p>` : ''}`,
       () => {
-        const rolled = check ? window.roll(20, 1)[0] : null,
+        const rolled = check ? characterD20() : null,
           ok = !check || rolled + mod >= 10 + sp.level;
         commit(`${x.name}: ${ok ? 'leído' : 'falló la prueba'}`, s => {
           const r = s.inventory.find(y => y.id === id);
