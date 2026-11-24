@@ -2228,16 +2228,49 @@ button.cc-stat {
   max-height: clamp(8rem, 38vh, 18rem);
   object-fit: contain;
 }
-.mini-colors {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.4rem;
-  margin-top: 0.6rem;
+.mini-stand {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 1;
 }
-.mini-colors input {
-  width: 100%;
+.mini-parts {
   min-width: 0;
+}
+.mini-group {
+  min-width: 0;
+  margin: 0 0 0.7rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.mini-group legend {
+  color: var(--gold);
+  padding: 0 0.35rem;
+}
+.mini-group select,
+.mini-group input {
+  min-width: 0;
+  max-width: 100%;
+}
+.mini-group input[type='color'] {
+  width: 100%;
   padding: 0.12rem;
+}
+.mini-group .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 0.5rem;
+}
+.mini-preset {
+  margin-bottom: 0.8rem;
+}
+.mini-zoom[aria-pressed='true'] {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+@media (max-height: 450px) {
+  .mini-stand {
+    position: static;
+  }
 }
 .mini-stand input {
   width: 100%;
@@ -2246,6 +2279,22 @@ button.cc-stat {
 @media (max-width: 560px) {
   .mini-workbench {
     grid-template-columns: 1fr;
+  }
+  .mini-stand {
+    grid-template-columns: minmax(5rem, 0.8fr) minmax(0, 1.2fr);
+    align-items: center;
+    gap: 0.25rem 0.6rem;
+    top: 0;
+  }
+  .mini-stand #mini-preview {
+    grid-row: span 2;
+    height: 6.25rem;
+  }
+  .mini-stand .field {
+    margin: 0;
+  }
+  .mini-zoom {
+    padding: 0.35rem 0.55rem;
   }
   .mini-parts .form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

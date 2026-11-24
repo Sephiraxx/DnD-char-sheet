@@ -30,7 +30,7 @@
       const level = 0.16 + (y - 0.16) * scale;
       return [rx * scale, level * cp - rz * scale * sp, rz * scale * cp + level * sp];
     }
-    function polygon(points, color) {
+    function polygon(points, color, edge = 0.002) {
       const p = points.map(camera),
         [a, b, c] = p;
       const u = b.map((v, i) => v - a[i]),
@@ -41,7 +41,7 @@
       if (nz <= 0) return;
       const light = 0.74 + 0.43 * Math.max(0, (-0.46 * nx + 0.72 * ny + 0.52 * nz) / (Math.hypot(nx, ny, nz) || 1));
       const rgb = [1, 3, 5].map(i => Math.min(255, Math.round(parseInt(color.slice(i, i + 2), 16) * light)));
-      faces.push({ p, z: p.reduce((sum, n) => sum + n[2], 0) / p.length, color: 'rgb(' + rgb.join(',') + ')' });
+      faces.push({ p, edge, z: p.reduce((sum, n) => sum + n[2], 0) / p.length, color: 'rgb(' + rgb.join(',') + ')' });
     }
     // Secciones horizontales [altura, radio X, radio Z, desplazamiento X, desplazamiento Z].
     function form(x, y, z, sections, color, sides = 12) {
@@ -121,9 +121,9 @@
       polygon(from.slice().reverse(), color);
       polygon(to, color);
     }
-    function membrane(a, b, c, color) {
-      polygon([a, b, c], color);
-      polygon([c, b, a], color);
+    function membrane(a, b, c, color, edge) {
+      polygon([a, b, c], color, edge);
+      polygon([c, b, a], color, edge);
     }
     function base(gold) {
       form(
@@ -151,17 +151,20 @@
         24,
       );
     }
-    function paint(ctx, size, zoom) {
+    function paint(ctx, size, zoom, focus) {
       ctx.save();
       const scale = size * zoom;
-      ctx.translate(size * 0.5, size * 0.89);
+      if (focus) {
+        const [x, y] = camera(focus);
+        ctx.translate(size * 0.5 - x * scale, size * 0.5 + y * scale);
+      } else ctx.translate(size * 0.5, size * 0.89);
       ctx.scale(scale, -scale);
       for (const f of faces.sort((a, b) => a.z - b.z)) {
         ctx.beginPath();
         f.p.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
         ctx.closePath();
         ctx.fillStyle = ctx.strokeStyle = f.color;
-        ctx.lineWidth = 0.002;
+        ctx.lineWidth = f.edge;
         ctx.fill();
         ctx.stroke();
       }
