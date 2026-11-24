@@ -731,6 +731,11 @@
     const finite = (v, a, b) => typeof v === 'number' && Number.isFinite(v) && v >= a && v <= b;
     if (!o || o.schema !== 1 || !int(o.level, 1, 20) || !txt(o.name, 100)) fail();
     for (const flag of ['friendlyNpc', 'enemyNpc']) if (o[flag] !== undefined && typeof o[flag] !== 'boolean') fail();
+    if (o.miniature != null && root.Miniatures) {
+      const miniature = root.Miniatures.clean(o.miniature);
+      if (!miniature) fail();
+      o.miniature = miniature;
+    }
     if (o.portrait !== undefined && o.portrait !== null) {
       const p = o.portrait;
       if (

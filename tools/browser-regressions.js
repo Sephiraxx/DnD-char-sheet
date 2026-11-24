@@ -222,6 +222,28 @@ async function main() {
       ),
     );
 
+    await page.getByRole('button', { name: 'Crear miniatura' }).click();
+    await page.getByLabel('Raza de la miniatura').selectOption('orc');
+    await page.getByLabel('Género').selectOption('woman');
+    await page.getByLabel('Altura (cm)').fill('187');
+    await page.getByLabel('Arma o accesorio').selectOption('hammer');
+    const miniSnapshot = () => page.locator('#mini-preview').evaluate(c => c.toDataURL());
+    const firstMini = await miniSnapshot();
+    await page.locator('[name=facing]').focus();
+    await page.locator('[name=facing]').press('End');
+    check('Miniaturas: la vista previa gira en el editor', firstMini !== (await miniSnapshot()));
+    await page.getByRole('button', { name: 'Guardar miniatura' }).click();
+    await page.reload();
+    await page.getByRole('button', { name: 'Editar miniatura' }).click();
+    check(
+      'Miniaturas: raza, género, altura y arma siguen en la ficha tras recargar',
+      (await page.getByLabel('Raza de la miniatura').inputValue()) === 'orc' &&
+        (await page.getByLabel('Género').inputValue()) === 'woman' &&
+        (await page.getByLabel('Altura (cm)').inputValue()) === '187' &&
+        (await page.getByLabel('Arma o accesorio').inputValue()) === 'hammer',
+    );
+    await page.getByRole('button', { name: 'Quitar miniatura' }).click();
+    await page.getByRole('button', { name: 'Crear miniatura' }).waitFor();
     // 8. Tiradas: la tarjeta aparece y queda en el resultado.
     await page.evaluate(() => RollFX.show({ label: 'Prueba', total: 17, face: 14, detail: 'd20 (14) + 3' }));
     await page.waitForSelector('.roll-card.settled');
@@ -913,6 +935,7 @@ async function main() {
     const display = await opened;
     display.on('pageerror', e => errors.push(e.message));
     await display.locator('#player-screen-party time').filter({ hasText: '21:45' }).waitFor();
+    await display.locator('.screen-clock [aria-label="Noche"]').waitFor();
     await display.waitForFunction(() => Board._state().fogOn && !!window.boardChanged);
     check(
       'Pantalla para jugadores: la pestaña independiente mantiene la niebla y oculta las herramientas',
@@ -963,14 +986,35 @@ async function main() {
       await display.evaluate(() => Board._state().casts.every(c => c.kind === 'lightning')),
     );
     await display.waitForFunction(() => Board._state().casts.length === 0);
-    const sidebar = display.locator('#player-screen-party');
+    const overlays = display.locator('#player-screen-party');
     check(
-      'Pantalla para jugadores: muestra fecha, PG, ronda y turno sin revelar la criatura oculta',
-      (await sidebar.innerText()).includes('4 de Mes 1, año 930') &&
-        (await sidebar.innerText()).includes('ronda 2') &&
-        (await sidebar.locator('meter').count()) > 0 &&
-        (await sidebar.locator('[aria-current]').innerText()).includes('Lyra') &&
-        !(await sidebar.innerText()).includes('Acechador secreto'),
+      'Pantalla para jugadores: muestra fecha, PG e iniciativa con inicial y nombre, sin revelar criaturas ocultas',
+      (await overlays.innerText()).includes('4 de Mes 1, año 930') &&
+        (await overlays.locator('.screen-initiative li').allTextContents()).join(',') === 'LLyra' &&
+        (await overlays.locator('meter').count()) > 0 &&
+        (await overlays.locator('[aria-current]').innerText()).includes('Lyra') &&
+        !(await overlays.innerText()).includes('Acechador secreto'),
+    );
+    check(
+      'Pantalla para jugadores: el mapa ocupa todo el ancho con reloj, party e iniciativa superpuestos',
+      await display.evaluate(() => {
+        const rect = sel => document.querySelector(sel).getBoundingClientRect();
+        const map = rect('#board'),
+          clock = rect('.screen-clock'),
+          party = rect('.screen-roster'),
+          turns = rect('.screen-initiative');
+        return (
+          Math.abs(map.width - document.documentElement.clientWidth) <= 1 &&
+          clock.left - map.left < 32 &&
+          clock.top - map.top < 32 &&
+          getComputedStyle(document.querySelector('.screen-clock')).backgroundColor === 'rgba(0, 0, 0, 0)' &&
+          map.bottom - party.bottom < 32 &&
+          Math.abs((party.left + party.right - map.left - map.right) / 2) < 2 &&
+          map.right - turns.right < 32 &&
+          turns.bottom <= party.top &&
+          turns.top >= clock.bottom
+        );
+      }),
     );
     await device.evaluate(cal => {
       party.campaign.settings.calendar = cal;
@@ -978,21 +1022,62 @@ async function main() {
       draw();
     }, displayParty.campaign.settings.calendar);
     await device.getByRole('button', { name: 'Cambiar hora' }).click();
-    await device.getByLabel('Hora', { exact: true }).fill('23:15');
+    await device.getByLabel('Hora', { exact: true }).fill('06:00');
     // El servidor simulado devuelve la hora guardada cuando la otra pestaña recibe el aviso.
-    displayParty.campaign.settings.calendar.time = '23:15';
+    displayParty.campaign.settings.calendar.time = '06:00';
     await device.getByRole('button', { name: 'Guardar', exact: true }).click();
-    await sidebar.locator('time').filter({ hasText: '23:15' }).waitFor();
+    await overlays.locator('time').filter({ hasText: '06:00' }).waitFor();
+    check(
+      'Reloj del mundo: al pasar de noche a día aparece el sol',
+      await overlays.locator('.clock-sky.day').isVisible(),
+    );
     const hero = displayParty.characters.find(c => c.id === representative);
+    hero.data.miniature = { race: 'elf', gear: 'lute', height: 182 };
+    await display.evaluate(
+      ({ character, map }) => {
+        const sprite = Miniatures.sprite;
+        Miniatures.sprite = model => {
+          window.seenMini = model;
+          return sprite(model);
+        };
+        window.boardChanged('map_tokens', {
+          eventType: 'INSERT',
+          new: {
+            id: 'token-musico',
+            character_id: character,
+            map_id: map,
+            kind: 'pc',
+            name: 'Lyra',
+            x: 2,
+            y: 2,
+            size: 1,
+          },
+        });
+      },
+      { character: hero.id, map: liveMap.id },
+    );
     hero.updated_at = 'updated';
     hero.data.hp = 0;
     displayParty.encounter.current_id = 'hidden';
     await display.evaluate(() => window.partyChanged('characters'));
-    await sidebar.locator('meter[value="0"]').first().waitFor();
+    await overlays.locator('meter[value="0"]').first().waitFor();
     check(
       'Pantalla para jugadores: los PG en cero y el turno oculto se actualizan en vivo',
-      (await sidebar.locator('li').filter({ hasText: 'Lyra' }).locator('meter[value="0"]').count()) === 1 &&
-        (await sidebar.locator('[aria-current]').count()) === 0,
+      (await overlays.locator('li').filter({ hasText: 'Lyra' }).locator('meter[value="0"]').count()) === 1 &&
+        (await overlays.locator('[aria-current]').count()) === 0,
+    );
+    await display.waitForFunction(() => window.seenMini?.gear === 'lute');
+    check(
+      'Miniaturas: la pantalla de jugadores dibuja la figura de la ficha vinculada',
+      await display.evaluate(() => window.seenMini.race === 'elf' && window.seenMini.height === 182),
+    );
+    displayParty.encounter.active = false;
+    await display.evaluate(() => window.partyChanged('encounter'));
+    await overlays.locator('.screen-initiative').waitFor({ state: 'hidden' });
+    check(
+      'Pantalla para jugadores: al terminar la iniciativa se retira la lista aunque queden combatientes',
+      (await overlays.locator('.screen-initiative li').count()) === 0 &&
+        (await overlays.locator('.screen-roster').isVisible()),
     );
     displayBoard = { board: { map_id: null }, maps: [{ id: 'prep', name: 'Mapa secreto' }], tokens: [] };
     await display.evaluate(
@@ -1002,7 +1087,7 @@ async function main() {
     await display.locator('#screen-map-empty').waitFor();
     check(
       'Pantalla para jugadores: sin mapa público sigue mostrando la party y oculta los mapas preparados',
-      (await sidebar.isVisible()) && !(await display.locator('body').innerText()).includes('Mapa secreto'),
+      (await overlays.isVisible()) && !(await display.locator('body').innerText()).includes('Mapa secreto'),
     );
     await device.evaluate(() => {
       Object.defineProperty(navigator, 'userAgent', { value: 'Mozilla/5.0 (Linux; Android) Mobile' });

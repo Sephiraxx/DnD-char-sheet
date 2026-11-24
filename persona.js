@@ -211,7 +211,7 @@ const Persona = (() => {
       tools = globalThis.Grants ? Grants.proficiencies(s, 'tool') : [],
       empty = !Object.keys(p).length;
     return (
-      `<section class="card section-space" id="persona-card"><div class="card-header"><h2>Personalidad e historia</h2><div class="actions">${button('Color de la ficha', 'persona-color')}${button('Idiomas y herramientas', 'persona-profs')}${button('Editar', 'persona-edit')}</div></div>` +
+      `<section class="card section-space" id="persona-card"><div class="card-header"><h2>Personalidad e historia</h2><div class="actions">${button(s.miniature ? 'Editar miniatura' : 'Crear miniatura', 'persona-mini')}${button('Color de la ficha', 'persona-color')}${button('Idiomas y herramientas', 'persona-profs')}${button('Editar', 'persona-edit')}</div></div>` +
       (empty
         ? '<p class="small muted">Todavía no anotaste alineamiento, personalidad, apariencia ni historia. Tocá «Editar».</p>'
         : `<div class="grid two"><div>${row('Alineamiento', p.alignment)}${row('Deidad o fe', p.deity)}${look ? `<p><b>Apariencia:</b> ${cap(look)}</p>` : ''}${p.appearance ? `<p class="persona-text">${E(p.appearance)}</p>` : ''}</div><div>${LONG.filter(
@@ -240,6 +240,57 @@ const Persona = (() => {
         setExtra(s, 'tool', readExtra(fd, 'tool'));
       }),
     );
+  }
+  function editMiniature() {
+    const model = Miniatures.clean(state.miniature) || Miniatures.initial(state);
+    const labels = {
+      race: 'Raza de la miniatura',
+      gender: 'Género',
+      build: 'Complexión',
+      ears: 'Orejas y cuernos',
+      hair: 'Pelo',
+      outfit: 'Ropa',
+      gear: 'Arma o accesorio',
+      pose: 'Postura',
+    };
+    const pick = key => select(labels[key], key, Object.entries(Miniatures.parts[key]), model[key]);
+    const colors = { skin: 'Piel', hairColor: 'Pelo', cloth: 'Ropa', accent: 'Detalles' };
+    const knobs = Object.entries(colors)
+      .map(([k, l]) => field(l, k, model[k], 'color'))
+      .join('');
+    const read = fd =>
+      Miniatures.clean({
+        ...Object.fromEntries(fd),
+        height: number(fd, 'height', 50, 300),
+        facing: Number(fd.get('facing')),
+      });
+    modal(
+      'Miniatura del personaje',
+      `<div class="mini-workbench"><div class="mini-stand"><canvas id="mini-preview" width="360" height="360" aria-label="Vista previa de la miniatura"></canvas><label class="field">Girar miniatura<input type="range" name="facing" min="0" max="359" value="${model.facing}"></label></div><div class="mini-parts"><div class="form-grid">${pick('race')}${field('Altura (cm)', 'height', model.height, 'number', 'min="50" max="300" step="1" required')}${['gender', 'build', 'ears', 'hair', 'outfit', 'gear', 'pose'].map(pick).join('')}</div><div class="mini-colors">${knobs}</div></div></div>${state.miniature ? button('Quitar miniatura', 'persona-mini-remove', 'secondary') : ''}`,
+      fd => {
+        const mini = read(fd);
+        commit('Miniatura actualizada', s => {
+          s.miniature = mini;
+        });
+      },
+      'Guardar miniatura',
+    );
+    const form = document.getElementById('dialog-form'),
+      canvas = form.querySelector('#mini-preview'),
+      ctx = canvas.getContext('2d');
+    const preview = () => {
+      if (!form.elements.height.validity.valid) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      Miniatures.draw(ctx, read(new FormData(form)), canvas.width);
+    };
+    form.addEventListener('input', preview);
+    preview();
+  }
+  function removeMiniature() {
+    commit('Miniatura retirada', s => {
+      delete s.miniature;
+    });
+    document.getElementById('modal').close();
   }
   function editColor() {
     const cur = isColor(state.sheetColor) ? state.sheetColor.toLowerCase() : '',
@@ -311,7 +362,13 @@ const Persona = (() => {
     );
   }
   function install() {
-    Object.assign(actions, { 'persona-edit': edit, 'persona-profs': editProfs, 'persona-color': editColor });
+    Object.assign(actions, {
+      'persona-mini': editMiniature,
+      'persona-mini-remove': removeMiniature,
+      'persona-edit': edit,
+      'persona-profs': editProfs,
+      'persona-color': editColor,
+    });
   }
   return {
     ALIGNMENTS,

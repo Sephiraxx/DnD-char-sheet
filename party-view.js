@@ -58,6 +58,7 @@
       death: s.death,
       onTurn: Boolean(c.active && c.onTurn),
       heroic: Boolean(s.heroicInspiration),
+      miniature: root.Miniatures?.clean(s.miniature) || null,
       portrait:
         typeof s.portrait?.data === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(s.portrait.data)
           ? s.portrait.data
@@ -88,6 +89,7 @@
       friendlyNpc: x.friendlyNpc === true,
       cls: /^[a-z]+$/.test(text(x.cls)) ? x.cls : '',
       color: /^#[0-9a-f]{6}$/i.test(text(x.color)) ? x.color : '',
+      miniature: root.Miniatures?.clean(x.miniature) || null,
       portrait: /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(text(x.portrait)) ? x.portrait : '',
       hp: n(x.hp, null),
       maxHP: n(x.maxHP, 1),
