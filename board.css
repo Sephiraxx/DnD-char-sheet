@@ -592,3 +592,96 @@ html.board-open body {
   width: 100%;
   height: auto;
 }
+
+/* Pantalla de la mesa para un segundo monitor. */
+@media (hover: none) and (pointer: coarse) {
+  .dm-toolbar .player-screen-link {
+    display: none;
+  }
+}
+.player-screen .board-shell {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.player-screen .board-top {
+  position: static;
+  opacity: 1;
+  padding: 0.6rem 1.2rem;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--panel);
+}
+.player-screen .board-title span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.player-screen .board-turn {
+  display: none;
+}
+#screen-map-empty:not([hidden]) {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: var(--muted);
+  text-align: center;
+  pointer-events: none;
+}
+#player-screen-party {
+  flex: 0 0 clamp(16rem, 27vw, 30rem);
+  min-height: 0;
+  overflow: auto;
+  padding: 0 1.2rem;
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+  font-size: clamp(1rem, 1.35vw, 1.55rem);
+  overflow-wrap: anywhere;
+}
+#player-screen-party section {
+  padding: 1em 0;
+  border-bottom: 1px solid var(--line);
+}
+#player-screen-party h2 {
+  margin: 0 0 0.5em;
+  color: var(--gold);
+  font-size: 1.1em;
+}
+#player-screen-party p {
+  margin: 0.2em 0;
+}
+#player-screen-party ul,
+#player-screen-party ol {
+  display: grid;
+  gap: 0.3em;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+#player-screen-party li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  padding: 0.3em 0.4em;
+  border-radius: 4px;
+}
+.screen-roster li {
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+.screen-roster span,
+.screen-init {
+  font-variant-numeric: tabular-nums;
+}
+#player-screen-party [aria-current] {
+  background: var(--gold);
+  color: #142124;
+}
+#player-screen-party small {
+  margin-left: auto;
+}
+.screen-roster meter {
+  width: 100%;
+  height: 0.5em;
+  accent-color: var(--gold);
+}

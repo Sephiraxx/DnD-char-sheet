@@ -6,6 +6,7 @@ const DmTools = (() => {
   const settings = () => Cloud.cleanSettings(party?.campaign.settings || {});
   async function save(patch) {
     party.campaign.settings = await Cloud.updateSettings(current, { ...party.campaign.settings, ...patch });
+    if (patch.calendar) localStorage.setItem('dnd-calendar-update-' + current, String(Date.now()));
     draw();
   }
   const area = (label, name, value = '', max = 800, rows = 3) =>
@@ -23,7 +24,7 @@ const DmTools = (() => {
         .filter(n => n.year > c.year || (n.year === c.year && n.day > c.day))
         .sort((a, b) => a.year - b.year || a.day - b.day)
         .slice(0, 3);
-    return `<p class="chron-date"><b>${esc(C.dateText(c))}</b></p>${today.map(n => `<p class="small">📌 ${esc(n.text)}</p>`).join('')}${next.map(n => `<p class="small muted">${esc(C.dateText(c, n.day, n.year))}: ${esc(n.text)}</p>`).join('')}<div class="actions">${button('+1 día', 'cal-advance', 'secondary', 'data-days="1"')}${button('+1 semana', 'cal-advance', 'secondary', `data-days="${c.week}"`)}${button('Avanzar…', 'cal-jump', 'text-btn')}${button('Anotar fecha', 'cal-note', 'text-btn')}${button('Configurar', 'cal-setup', 'text-btn')}</div>`;
+    return `<p class="chron-date"><b>${esc(C.dateText(c))}</b>${c.time ? ` · ${esc(c.time)}` : ''}</p>${today.map(n => `<p class="small">📌 ${esc(n.text)}</p>`).join('')}${next.map(n => `<p class="small muted">${esc(C.dateText(c, n.day, n.year))}: ${esc(n.text)}</p>`).join('')}<div class="actions">${button('+1 día', 'cal-advance', 'secondary', 'data-days="1"')}${button('+1 semana', 'cal-advance', 'secondary', `data-days="${c.week}"`)}${button('Avanzar…', 'cal-jump', 'text-btn')}${button('Anotar fecha', 'cal-note', 'text-btn')}${button('Cambiar hora', 'cal-time', 'secondary')}${button('Configurar', 'cal-setup', 'text-btn')}</div>`;
   }
   async function advance(days) {
     const st = settings();
@@ -38,7 +39,7 @@ const DmTools = (() => {
       d = C.date(c);
     modal(
       'Calendario del mundo',
-      `<p class="small">Un mes por línea: <b>nombre, días</b>. Podés usar el calendario de tu ambientación.</p>${area('Meses', 'months', c.months.map(m => `${m.name}, ${m.days}`).join('\n'), 1200, 8)}<div class="form-grid">${field('Días por semana', 'week', c.week, 'number', 'min="1" max="20" required')}${field('Año actual', 'year', c.year, 'number', 'min="-100000" max="100000" required')}${field('Mes actual (número)', 'month', d.month + 1, 'number', 'min="1" max="24" required')}${field('Día del mes', 'dom', d.dayOfMonth, 'number', 'min="1" max="100" required')}</div>`,
+      `<p class="small">Un mes por línea: <b>nombre, días</b>. Podés usar el calendario de tu ambientación.</p>${area('Meses', 'months', c.months.map(m => `${m.name}, ${m.days}`).join('\n'), 1200, 8)}<div class="form-grid">${field('Días por semana', 'week', c.week, 'number', 'min="1" max="20" required')}${field('Año actual', 'year', c.year, 'number', 'min="-100000" max="100000" required')}${field('Mes actual (número)', 'month', d.month + 1, 'number', 'min="1" max="24" required')}${field('Día del mes', 'dom', d.dayOfMonth, 'number', 'min="1" max="100" required')}${field('Hora del mundo', 'time', c.time, 'time')}</div>`,
       async fd => {
         const months = str(fd, 'months')
           .split('\n')
@@ -48,7 +49,7 @@ const DmTools = (() => {
           })
           .filter(m => m.name);
         if (!months.length) throw Error('Escribí al menos un mes.');
-        const base = C.cleanCalendar({ ...c, months, week: int(fd, 'week', 1, 20), day: 0 });
+        const base = C.cleanCalendar({ ...c, months, time: str(fd, 'time'), week: int(fd, 'week', 1, 20), day: 0 });
         await save({
           calendar: C.setDate(
             base,
@@ -392,6 +393,13 @@ const DmTools = (() => {
   }
   Object.assign(actions, {
     'cal-setup': setup,
+    'cal-time': () =>
+      modal(
+        'Hora del mundo',
+        field('Hora', 'time', settings().calendar.time, 'time'),
+        fd => save({ calendar: { ...settings().calendar, time: str(fd, 'time') } }),
+        'Guardar',
+      ),
     'cal-advance': el => advance(Number(el.dataset.days) || 1),
     'cal-jump': jump,
     'cal-note': note,

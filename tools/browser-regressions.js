@@ -772,6 +772,92 @@ async function main() {
       'Otro dispositivo: recibe la niebla guardada tras recuperar la conexión',
       await device.evaluate(() => Board._state().fogOn),
     );
+    await device.getByRole('button', { name: 'Cerrar el tablero' }).click();
+    await device.setViewportSize({ width: 1440, height: 900 });
+    const screenLink = device.getByRole('link', { name: 'Pantalla para jugadores' });
+    const displayParty = structuredClone(sharedParty);
+    displayParty.campaign.settings.calendar = { year: 930, day: 3, time: '21:45' };
+    displayParty.combatants = [
+      { id: 'ally', name: 'Lyra', init: 12 },
+      { id: 'hidden', name: 'Acechador secreto', hidden: true, init: 20 },
+    ];
+    displayParty.encounter = { active: true, current_id: 'ally', round: 2 };
+    let displayBoard = structuredClone(readBoard(sharedParty.campaign.id));
+    await device.context().exposeFunction('displayParty', () => displayParty);
+    await device.context().exposeFunction('displayBoard', () => displayBoard);
+    await device.context().route('**/cloud.js', route =>
+      route.fulfill({
+        contentType: 'application/javascript',
+        body:
+          fs.readFileSync(path.join(ROOT, 'cloud.js'), 'utf8') +
+          `
+        Object.assign(Cloud, {
+          enabled: true, user: async () => ({id: 'dm'}), party: displayParty, board: displayBoard,
+          subscribe: async (_, handler) => { window.partyChanged = handler; },
+          subscribeBoard: async (_, handler) => { window.boardChanged = handler; return {close() {}}; }
+        });`,
+      }),
+    );
+    const opened = device.waitForEvent('popup');
+    await screenLink.click();
+    const display = await opened;
+    display.on('pageerror', e => errors.push(e.message));
+    await display.locator('#player-screen-party time').filter({ hasText: '21:45' }).waitFor();
+    await display.waitForFunction(() => Board._state().fogOn && !!window.boardChanged);
+    check(
+      'Pantalla para jugadores: la pestaña independiente mantiene la niebla y oculta las herramientas',
+      (await display.title()) === 'Pantalla para jugadores' &&
+        (await device.title()) !== (await display.title()) &&
+        (await display.locator('#board-tools button').count()) === 0 &&
+        !(await display.evaluate(() => Board._state().isDM)),
+    );
+    const sidebar = display.locator('#player-screen-party');
+    check(
+      'Pantalla para jugadores: muestra fecha, PG, ronda y turno sin revelar la criatura oculta',
+      (await sidebar.innerText()).includes('4 de Mes 1, año 930') &&
+        (await sidebar.innerText()).includes('ronda 2') &&
+        (await sidebar.locator('meter').count()) > 0 &&
+        (await sidebar.locator('[aria-current]').innerText()).includes('Lyra') &&
+        !(await sidebar.innerText()).includes('Acechador secreto'),
+    );
+    await device.evaluate(cal => {
+      party.campaign.settings.calendar = cal;
+      Cloud.updateSettings = async (_, settings) => Cloud.cleanSettings(settings);
+      draw();
+    }, displayParty.campaign.settings.calendar);
+    await device.getByRole('button', { name: 'Cambiar hora' }).click();
+    await device.getByLabel('Hora', { exact: true }).fill('23:15');
+    // El servidor simulado devuelve la hora guardada cuando la otra pestaña recibe el aviso.
+    displayParty.campaign.settings.calendar.time = '23:15';
+    await device.getByRole('button', { name: 'Guardar', exact: true }).click();
+    await sidebar.locator('time').filter({ hasText: '23:15' }).waitFor();
+    const hero = displayParty.characters.find(c => c.id === representative);
+    hero.updated_at = 'updated';
+    hero.data.hp = 0;
+    displayParty.encounter.current_id = 'hidden';
+    await display.evaluate(() => window.partyChanged('characters'));
+    await sidebar.locator('meter[value="0"]').first().waitFor();
+    check(
+      'Pantalla para jugadores: los PG en cero y el turno oculto se actualizan en vivo',
+      (await sidebar.locator('li').filter({ hasText: 'Lyra' }).locator('meter[value="0"]').count()) === 1 &&
+        (await sidebar.locator('[aria-current]').count()) === 0,
+    );
+    displayBoard = { board: { map_id: null }, maps: [{ id: 'prep', name: 'Mapa secreto' }], tokens: [] };
+    await display.evaluate(
+      id => window.boardChanged('boards', { new: { campaign_id: id, map_id: null } }),
+      sharedParty.campaign.id,
+    );
+    await display.locator('#screen-map-empty').waitFor();
+    check(
+      'Pantalla para jugadores: sin mapa público sigue mostrando la party y oculta los mapas preparados',
+      (await sidebar.isVisible()) && !(await display.locator('body').innerText()).includes('Mapa secreto'),
+    );
+    await device.evaluate(() => {
+      Object.defineProperty(navigator, 'userAgent', { value: 'Mozilla/5.0 (Linux; Android) Mobile' });
+      draw();
+    });
+    check('Pantalla para jugadores: el acceso está oculto en Android', (await screenLink.count()) === 0);
+    await display.close();
     await device.close();
     await dm.close();
     check('Sin errores de JavaScript', !errors.length, errors.join(' | '));

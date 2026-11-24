@@ -35,6 +35,7 @@
       perYear = list.reduce((a, m) => a + m.days, 0);
     return {
       months: list,
+      time: typeof c?.time === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(c.time) ? c.time : '',
       week: int(c?.week, 1, 20, 7),
       year: int(c?.year, -100000, 100000, 1),
       day: int(c?.day, 0, perYear - 1, 0), // día del año, desde 0

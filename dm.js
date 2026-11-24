@@ -303,8 +303,15 @@ function draw() {
   const allies = roster.filter(({ row }) => FriendlyNPC.ownedByDM(row, party.campaign));
   const list = roster.filter(({ row }) => !FriendlyNPC.ownedByDM(row, party.campaign));
   const t = tracker();
+  const mobile =
+    navigator.userAgentData?.mobile ||
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const playerScreen = mobile
+    ? ''
+    : `<a class="button secondary player-screen-link" href="./board.html?players=1#${encodeURIComponent(current)}" target="_blank" rel="noopener">Pantalla para jugadores</a>`;
   $('#main').innerHTML =
-    `<div class="dm-head"><div><p class="eyebrow">MESA EN VIVO · ${list.length} ficha${list.length === 1 ? '' : 's'}</p><h1>${esc(party.campaign.name)}</h1><p class="small muted">${settingsSummary(Cloud.cleanSettings(party.campaign.settings))}</p></div><div class="dm-code"><span>CÓDIGO</span><b>${esc(party.campaign.code)}</b>${button('Copiar', 'copy-code', 'secondary', `data-code="${esc(party.campaign.code)}"`)}</div><div class="dm-toolbar">${button('Pedir tirada a todos', 'request', '')}${button('Tablero', 'board-open', '')}${button('Mensaje a todos', 'message')}${button('Descanso corto', 'rest-short')}${button('Descanso largo', 'rest-long')}<details class="dm-menu"><summary class="button secondary">Mesa ▾</summary><div class="dm-menu-list">${button('Ajustes de la mesa', 'settings')}${button('Exportar campaña', 'export-campaign')}${button('Mis mesas', 'home')}${button('Eliminar mesa', 'delete-table', 'danger', `data-id="${esc(party.campaign.id)}" data-name="${esc(party.campaign.name)}"`)}</div></details></div></div>
+    `<div class="dm-head"><div><p class="eyebrow">MESA EN VIVO · ${list.length} ficha${list.length === 1 ? '' : 's'}</p><h1>${esc(party.campaign.name)}</h1><p class="small muted">${settingsSummary(Cloud.cleanSettings(party.campaign.settings))}</p></div><div class="dm-code"><span>CÓDIGO</span><b>${esc(party.campaign.code)}</b>${button('Copiar', 'copy-code', 'secondary', `data-code="${esc(party.campaign.code)}"`)}</div><div class="dm-toolbar">${button('Pedir tirada a todos', 'request', '')}${button('Tablero', 'board-open', '')}${playerScreen}${button('Mensaje a todos', 'message')}${button('Descanso corto', 'rest-short')}${button('Descanso largo', 'rest-long')}<details class="dm-menu"><summary class="button secondary">Mesa ▾</summary><div class="dm-menu-list">${button('Ajustes de la mesa', 'settings')}${button('Exportar campaña', 'export-campaign')}${button('Mis mesas', 'home')}${button('Eliminar mesa', 'delete-table', 'danger', `data-id="${esc(party.campaign.id)}" data-name="${esc(party.campaign.name)}"`)}</div></details></div></div>
   ${error ? `<div class="banner"><p>${esc(error)}</p>${button('Reintentar', 'refresh')}</div>` : ''}
   <div class="dm-layout"><div class="stack dm-main">
     <div class="party-grid">${

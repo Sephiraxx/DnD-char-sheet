@@ -11,7 +11,16 @@
     $ = s => document.querySelector(s);
   // board.html: página propia. En la ficha o la pantalla del DM, el tablero se monta encima al abrirlo.
   const STANDALONE = document.body.classList.contains('board-page');
-  const TV = STANDALONE && new URLSearchParams(location.search).has('tv');
+  const params = new URLSearchParams(location.search);
+  const PLAYER_SCREEN = STANDALONE && params.has('players');
+  const TV = STANDALONE && (params.has('tv') || PLAYER_SCREEN);
+  if (PLAYER_SCREEN) {
+    document.body.classList.add('board-tv', 'player-screen');
+    document.title = 'Pantalla para jugadores';
+    window.addEventListener('storage', e => {
+      if (e.key === 'dnd-calendar-update-' + S.id) onParty('calendar');
+    });
+  }
   const CELL = 70; // px por casilla en mapas sin imagen
   const MAX_IMAGE = 4096; // lado máximo de la imagen guardada
 
@@ -173,27 +182,37 @@
     }
     // Abierto desde la ficha de un jugador (actorId), siempre es la vista del jugador: aunque la cuenta
     // sea la del DM (probando en un mismo dispositivo), no muestra PG ocultos ni herramientas del DM.
-    S.isDM = S.party.campaign.dm_id === S.me.id && !H.actorId;
-    if (TV) S.asPlayer = true;
-    try {
-      const data = await Cloud.board(id);
-      if (id !== S.id) return;
-      Object.assign(S, { board: data.board, maps: data.maps, tokens: data.tokens });
-    } catch (e) {
-      if (id !== S.id) return;
-      message(
-        `<h1>El tablero todavía no está instalado</h1><p>${esc(e.message)}</p><p class="small">Quien administra la mesa tiene que ejecutar <code>supabase/migrations/008_board.sql</code> en Supabase (SQL Editor) una sola vez.</p>`,
-      );
-      return;
+    S.isDM = !TV && S.party.campaign.dm_id === S.me.id && !H.actorId;
+    if (PLAYER_SCREEN) {
+      renderPlayerScreen();
+      await Cloud.subscribe(id, onParty);
     }
+    if (TV) S.asPlayer = true;
     document.body.classList.toggle('board-tv', TV);
     resize();
-    await openMap(activeId() || (S.isDM && !TV ? S.maps[0]?.id : null));
+    try {
+      const data = await Cloud.board(id, { liveOnly: TV });
+      if (id !== S.id) return;
+      Object.assign(S, { board: data.board, maps: data.maps, tokens: data.tokens });
+      await openMap(activeId() || (S.isDM ? S.maps[0]?.id : null));
+    } catch (e) {
+      if (id !== S.id) return;
+      if (PLAYER_SCREEN) {
+        $('#screen-map-empty').textContent = 'No se pudo cargar el mapa.';
+        $('#screen-map-empty').hidden = false;
+        topBar();
+      } else {
+        message(
+          `<h1>El tablero todavía no está instalado</h1><p>${esc(e.message)}</p><p class="small">Quien administra la mesa tiene que ejecutar <code>supabase/migrations/008_board.sql</code> en Supabase (SQL Editor) una sola vez.</p>`,
+        );
+        return;
+      }
+    }
     const channel = await Cloud.subscribeBoard(id, onBoard, onMessage);
     if (id !== S.id) return channel.close();
     S.channel = channel;
     // Dentro de la ficha o la pantalla del DM, la página ya escucha la mesa y avisa con Board.onParty.
-    if (STANDALONE) await Cloud.subscribe(S.id, onParty);
+    if (STANDALONE && !PLAYER_SCREEN) await Cloud.subscribe(S.id, onParty);
     await refreshPrepared();
     if (S.isDM && !TV) ensureTokens();
     turnChanged();
@@ -224,6 +243,10 @@
     S.fitted = false;
     S.touched = false;
     const m = currentMap();
+    if (PLAYER_SCREEN) {
+      $('#screen-map-empty').textContent = 'Esperando un mapa de la mesa…';
+      $('#screen-map-empty').hidden = !!m;
+    }
     loadMapFields(m);
     S.img = null;
     S.imgPath = '';
@@ -260,11 +283,13 @@
     }
     S.dirty = true;
   }
+  let reloadVersion = 0;
   async function reload() {
-    const id = S.id;
+    const id = S.id,
+      version = ++reloadVersion;
     try {
-      const data = await Cloud.board(id);
-      if (id !== S.id) return;
+      const data = await Cloud.board(id, { liveOnly: TV });
+      if (id !== S.id || version !== reloadVersion) return;
       const keep = S.mapId;
       Object.assign(S, { board: data.board, maps: data.maps, tokens: data.tokens });
       const want =
@@ -417,9 +442,8 @@
   function onBoard(table, p) {
     if (table === 'boards') {
       const was = activeId();
-      S.board = p.new?.campaign_id ? p.new : S.board;
+      S.board = p.eventType === 'DELETE' ? null : p.new?.campaign_id ? p.new : S.board;
       if (playerView() && !S.isDM) reload();
-      else if (TV && activeId() !== was) reload();
       else {
         if (S.isDM && activeId() !== was) ensureTokens();
         ui();
@@ -432,6 +456,7 @@
         if (S.mapId === p.old.id) openMap(activeId());
       } else {
         const row = p.new;
+        if (TV && row.id !== activeId()) return;
         rememberMaps([row]);
         // Ecos de mis propios guardados: no pisan lo que sigo pintando.
         const mine = S.isDM && performance.now() - (S.editedAt || 0) < 2500;
@@ -448,8 +473,9 @@
       if (p.eventType === 'DELETE') S.tokens = S.tokens.filter(t => t.id !== p.old.id);
       else {
         const row = p.new;
-        if (S.drag?.token.id === row.id) return; // lo estoy moviendo yo
-        S.tokens = [...S.tokens.filter(t => t.id !== row.id), row];
+        if (S.drag?.token?.id === row.id) return; // lo estoy moviendo yo
+        S.tokens = S.tokens.filter(t => t.id !== row.id);
+        if (!TV || (!row.hidden && row.map_id === activeId())) S.tokens.push(row);
         S.remote.delete(row.id);
       }
       if (S.sel && !S.tokens.some(t => t.id === S.sel)) S.sel = null;
@@ -473,17 +499,23 @@
     if (m.t === 'view' && S.follow && m.map === S.mapId) fitRect(m.x, m.y, m.w, m.h);
     S.dirty = true;
   }
-  let partyTimer = 0;
+  let partyTimer = 0,
+    partyVersion = 0;
   function onParty(table) {
     if (table === 'presence') return;
+    const version = ++partyVersion,
+      id = S.id;
     clearTimeout(partyTimer);
     partyTimer = setTimeout(async () => {
       try {
-        S.party = await Cloud.party(S.id);
+        const party = await Cloud.party(id);
+        if (id !== S.id || version !== partyVersion) return;
+        S.party = party;
       } catch {
         return;
       }
       if (S.isDM) ensureTokens();
+      if (PLAYER_SCREEN) renderPlayerScreen();
       S.dirty = true;
       turnChanged();
       ui();
@@ -648,7 +680,8 @@
       bits = playerView() ? seen() : null;
     return mapTokens().filter(t => {
       if (!playerView()) return true;
-      if (t.hidden) return false;
+      if (t.hidden || (t.combatant_id && S.party?.combatants?.some(c => c.id === t.combatant_id && c.hidden)))
+        return false;
       if (mine.includes(t.character_id) || t.kind === 'pc') return true;
       // En la niebla, o fuera de la vista de la party, no se ven las fichas.
       const c = Math.round(t.x + (t.size - 1) / 2),
@@ -1312,6 +1345,10 @@
     press = { p, at: performance.now(), moved: false, timer: 0 };
     const tool = S.tool;
     if (tool === 'move' || tool === 'tokens' || tool === 'enc') {
+      if (TV) {
+        S.drag = { pan: { x: S.view.x, y: S.view.y, p } };
+        return;
+      }
       const t = hitToken(w);
       const group = t && S.group && t.stage?.startsWith('enc:' + S.group + ':') ? groupTokens(S.group) : null;
       if (t && canMove(t))
@@ -1416,7 +1453,7 @@
       // Mayúsculas o Alt al soltar: movimiento libre (empujón, teletransporte…), no provoca.
       d.free = e.shiftKey || e.altKey;
       dropToken(d);
-    } else if (d?.pan && !press?.moved) {
+    } else if (d?.pan && !press?.moved && !TV) {
       // Tocar una puerta o una escalera sin ficha encima: se abre, se cierra o se sube.
       if (S.tool === 'props') S.propHover = null;
       else if (d.tap || S.tool !== 'move' || !tapCell(toCell(toWorld(press.p.x, press.p.y)))) tapToken(d.tap);
@@ -2063,10 +2100,45 @@
     turn();
     S.dirty = true;
   }
+  function renderPlayerScreen() {
+    const party = S.party;
+    const calendar = party.campaign.settings?.calendar;
+    const date = calendar && Chronicle.cleanCalendar(calendar);
+    const roster = party.characters.map(row => {
+      const pc = summary(row);
+      const hp = pc.broken
+        ? 'PG sin datos'
+        : `${pc.hp ?? '—'} / ${pc.maxHP} PG${pc.temp ? ` · +${pc.temp} temp.` : ''}`;
+      const meter =
+        pc.hp != null && pc.maxHP > 0
+          ? `<meter aria-label="Puntos de golpe" min="0" max="${esc(pc.maxHP)}" value="${esc(pc.hp)}"></meter>`
+          : '';
+      return `<li><b>${esc(pc.name || row.name)}</b><span>${esc(hp)}</span>${meter}</li>`;
+    });
+    const enc = party.encounter;
+    const initiative = Cloud.order(
+      party.combatants.filter(c => !c.hidden),
+      enc?.active,
+    ).map((c, i) => {
+      const current = enc?.active && enc.current_id === c.id;
+      const value = (enc?.initiative_mode || 'individual') === 'individual' ? (c.init ?? '—') : i + 1;
+      return `<li${current ? ' aria-current="step"' : ''}><span class="screen-init">${esc(value)}</span><b>${esc(c.name)}</b>${current ? '<small>Turno</small>' : ''}</li>`;
+    });
+    const el = $('#player-screen-party');
+    el.hidden = false;
+    el.innerHTML = `<section><h2>Fecha del mundo</h2><p class="screen-date">${date ? esc(Chronicle.dateText(date)) : 'Sin fecha'}</p><p>${date?.time ? `<time>${esc(date.time)}</time>` : 'Hora sin definir'}</p></section>
+      <section><h2>Party</h2>${roster.length ? `<ul class="screen-roster">${roster.join('')}</ul>` : '<p>Sin personajes en la mesa.</p>'}</section>
+      <section><h2>Iniciativa${enc?.active ? ` · ronda ${esc(enc.round)}` : ''}</h2>${initiative.length ? `<ol>${initiative.join('')}</ol>` : '<p>Sin iniciativa.</p>'}</section>`;
+  }
   function topBar() {
     const m = currentMap(),
       live = m && m.id === activeId();
     const back = S.isDM ? `./dm.html#${encodeURIComponent(S.id)}` : './#table';
+    if (PLAYER_SCREEN) {
+      $('#board-top').innerHTML =
+        `<div class="board-title"><b>${esc(S.party?.campaign.name || '')}</b><span>${esc(m?.name || 'Tablero')}</span></div><button type="button" class="icon-btn" data-action="bd-fullscreen" aria-label="Pantalla completa" title="Pantalla completa">⛶</button>`;
+      return;
+    }
     $('#board-top').innerHTML = TV
       ? `<span class="board-title">${esc(m?.name || 'Esperando un mapa…')}</span><button type="button" class="icon-btn" data-action="bd-fullscreen" title="Pantalla completa" aria-label="Pantalla completa">⛶</button>`
       : `${STANDALONE ? `<a class="icon-btn" href="${back}" aria-label="Volver" title="Volver">←</a>` : `<button type="button" class="icon-btn" data-action="bd-close" aria-label="Cerrar el tablero" title="Volver">←</button>`}<div class="board-title"><span class="eyebrow">${esc(S.party?.campaign.name || 'TABLERO')}</span><b>${esc(m?.name || (S.isDM ? 'Sin mapa' : 'Esperando al DM'))}</b>${S.isDM && m ? `<span class="tag ${live ? '' : 'warn'}">${live ? 'En la mesa' : 'Solo el DM'}</span>` : ''}</div><div class="board-top-actions">${S.isDM ? (m && !live ? button('Mostrar a la mesa', 'go-live', '') : '') + button('Mapas', 'maps') + button(S.asPlayer ? 'Vista DM' : 'Ver como jugador', 'as-player') + button('📺 Tele', 'tv') : button(S.follow ? 'Siguiendo al DM' : 'Seguir al DM', 'follow')}${typeof Sound !== 'undefined' ? Sound.toggleHTML() : ''}<button type="button" class="icon-btn" data-action="bd-fit" title="Ver todo el mapa" aria-label="Ver todo el mapa">⤢</button></div>`;
