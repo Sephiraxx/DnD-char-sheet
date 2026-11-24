@@ -223,10 +223,11 @@ async function main() {
     );
 
     await page.getByRole('button', { name: 'Crear miniatura' }).click();
-    await page.getByLabel('Raza de la miniatura').selectOption('orc');
+    await page.getByLabel('Raza de la miniatura').selectOption('minotaur');
     await page.getByLabel('Género').selectOption('woman');
     await page.getByLabel('Altura (cm)').fill('187');
-    await page.getByLabel('Arma o accesorio').selectOption('hammer');
+    await page.getByLabel('Mano principal').selectOption('hammer');
+    await page.getByLabel('Mano secundaria').selectOption('shield');
     const miniSnapshot = () => page.locator('#mini-preview').evaluate(c => c.toDataURL());
     const plainMini = await miniSnapshot();
     await page.getByLabel(/^Peinado/).selectOption('braid');
@@ -239,7 +240,8 @@ async function main() {
       'Miniaturas: el atuendo cambia el dibujo y conserva cara y arma',
       firstMini !== plainMini &&
         (await page.getByLabel('Anteojos y parches').inputValue()) === 'round' &&
-        (await page.getByLabel('Arma o accesorio').inputValue()) === 'hammer',
+        (await page.getByLabel('Mano principal').inputValue()) === 'hammer' &&
+        (await page.getByLabel('Mano secundaria').inputValue()) === 'shield',
     );
     const zoom = page.getByRole('button', { name: 'Acercar al rostro' });
     await zoom.click();
@@ -256,10 +258,11 @@ async function main() {
     await page.getByRole('button', { name: 'Editar miniatura' }).click();
     check(
       'Miniaturas: raza, género, altura y arma siguen en la ficha tras recargar',
-      (await page.getByLabel('Raza de la miniatura').inputValue()) === 'orc' &&
+      (await page.getByLabel('Raza de la miniatura').inputValue()) === 'minotaur' &&
         (await page.getByLabel('Género').inputValue()) === 'woman' &&
         (await page.getByLabel('Altura (cm)').inputValue()) === '187' &&
-        (await page.getByLabel('Arma o accesorio').inputValue()) === 'hammer',
+        (await page.getByLabel('Mano principal').inputValue()) === 'hammer' &&
+        (await page.getByLabel('Mano secundaria').inputValue()) === 'shield',
     );
     check(
       'Miniaturas: el vestuario, la cicatriz y el pelo se conservan tras recargar',
@@ -1063,7 +1066,15 @@ async function main() {
       await overlays.locator('.clock-sky.day').isVisible(),
     );
     const hero = displayParty.characters.find(c => c.id === representative);
-    hero.data.miniature = { race: 'elf', gear: 'lute', height: 182, headwear: 'cowl', neck: 'skull', scar: 'claw' };
+    hero.data.miniature = {
+      race: 'owlin',
+      offhand: 'book',
+      gear: 'lute',
+      height: 182,
+      headwear: 'cowl',
+      neck: 'skull',
+      scar: 'claw',
+    };
     await display.evaluate(
       ({ character, map }) => {
         const sprite = Miniatures.sprite;
@@ -1102,7 +1113,8 @@ async function main() {
       'Miniaturas: la pantalla de jugadores dibuja la figura de la ficha vinculada',
       await display.evaluate(
         () =>
-          window.seenMini.race === 'elf' &&
+          window.seenMini.race === 'owlin' &&
+          window.seenMini.offhand === 'book' &&
           window.seenMini.height === 182 &&
           window.seenMini.headwear === 'cowl' &&
           window.seenMini.neck === 'skull' &&

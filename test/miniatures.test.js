@@ -78,6 +78,8 @@ test('la ropa y el rostro de una miniatura se conservan al guardar y compartir l
     old = Mini.clean({ hair: 'crest', outfit: 'armor', gear: 'shield' });
   for (const key of ['headwear', 'neck', 'belt', 'eyewear', 'scar', 'beard']) assert.equal(old[key], 'none');
   assert.equal(old.hair, 'crest');
+  assert.equal(old.gear, 'shield');
+  assert.equal(old.offhand, 'none');
   const raw = {
     ...old,
     outfit: 'vestments',
@@ -89,6 +91,9 @@ test('la ropa y el rostro de una miniatura se conservan al guardar y compartir l
     eyewear: 'round',
     scar: 'claw',
     beard: 'short',
+    race: 'tortle',
+    gear: 'sword',
+    offhand: 'shield',
   };
   const sheet = ctx.Rules.validate({ ...fixture('wizard-3.json'), miniature: raw });
   const expected = Mini.clean(raw);
@@ -194,4 +199,32 @@ test('las tablas iniciales de mazmorras y muertos vivientes reconocen cada nombr
   for (const creature of curated) assert.ok(g.CreatureMiniatures.identify(creature.name), creature.name);
   const wilderness = entries(data.EncounterTablesData.tables.filter(t => t.source === 'XGE'));
   assert.ok(wilderness.filter(p => g.CreatureMiniatures.identify(p.name)).length > wilderness.length / 2);
+});
+
+test('toda raza del catálogo tiene una opción elegible y conserva el identificador de la especie', () => {
+  const { CampaignData } = load(['campaign-data.js']);
+  for (const r of CampaignData.races) {
+    const m = M.initial({ raceId: r.id, race: r.name });
+    assert.notEqual(m.race, 'other', r.id);
+    assert.ok(Object.hasOwn(M.parts.race, m.race), r.id);
+  }
+  for (const key of ['warforged', 'tabaxi', 'owlin', 'thri-kreen', 'genasi-fire', 'custom-lineage'])
+    assert.equal(M.initial({ raceId: key + '-base' }).race, key);
+  assert.equal(M.initial({ race: 'Raza casera' }).race, 'other');
+});
+test('la mano secundaria empuña cada objeto al otro lado de la miniatura', () => {
+  const blank = capture(ctx => M.draw(ctx, { facing: 0 }, 128)).flat();
+  const bounds = points => [Math.min(...points.map(p => p[0])), Math.max(...points.map(p => p[0]))];
+  const [left, right] = bounds(blank.filter(p => p[1] > 0.4));
+  for (const item of Object.keys(M.parts.gear).filter(k => k !== 'none')) {
+    const points = model =>
+      capture(ctx => M.draw(ctx, { ...model, facing: 0 }, 128))
+        .flat()
+        .filter(p => p[1] > 0.4);
+    const main = bounds(points({ gear: item })),
+      off = bounds(points({ offhand: item }));
+    assert.ok(main[1] > right && off[0] < left, item);
+    assert.ok(Math.abs(main[1] + off[0]) < 0.002, item);
+  }
+  assert.equal(M.clean({ offhand: 'invalid' }).offhand, 'none');
 });
