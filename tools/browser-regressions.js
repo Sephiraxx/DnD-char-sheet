@@ -232,7 +232,8 @@ async function main() {
     await page.getByLabel(/^Peinado/).selectOption('braid');
     await page.getByLabel(/^Cicatriz/).selectOption('claw');
     await page.getByLabel('Anteojos y parches').selectOption('round');
-    await page.getByRole('button', { name: 'Usar atuendo del Dominio de la Muerte' }).click();
+    await page.getByLabel(/^Cuello/).selectOption('pendant');
+    await page.getByRole('button', { name: 'Usar atuendo encapuchado' }).click();
     const firstMini = await miniSnapshot();
     check(
       'Miniaturas: el atuendo cambia el dibujo y conserva cara y arma',
@@ -265,7 +266,7 @@ async function main() {
       await page
         .locator('#dialog-form')
         .evaluate(f =>
-          ['cowl', 'vestments', 'skull', 'round', 'claw', 'braid', '#242530'].every(
+          ['cowl', 'vestments', 'pendant', 'round', 'claw', 'braid', '#242530'].every(
             (v, i) =>
               f.elements.namedItem(['headwear', 'outfit', 'neck', 'eyewear', 'scar', 'hair', 'headColor'][i]).value ===
               v,

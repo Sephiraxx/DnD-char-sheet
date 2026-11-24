@@ -292,7 +292,7 @@ const Persona = (() => {
       });
     modal(
       'Miniatura del personaje',
-      `<div class="mini-workbench"><div class="mini-stand"><canvas id="mini-preview" width="360" height="360" aria-label="Vista previa de la miniatura"></canvas><label class="field">Girar miniatura<input type="range" name="facing" min="0" max="359" value="${model.facing}"></label><button type="button" class="button secondary mini-zoom" data-mini-zoom aria-pressed="false">Acercar al rostro</button></div><div class="mini-parts">${dress}<button type="button" class="button secondary mini-preset" data-mini-death>Usar atuendo del Dominio de la Muerte</button>${face}${body}${palette}</div></div>${state.miniature ? button('Quitar miniatura', 'persona-mini-remove', 'secondary') : ''}`,
+      `<div class="mini-workbench"><div class="mini-stand"><canvas id="mini-preview" width="360" height="360" aria-label="Vista previa de la miniatura"></canvas><label class="field">Girar miniatura<input type="range" name="facing" min="0" max="359" value="${model.facing}"></label><button type="button" class="button secondary mini-zoom" data-mini-zoom aria-pressed="false">Acercar al rostro</button></div><div class="mini-parts">${dress}<button type="button" class="button secondary mini-preset" data-mini-hooded>Usar atuendo encapuchado</button>${face}${body}${palette}</div></div>${state.miniature ? button('Quitar miniatura', 'persona-mini-remove', 'secondary') : ''}`,
       fd => {
         const mini = read(fd);
         commit('Miniatura actualizada', s => {
@@ -315,11 +315,10 @@ const Persona = (() => {
       zoom.setAttribute('aria-pressed', String(zoom.getAttribute('aria-pressed') !== 'true'));
       preview();
     });
-    form.querySelector('[data-mini-death]').addEventListener('click', () => {
+    form.querySelector('[data-mini-hooded]').addEventListener('click', () => {
       const vestments = {
         outfit: 'vestments',
         headwear: 'cowl',
-        neck: 'skull',
         cloth: '#37323f',
         headColor: '#242530',
         accent: '#b6a589',

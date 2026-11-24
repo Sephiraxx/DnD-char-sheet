@@ -45,7 +45,7 @@
       armor: 'Armadura',
       robe: 'Vestiduras',
       cloak: 'Capa de viaje',
-      vestments: 'Vestiduras clericales',
+      vestments: 'Vestiduras con estola',
       doublet: 'Jubón',
       coat: 'Abrigo largo',
       tabard: 'Tabardo',
