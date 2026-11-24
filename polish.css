@@ -2205,3 +2205,52 @@ button.cc-stat {
 .attack-riders .check {
   margin: 6px 0 0;
 }
+
+.mini-workbench {
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.95fr) minmax(0, 1.3fr);
+  align-items: start;
+  gap: 1rem;
+}
+.mini-stand {
+  display: grid;
+  justify-items: stretch;
+  gap: 0.4rem;
+  padding: 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: radial-gradient(ellipse at 50% 47%, #375358, #172b31 72%);
+}
+#mini-preview {
+  width: 100%;
+  height: auto;
+  display: block;
+  max-height: clamp(8rem, 38vh, 18rem);
+  object-fit: contain;
+}
+.mini-colors {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+.mini-colors input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.12rem;
+}
+.mini-stand input {
+  width: 100%;
+  min-width: 0;
+}
+@media (max-width: 560px) {
+  .mini-workbench {
+    grid-template-columns: 1fr;
+  }
+  .mini-parts .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #mini-preview {
+    height: 9rem;
+  }
+}

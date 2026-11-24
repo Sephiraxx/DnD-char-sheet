@@ -659,6 +659,7 @@
           out.ring = x.maxHP ? Math.max(0, Math.min(1, (x.hp ?? x.maxHP) / x.maxHP)) : null;
           out.conditions = x.conditions;
           out.portrait = x.portrait;
+          out.miniature = x.miniature;
           out.cls = x.cls || '';
           out.color = x.color || '';
           out.speed = x.speed || 30;
@@ -1252,8 +1253,11 @@
     ctx.strokeStyle = rim;
     ctx.lineWidth = c * 0.035;
     ctx.stroke();
-    const img = portraitImg(d.portrait);
-    if (img) {
+    const img = !d.miniature && portraitImg(d.portrait);
+    if (d.miniature) {
+      const diameter = rad * 1.96;
+      ctx.drawImage(Miniatures.sprite(d.miniature), cx - diameter / 2, cy - diameter / 2, diameter, diameter);
+    } else if (img) {
       ctx.save();
       ctx.beginPath();
       ctx.arc(cx, cy, rad - c * 0.05, 0, Math.PI * 2);
@@ -2309,8 +2313,12 @@
       : [];
     const el = $('#player-screen-party');
     el.hidden = false;
+    const daylight = date?.time && Number(date.time.slice(0, 2)) >= 6 && Number(date.time.slice(0, 2)) < 18;
+    const sky = daylight
+      ? '<span class="clock-sky day" role="img" aria-label="Día">☀</span>'
+      : '<span class="clock-sky night" role="img" aria-label="Noche">☾</span>';
     el.querySelector('.screen-clock').innerHTML =
-      `${date?.time ? `<time>${esc(date.time)}</time>` : ''}${date ? `<span>${esc(Chronicle.dateText(date))}</span>` : ''}`;
+      `${date?.time ? `<time>${sky}${esc(date.time)}</time>` : ''}${date ? `<span>${esc(Chronicle.dateText(date))}</span>` : ''}`;
     const cards = el.querySelector('.screen-roster');
     cards.innerHTML = roster.join('');
     cards.hidden = !roster.length;

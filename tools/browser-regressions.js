@@ -222,6 +222,28 @@ async function main() {
       ),
     );
 
+    await page.getByRole('button', { name: 'Crear miniatura' }).click();
+    await page.getByLabel('Raza de la miniatura').selectOption('orc');
+    await page.getByLabel('Género', { exact: true }).selectOption('woman');
+    await page.getByLabel('Altura (cm)').fill('187');
+    await page.getByLabel('Arma o accesorio').selectOption('hammer');
+    const snapshot = () => page.locator('#mini-preview').evaluate(c => c.toDataURL());
+    const firstMini = await snapshot();
+    await page.locator('[name=facing]').focus();
+    await page.locator('[name=facing]').press('End');
+    check('Miniaturas: la vista previa gira en el editor', firstMini !== (await snapshot()));
+    await page.getByRole('button', { name: 'Guardar miniatura' }).click();
+    await page.reload();
+    await page.getByRole('button', { name: 'Editar miniatura' }).click();
+    check(
+      'Miniaturas: raza, género, altura y arma siguen en la ficha tras recargar',
+      (await page.getByLabel('Raza de la miniatura').inputValue()) === 'orc' &&
+        (await page.getByLabel('Género', { exact: true }).inputValue()) === 'woman' &&
+        (await page.getByLabel('Altura (cm)').inputValue()) === '187' &&
+        (await page.getByLabel('Arma o accesorio').inputValue()) === 'hammer',
+    );
+    await page.getByRole('button', { name: 'Quitar miniatura' }).click();
+    await page.getByRole('button', { name: 'Crear miniatura' }).waitFor();
     // 8. Tiradas: la tarjeta aparece y queda en el resultado.
     await page.evaluate(() => RollFX.show({ label: 'Prueba', total: 17, face: 14, detail: 'd20 (14) + 3' }));
     await page.waitForSelector('.roll-card.settled');
@@ -913,6 +935,7 @@ async function main() {
     const display = await opened;
     display.on('pageerror', e => errors.push(e.message));
     await display.locator('#player-screen-party time').filter({ hasText: '21:45' }).waitFor();
+    await display.locator('.screen-clock [aria-label="Noche"]').waitFor();
     await display.waitForFunction(() => Board._state().fogOn && !!window.boardChanged);
     check(
       'Pantalla para jugadores: la pestaña independiente mantiene la niebla y oculta las herramientas',
@@ -999,12 +1022,40 @@ async function main() {
       draw();
     }, displayParty.campaign.settings.calendar);
     await device.getByRole('button', { name: 'Cambiar hora' }).click();
-    await device.getByLabel('Hora', { exact: true }).fill('23:15');
+    await device.getByLabel('Hora', { exact: true }).fill('06:00');
     // El servidor simulado devuelve la hora guardada cuando la otra pestaña recibe el aviso.
-    displayParty.campaign.settings.calendar.time = '23:15';
+    displayParty.campaign.settings.calendar.time = '06:00';
     await device.getByRole('button', { name: 'Guardar', exact: true }).click();
-    await overlays.locator('time').filter({ hasText: '23:15' }).waitFor();
+    await overlays.locator('time').filter({ hasText: '06:00' }).waitFor();
+    check(
+      'Reloj del mundo: al pasar de noche a día aparece el sol',
+      await overlays.locator('.clock-sky.day').isVisible(),
+    );
     const hero = displayParty.characters.find(c => c.id === representative);
+    hero.data.miniature = { race: 'elf', gear: 'lute', height: 182 };
+    await display.evaluate(
+      ({ character, map }) => {
+        const sprite = Miniatures.sprite;
+        Miniatures.sprite = model => {
+          window.seenMini = model;
+          return sprite(model);
+        };
+        window.boardChanged('map_tokens', {
+          eventType: 'INSERT',
+          new: {
+            id: 'token-musico',
+            character_id: character,
+            map_id: map,
+            kind: 'pc',
+            name: 'Lyra',
+            x: 2,
+            y: 2,
+            size: 1,
+          },
+        });
+      },
+      { character: hero.id, map: liveMap.id },
+    );
     hero.updated_at = 'updated';
     hero.data.hp = 0;
     displayParty.encounter.current_id = 'hidden';
@@ -1014,6 +1065,11 @@ async function main() {
       'Pantalla para jugadores: los PG en cero y el turno oculto se actualizan en vivo',
       (await overlays.locator('li').filter({ hasText: 'Lyra' }).locator('meter[value="0"]').count()) === 1 &&
         (await overlays.locator('[aria-current]').count()) === 0,
+    );
+    await display.waitForFunction(() => window.seenMini?.gear === 'lute');
+    check(
+      'Miniaturas: la pantalla de jugadores dibuja la figura de la ficha vinculada',
+      await display.evaluate(() => window.seenMini.race === 'elf' && window.seenMini.height === 182),
     );
     displayParty.encounter.active = false;
     await display.evaluate(() => window.partyChanged('encounter'));

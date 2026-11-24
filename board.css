@@ -732,3 +732,20 @@ html.board-open body {
   background: var(--gold);
   color: #142124;
 }
+
+.screen-clock time {
+  display: flex;
+  align-items: center;
+  gap: 0.26em;
+}
+.clock-sky {
+  font:
+    normal 0.78em/1 system-ui,
+    sans-serif;
+}
+.clock-sky.day {
+  color: #ffdb80;
+}
+.clock-sky.night {
+  color: #dbe6ff;
+}
