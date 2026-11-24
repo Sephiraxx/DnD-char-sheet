@@ -378,7 +378,32 @@ async function main() {
     await page.evaluate(() => {
       document.getElementById('modal').close();
       Board.close();
+      state.extras.push('cure');
+      TableUI.targets = () => ({ monsters: [], allies: [{ characterId: 'ally', name: 'Aliada' }], selfId: 'caster' });
+      TableUI.sendTo = async (id, kind, payload) => castEvents.push({ id, kind, payload });
+      Cloud.broadcastSpellTargets = async (campaign, kinds, targets) => castMessages.push({ campaign, kinds, targets });
+      cast('cure');
     });
+    await page.getByRole('button', { name: 'Registrar lanzamiento' }).click();
+    await page.locator('[name=who][value=self]').uncheck();
+    await page.locator('[name=who][value="pc:ally"]').check();
+    await page.getByRole('button', { name: 'Tirar curación', exact: true }).click();
+    await page.waitForFunction(() => castEvents.some(e => e.kind === 'heal'));
+    check(
+      'Curar heridas: desde la ficha se cura y se ilumina al mismo aliado en el tablero',
+      await page.evaluate(() => {
+        const [msg] = castMessages.slice(1);
+        return (
+          castMessages.length === 2 &&
+          msg.kinds.join(',') === 'heal' &&
+          msg.targets.length === 1 &&
+          msg.targets[0].character === 'ally' &&
+          castEvents.find(e => e.kind === 'heal').id === 'ally' &&
+          state.slotsSpent[0] === 1
+        );
+      }),
+    );
+    await page.evaluate(() => document.getElementById('modal').close());
     const maps = await page.evaluate(() => {
       const out = [];
       for (const [type] of BoardGen.TYPES) {

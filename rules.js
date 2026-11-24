@@ -1221,20 +1221,37 @@
     'conjure-barrage': ['contundente', 'perforante', 'cortante'],
     'conjure-volley': ['contundente', 'perforante', 'cortante'],
   };
-  function spellImpact(sp) {
+  // Las fichas anteriores y los conjuros personales pueden traer únicamente texto.
+  // Exigimos una cantidad al lado del tipo para no confundir una resistencia con daño.
+  const damageInText = new RegExp(
+    '(?:\\d+d\\d+(?:\\s*\\+\\s*\\d+)?|\\d+)\\s+(?:de\\s+)?(?:daño\\s+(?:de\\s+)?)?(' + damageTypes.join('|') + ')\\b',
+    'gi',
+  );
+  function spellImpact(sp, slot = sp.level) {
     const rows = sp.dice?.dmg || [];
     const declared = [...(sp.damageTypes || []), ...(contextual[sp.id] || []), ...rows.map(r => r[1] || '')].join(' ');
-    const types = damageTypes.filter(type => declared.includes(type));
+    const description = [sp.brief, sp.text].filter(Boolean).join(' ');
+    const written = declared.trim() ? [] : [...description.matchAll(damageInText)].map(m => m[1].toLowerCase());
+    const types = damageTypes.filter(type => declared.includes(type) || written.includes(type));
     const variable = rows.find(row => / o |a elección|según/.test(row[1]))?.[1] || '';
     const choices =
       sp.dice?.or || /según|a elección/.test(variable) || contextual[sp.id]
         ? types
         : types.filter(t => variable.includes(t));
-    const healing = !!sp.dice?.heal || fixedHealing.has(sp.id);
+    const healing =
+      !!sp.dice?.heal ||
+      fixedHealing.has(sp.id) ||
+      ['life-transference', 'wither-and-bloom', 'vampiric-touch', 'enervation'].includes(sp.id) ||
+      (!sp.dice &&
+        /(?:recuper[aá]s?|cura)\s+(?:hasta\s+)?\d+(?:d\d+)?(?:\s*\+\s*(?:\d+|tu modificador))?\s+(?:PG|puntos de golpe)\b/i.test(
+          description,
+        ));
+    let area = footprints.get(sp.id);
+    if (sp.id === 'fog-cloud' && area) area = { ...area, feet: 20 * Math.max(sp.level, slot) };
     return {
       types,
       healing,
-      area: footprints.get(sp.id),
+      area,
       choices,
       determined: /según/.test(variable) || !!contextual[sp.id],
     };
@@ -1244,7 +1261,7 @@
     return [...new Set(parts.map(t => (mm?.types && mm.from?.includes(t) ? mm.types : t)))];
   }
   function spellHeadline(s, sp, slot) {
-    const impact = spellImpact(sp);
+    const impact = spellImpact(sp, slot);
     const lines = (sp.dice ? spellNumbersFor(s, sp, slot) : []).filter(
       line => !line.startsWith('Sube con') && !line.startsWith('Espacio superior') && !line.startsWith('Ambos suben'),
     );
@@ -1284,6 +1301,10 @@
     if (sp.id === 'vampiric-touch') main += ' Recuperás la mitad del daño infligido.';
     if (sp.id === 'wither-and-bloom') main += ' Una criatura puede curarse con un Dado de Golpe + tu modificador.';
     if (sp.id === 'regenerate') main += ' Después, 1 PG por turno.';
+    if (!main && !sp.dice && !sp.damageTypes && !sp.brief?.match(/\d/) && impact.types.length) {
+      const numbers = [...(sp.text || '').matchAll(damageInText)].map(m => m[0]);
+      if (numbers.length) main = [...new Set(numbers)].join(' · ');
+    }
     if (!main) main = sp.brief || sp.text || 'Ver descripción del conjuro.';
     const a = impact.area;
     if (

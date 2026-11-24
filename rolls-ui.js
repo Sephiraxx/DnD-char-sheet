@@ -268,6 +268,11 @@ const RollUI = (() => {
   // sp.srd: pistas sacadas del texto SRD en inglés al generar el catálogo (dados, mejora por espacio, dardos…).
   const halfOnSave = sp => /mitad|half/i.test(sp.text || '') || !!sp.srd?.half;
   // Con números del catálogo (campo «dice»): dados exactos para tu nivel y el espacio elegido.
+  function saveNameFor(sp) {
+    if (Array.isArray(sp.saveAbility)) return sp.saveAbility[0] || '';
+    const m = /salvación de (Fuerza|Destreza|Constitución|Inteligencia|Sabiduría|Carisma)\b/i.exec(sp.text || '');
+    return m ? Object.keys(ABILITY_ES).find(name => name.toLowerCase() === m[1].toLowerCase()) || '' : '';
+  }
   function catalogInfo(sp, slot) {
     const r = R.spellDice(sp, { level: R.totalLevel(state), slot });
     if (!r || (!r.rows.length && !r.heal)) return null;
@@ -309,8 +314,8 @@ const RollUI = (() => {
     if (r.steps) notes.push(`Espacio de nivel ${slot}: dados ya sumados.`);
     return {
       attack: (sp.attackKind || []).length > 0,
-      save: ABILITY_ES[(sp.saveAbility || [])[0]] || '',
-      saveName: (sp.saveAbility || [])[0] || '',
+      save: ABILITY_ES[saveNameFor(sp)] || '',
+      saveName: saveNameFor(sp),
       dice,
       heal: !!r.heal,
       fixed: r.heal?.n === 0,
@@ -341,7 +346,8 @@ const RollUI = (() => {
     // «1d4 + 1»: el bono fijo acompaña a los dados (no confundir con «+ 4d8» ni «+ tu modificador»).
     const DICE = /(\d+)d(\d+)(?:\s*\+\s*(\d+)(?![\dd]))?/;
     const m = DICE.exec(sp.brief || '') || DICE.exec(sp.text || '') || DICE.exec(hint.dice || '');
-    const heal = /recupera|regains?/i.test(sp.brief || sp.text || '') && !(sp.damageTypes || []).length;
+    const impact = R.spellImpact(sp);
+    const heal = impact.healing && !impact.types.length;
     let count = m ? Number(m[1]) : 0,
       notes = [];
     const sides = m ? Number(m[2]) : 0;
@@ -372,13 +378,16 @@ const RollUI = (() => {
     }
     return {
       attack: (sp.attackKind || []).length > 0,
-      save: ABILITY_ES[(sp.saveAbility || [])[0]] || '',
-      saveName: (sp.saveAbility || [])[0] || '',
+      save: ABILITY_ES[saveNameFor(sp)] || '',
+      saveName: saveNameFor(sp),
       // Solo cuentan como daño los dados de conjuros con tipo de daño (o curación): el 1d4 de Bendecir es un bono.
-      dice: m && (heal || (sp.damageTypes || []).length) ? count + 'd' + sides + (flat ? '+' + flat : '') : '',
+      dice:
+        m && (heal || (sp.id !== 'reality-break' && impact.types.length))
+          ? count + 'd' + sides + (flat ? '+' + flat : '')
+          : '',
       heal,
       addMod: /modificador de lanzamiento|spellcasting ability modifier/i.test(all) || !!hint.mod,
-      types: (sp.damageTypes || []).join(', '),
+      types: impact.types.join(', '),
       notes,
     };
   }

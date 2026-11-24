@@ -745,7 +745,7 @@
     S.dirty = true;
     return true;
   }
-  function spellPlacement(sp, cell) {
+  function spellPlacement(sp, cell, slot = sp.level) {
     if (
       !shown ||
       !S.mapId ||
@@ -762,7 +762,7 @@
         ['earth-tremor', 'thunderclap', 'sword-burst', 'word-of-radiance', 'aganazzars-scorcher'].includes(sp.id);
     if (self && !me) return null;
     const orig = me ? { x: me.x + (me.size || 1) / 2, y: me.y + (me.size || 1) / 2 } : null;
-    const area = Rules.spellImpact(sp).area;
+    const area = Rules.spellImpact(sp, slot).area;
     const end = { x: cell.x + 0.5, y: cell.y + 0.5 };
     let template = null;
     if (area) {
@@ -794,10 +794,10 @@
       hits: hits.map(t => ({ character: t.character_id, combatant: t.combatant_id })),
     };
   }
-  function selectedPlacement(sp) {
+  function selectedPlacement(sp, slot = sp.level) {
     const t = tokenById(S.target) || (/^personal|^self/i.test(sp.range) && !sp.attackKind?.length ? actor() : null);
     return t && t.map_id === S.mapId
-      ? spellPlacement(sp, { x: Math.floor(t.x + t.size / 2), y: Math.floor(t.y + t.size / 2) })
+      ? spellPlacement(sp, { x: Math.floor(t.x + t.size / 2), y: Math.floor(t.y + t.size / 2) }, slot)
       : null;
   }
   function projectSpell(placement, kinds) {
@@ -820,12 +820,12 @@
       const sp = spells.find(sp => sp.id === S.sheetSpell) || spells[0];
       if (!sp) return;
       const placement = spellPlacement(sp, cell);
-      if (placement) {
-        try {
-          H.cast(sp.id, false, placement);
-        } catch (err) {
-          toast(err.message);
-        }
+      if (!placement)
+        return toast('Elegí una casilla visible del mapa activo. Para un efecto personal, ubicá primero tu ficha.');
+      try {
+        H.cast(sp.id, false, placement);
+      } catch (err) {
+        toast(err.message);
       }
       return;
     }

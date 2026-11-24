@@ -34,4 +34,6 @@ test('cada conjuro tiene una línea legible y una animación válida para cada t
   assert.equal(R.spellImpact(spell('cure')).healing, true);
   assert.match(R.spellHeadline(pc, spell('heal'), 8), /90 PG/);
   assert.match(R.spellHeadline(pc, spell('life-transference')), /necrótico.*doble/);
+  assert.equal(R.spellImpact(spell('wither-and-bloom')).healing, true);
+  assert.equal(R.spellImpact(spell('fog-cloud'), 2).area.feet, 40);
 });

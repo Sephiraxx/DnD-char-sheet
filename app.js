@@ -685,7 +685,7 @@ function cast(id, ritual = false, placement = null) {
       if (!kinds.length) kinds.push('magic');
       let point = null;
       if (!ritual && placement) {
-        point = globalThis.Board?.spellPlacement(now, placement.cell);
+        point = globalThis.Board?.spellPlacement(now, placement.cell, castLevel);
         if (
           !point ||
           point.map !== placement.map ||
@@ -693,7 +693,7 @@ function cast(id, ritual = false, placement = null) {
           point.actorId !== placement.actorId
         )
           throw Error('El mapa o la ficha cambió. Volvé a elegir el punto.');
-      } else if (!ritual && globalThis.Board?.isOpen()) point = Board.selectedPlacement(now);
+      } else if (!ritual && globalThis.Board?.isOpen()) point = Board.selectedPlacement(now, castLevel);
       commit(
         (ritual ? 'Ritual: ' : 'Lanzado: ') +
           sp.name +

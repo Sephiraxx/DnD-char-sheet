@@ -111,6 +111,18 @@ test('la tirada de conjuro usa los números del catálogo', () => {
   assert.equal(info(sp('ice-storm'), 4).dice, '2d8+4d6');
   assert.equal(info(sp('cure'), 2).dice, '2d8');
   assert.equal(info(sp('cure'), 2).addMod, true);
+  assert.equal(info(sp('sapping-sting'), 0).save, 'con');
+  assert.equal(info(sp('heal'), 8).dice, '90');
+  const custom = {
+    level: 1,
+    id: 'personal',
+    brief: 'Una onda de sonido.',
+    text: 'Si falla una salvación de Constitución, recibe 2d8 de daño de trueno.',
+  };
+  assert.equal(info(custom, 1).dice, '2d8');
+  assert.equal(info(custom, 1).types, 'trueno');
+  assert.equal(R.spellHeadline(g.state, custom), '2d8 de daño de trueno');
+  assert.equal(R.spellImpact({ ...custom, text: 'Resistencia al daño de fuego por 10 minutos.' }).types.length, 0);
 });
 
 test('habilidades en orden alfabético, como en la hoja', () => {
