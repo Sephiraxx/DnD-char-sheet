@@ -51,6 +51,8 @@
     view: { s: 1, x: 0, y: 0 },
     fitted: false,
     tool: 'move',
+    spell: 'fire',
+    casts: [],
     fogMode: 'reveal',
     paintCode: 'f',
     paintMode: 'brush',
@@ -239,6 +241,7 @@
   async function openMap(id) {
     S.mapId = id;
     S.templates = [];
+    S.casts = [];
     S.sel = null;
     S.fitted = false;
     S.touched = false;
@@ -489,6 +492,7 @@
     if (m.t === 'drag' && m.map === S.mapId) S.remote.set(m.id, { x: m.x, y: m.y });
     if (m.t === 'drop') S.remote.delete(m.id);
     if (m.t === 'moved') setTimeout(() => onMoved(m), 300); // espera que llegue la posición final
+    if (m.t === 'spell' && m.map === S.mapId && m.map === activeId()) addCast(m);
     if (m.t === 'ping' && m.map === S.mapId) addPing(m.x, m.y, m.color, m.name);
     if (m.t === 'tpl' && m.map === S.mapId && m.tpl) addTemplate(m.tpl);
     if (m.t === 'tpl-clear' && m.map === S.mapId)
@@ -690,9 +694,68 @@
       return !S.fogOn || BC.isRevealed(S.grid, S.fog, c, r);
     });
   }
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  let lastSceneFrame = -Infinity;
+  const spellDuration = 1400;
+  function canSeeCast(x, y) {
+    return !playerView() || ((!S.fogOn || BC.isRevealed(S.grid, S.fog, x, y)) && isSeen(seen(), x, y));
+  }
+  function addCast({ kind, x, y }) {
+    if (
+      !S.mapId ||
+      typeof kind !== 'string' ||
+      !Object.hasOwn(BoardSceneFX.spells, kind) ||
+      !Number.isInteger(x) ||
+      !Number.isInteger(y) ||
+      !BC.inside(S.grid, x, y) ||
+      !canSeeCast(x, y)
+    )
+      return false;
+    S.casts = [...S.casts.slice(-11), { kind, x, y, start: performance.now() }];
+    S.dirty = true;
+    return true;
+  }
+  function castAt(cell) {
+    const msg = { t: 'spell', map: S.mapId, kind: S.spell, x: cell.x, y: cell.y };
+    if (!addCast(msg)) return;
+    if (S.mapId === activeId()) S.channel?.send(msg);
+  }
+  function drawScene(now, cellSize, origin, width, height, dpr) {
+    if (S.grid.weather === 'clear' && !S.casts.length) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, width, height);
+    ctx.clip();
+    if (S.grid.weather !== 'clear') {
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      BoardSceneFX.weather(
+        ctx,
+        S.grid.weather,
+        canvas.clientWidth,
+        canvas.clientHeight,
+        reducedMotion.matches ? 0 : now / 1000,
+      );
+      ctx.restore();
+    }
+    S.casts = S.casts.filter(cast => now - cast.start < spellDuration);
+    for (const cast of S.casts) {
+      if (!canSeeCast(cast.x, cast.y)) continue;
+      ctx.save();
+      ctx.translate(origin.x + (cast.x + 0.5) * cellSize, origin.y + (cast.y + 0.5) * cellSize);
+      ctx.scale(cellSize, cellSize);
+      BoardSceneFX.spell(ctx, cast.kind, reducedMotion.matches ? 0.4 : (now - cast.start) / spellDuration);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
   function draw() {
     if (!shown) return requestAnimationFrame(draw);
-    if (!S.dirty && !S.pings.length && !S.remote.size) return requestAnimationFrame(draw);
+    const now = performance.now();
+    const animating = S.mapId && (S.casts.length || (S.grid.weather !== 'clear' && !reducedMotion.matches));
+    if (!S.dirty && !S.pings.length && !S.remote.size && !(animating && now - lastSceneFrame >= 1000 / 24))
+      return requestAnimationFrame(draw);
+    lastSceneFrame = now;
     S.dirty = false;
     const dpr = window.devicePixelRatio || 1,
       { w, h } = worldSize(),
@@ -771,6 +834,7 @@
     // Fichas
     const list = visibleTokens().sort((a, b) => (a.kind === 'object' ? -1 : 0) - (b.kind === 'object' ? -1 : 0));
     for (const t of list) drawToken(t);
+    drawScene(now, c, o, w, h, dpr);
     // Niebla
     if (S.fogOn) {
       const solid = playerView(),
@@ -1370,7 +1434,8 @@
           press = null;
         }
       }, 550);
-    } else if (tool === 'ruler') S.drag = { ruler: { a: cell, b: cell } };
+    } else if (tool === 'scene') S.drag = { cast: true, pan: { x: S.view.x, y: S.view.y, p } };
+    else if (tool === 'ruler') S.drag = { ruler: { a: cell, b: cell } };
     else if (tool === 'ping') ping(w);
     else if (tool === 'area') {
       const f = toCellF(w);
@@ -1453,6 +1518,8 @@
       // Mayúsculas o Alt al soltar: movimiento libre (empujón, teletransporte…), no provoca.
       d.free = e.shiftKey || e.altKey;
       dropToken(d);
+    } else if (d?.cast) {
+      if (e.type === 'pointerup' && press && !press.moved && !TV) castAt(toCell(toWorld(press.p.x, press.p.y)));
     } else if (d?.pan && !press?.moved && !TV) {
       // Tocar una puerta o una escalera sin ficha encima: se abre, se cierra o se sube.
       if (S.tool === 'props') S.propHover = null;
@@ -2151,7 +2218,7 @@
       t('move', '✋', 'Mover') +
       t('ruler', '📏', 'Medir') +
       t('ping', '📍', 'Señalar') +
-      (S.mapId ? t('area', '💥', 'Área') : '') +
+      (S.mapId ? t('area', '💥', 'Área') + t('scene', '✦', 'Efectos') : '') +
       (S.isDM && S.mapId && !S.asPlayer
         ? t('fog', '🌫', 'Niebla') +
           t('paint', '🧱', 'Terreno') +
@@ -2164,6 +2231,7 @@
         move: S.isDM
           ? 'Arrastrá cualquier ficha. Mantené apretado para señalar.'
           : 'Arrastrá tu ficha. Mantené apretado para señalar.',
+        scene: 'Elegí un conjuro y tocá una casilla para lanzarlo. Arrastrá para mover la cámara.',
         ruler: 'Arrastrá para medir en pies.',
         ping: 'Tocá el mapa para señalar un lugar a todos.',
         area: 'Elegí forma y tamaño. Tocá para una esfera; arrastrá desde el origen para apuntar un cono, línea o cubo.',
@@ -2183,7 +2251,15 @@
       `<button type="button" class="chip ${on ? 'selected' : ''}" data-action="bd-${action}" data-v="${esc(value)}" aria-pressed="${on}" ${extra}>${label}</button>`;
     const sizes = [0, 1, 2, 3].map(r => chip('radius', r, ['1', '3', '5', '7'][r], S.radius === r)).join('');
     let html = '';
-    if (S.tool === 'fog' && S.isDM) {
+    if (S.tool === 'scene' && S.mapId && !TV) {
+      html = `<div class="chips"><span class="small">Conjuro</span>${Object.entries(BoardSceneFX.spells)
+        .map(([id, label]) => chip('spell', id, label, S.spell === id))
+        .join('')}</div>`;
+      if (dmView())
+        html += `<div class="chips"><span class="small">Clima</span>${Object.entries(BC.WEATHER)
+          .map(([id, label]) => chip('weather', id, label, S.grid.weather === id))
+          .join('')}</div>`;
+    } else if (S.tool === 'fog' && S.isDM) {
       html = `<div class="board-row"><label class="check"><input type="checkbox" data-action="bd-fog-on" ${S.fogOn ? 'checked' : ''}>Niebla activa</label></div><div class="chips">${[
         ['reveal', 'Revelar'],
         ['hide', 'Ocultar'],
@@ -2270,6 +2346,7 @@
         tokens: 'Fichas',
         enc: 'Encuentros preparados',
         area: 'Área de efecto',
+        scene: 'Efectos del mapa',
       }[S.tool] || '';
     el.classList.toggle('min', S.panelMin);
     el.innerHTML = html
@@ -2347,7 +2424,11 @@
         return mapsDialog();
       } else if (a === 'tv') return tvDialog();
       else if (a === 'go-live') await goLive(S.mapId);
-      else if (a === 'area-kind') S.area.kind = el.dataset.v;
+      else if (a === 'spell' && !TV && Object.hasOwn(BoardSceneFX.spells, el.dataset.v)) S.spell = el.dataset.v;
+      else if (a === 'weather' && dmView() && S.mapId && Object.hasOwn(BC.WEATHER, el.dataset.v)) {
+        S.grid.weather = el.dataset.v;
+        saveSoon({ grid: { ...currentMap()?.grid, weather: S.grid.weather } });
+      } else if (a === 'area-kind') S.area.kind = el.dataset.v;
       else if (a === 'area-feet') S.area.feet = Number(el.dataset.v);
       else if (a === 'area-width') S.area.width = Number(el.dataset.v);
       else if (a === 'area-clear') clearTemplates(!!el.dataset.all);

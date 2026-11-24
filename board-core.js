@@ -59,6 +59,7 @@
 
   const clampSide = n => Math.max(1, Math.min(MAX_SIDE, Math.round(Number(n) || 1)));
   // Cuadrícula normalizada: cols/rows (casillas), size (px por casilla en la imagen), ox/oy (desfase en px).
+  const WEATHER = { clear: 'Despejado', rain: 'Lluvia', storm: 'Tormenta', mist: 'Bruma' };
   function normGrid(g = {}) {
     return {
       cols: clampSide(g.cols ?? 30),
@@ -77,6 +78,7 @@
         dark: g.vision?.dark === true,
         light: Math.max(0, Math.min(600, Math.round(Number(g.vision?.light ?? 40)) || 0)),
       },
+      weather: typeof g.weather === 'string' && Object.hasOwn(WEATHER, g.weather) ? g.weather : 'clear',
       // Sonido de ambiente del mapa (taberna, cueva…); '' = ninguno.
       ambient: typeof g.ambient === 'string' && /^[a-z]{1,12}$/.test(g.ambient) ? g.ambient : '',
     };
@@ -478,6 +480,7 @@
 
   const api = {
     MAX_SIDE,
+    WEATHER,
     TERRAIN,
     terrainType,
     normGrid,

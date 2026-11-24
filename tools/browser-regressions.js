@@ -398,7 +398,11 @@ async function main() {
       !(await page.locator('#recovery-form').isVisible()),
     );
     // Flujo de aliado en la pantalla del DM, con las escrituras del servidor simuladas.
-    const dm = await browser.newPage({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+    const dm = await browser.newPage({
+      viewport: { width: 390, height: 844 },
+      hasTouch: true,
+      serviceWorkers: 'block',
+    });
     dm.on('pageerror', e => errors.push(e.message));
     await dm.route('**/config.js', route =>
       route.fulfill({ contentType: 'application/javascript', body: 'window.CLOUD_CONFIG = {};' }),
@@ -794,7 +798,7 @@ async function main() {
         Object.assign(Cloud, {
           enabled: true, user: async () => ({id: 'dm'}), party: displayParty, board: displayBoard,
           subscribe: async (_, handler) => { window.partyChanged = handler; },
-          subscribeBoard: async (_, handler) => { window.boardChanged = handler; return {close() {}}; }
+          subscribeBoard: async (_, handler, receive) => { window.boardChanged = handler; window.boardMessage = receive; return {close() {}}; }
         });`,
       }),
     );
@@ -811,6 +815,48 @@ async function main() {
         (await display.locator('#board-tools button').count()) === 0 &&
         !(await display.evaluate(() => Board._state().isDM)),
     );
+    // La pantalla del DM en el teléfono transmite al receptor real del tablero público.
+    await dm.exposeFunction('sendSceneMessage', msg => display.evaluate(m => window.boardMessage(m), msg));
+    await dm.evaluate(() => {
+      Board._state().channel.send = window.sendSceneMessage;
+    });
+    await dm.locator('[data-tool=scene]').tap();
+    await dm.getByRole('button', { name: 'Tormenta', exact: true }).tap();
+    await dm.waitForFunction(
+      () =>
+        Board._state().maps.find(m => m.id === Board._state().mapId)?.grid.weather === 'storm' &&
+        !Object.keys(Board._state().pending).length,
+    );
+    displayBoard = structuredClone(readBoard(sharedParty.campaign.id));
+    const liveMap = displayBoard.maps.find(m => m.id === displayBoard.board.map_id);
+    await display.evaluate(row => window.boardChanged('maps', { eventType: 'UPDATE', new: row }), liveMap);
+    await display.waitForFunction(() => Board._state().grid.weather === 'storm');
+    check(
+      'Efectos: la tormenta elegida en el teléfono se guarda por mapa y llega a la pantalla',
+      liveMap.grid.weather === 'storm',
+    );
+    await dm.getByRole('button', { name: 'Relámpago', exact: true }).tap();
+    await dm.getByRole('button', { name: 'Plegar opciones', exact: true }).tap();
+    // La casilla central está cubierta. El mismo toque solo aparece al revelarla.
+    const target = dm.locator('#board');
+    await target.tap();
+    await dm.waitForFunction(() => Board._state().casts.some(c => c.kind === 'lightning'));
+    check(
+      'Efectos: un impacto dentro de la niebla queda oculto',
+      await display.evaluate(() => Board._state().casts.length === 0),
+    );
+    await display.evaluate(
+      row => window.boardChanged('maps', { eventType: 'UPDATE', new: { ...row, fog: { on: false } } }),
+      liveMap,
+    );
+    await target.tap();
+    await display.waitForFunction(() => Board._state().casts.some(c => c.kind === 'lightning'));
+    await display.evaluate(() => window.boardMessage({ t: 'spell', map: 'mapa-privado', kind: 'heal', x: 1, y: 1 }));
+    check(
+      'Efectos: un toque llega a la casilla del otro dispositivo y un mapa privado queda aislado',
+      await display.evaluate(() => Board._state().casts.every(c => c.kind === 'lightning')),
+    );
+    await display.waitForFunction(() => Board._state().casts.length === 0);
     const sidebar = display.locator('#player-screen-party');
     check(
       'Pantalla para jugadores: muestra fecha, PG, ronda y turno sin revelar la criatura oculta',

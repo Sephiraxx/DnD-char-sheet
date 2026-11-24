@@ -65,6 +65,7 @@
   const scripts = [
     './board-core.js',
     './board-art.js',
+    './board-scene-fx.js',
     './board-props.js',
     './board-gen.js',
     './sigils.js',
