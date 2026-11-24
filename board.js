@@ -3199,13 +3199,13 @@
   }
   function tokenDialog(t, kind = t?.kind) {
     const isNew = !t;
+    const modelOption = key =>
+      `<option value="${key}" ${t?.creature_model === key ? 'selected' : ''}>${esc(CreatureMiniatures.options[key])}</option>`;
     const modelField = ['npc', 'monster'].includes(kind)
-      ? `<label class="field">Miniatura<select name="creature_model"><option value="">Automática</option>${Object.entries(
-          CreatureMiniatures.options,
+      ? `<label class="field">Miniatura<select name="creature_model"><option value="">Automática</option>${modelOption('sigil')}${Object.entries(
+          CreatureMiniatures.groups,
         )
-          .map(
-            ([key, label]) => `<option value="${key}" ${t?.creature_model === key ? 'selected' : ''}>${label}</option>`,
-          )
+          .map(([group, keys]) => `<optgroup label="${esc(group)}">${keys.map(modelOption).join('')}</optgroup>`)
           .join('')}</select></label>`
       : '';
     modal(
@@ -3238,10 +3238,14 @@
             if (patch.hidden !== t.hidden) S.channel?.send({ t: 'refresh' });
           }
         } catch (err) {
+          if (
+            patch.creature_model &&
+            /check constraint/i.test(err.message) &&
+            /creature_model|map_tokens_check/.test(err.message)
+          )
+            throw Error('Para guardar esta miniatura, aplicá la migración 026_campaign_miniatures.sql en Supabase.');
           if (/creature_model/.test(err.message) && /schema cache|does not exist/i.test(err.message))
-            throw Error(
-              'Para guardar la miniatura elegida, aplicá la migración 025_creature_miniatures.sql en Supabase.',
-            );
+            throw Error('Para guardar la miniatura elegida, aplicá las migraciones 025 y 026 en orden en Supabase.');
           throw err;
         }
         ui();

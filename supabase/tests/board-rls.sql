@@ -45,8 +45,8 @@ select pg_temp.check('ajeno no ve mapas ni fichas ni imágenes', (select count(*
 -- DM.
 reset role; set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
 select pg_temp.check('DM ve todos los mapas, fichas e imágenes', (select count(*) from maps) = 2 and (select count(*) from map_tokens) = 5 and (select count(*) from storage.objects) = 2);
-update map_tokens set hidden = false, name = 'Emboscada!' where id = '40000000-0000-0000-0000-000000000002';
-select pg_temp.check('DM edita cualquier ficha', (select name = 'Emboscada!' and not hidden from map_tokens where id = '40000000-0000-0000-0000-000000000002'));
+update map_tokens set hidden = false, name = 'Emboscada!', creature_model = 'wolf' where id = '40000000-0000-0000-0000-000000000002';
+select pg_temp.check('DM edita cualquier ficha', (select name = 'Emboscada!' and creature_model = 'wolf' and not hidden from map_tokens where id = '40000000-0000-0000-0000-000000000002'));
 insert into storage.objects (bucket_id,name) values ('maps','10000000-0000-0000-0000-000000000001/nuevo.webp');
 update boards set map_id = '30000000-0000-0000-0000-000000000002';
 -- Cambió el mapa: el jugador ahora ve el otro.

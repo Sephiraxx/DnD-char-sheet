@@ -36,7 +36,15 @@
   for (const name of ['esqueleto', 'skeleton', 'humanoid skeleton']) known.set(name, 'skeleton');
   for (const name of ['esqueleto de minotauro', 'minotaur skeleton']) known.set(name, 'bull-skeleton');
   for (const name of ['esqueleto de caballo de guerra', 'warhorse skeleton']) known.set(name, 'horse-skeleton');
-  for (const name of ['goblin', 'trasgo', 'goblin boss', 'jefe goblin', 'jefe trasgo', 'goblin jefe'])
+  for (const name of [
+    'goblin',
+    'trasgo',
+    'goblin boss',
+    'jefe goblin',
+    'jefe trasgo',
+    'goblin jefe',
+    'goblin gang member',
+  ])
     known.set(name, 'goblin');
   known.set('dragon', 'dragon-red');
   for (const [es, en] of Object.entries(colors)) {
@@ -49,18 +57,28 @@
     for (const age of ['', 'young ', 'adult ', 'ancient ']) known.set(age + en + ' dragon', key);
     known.set(en + ' dragon wyrmling', key);
   }
+  function normalize(name) {
+    return String(name || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+#?\d+$/, '')
+      .replace(/\s+/g, ' ');
+  }
+  const campaign = new Map();
+  const groups = {
+    'Goblins y esqueletos': Object.keys(options).filter(key => key !== 'sigil' && !key.startsWith('dragon-')),
+    Dragones: Object.keys(options).filter(key => key.startsWith('dragon-')),
+  };
+  for (const model of root.CampaignMiniModels) {
+    campaign.set(model.id, model);
+    options[model.id] = model.label;
+    (groups[model.group] ??= []).push(model.id);
+    for (const name of [model.label, ...model.aliases]) known.set(normalize(name), model.id);
+  }
   function identify(name) {
-    return (
-      known.get(
-        String(name || '')
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .trim()
-          .toLowerCase()
-          .replace(/\s+#?\d+$/, '')
-          .replace(/\s+/g, ' '),
-      ) || null
-    );
+    return known.get(normalize(name)) || null;
   }
   const ivory = '#e9d8b1',
     shadow = '#343039',
@@ -329,6 +347,8 @@
       rod([0, y, z], [0, y + 0.14, z - 0.095], r, 0.002, ivory, 6);
   }
   function draw(ctx, key, size) {
+    const model = campaign.get(key);
+    if (model) return root.CampaignMiniatures.draw(ctx, model, size);
     const isDragon = key.startsWith('dragon-'),
       palette = scales[key.slice('dragon-'.length)];
     const facing = key === 'horse-skeleton' ? 54 : isDragon ? 20 : 22;
@@ -341,5 +361,5 @@
     else return;
     mesh.paint(ctx, size, 0.376);
   }
-  root.CreatureMiniatures = { options, identify, draw };
+  root.CreatureMiniatures = { options, groups, identify, draw };
 })(globalThis);
