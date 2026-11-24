@@ -256,7 +256,8 @@ const Persona = (() => {
       neck: 'Cuello',
       belt: 'Accesorio de cintura',
       outfit: 'Ropa',
-      gear: 'Arma o accesorio',
+      gear: 'Mano principal',
+      offhand: 'Mano secundaria',
       pose: 'Postura',
     };
     const pick = key => select(labels[key], key, Object.entries(Miniatures.parts[key]), model[key]);
@@ -276,7 +277,7 @@ const Persona = (() => {
         field('Altura (cm)', 'height', model.height, 'number', 'min="50" max="300" step="1" required') +
         choices(['gender', 'build', 'ears', 'pose']),
     );
-    const dress = group('Vestuario', choices(['outfit', 'headwear', 'neck', 'belt', 'gear']));
+    const dress = group('Vestuario', choices(['outfit', 'headwear', 'neck', 'belt', 'gear', 'offhand']));
     const face = group('Rostro y cabello', choices(['hair', 'beard', 'scar', 'eyewear']));
     const palette = group(
       'Colores',
@@ -326,7 +327,22 @@ const Persona = (() => {
       for (const [key, value] of Object.entries(vestments)) form.elements.namedItem(key).value = value;
       preview();
     });
-    form.addEventListener('input', preview);
+    let previousRace = model.race;
+    form.addEventListener('input', event => {
+      if (event.target.name === 'race') {
+        const race = event.target.value;
+        const previous = MiniatureAncestries.appearance(previousRace);
+        const next = MiniatureAncestries.appearance(race);
+        for (const key of ['skin', 'hair']) {
+          const control = form.elements.namedItem(key);
+          if (control.value === (previous[key] ?? Miniatures.defaults[key])) {
+            control.value = next[key] ?? Miniatures.defaults[key];
+          }
+        }
+        previousRace = race;
+      }
+      preview();
+    });
     preview();
   }
   function removeMiniature() {

@@ -16,6 +16,7 @@
       tiefling: 'Tiefling',
       dragonborn: 'Dracónido',
       warforged: 'Forjado',
+      ...root.MiniatureAncestries.names,
       other: 'Otra raza',
     },
     gender: { neutral: 'Sin especificar', woman: 'Femenino', man: 'Masculino', nonbinary: 'No binario' },
@@ -84,6 +85,7 @@
     },
     pose: { ready: 'En guardia', rest: 'De pie' },
   };
+  parts.offhand = parts.gear;
   // Medidas locales de cada escultura. La cabeza, las manos y el equipo conservan su volumen.
   const bodies = {
     regular: {
@@ -169,6 +171,7 @@
     hair: 'crop',
     outfit: 'tunic',
     gear: 'none',
+    offhand: 'none',
     pose: 'rest',
     skin: '#bc866b',
     cloth: '#43777c',
@@ -189,8 +192,19 @@
   }
 
   function initial(sheet) {
-    const raceId = sheet.raceId || '';
+    const name = String(sheet.race || '')
+      .trim()
+      .toLowerCase();
+    const catalogRace = root.CampaignData?.races?.find(
+      r =>
+        r.id === sheet.raceId ||
+        (!sheet.raceId && name && [r.name, r.english].some(label => label?.toLowerCase() === name)),
+    );
+    const raceId = catalogRace?.id || sheet.raceId || '';
+
     const match = [
+      ['gith-githyanki', 'githyanki'],
+      ['gith-githzerai', 'githzerai'],
       ['half-elf', 'halfElf'],
       ['half-orc', 'halfOrc'],
       ['astral-elf', 'elf'],
@@ -203,7 +217,7 @@
     ].find(([prefix]) => raceId === prefix || raceId.startsWith(prefix + '-'));
     const race =
       match?.[1] ||
-      Object.keys(parts.race).find(k => parts.race[k].toLowerCase() === (sheet.race || '').trim().toLowerCase()) ||
+      Object.keys(parts.race).find(k => k.toLowerCase() === name || parts.race[k].toLowerCase() === name) ||
       (sheet.race ? 'other' : 'human');
     const rawHeight = (sheet.persona?.height || '').trim().replace(',', '.');
     const h = /^(\d+(?:\.\d+)?)\s*(cm|m)?$/i.exec(rawHeight);
@@ -213,9 +227,23 @@
     const height =
       parsed >= 50 && parsed <= 300
         ? parsed
-        : { halfling: 100, gnome: 105, goblin: 110, dwarf: 135, orc: 190, dragonborn: 195 }[race] || 170;
+        : {
+            halfling: 100,
+            gnome: 105,
+            goblin: 110,
+            dwarf: 135,
+            orc: 190,
+            dragonborn: 195,
+            kobold: 105,
+            autognome: 105,
+            grung: 100,
+            fairy: 100,
+            loxodon: 205,
+            minotaur: 197,
+          }[race] || 170;
     return clean({
       ...defaults,
+      ...root.MiniatureAncestries.appearance(race),
       race,
       height,
       cloth: sheet.sheetColor || defaults.cloth,
@@ -232,11 +260,28 @@
     const shoulder = { woman: 0.94, man: 1.07 }[m.gender] || 1;
     const ear =
       m.ears === 'auto'
-        ? ['elf', 'halfElf', 'goblin', 'gnome', 'orc', 'halfOrc'].includes(m.race)
+        ? [
+            'elf',
+            'halfElf',
+            'goblin',
+            'gnome',
+            'orc',
+            'halfOrc',
+            'githyanki',
+            'githzerai',
+            'hobgoblin',
+            'kender',
+            'verdan',
+            'fairy',
+            'hexblood',
+            'firbolg',
+          ].includes(m.race)
           ? 'elf'
           : ['tiefling', 'dragonborn'].includes(m.race)
             ? 'horns'
-            : 'round'
+            : root.MiniatureAncestries.animalHead(m.race)
+              ? 'sculpted'
+              : 'round'
         : m.ears;
     const steel = '#9cafb1',
       leather = '#583f32',
@@ -256,29 +301,31 @@
       shoulderZ = b.lean + (ready ? 0.075 : 0.015);
     const armor = m.outfit === 'armor' || m.race === 'warforged',
       robe = ['robe', 'vestments', 'coat'].includes(m.outfit);
-    for (const side of [-1, 1]) {
-      const forward = side === -1;
-      const foot = [side * b.stance, 0.26, forward ? stride : -stride];
-      const knee = [
-        side * (b.stance + 0.012),
-        b.knee - (ready && forward ? 0.045 : 0),
-        foot[2] + (forward ? 0.105 : 0.025),
-      ];
-      const thigh = [side * hip * 0.56, b.pelvis + 0.03, -0.025];
-      oval(foot[0], 0.235, foot[2] + 0.06, 0.11 + b.bulk * 0.22, 0.09, 0.205, leather);
-      limb(foot, knee, b.bulk * 0.75, b.bulk * 0.81, leather);
-      oval(
-        (foot[0] + knee[0]) / 2,
-        (foot[1] + knee[1]) / 2 + 0.028,
-        (foot[2] + knee[2]) / 2 - 0.015,
-        b.bulk * 0.92,
-        (knee[1] - foot[1]) * 0.38,
-        b.bulk * 0.95,
-        leather,
-      );
-      limb(knee, thigh, b.bulk * 0.78, b.bulk * 1.3, dark);
-      oval(knee[0], knee[1], knee[2] + 0.02, b.bulk * 0.84, 0.09, b.bulk * 0.88, armor ? steel : dark);
-    }
+    root.MiniatureAncestries.body(mesh, m, { hipY: b.pelvis, chestY, shoulderZ });
+    if (m.race !== 'centaur')
+      for (const side of [-1, 1]) {
+        const forward = side === -1;
+        const foot = [side * b.stance, 0.26, forward ? stride : -stride];
+        const knee = [
+          side * (b.stance + 0.012),
+          b.knee - (ready && forward ? 0.045 : 0),
+          foot[2] + (forward ? 0.105 : 0.025),
+        ];
+        const thigh = [side * hip * 0.56, b.pelvis + 0.03, -0.025];
+        oval(foot[0], 0.235, foot[2] + 0.06, 0.11 + b.bulk * 0.22, 0.09, 0.205, leather);
+        limb(foot, knee, b.bulk * 0.75, b.bulk * 0.81, leather);
+        oval(
+          (foot[0] + knee[0]) / 2,
+          (foot[1] + knee[1]) / 2 + 0.028,
+          (foot[2] + knee[2]) / 2 - 0.015,
+          b.bulk * 0.92,
+          (knee[1] - foot[1]) * 0.38,
+          b.bulk * 0.95,
+          leather,
+        );
+        limb(knee, thigh, b.bulk * 0.78, b.bulk * 1.3, dark);
+        oval(knee[0], knee[1], knee[2] + 0.02, b.bulk * 0.84, 0.09, b.bulk * 0.88, armor ? steel : dark);
+      }
     if (m.outfit === 'cloak')
       form(
         0,
@@ -351,7 +398,7 @@
     const gripX = Math.max(0.46, chest + 0.16),
       gripZ = 0.24 + shoulderZ;
     for (const side of [-1, 1]) {
-      const armed = side === 1 && m.gear !== 'none';
+      const armed = (side === 1 ? m.gear : m.offhand) !== 'none';
       const shoulderAt = [side * chest * 0.92, chestY + (side === 1 ? 0.012 : -0.013), shoulderZ];
       const elbow = [side * (chest + 0.085 + (ready ? 0.04 : 0)), chestY - 0.26, shoulderZ + (armed ? 0.02 : -0.045)];
       const hand = [
@@ -400,7 +447,7 @@
           skin,
           8,
         );
-      else oval(side * 0.25, head, 0, 0.062, 0.086, 0.048, skin);
+      else if (ear !== 'sculpted') oval(side * 0.25, head, 0, 0.062, 0.086, 0.048, skin);
       if (ear === 'horns')
         form(
           side * 0.16,
@@ -415,7 +462,8 @@
           8,
         );
     }
-    oval(0, head - 0.052, 0.23, 0.049, 0.065, 0.059, skin);
+    root.MiniatureAncestries.face(mesh, m, head);
+    if (!root.MiniatureAncestries.animalHead(m.race)) oval(0, head - 0.052, 0.23, 0.049, 0.065, 0.059, skin);
     if (['orc', 'halfOrc'].includes(m.race))
       for (const side of [-1, 1])
         form(
@@ -475,8 +523,23 @@
     }
     root.MiniatureWardrobe.face(mesh, m, head, covered);
     headwear?.(mesh, head);
-    mesh.offset(gripX - 0.48, lift, gripZ - 0.23);
-    if (m.gear === 'staff') {
+    for (const [side, item] of [
+      [1, m.gear],
+      [-1, m.offhand],
+    ]) {
+      if (item === 'none') continue;
+      mesh.offset(side * (gripX - 0.48), lift, gripZ - 0.23, side);
+      drawItem(mesh, item, m.cloth, gold);
+    }
+    mesh.offset(0, 0, 0);
+    if (closeUp) mesh.paint(ctx, size, 1.04, [0, head, shoulderZ]);
+    else mesh.paint(ctx, size, 0.376);
+  }
+  function drawItem(mesh, gear, cloth, gold) {
+    const { form, oval, limb } = mesh,
+      leather = '#583f32',
+      steel = '#9cafb1';
+    if (gear === 'staff') {
       form(
         0.49,
         0,
@@ -489,7 +552,7 @@
         8,
       );
       oval(0.49, 2.06, 0.25, 0.095, 0.14, 0.085, gold);
-    } else if (m.gear === 'shield') {
+    } else if (gear === 'shield') {
       form(
         0.45,
         1.08,
@@ -503,8 +566,8 @@
         gold,
         10,
       );
-      oval(0.45, 1.08, 0.345, 0.145, 0.177, 0.038, m.cloth);
-    } else if (m.gear === 'lute') {
+      oval(0.45, 1.08, 0.345, 0.145, 0.177, 0.038, cloth);
+    } else if (gear === 'lute') {
       oval(0.32, 0.94, 0.32, 0.195, 0.245, 0.081, '#ba8150');
       oval(0.32, 0.98, 0.398, 0.055, 0.056, 0.012, leather);
       form(
@@ -519,7 +582,7 @@
         8,
       );
       oval(0.505, 1.565, 0.34, 0.071, 0.085, 0.042, gold);
-    } else if (m.gear === 'book') {
+    } else if (gear === 'book') {
       form(
         0.45,
         0.98,
@@ -543,10 +606,10 @@
         4,
       );
     }
-    if (['sword', 'dagger', 'spear', 'axe', 'hammer'].includes(m.gear)) {
+    if (['sword', 'dagger', 'spear', 'axe', 'hammer'].includes(gear)) {
       const x = 0.5,
         z = 0.23;
-      const pole = m.gear === 'spear';
+      const pole = gear === 'spear';
       form(
         x,
         0,
@@ -558,7 +621,7 @@
         leather,
         8,
       );
-      if (m.gear === 'sword' || m.gear === 'dagger') {
+      if (gear === 'sword' || gear === 'dagger') {
         form(
           x,
           1.25,
@@ -576,8 +639,8 @@
           z,
           [
             [0, 0.064, 0.035],
-            [m.gear === 'sword' ? 0.57 : 0.2, 0.055, 0.027],
-            [m.gear === 'sword' ? 0.74 : 0.32, 0.003, 0.003],
+            [gear === 'sword' ? 0.57 : 0.2, 0.055, 0.027],
+            [gear === 'sword' ? 0.74 : 0.32, 0.003, 0.003],
           ],
           steel,
           4,
@@ -596,7 +659,7 @@
           steel,
           4,
         );
-      if (m.gear === 'axe')
+      if (gear === 'axe')
         form(
           x,
           1.3,
@@ -610,7 +673,7 @@
           steel,
           8,
         );
-      if (m.gear === 'hammer')
+      if (gear === 'hammer')
         form(
           x,
           1.27,
@@ -625,7 +688,7 @@
           8,
         );
     }
-    if (m.gear === 'bow') {
+    if (gear === 'bow') {
       const bow = [
         [0.44, 0.55, 0.24],
         [0.6, 0.75, 0.27],
@@ -636,9 +699,6 @@
       for (let i = 1; i < bow.length; i++) limb(bow[i - 1], bow[i], 0.027, 0.027, leather);
       limb(bow[0], bow.at(-1), 0.008, 0.008, '#e1d4b4');
     }
-    mesh.offset(0, 0, 0);
-    if (closeUp) mesh.paint(ctx, size, 1.04, [0, head, shoulderZ]);
-    else mesh.paint(ctx, size, 0.376);
   }
   function drawFace(ctx, raw, size) {
     draw(ctx, raw, size, null, true);

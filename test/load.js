@@ -44,6 +44,7 @@ const LOGIC = [
   'campaign-mini-models.js',
   'campaign-miniatures.js',
   'creature-miniatures.js',
+  'miniature-ancestries.js',
   'miniature-wardrobe.js',
   'miniatures.js',
   'rules.js',

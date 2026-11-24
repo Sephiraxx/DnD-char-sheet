@@ -12,8 +12,10 @@
     let scale = 1,
       ox = 0,
       oy = 0,
-      oz = 0;
-    function offset(x, y, z) {
+      oz = 0,
+      handedness = 1;
+    function offset(x, y, z, side = 1) {
+      handedness = side;
       ox = x;
       oy = y;
       oz = z;
@@ -22,7 +24,7 @@
       scale = value;
     }
     function camera([x, y, z]) {
-      x += ox;
+      x = x * handedness + ox;
       y += oy;
       z += oz;
       const rx = x * ct + z * st,
@@ -31,8 +33,9 @@
       return [rx * scale, level * cp - rz * scale * sp, rz * scale * cp + level * sp];
     }
     function polygon(points, color, edge = 0.002) {
-      const p = points.map(camera),
-        [a, b, c] = p;
+      const p = points.map(camera);
+      if (handedness < 0) p.reverse();
+      const [a, b, c] = p;
       const u = b.map((v, i) => v - a[i]),
         v = c.map((n, i) => n - a[i]);
       const nx = u[1] * v[2] - u[2] * v[1],
@@ -153,7 +156,15 @@
     }
     function paint(ctx, size, zoom, focus) {
       ctx.save();
-      const scale = size * zoom;
+      let scale = size * zoom;
+      // Las orejas largas y las alas deben entrar en la casilla incluso en una figura alta.
+      if (!focus)
+        for (const f of faces)
+          for (const [x, y] of f.p) {
+            if (Math.abs(x) * scale > size * 0.48) scale = (size * 0.48) / Math.abs(x);
+            if (y * scale > size * 0.87) scale = (size * 0.87) / y;
+            if (-y * scale > size * 0.09) scale = (size * 0.09) / -y;
+          }
       if (focus) {
         const [x, y] = camera(focus);
         ctx.translate(size * 0.5 - x * scale, size * 0.5 + y * scale);
