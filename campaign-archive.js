@@ -22,6 +22,7 @@
     hidden: t.hidden,
     stage: t.stage || null,
     elev: t.elev || 0,
+    ...(t.creature_model ? { creature_model: t.creature_model } : {}),
   });
 
   function validate(archive) {
@@ -91,6 +92,7 @@
         ![t.x, t.y, t.size].every(Number.isFinite) ||
         typeof t.hidden !== 'boolean' ||
         (t.stage != null && !text(t.stage, 120)) ||
+        (t.creature_model != null && !Object.hasOwn(root.CreatureMiniatures.options, t.creature_model)) ||
         !Number.isInteger(t.elev)
       )
         invalid();
