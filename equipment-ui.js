@@ -110,9 +110,10 @@ const EquipmentUI = (() => {
     const rows = Object.values(D.items)
       .filter(x => !x.id.startsWith('origin-'))
       .sort((a, b) => a.name.localeCompare(b.name, 'es'));
+    const fold = text => text.normalize('NFD').replace(/\p{M}/gu, '').trim().toLowerCase();
     modal(
       'Añadir del catálogo',
-      `${select(
+      `${field('Buscar objeto', 'equipmentSearch', '', 'search', 'autocomplete="off"')}${select(
         'Objeto',
         'equipmentId',
         rows.map(x => [x.id, x.name]),
@@ -142,6 +143,17 @@ const EquipmentUI = (() => {
         });
       },
     );
+    const form = document.getElementById('dialog-form');
+    const search = form.elements.namedItem('equipmentSearch');
+    const choices = form.elements.namedItem('equipmentId');
+    search.addEventListener('input', () => {
+      const query = fold(search.value);
+      const chosen = choices.value;
+      const matching = rows.filter(row => fold(row.name).includes(query));
+      if (query === 'sermon') matching.unshift(E.item('sermon'));
+      choices.replaceChildren(...matching.map(row => new Option(row.name, row.id, false, row.id === chosen)));
+      if (query === 'sermon') choices.value = 'sermon';
+    });
   }
   function itemFields(x) {
     return select(

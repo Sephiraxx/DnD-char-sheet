@@ -1,12 +1,17 @@
 /* Equipo y defensa inicial: hechos de las versiones de 2014. */
 const Equipment = (() => {
   'use strict';
+  const sermon = Object.freeze({ id: 'sermon', name: 'Sermon', category: 'Equipo', weight: 0 });
   const D = EquipmentData,
-    item = id => D.items[id],
+    item = id => (id === sermon.id ? sermon : D.items[id]),
     cid = s => s.classId || 'bard',
     sub = s => s.classSubclass || s.subclass || '',
     mod = n => Math.floor((Number(n) - 10) / 2),
     sg = n => (n >= 0 ? '+' + n : String(n));
+  function adjustD20(s, value, rollDie) {
+    if (value >= 14 || !s.inventory?.some(x => x.equipmentId === sermon.id && x.qty > 0)) return value;
+    return 13 + rollDie(7);
+  }
   const hash = s => {
     let h = 2166136261;
     for (const c of s) {
@@ -433,6 +438,6 @@ const Equipment = (() => {
     }
     return b;
   }
-  return { item, build, prepare, defense, validate, validateDraft, proficient, templateOptions, typeNames };
+  return { item, adjustD20, build, prepare, defense, validate, validateDraft, proficient, templateOptions, typeNames };
 })();
 if (typeof globalThis !== 'undefined') globalThis.Equipment = Equipment;

@@ -171,13 +171,14 @@ const AttackUI = (() => {
     const extra = RollUI.readBonus(form),
       target = form.get('target') || '',
       foe = target && TableUI.targets().monsters.find(f => f.id === target);
-    const mine = takeInput('myD20', 1, 20);
+    const input = takeInput('myD20', 1, 20);
+    const mine = input === null ? null : characterD20(input);
     // En combate, cada ataque se tira una sola vez (el DM puede habilitar otra tirada).
     commit('Tirada de ataque con ' + item.name, s => Combat.takeRoll(s, rollKey(), cap()));
     spendAction(item.name);
     const r =
         mine === null
-          ? A.rollAttack(p, adv, rnd)
+          ? A.rollAttack(p, adv, () => characterD20())
           : {
               rolls: [mine],
               kept: mine,

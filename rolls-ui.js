@@ -139,12 +139,13 @@ const RollUI = (() => {
     if (own !== null && own !== '') {
       const n = Number(own);
       if (!Number.isInteger(n) || n < 1 || n > 20) throw Error('Tu d20 va de 1 a 20.');
-      return { rolls: [n], kept: n, physical: true, heroic };
+      const kept = characterD20(n);
+      return { rolls: [kept], kept, physical: true, heroic };
     }
     let mode = fd.get('adv') || '';
     if (heroic) mode = mode === 'dis' ? '' : 'adv';
-    const a = roll(20)[0],
-      b = mode ? roll(20)[0] : null;
+    const a = characterD20(),
+      b = mode ? characterD20() : null;
     return {
       rolls: b === null ? [a] : [a, b],
       kept: mode === 'adv' ? Math.max(a, b) : mode === 'dis' ? Math.min(a, b) : a,
