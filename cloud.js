@@ -1311,9 +1311,24 @@
   }
 
   // ---------- Tablero (migración 008): mapas, fichas sobre el mapa y niebla ----------
-  async function board(campaignId) {
+  async function board(campaignId, { liveOnly = false } = {}) {
     const c = await api();
     await user();
+    if (liveOnly) {
+      const board = check(await c.from('boards').select('map_id').eq('campaign_id', campaignId).maybeSingle());
+      if (!board?.map_id) return { board, maps: [], tokens: [] };
+      const [maps, tokens] = await Promise.all([
+        c.from('maps').select('*').eq('campaign_id', campaignId).eq('id', board.map_id).then(check),
+        c
+          .from('map_tokens')
+          .select('*')
+          .eq('campaign_id', campaignId)
+          .eq('map_id', board.map_id)
+          .eq('hidden', false)
+          .then(check),
+      ]);
+      return { board, maps, tokens };
+    }
     const [b, maps] = await Promise.all([
       c.from('boards').select('*').eq('campaign_id', campaignId).maybeSingle().then(check),
       c.from('maps').select('*').eq('campaign_id', campaignId).order('sort').order('created_at').then(check),

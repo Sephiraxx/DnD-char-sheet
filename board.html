@@ -41,6 +41,7 @@
     <script src="./grants.js" defer></script>
     <script src="./defenses.js" defer></script>
     <script src="./config.js" defer></script>
+    <script src="./chronicle.js" defer></script>
     <script src="./cloud.js" defer></script>
     <script src="./party-view.js" defer></script>
     <script src="./party-store.js" defer></script>
@@ -59,11 +60,13 @@
       <div class="board-main">
         <div class="board-stage" id="stage">
           <canvas id="board" aria-label="Mapa del tablero"></canvas>
+          <p id="screen-map-empty" hidden>Esperando un mapa de la mesa…</p>
           <div class="board-turn" id="board-turn" hidden></div>
           <div class="board-hint" id="board-hint" role="status" aria-live="polite"></div>
           <div class="board-card" id="board-card" hidden></div>
           <div class="board-panel" id="board-panel" hidden></div>
         </div>
+        <aside id="player-screen-party" aria-label="Estado de la mesa" hidden></aside>
       </div>
       <nav class="board-tools" id="board-tools" aria-label="Herramientas del tablero"></nav>
     </div>
