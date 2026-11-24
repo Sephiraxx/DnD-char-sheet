@@ -229,8 +229,8 @@ async function main() {
     await page.getByLabel('Arma o accesorio').selectOption('hammer');
     const miniSnapshot = () => page.locator('#mini-preview').evaluate(c => c.toDataURL());
     const plainMini = await miniSnapshot();
-    await page.getByLabel('Peinado', { exact: true }).selectOption('braid');
-    await page.getByLabel('Cicatriz', { exact: true }).selectOption('claw');
+    await page.getByLabel(/^Peinado/).selectOption('braid');
+    await page.getByLabel(/^Cicatriz/).selectOption('claw');
     await page.getByLabel('Anteojos y parches').selectOption('round');
     await page.getByRole('button', { name: 'Usar atuendo del Dominio de la Muerte' }).click();
     const firstMini = await miniSnapshot();
