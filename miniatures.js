@@ -174,6 +174,7 @@
     offhand: 'none',
     pose: 'rest',
     skin: '#bc866b',
+    woodColor: '#96633e',
     cloth: '#43777c',
     hairColor: '#513a32',
     accent: '#c79a56',
@@ -184,7 +185,8 @@
     const result = { ...defaults };
     for (const [key, options] of Object.entries(parts))
       if (typeof raw[key] === 'string' && Object.hasOwn(options, raw[key])) result[key] = raw[key];
-    for (const key of ['skin', 'cloth', 'hairColor', 'accent', 'headColor'])
+    if (result.race === 'warforged') result.skin = root.MiniatureAncestries.appearance('warforged').skin;
+    for (const key of ['skin', 'woodColor', 'cloth', 'hairColor', 'accent', 'headColor'])
       if (typeof raw[key] === 'string' && /^#[0-9a-f]{6}$/i.test(raw[key])) result[key] = raw[key].toLowerCase();
     if (Number.isInteger(raw.height) && raw.height >= 50 && raw.height <= 300) result.height = raw.height;
     if (Number.isInteger(raw.facing)) result.facing = ((raw.facing % 360) + 360) % 360;
@@ -250,7 +252,14 @@
       gear: sheet.classId === 'bard' ? 'lute' : 'none',
     });
   }
-  function draw(ctx, raw, size, headwear, closeUp = false) {
+  function hasSword(model) {
+    return model.gear === 'sword' || model.offhand === 'sword';
+  }
+  // Reutilizamos siete posiciones de respiración en los sprites del tablero.
+  function swordFrame(time) {
+    return Math.round(3 * Math.sin(((time % 3400) * 2 * Math.PI) / 3400));
+  }
+  function draw(ctx, raw, size, headwear, closeUp = false, frame = 0) {
     const m = clean(raw);
     if (!m) return;
     const mesh = root.MiniatureMesh.create(m.facing);
@@ -283,7 +292,9 @@
               ? 'sculpted'
               : 'round'
         : m.ears;
-    const steel = '#9cafb1',
+    const forged = m.race === 'warforged',
+      steel = forged ? m.skin : '#9cafb1',
+      core = forged ? m.woodColor : m.skin,
       leather = '#583f32',
       dark = '#313b40',
       gold = m.accent,
@@ -299,7 +310,7 @@
     const lift = (b.pelvis - 0.99) * 0.78 - (ready ? 0.04 : 0);
     const chestY = 1.48 + lift,
       shoulderZ = b.lean + (ready ? 0.075 : 0.015);
-    const armor = m.outfit === 'armor' || m.race === 'warforged',
+    const armor = m.outfit === 'armor' || forged,
       robe = ['robe', 'vestments', 'coat'].includes(m.outfit);
     root.MiniatureAncestries.body(mesh, m, { hipY: b.pelvis, chestY, shoulderZ });
     if (m.race !== 'centaur')
@@ -312,8 +323,8 @@
           foot[2] + (forward ? 0.105 : 0.025),
         ];
         const thigh = [side * hip * 0.56, b.pelvis + 0.03, -0.025];
-        oval(foot[0], 0.235, foot[2] + 0.06, 0.11 + b.bulk * 0.22, 0.09, 0.205, leather);
-        limb(foot, knee, b.bulk * 0.75, b.bulk * 0.81, leather);
+        oval(foot[0], 0.235, foot[2] + 0.06, 0.11 + b.bulk * 0.22, 0.09, 0.205, forged ? steel : leather);
+        limb(foot, knee, b.bulk * 0.75, b.bulk * 0.81, forged ? core : leather);
         oval(
           (foot[0] + knee[0]) / 2,
           (foot[1] + knee[1]) / 2 + 0.028,
@@ -321,9 +332,9 @@
           b.bulk * 0.92,
           (knee[1] - foot[1]) * 0.38,
           b.bulk * 0.95,
-          leather,
+          forged ? core : leather,
         );
-        limb(knee, thigh, b.bulk * 0.78, b.bulk * 1.3, dark);
+        limb(knee, thigh, b.bulk * 0.78, b.bulk * 1.3, forged ? core : dark);
         oval(knee[0], knee[1], knee[2] + 0.02, b.bulk * 0.84, 0.09, b.bulk * 0.88, armor ? steel : dark);
       }
     if (m.outfit === 'cloak')
@@ -368,8 +379,33 @@
         [chestY + 0.045, chest * 0.95, 0.19, 0.012, shoulderZ],
         [chestY + 0.12, 0.18, 0.13, 0, shoulderZ],
       ],
-      armor ? steel : m.cloth,
+      forged ? (m.outfit === 'armor' ? core : m.cloth) : armor ? steel : m.cloth,
     );
+    if (forged) {
+      // Placas sobre un bastidor de madera: el borde deja ver el núcleo en el esternón.
+      for (const side of [-1, 1]) {
+        form(
+          side * chest * 0.45,
+          chestY,
+          shoulderZ + 0.12,
+          [
+            [-0.19, chest * 0.22, 0.064, 0, 0.015],
+            [-0.06, chest * 0.49, 0.119],
+            [0.035, chest * 0.46, 0.115],
+            [0.09, chest * 0.28, 0.077],
+          ],
+          steel,
+          8,
+        );
+        rod(
+          [side * 0.04, chestY - 0.16, shoulderZ + 0.192],
+          [side * 0.055, chestY + 0.065, shoulderZ + 0.209],
+          0.025,
+          0.02,
+          core,
+        );
+      }
+    }
     form(
       0,
       beltY,
@@ -382,7 +418,7 @@
     );
     oval(0, beltY + 0.025, bellyZ + b.belly + 0.013, 0.057, 0.042, 0.018, gold);
     root.MiniatureWardrobe.clothing(mesh, m, { chest, chestY, shoulderZ, hip, waist, beltY, belly: b.belly, bellyZ });
-    limb([0, chestY + 0.07, shoulderZ], [0, chestY + 0.24, shoulderZ], 0.14, 0.125, skin);
+    limb([0, chestY + 0.07, shoulderZ], [0, chestY + 0.24, shoulderZ], 0.14, 0.125, core);
     // Broche del cuello y costura de los hombros, visibles por encima del cinturón.
     for (const side of [-1, 1]) {
       rod(
@@ -398,7 +434,10 @@
     const gripX = Math.max(0.46, chest + 0.16),
       gripZ = 0.24 + shoulderZ;
     for (const side of [-1, 1]) {
-      const armed = (side === 1 ? m.gear : m.offhand) !== 'none';
+      const item = side === 1 ? m.gear : m.offhand;
+      const sword = item === 'sword',
+        armed = item !== 'none';
+      const sway = sword ? frame / 3 : 0;
       const shoulderAt = [side * chest * 0.92, chestY + (side === 1 ? 0.012 : -0.013), shoulderZ];
       const elbow = [side * (chest + 0.085 + (ready ? 0.04 : 0)), chestY - 0.26, shoulderZ + (armed ? 0.02 : -0.045)];
       const hand = [
@@ -406,10 +445,28 @@
         (armed ? 1.08 : ready ? 1.0 : 0.86) + lift,
         armed ? gripZ : shoulderZ + (ready ? 0.28 : 0.1),
       ];
-      rod(shoulderAt, elbow, b.bulk * 1.08, b.bulk * 0.78, m.cloth);
+      if (sword) {
+        elbow[0] += side * (ready ? 0.075 : 0.035);
+        elbow[2] -= ready ? 0.005 : 0.07;
+        hand[0] += side * (ready ? 0.04 : 0.075);
+        hand[1] += (ready ? 0.16 : -0.08) + sway * 0.023;
+        hand[2] += (ready ? 0.115 : 0.025) + sway * 0.017;
+        elbow[1] += sway * 0.012;
+      }
+      rod(shoulderAt, elbow, b.bulk * 1.08, b.bulk * 0.78, forged ? core : m.cloth);
       oval(...shoulderAt, b.bulk * 1.18, b.bulk * 0.98, b.bulk * 1.25, armor ? steel : m.cloth);
-      rod(elbow, hand, b.bulk * 0.85, 0.064, armor ? steel : skin);
-      oval(...hand, 0.084, 0.099, 0.081, skin);
+      rod(elbow, hand, b.bulk * 0.85, 0.064, forged ? core : armor ? steel : skin);
+      if (forged) {
+        oval(...elbow, b.bulk * 0.86, 0.078, b.bulk * 0.86, steel);
+        const cuff = hand.map((v, i) => v + (elbow[i] - v) * 0.34);
+        rod(cuff, hand, 0.095, 0.076, steel);
+      }
+      if (sword) {
+        // Mano, pomo, cruz y hoja comparten el eje de la muñeca.
+        mesh.offset(...hand, side, (ready ? 0.42 : 1.89) + sway * 0.055, (ready ? 0.38 : 0.25) + sway * 0.045);
+        drawSword(mesh, gold, core);
+        mesh.offset(0, 0, 0);
+      } else oval(...hand, 0.084, 0.099, 0.081, core);
     }
     const head = 1.87 + lift;
     mesh.offset(0, 0, shoulderZ);
@@ -481,7 +538,10 @@
       oval(0, head - 0.1, 0.21, 0.19, 0.105, 0.16, skin);
       for (const side of [-1, 1]) oval(side * 0.09, head - 0.08, 0.347, 0.025, 0.017, 0.013, dark);
     }
-    if (m.race === 'warforged')
+    if (forged) {
+      for (const side of [-1, 1]) {
+        rod([side * 0.2, head - 0.055, 0.151], [side * 0.106, head - 0.189, 0.158], 0.041, 0.029, core);
+      }
       form(
         0,
         head + 0.003,
@@ -493,6 +553,7 @@
         gold,
         8,
       );
+    }
     const covered = ['hood', 'cowl', 'hat'].includes(m.headwear);
     if (m.hair !== 'bald' && !covered) {
       form(
@@ -527,13 +588,35 @@
       [1, m.gear],
       [-1, m.offhand],
     ]) {
-      if (item === 'none') continue;
+      if (item === 'none' || item === 'sword') continue;
       mesh.offset(side * (gripX - 0.48), lift, gripZ - 0.23, side);
       drawItem(mesh, item, m.cloth, gold);
     }
     mesh.offset(0, 0, 0);
     if (closeUp) mesh.paint(ctx, size, 1.04, [0, head, shoulderZ]);
     else mesh.paint(ctx, size, 0.376);
+  }
+  function drawSword(mesh, gold, handColor) {
+    const { rod, oval, form } = mesh;
+    rod([0, -0.134, 0], [0, 0.14, 0], 0.034, 0.032, '#583f32');
+    oval(0, -0.144, 0, 0.049, 0.043, 0.047, gold);
+    for (const side of [-1, 1]) rod([0, 0.14, 0], [side * 0.15, 0.104, 0], 0.035, 0.018, gold);
+    form(
+      0,
+      0.153,
+      0,
+      [
+        [0, 0.067, 0.029],
+        [0.13, 0.058, 0.031],
+        [0.63, 0.046, 0.022],
+        [0.78, 0.002, 0.002],
+      ],
+      '#b8cccf',
+      4,
+    );
+    oval(-0.029, 0, -0.015, 0.081, 0.088, 0.067, handColor);
+    for (const y of [-0.049, -0.007, 0.035]) rod([-0.052, y, 0.038], [0.03, y + 0.008, 0.035], 0.023, 0.022, handColor);
+    rod([0.037, 0.058, -0.02], [0.043, 0.018, 0.031], 0.03, 0.024, handColor);
   }
   function drawItem(mesh, gear, cloth, gold) {
     const { form, oval, limb } = mesh,
@@ -606,7 +689,7 @@
         4,
       );
     }
-    if (['sword', 'dagger', 'spear', 'axe', 'hammer'].includes(gear)) {
+    if (['dagger', 'spear', 'axe', 'hammer'].includes(gear)) {
       const x = 0.5,
         z = 0.23;
       const pole = gear === 'spear';
@@ -621,7 +704,7 @@
         leather,
         8,
       );
-      if (gear === 'sword' || gear === 'dagger') {
+      if (gear === 'dagger') {
         form(
           x,
           1.25,
@@ -639,8 +722,8 @@
           z,
           [
             [0, 0.064, 0.035],
-            [gear === 'sword' ? 0.57 : 0.2, 0.055, 0.027],
-            [gear === 'sword' ? 0.74 : 0.32, 0.003, 0.003],
+            [0.2, 0.055, 0.027],
+            [0.32, 0.003, 0.003],
           ],
           steel,
           4,
@@ -714,11 +797,13 @@
     }
     return sprites.get(key);
   }
-  function sprite(model) {
-    return cachedSprite(JSON.stringify(model), model, draw);
+  function sprite(model, frame = 0) {
+    return cachedSprite(JSON.stringify(model) + ':' + frame, model, (ctx, m, size) =>
+      draw(ctx, m, size, null, false, frame),
+    );
   }
   function creatureSprite(key) {
     return cachedSprite(key, key, root.CreatureMiniatures.draw);
   }
-  root.Miniatures = { parts, defaults, initial, clean, draw, drawFace, sprite, creatureSprite };
+  root.Miniatures = { parts, defaults, initial, clean, hasSword, swordFrame, draw, drawFace, sprite, creatureSprite };
 })(globalThis);

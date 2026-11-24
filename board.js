@@ -726,7 +726,9 @@
     });
   }
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  let lastSceneFrame = -Infinity;
+  let lastSceneFrame = -Infinity,
+    hasVisibleSword = false,
+    lastSwordFrame = 0;
   const spellDuration = 1400;
   function canSeeCast(x, y) {
     return !playerView() || ((!S.fogOn || BC.isRevealed(S.grid, S.fog, x, y)) && isSeen(seen(), x, y));
@@ -869,9 +871,18 @@
     if (!shown) return requestAnimationFrame(draw);
     const now = performance.now();
     const animating = S.mapId && (S.casts.length || (S.grid.weather !== 'clear' && !reducedMotion.matches));
-    if (!S.dirty && !S.pings.length && !S.remote.size && !(animating && now - lastSceneFrame >= 1000 / 24))
+    const swordFrame = reducedMotion.matches ? 0 : Miniatures.swordFrame(now);
+    if (
+      !S.dirty &&
+      !S.pings.length &&
+      !S.remote.size &&
+      !(hasVisibleSword && swordFrame !== lastSwordFrame) &&
+      !(animating && now - lastSceneFrame >= 1000 / 24)
+    )
       return requestAnimationFrame(draw);
     lastSceneFrame = now;
+    hasVisibleSword = false;
+    lastSwordFrame = swordFrame;
     S.dirty = false;
     const dpr = window.devicePixelRatio || 1,
       { w, h } = worldSize(),
@@ -949,7 +960,7 @@
     drawLights();
     // Fichas
     const list = visibleTokens().sort((a, b) => (a.kind === 'object' ? -1 : 0) - (b.kind === 'object' ? -1 : 0));
-    for (const t of list) drawToken(t);
+    for (const t of list) drawToken(t, swordFrame);
     drawScene(now, c, o, w, h, dpr);
     // Niebla
     if (S.fogOn) {
@@ -1214,7 +1225,7 @@
     const n = parseInt(m[1], 16);
     return (0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
   }
-  function drawToken(t) {
+  function drawToken(t, swordFrame) {
     const c = cellPx(),
       o = origin(),
       p = tokenPos(t),
@@ -1261,7 +1272,9 @@
     const img = !override && !figure && portraitImg(d.portrait);
     const creature = override || (creatureToken && !figure && !d.portrait && CreatureMiniatures.identify(t.name));
     if (figure || (creature && creature !== 'sigil')) {
-      const sprite = figure ? Miniatures.sprite(figure) : Miniatures.creatureSprite(creature);
+      const sword = figure && !d.dead && Miniatures.hasSword(figure);
+      if (sword) hasVisibleSword = true;
+      const sprite = figure ? Miniatures.sprite(figure, sword ? swordFrame : 0) : Miniatures.creatureSprite(creature);
       const diameter = rad * 1.96;
       ctx.drawImage(sprite, cx - diameter / 2, cy - diameter / 2, diameter, diameter);
     } else if (img) {

@@ -276,6 +276,29 @@ async function main() {
           ),
         ),
     );
+    check('Miniaturas: madera solo en forjados', !(await page.getByLabel('Madera', { exact: true }).isVisible()));
+    await page.getByLabel('Raza de la miniatura').selectOption('warforged');
+    for (const [label, color] of [
+      ['Hierro', '#607880'],
+      ['Madera', '#955331'],
+    ])
+      await page.getByLabel(label, { exact: true }).evaluate((input, value) => {
+        input.value = value;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }, color);
+    await page.getByLabel('Mano principal').selectOption('sword');
+    const atRest = await miniSnapshot();
+    await page.waitForFunction(previous => document.querySelector('#mini-preview').toDataURL() !== previous, atRest);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.getByRole('button', { name: 'Guardar miniatura' }).click();
+    await page.reload();
+    await page.getByRole('button', { name: 'Editar miniatura' }).click();
+    check(
+      'Miniaturas: guarda los dos materiales del forjado',
+      (await page.getByLabel('Hierro', { exact: true }).inputValue()) === '#607880' &&
+        (await page.getByLabel('Madera', { exact: true }).inputValue()) === '#955331',
+    );
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
     await page.getByRole('button', { name: 'Quitar miniatura' }).click();
     await page.getByRole('button', { name: 'Crear miniatura' }).waitFor();
     // 8. Tiradas: la tarjeta aparece y queda en el resultado.

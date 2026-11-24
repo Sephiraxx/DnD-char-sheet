@@ -228,3 +228,40 @@ test('la mano secundaria empuña cada objeto al otro lado de la miniatura', () =
   }
   assert.equal(M.clean({ offhand: 'invalid' }).offhand, 'none');
 });
+
+test('el forjado conserva el color anterior del hierro y guarda la madera en la ficha pública', () => {
+  const previous = M.clean({ race: 'warforged', skin: '#8899AA' });
+  assert.equal(previous.skin, '#8899aa');
+  assert.equal(previous.woodColor, M.defaults.woodColor);
+  assert.equal(M.clean({ ...previous, woodColor: 'invalid' }).woodColor, M.defaults.woodColor);
+  const miniature = { ...previous, woodColor: '#845137', gear: 'sword', offhand: 'shield' };
+  const ctx = load();
+  require('vm').runInContext(
+    require('fs').readFileSync(require('path').join(__dirname, '../party-view.js'), 'utf8'),
+    ctx,
+  );
+  const sheet = ctx.Rules.validate({ ...fixture('wizard-3.json'), miniature });
+  const shared = ctx.PartyView.rowSummary({ summary: ctx.PartyView.summarize(sheet) }).miniature;
+  assert.equal(shared.skin, previous.skin);
+  assert.equal(shared.woodColor, miniature.woodColor);
+  function palette(model) {
+    const colors = [];
+    capture(ctx => M.draw(ctx, model, 96), colors);
+    return colors.join();
+  }
+  assert.notEqual(palette(miniature), palette({ ...miniature, woodColor: '#a27355' }));
+  assert.notEqual(palette(miniature), palette({ ...miniature, skin: '#464c50' }));
+  assert.equal(palette({ race: 'human' }), palette({ race: 'human', woodColor: '#ffffff' }));
+});
+test('la espada se mueve en ambas manos y posturas, las demás armas quedan quietas', () => {
+  function frame(model, value) {
+    return capture(ctx => M.draw(ctx, model, 96, null, false, value));
+  }
+  for (const pose of ['ready', 'rest'])
+    for (const hand of ['gear', 'offhand']) {
+      const m = { pose, [hand]: 'sword' };
+      assert.notDeepEqual(frame(m, -3), frame(m, 3));
+    }
+  assert.deepEqual(frame({ gear: 'axe' }, -3), frame({ gear: 'axe' }, 3));
+  assert.equal(M.swordFrame(0), M.swordFrame(3400));
+});
