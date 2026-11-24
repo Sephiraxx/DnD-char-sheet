@@ -252,14 +252,18 @@ function combat() {
   return combatView();
 }
 // Dados resueltos para esta ficha (nivel, modificador y mejoras por espacio), desde el catálogo.
+function spellHeadlineHtml(headline) {
+  return `<span class="spell-numbers-inline">${esc(headline)}</span>`;
+}
 function spellNumbersHtml(sp, slot) {
   const lines = R.spellNumbersFor(state, sp, slot);
   return lines.length ? `<p class="spell-numbers">${lines.map(esc).join('<br>')}</p>` : '';
 }
 function spellCard(s) {
   const race = typeof Campaign !== 'undefined' && Campaign.raceSpells(state).spells.some(x => x.id === s.id),
-    extra = state.extras.includes(s.id) && !race;
-  return `<details class="spell" id="spell-${esc(s.id)}"><summary><div class="spell-title"><div><h2>${esc(s.name)}</h2><div class="spell-meta">${s.level ? 'Nivel ' + s.level : 'Truco'} · ${esc(s.time)} · ${esc(s.range)}</div></div>${race ? '<span class="tag">Raza</span>' : extra ? '<span class="tag">Extra DM</span>' : s.concentration ? '<span class="tag">Conc.</span>' : ''}</div><p class="spell-brief">${esc(s.brief)}</p>${s.level === 0 && R.spellNumbersFor(state, s).length ? `<p class="spell-numbers-inline">${esc(R.spellNumbersFor(state, s)[0])}</p>` : ''}</summary><div class="spell-body"><p>${esc(s.text)}</p><p class="small">${libraryLink(s.name)}</p>${typeof OfficialContent !== 'undefined' ? OfficialContent.spellHtml(s.id) : ''}${spellNumbersHtml(s)}${button('Explicación y requisitos', 'spell-help', 'secondary', `data-id="${esc(s.id)}"`)}<p class="small">Componentes: ${esc(s.components)}<br>Duración: ${esc(s.duration)}${s.concentration ? ' · Concentración' : ''}<br>Fuente: ${esc(s.source)}</p><div class="spell-footer">${button(s.level ? 'Lanzar' : 'Usar truco', 'cast', '', `data-id="${esc(s.id)}"`)}${Classes.ritualAllowed(state, s) ? button('Ritual · sin espacio', 'ritual', 'secondary', `data-id="${esc(s.id)}"`) : ''}${button('Editar', 'spell-edit', 'secondary', `data-id="${esc(s.id)}"`)}</div></div></details>`;
+    extra = state.extras.includes(s.id) && !race,
+    headline = R.spellHeadline(state, s);
+  return `<details class="spell" id="spell-${esc(s.id)}"><summary><div class="spell-title"><div><h2>${esc(s.name)}</h2>${spellHeadlineHtml(headline)}<div class="spell-meta">${s.level ? 'Nivel ' + s.level : 'Truco'} · ${esc(s.time)} · ${esc(s.range)}</div></div>${race ? '<span class="tag">Raza</span>' : extra ? '<span class="tag">Extra DM</span>' : s.concentration ? '<span class="tag">Conc.</span>' : ''}</div>${s.brief && headline !== s.brief ? `<p class="spell-brief">${esc(s.brief)}</p>` : ''}</summary><div class="spell-body"><p>${esc(s.text)}</p><p class="small">${libraryLink(s.name)}</p>${typeof OfficialContent !== 'undefined' ? OfficialContent.spellHtml(s.id) : ''}${spellNumbersHtml(s)}${button('Explicación y requisitos', 'spell-help', 'secondary', `data-id="${esc(s.id)}"`)}<p class="small">Componentes: ${esc(s.components)}<br>Duración: ${esc(s.duration)}${s.concentration ? ' · Concentración' : ''}<br>Fuente: ${esc(s.source)}</p><div class="spell-footer">${button(s.level ? 'Lanzar' : 'Usar truco', 'cast', '', `data-id="${esc(s.id)}"`)}${Classes.ritualAllowed(state, s) ? button('Ritual · sin espacio', 'ritual', 'secondary', `data-id="${esc(s.id)}"`) : ''}${button('Editar', 'spell-edit', 'secondary', `data-id="${esc(s.id)}"`)}</div></div></details>`;
 }
 // Carga: lo que llevás encima frente a tu capacidad, con la regla variante si la mesa la usa.
 function loadMeter() {
@@ -535,7 +539,7 @@ function editPool(type, index) {
     fd => commit('Ajuste de usos disponibles', s => setPool(s, type, index, max - number(fd, 'usos', 0, max))),
   );
 }
-function cast(id, ritual = false) {
+function cast(id, ritual = false, placement = null) {
   const sp = spellById(id);
   if (ritual && !sp?.ritual) throw Error('No es ritual.');
   const MM = typeof Metamagic !== 'undefined' ? Metamagic : null;
@@ -575,6 +579,23 @@ function cast(id, ritual = false) {
       )
     : '';
   let html = `<p>${esc(sp.text || sp.brief)}</p>${spellNumbersHtml(sp)}${table ? `<p class="small">${esc(table)}</p>` : ''}<p class="small">Dados: 1d4 = un dado de 4 caras; 2d6 = dos dados de 6 caras. «Modificador de lanzamiento» de este conjuro: ${sign(casterStats.mods[Classes.casting(caster).ability])}. ${esc(sp.materialEs || '')}</p><p class="small">${sp.level ? 'Conjuro de nivel ' + sp.level : 'Truco · no gasta espacio'} · ${esc(sp.time)} · ${esc(sp.range)}<br>${esc(sp.components)} · ${esc(sp.duration)}${ritual ? ' · Ritual: añade 10 minutos al lanzamiento.' : ''}</p>`;
+  const impact = R.spellImpact(sp);
+  if (!ritual && TableUI.link()) {
+    html += placement
+      ? `<p class="small">Punto elegido en el tablero · ${placement.hits.length} ficha(s) en la zona.</p>`
+      : '';
+    html += button(
+      placement ? 'Cambiar punto en el tablero' : 'Apuntar en el tablero',
+      'spell-map-aim',
+      'secondary',
+      `data-id="${esc(sp.id)}"`,
+    );
+  }
+  if (!ritual && impact.choices.length)
+    html += select('Tipo de daño de este lanzamiento', 'castType', [
+      ...(impact.determined ? [['', 'Según el resultado']] : []),
+      ...impact.choices.map(t => [t, t]),
+    ]);
   if (sp.level && !ritual && (!special || featFree || grant?.slotRequired))
     html += select(
       'Cómo lanzarlo',
@@ -658,6 +679,21 @@ function cast(id, ritual = false) {
       if (mm?.cost > MM.points(state))
         throw Error(`La metamagia elegida cuesta ${mm.cost} punto(s) y te quedan ${MM.points(state)}.`);
       const now = { ...(mm?.sp || sp), castAbility: Classes.casting(Classes.spellCaster(state, sp.id, slot)).ability };
+      const selectedType = impact.choices.includes(fd.get('castType')) ? fd.get('castType') : '';
+      const types = R.castDamageTypes(impact, selectedType, mm?.roll);
+      const kinds = [...types, ...(impact.healing ? ['heal'] : [])];
+      if (!kinds.length) kinds.push('magic');
+      let point = null;
+      if (!ritual && placement) {
+        point = globalThis.Board?.spellPlacement(now, placement.cell, castLevel);
+        if (
+          !point ||
+          point.map !== placement.map ||
+          point.campaign !== placement.campaign ||
+          point.actorId !== placement.actorId
+        )
+          throw Error('El mapa o la ficha cambió. Volvé a elegir el punto.');
+      } else if (!ritual && globalThis.Board?.isOpen()) point = Board.selectedPlacement(now, castLevel);
       commit(
         (ritual ? 'Ritual: ' : 'Lanzado: ') +
           sp.name +
@@ -683,7 +719,16 @@ function cast(id, ritual = false) {
         },
       );
       // Si el conjuro tiene ataque, salvación o dados, se abre su tirada.
-      if (!ritual && RollUI.rollable(sp)) setTimeout(() => RollUI.spell(now, castLevel, { mm: mm?.roll }));
+      if (point) Board.projectSpell(point, kinds);
+      if (!ritual && RollUI.rollable(sp))
+        setTimeout(() =>
+          RollUI.spell(now, castLevel, {
+            mm: mm?.roll,
+            types: selectedType ? types.join(' y ') : '',
+            placement: point,
+            castKinds: point ? null : kinds,
+          }),
+        );
       else
         toast(
           ritual

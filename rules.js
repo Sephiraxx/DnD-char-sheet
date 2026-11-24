@@ -1033,7 +1033,19 @@
     let upDone = false;
     const rows = (D.dmg || []).map(([d, type, mod], i) => {
       // «2d8+1d6» (Descarga de caos) se conserva tal cual.
-      if (/d\d+\+\d+d/.test(d)) return { dice: d.replace('+', ' + '), type, mod: !!mod, n: 0, sides: 0, flat: 0 };
+      if (/d\d+\+\d+d/.test(d)) {
+        const groups = d.split('+').map(parseDice);
+        const boosted = groups.find(g => g?.sides === up?.sides);
+        if (boosted && up && steps) boosted.n += up.n * steps;
+        return {
+          dice: groups.map(g => diceText(g.n, g.sides, g.flat)).join(' + '),
+          type,
+          mod: !!mod,
+          n: 0,
+          sides: 0,
+          flat: 0,
+        };
+      }
       const p = parseDice(d) || { n: 0, sides: 0, flat: 0 };
       let n = p.n;
       if (D.tiers && !D.blade) {
@@ -1054,7 +1066,10 @@
         let n = p.n;
         if (up && steps && !upDone && up.sides === p.sides) n += up.n * steps;
         heal = { dice: diceText(n, p.sides, p.flat), mod: !!D.heal[1], n, sides: p.sides, flat: p.flat };
-      } else heal = { dice: String(D.heal[0]), mod: false, n: 0, sides: 0, flat: Number(D.heal[0]) || 0 };
+      } else {
+        const flat = Number(D.heal[0]) + (sp.id === 'heal' ? 10 * (slot - sp.level) : 0);
+        heal = { dice: String(flat), mod: false, n: 0, sides: 0, flat };
+      }
     }
     // Varios proyectiles con los mismos dados.
     let count = 0;
@@ -1138,6 +1153,171 @@
       mod = ability ? stats(caster).mods[ability] : undefined;
     return { level: totalLevel(s), slot, mod };
   }
+  // Huella de un efecto sobre la cuadrícula, en pies. No se deduce del alcance:
+  // espadas, saltos secundarios y auras que solo permiten elegir un objetivo no lo golpean todo.
+  const footprints = new Map();
+  function areas(kind, feet, ids) {
+    for (const id of ids.split(' ')) footprints.set(id, { kind, feet });
+  }
+  areas(
+    'circle',
+    5,
+    'thunderclap sword-burst word-of-radiance snillocs-snowball-swarm moonbeam call-lightning ice-knife',
+  );
+  areas('circle', 10, 'shatter magnify-gravity arms-of-hadar wither-and-bloom flame-strike whirlwind earth-tremor');
+  areas('circle', 15, 'spirit-guardians freedom-of-the-waves');
+  areas(
+    'circle',
+    20,
+    'fireball delayed-blast-fireball ice-storm spike-growth hunger-of-hadar gravity-sinkhole storm-sphere vitriolic-sphere cloudkill insect-plague synaptic-static incendiary-cloud ravenous-void',
+  );
+  areas('circle', 30, 'sickening-radiance dawn destructive-wave maelstrom weird');
+  areas('circle', 40, 'conjure-volley');
+  areas('circle', 60, 'circle-of-death otilukes-freezing-sphere maddening-darkness sunburst');
+  areas('circle', 15, 'darkness');
+  areas('circle', 20, 'sleep silence fog-cloud');
+  areas('cube', 20, 'web entangle faeriefire');
+  areas('cube', 30, 'hypnotic');
+  areas('cube', 10, 'grease');
+  areas('cone', 15, 'burning-hands frost-fingers spray-of-cards');
+  areas('cone', 30, 'rimes-binding-ice pulse-wave');
+  areas('cone', 60, 'cone-of-cold conjure-barrage prismatic-spray');
+  areas('cube', 5, 'create-bonfire cloud-of-daggers');
+  areas('cube', 15, 'thunderwave');
+  areas('cube', 20, 'erupting-earth');
+  areas('cube', 30, 'abi-dalzims-horrid-wilting');
+  areas('line', 30, 'tashas-caustic-brew aganazzars-scorcher');
+  areas('line', 60, 'sunbeam');
+  areas('line', 100, 'lightning-bolt gravity-fissure');
+  const damageTypes = [
+    'ácido',
+    'contundente',
+    'cortante',
+    'frío',
+    'fuego',
+    'fuerza',
+    'necrótico',
+    'perforante',
+    'psíquico',
+    'radiante',
+    'relámpago',
+    'trueno',
+    'veneno',
+  ];
+  const fixedHealing = new Set([
+    'goodberry',
+    'mass-heal',
+    'power-word-heal',
+    'revivify',
+    'raise-dead',
+    'resurrection',
+    'true-resurrection',
+  ]);
+  const contextual = {
+    'absorb-elements': ['ácido', 'frío', 'fuego', 'relámpago', 'trueno'],
+    'hunters-mark': damageTypes,
+    'enlarge-reduce': damageTypes,
+    'reality-break': ['frío', 'fuerza', 'psíquico'],
+    'conjure-barrage': ['contundente', 'perforante', 'cortante'],
+    'conjure-volley': ['contundente', 'perforante', 'cortante'],
+  };
+  // Las fichas anteriores y los conjuros personales pueden traer únicamente texto.
+  // Exigimos una cantidad al lado del tipo para no confundir una resistencia con daño.
+  const damageInText = new RegExp(
+    '(?:\\d+d\\d+(?:\\s*\\+\\s*\\d+)?|\\d+)\\s+(?:de\\s+)?(?:daño\\s+(?:de\\s+)?)?(' + damageTypes.join('|') + ')\\b',
+    'gi',
+  );
+  function spellImpact(sp, slot = sp.level) {
+    const rows = sp.dice?.dmg || [];
+    const declared = [...(sp.damageTypes || []), ...(contextual[sp.id] || []), ...rows.map(r => r[1] || '')].join(' ');
+    const description = [sp.brief, sp.text].filter(Boolean).join(' ');
+    const written = declared.trim() ? [] : [...description.matchAll(damageInText)].map(m => m[1].toLowerCase());
+    const types = damageTypes.filter(type => declared.includes(type) || written.includes(type));
+    const variable = rows.find(row => / o |a elección|según/.test(row[1]))?.[1] || '';
+    const choices =
+      sp.dice?.or || /según|a elección/.test(variable) || contextual[sp.id]
+        ? types
+        : types.filter(t => variable.includes(t));
+    const healing =
+      !!sp.dice?.heal ||
+      fixedHealing.has(sp.id) ||
+      ['life-transference', 'wither-and-bloom', 'vampiric-touch', 'enervation'].includes(sp.id) ||
+      (!sp.dice &&
+        /(?:recuper[aá]s?|cura)\s+(?:hasta\s+)?\d+(?:d\d+)?(?:\s*\+\s*(?:\d+|tu modificador))?\s+(?:PG|puntos de golpe)\b/i.test(
+          description,
+        ));
+    let area = footprints.get(sp.id);
+    if (sp.id === 'fog-cloud' && area) area = { ...area, feet: 20 * Math.max(sp.level, slot) };
+    return {
+      types,
+      healing,
+      area,
+      choices,
+      determined: /según/.test(variable) || !!contextual[sp.id],
+    };
+  }
+  function castDamageTypes(impact, selected, mm) {
+    const parts = impact.types.filter(t => !impact.choices.includes(t) || t === selected);
+    return [...new Set(parts.map(t => (mm?.types && mm.from?.includes(t) ? mm.types : t)))];
+  }
+  function spellHeadline(s, sp, slot) {
+    const impact = spellImpact(sp, slot);
+    const lines = (sp.dice ? spellNumbersFor(s, sp, slot) : []).filter(
+      line => !line.startsWith('Sube con') && !line.startsWith('Espacio superior') && !line.startsWith('Ambos suben'),
+    );
+    let main = lines[0];
+    if (sp.dice?.dmg?.length && sp.dice?.heal) main = lines.slice(0, 2).join(' ');
+    if (sp.dice?.blade) main = lines.slice(0, 2).join(' ');
+    if (sp.id === 'armor-of-agathys')
+      main = `${5 * (slot || sp.level)} PG temporales y ${5 * (slot || sp.level)} de daño de frío al atacante.`;
+    if (sp.id === 'raise-dead') main = 'La criatura vuelve a la vida con 1 PG.';
+    if (sp.id === 'resurrection') main = 'La criatura vuelve a la vida con todos sus PG.';
+    if (sp.id === 'heroes-feast') main = 'Cada participante gana 2d10 PG máximos y recupera la misma cantidad.';
+    if (sp.id === 'hunger-of-hadar')
+      main = 'Al empezar el turno dentro: 2d6 de frío. Al terminarlo dentro: 2d6 de ácido si falla Destreza.';
+    // La descripción conserva los daños secundarios, por golpe o por turno, que el dado principal no representa.
+    if (
+      sp.level > 0 &&
+      (!slot || slot === sp.level) &&
+      main &&
+      (sp.brief?.match(/\d+d\d+/g) || []).some(d => !main.includes(d))
+    )
+      main = sp.brief;
+    if (sp.id === 'etherealness')
+      main = 'Al reaparecer dentro de un objeto o criatura: 2 de daño de fuerza por pie desplazado.';
+    if (sp.id === 'animate-objects')
+      main =
+        'Daño por objeto: 1d4 + 4 (diminuto), 1d8 + 2 (pequeño), 2d6 + 1 (mediano), 2d10 + 2 (grande) o 2d12 + 4 (enorme).';
+    if (sp.id === 'mass-heal') main = 'Repartís hasta 700 PG de curación entre las criaturas elegidas.';
+    if (sp.id === 'power-word-heal') main = 'El objetivo recupera todos sus PG.';
+    if (sp.id === 'absorb-elements')
+      main = main?.replace(/\.$/, ' de daño extra del tipo absorbido en tu siguiente impacto cuerpo a cuerpo.');
+    if (['hunters-mark', 'conjure-barrage', 'conjure-volley'].includes(sp.id))
+      main = main?.replace(/\.$/, ' de daño del tipo del arma.');
+    if (sp.id === 'enlarge-reduce')
+      main = 'Los ataques con el arma agrandada infligen 1d4 de daño extra; con el arma reducida, 1d4 menos.';
+    if (sp.id === 'goodberry') main = '1 PG de curación por baya.';
+    if (sp.id === 'life-transference') main += ' Otra criatura recupera el doble del daño recibido.';
+    if (sp.id === 'vampiric-touch') main += ' Recuperás la mitad del daño infligido.';
+    if (sp.id === 'wither-and-bloom') main += ' Una criatura puede curarse con un Dado de Golpe + tu modificador.';
+    if (sp.id === 'regenerate') main += ' Después, 1 PG por turno.';
+    if (!main && !sp.dice && !sp.damageTypes && !sp.brief?.match(/\d/) && impact.types.length) {
+      const numbers = [...(sp.text || '').matchAll(damageInText)].map(m => m[0]);
+      if (numbers.length) main = [...new Set(numbers)].join(' · ');
+    }
+    if (!main) main = sp.brief || sp.text || 'Ver descripción del conjuro.';
+    const a = impact.area;
+    if (
+      a &&
+      !new RegExp(
+        '(?:radio|esfera|cono|cubo|línea|cilindro) de ' + a.feet + ' pies|' + a.feet + ' pies de radio',
+        'i',
+      ).test(main)
+    )
+      main +=
+        ' · ' + { circle: 'Radio', line: 'Línea', cone: 'Cono', cube: 'Cubo' }[a.kind] + ' de ' + a.feet + ' pies';
+    return main.replace('. ·', ' ·');
+  }
   const spellNumbersFor = (s, sp, slot) => spellNumbers(sp, spellOpts(s, sp, slot));
   // «Nivel 1: 3d6 · 2: 4d6 · 3: 5d6»: el dado principal en cada espacio que podés gastar.
   function slotTable(s, sp, slots) {
@@ -1155,6 +1335,10 @@
     spellDice,
     spellOpts,
     spellNumbersFor,
+    spellImpact,
+    castDamageTypes,
+    spellHeadline,
+    damageTypes,
     slotTable,
     spellNumbers,
     totalLevel,

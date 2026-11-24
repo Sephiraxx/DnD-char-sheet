@@ -1430,6 +1430,15 @@
   }
   // Cambios en vivo del tablero (aparte de subscribe: así una mesa sin la migración 008 sigue funcionando)
   // y un canal efímero para arrastres en curso y señales («ping»), que no se guardan.
+  async function broadcastSpellTargets(campaignId, kinds, targets) {
+    const c = await api();
+    const board = check(await c.from('boards').select('map_id').eq('campaign_id', campaignId).maybeSingle());
+    if (!board?.map_id) return;
+    const result = await c
+      .channel('tablero-' + campaignId)
+      .httpSend('board', { t: 'spell-targets', map: board.map_id, kinds, targets });
+    if (!result.success) throw Error(result.error);
+  }
   async function subscribeBoard(campaignId, handler, onMessage) {
     const c = await api();
     await user();
@@ -1565,6 +1574,7 @@
     removeMapImages,
     restoreCampaignArchive,
     subscribeBoard,
+    broadcastSpellTargets,
     enabled,
     order,
     addCombatant,

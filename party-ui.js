@@ -836,9 +836,10 @@ const PartyUI = (() => {
           current !== 'no'
             ? `<span class="tag spell-status">${esc(current === 'known' && !sp.level ? 'Truco conocido' : current === 'prepared' && mode === 'book' ? 'Libro + preparado' : STATUS_LABEL[current] || '')}</span>`
             : '';
-      const head = `<span class="creator-card-title">${esc(sp.name)}</span><span class="creator-meta">${sp.level ? 'Nivel ' + sp.level : 'Truco'} · ${esc(sp.school || '')} · ${esc(sp.time)}${sp.concentration ? ' · Conc.' : ''}${sp.ritual ? ' · Ritual' : ''}</span>${badge}`;
+      const headline = R.spellHeadline(s, sp);
+      const head = `<span class="creator-card-title">${esc(sp.name)}</span>${spellHeadlineHtml(headline)}<span class="creator-meta">${sp.level ? 'Nivel ' + sp.level : 'Truco'} · ${esc(sp.school || '')} · ${esc(sp.time)}${sp.concentration ? ' · Conc.' : ''}${sp.ritual ? ' · Ritual' : ''}</span>${badge}`;
       if (!open)
-        return `<button type="button" class="creator-card ${current !== 'no' ? 'selected' : ''}" data-sb="open" data-id="${esc(sp.id)}" aria-expanded="false">${head}<span class="creator-brief">${esc(sp.brief || '')}</span></button>`;
+        return `<button type="button" class="creator-card ${current !== 'no' ? 'selected' : ''}" data-sb="open" data-id="${esc(sp.id)}" aria-expanded="false">${head}${sp.brief && headline !== sp.brief ? `<span class="creator-brief">${esc(sp.brief)}</span>` : ''}</button>`;
       return `<div class="creator-card selected spell-open"><button type="button" class="spell-open-head" data-sb="open" data-id="${esc(sp.id)}" aria-expanded="true">${head}</button>${automaticSpellNote(s, sp.id, g)}<div class="chips">${options
         .map(
           ([v, l]) =>

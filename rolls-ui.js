@@ -268,6 +268,11 @@ const RollUI = (() => {
   // sp.srd: pistas sacadas del texto SRD en inglés al generar el catálogo (dados, mejora por espacio, dardos…).
   const halfOnSave = sp => /mitad|half/i.test(sp.text || '') || !!sp.srd?.half;
   // Con números del catálogo (campo «dice»): dados exactos para tu nivel y el espacio elegido.
+  function saveNameFor(sp) {
+    if (Array.isArray(sp.saveAbility)) return sp.saveAbility[0] || '';
+    const m = /salvación de (Fuerza|Destreza|Constitución|Inteligencia|Sabiduría|Carisma)\b/i.exec(sp.text || '');
+    return m ? Object.keys(ABILITY_ES).find(name => name.toLowerCase() === m[1].toLowerCase()) || '' : '';
+  }
   function catalogInfo(sp, slot) {
     const r = R.spellDice(sp, { level: R.totalLevel(state), slot });
     if (!r || (!r.rows.length && !r.heal)) return null;
@@ -278,7 +283,7 @@ const RollUI = (() => {
       types = '';
     if (r.heal) {
       // Curar da 70 PG fijos: sin dados que tirar.
-      dice = r.heal.n ? r.heal.dice.replace(/ /g, '') : '';
+      dice = r.heal.dice.replace(/ /g, '');
       addMod = r.heal.mod;
       if (!r.heal.n) notes.push(`Recupera ${r.heal.dice} PG, sin tirada.`);
     } else if (D.blade) {
@@ -309,10 +314,11 @@ const RollUI = (() => {
     if (r.steps) notes.push(`Espacio de nivel ${slot}: dados ya sumados.`);
     return {
       attack: (sp.attackKind || []).length > 0,
-      save: ABILITY_ES[(sp.saveAbility || [])[0]] || '',
-      saveName: (sp.saveAbility || [])[0] || '',
+      save: ABILITY_ES[saveNameFor(sp)] || '',
+      saveName: saveNameFor(sp),
       dice,
       heal: !!r.heal,
+      fixed: r.heal?.n === 0,
       addMod,
       types: types || (sp.damageTypes || []).join(', '),
       notes,
@@ -340,7 +346,8 @@ const RollUI = (() => {
     // «1d4 + 1»: el bono fijo acompaña a los dados (no confundir con «+ 4d8» ni «+ tu modificador»).
     const DICE = /(\d+)d(\d+)(?:\s*\+\s*(\d+)(?![\dd]))?/;
     const m = DICE.exec(sp.brief || '') || DICE.exec(sp.text || '') || DICE.exec(hint.dice || '');
-    const heal = /recupera|regains?/i.test(sp.brief || sp.text || '') && !(sp.damageTypes || []).length;
+    const impact = R.spellImpact(sp);
+    const heal = impact.healing && !impact.types.length;
     let count = m ? Number(m[1]) : 0,
       notes = [];
     const sides = m ? Number(m[2]) : 0;
@@ -371,13 +378,16 @@ const RollUI = (() => {
     }
     return {
       attack: (sp.attackKind || []).length > 0,
-      save: ABILITY_ES[(sp.saveAbility || [])[0]] || '',
-      saveName: (sp.saveAbility || [])[0] || '',
+      save: ABILITY_ES[saveNameFor(sp)] || '',
+      saveName: saveNameFor(sp),
       // Solo cuentan como daño los dados de conjuros con tipo de daño (o curación): el 1d4 de Bendecir es un bono.
-      dice: m && (heal || (sp.damageTypes || []).length) ? count + 'd' + sides + (flat ? '+' + flat : '') : '',
+      dice:
+        m && (heal || (sp.id !== 'reality-break' && impact.types.length))
+          ? count + 'd' + sides + (flat ? '+' + flat : '')
+          : '',
       heal,
       addMod: /modificador de lanzamiento|spellcasting ability modifier/i.test(all) || !!hint.mod,
-      types: (sp.damageTypes || []).join(', '),
+      types: impact.types.join(', '),
       notes,
     };
   }
@@ -411,6 +421,7 @@ const RollUI = (() => {
     'banishment',
   ]);
   function targetLimit(sp, slot = sp.level) {
+    if (R.spellImpact(sp).area) return Infinity;
     const t = [sp.range, sp.brief, sp.text]
       .filter(Boolean)
       .join(' ')
@@ -450,9 +461,20 @@ const RollUI = (() => {
   }
   function targetFields(info, sp) {
     const t = TableUI.targets(),
-      first = TableUI.preferredTarget(t.monsters),
+      hits = spellSession?.placement?.hits,
+      matches = value =>
+        hits?.some(h =>
+          value === 'self'
+            ? Boolean(t.selfId && h.character === t.selfId)
+            : value.startsWith('mon:')
+              ? h.combatant === value.slice(4)
+              : h.character === value.slice(3),
+        ),
+      first = hits
+        ? t.monsters.find(m => matches((m.player ? 'pc:' : 'mon:') + m.id))?.id || ''
+        : TableUI.preferredTarget(t.monsters),
       who = (value, label, checked = false) =>
-        `<label class="check"><input type="checkbox" name="who" value="${esc(value)}" ${checked ? 'checked' : ''}>${esc(label)}</label>`;
+        `<label class="check"><input type="checkbox" name="who" value="${esc(value)}" ${(hits ? matches(value) : checked) ? 'checked' : ''}>${esc(label)}</label>`;
     if (info.attack && t.monsters.length)
       return select(
         'Objetivo',
@@ -470,7 +492,7 @@ const RollUI = (() => {
     if (info.save && Number.isFinite(max) && (creatures.length || sheets.length))
       return `<fieldset class="target-list" data-max="${max}"><legend>${max === 1 ? 'Objetivo (uno solo)' : 'Objetivos (hasta ' + max + ')'}</legend>${creatures.map(m => who('mon:' + m.id, m.name + ' · ' + TableUI.statusLabel(m.status), m.id === TableUI.boardContext()?.combatantId)).join('')}${sheets.map(a => who('pc:' + a.characterId, a.name)).join('')}</fieldset><p class="small muted">El DM tira la salvación de las criaturas. Cada personaje tira la suya en su ficha.</p>`;
     // Conjuros de salvación de área: criaturas, y aliados o vos si quedan dentro.
-    if (info.save && (creatures.length || sheets.length))
+    if (info.save && (creatures.length || sheets.length || (t.selfId && hits)))
       return `${creatures.length ? `<fieldset class="target-list"><legend>Criaturas (el DM tira sus salvaciones)</legend>${creatures.map(m => who('mon:' + m.id, m.name + ' · ' + TableUI.statusLabel(m.status), m.id === TableUI.boardContext()?.combatantId)).join('')}</fieldset>` : ''}<fieldset class="target-list"><legend>También en el área (cada uno tira su salvación)</legend>${who('self', 'Vos (' + state.name + ')')}${sheets.map(a => who('pc:' + a.characterId, a.name)).join('')}</fieldset>`;
     // Daño automático (Proyectil mágico…): se elige la criatura que lo recibe.
     if (info.dice && !info.heal && !info.attack && !info.save && t.monsters.length)
@@ -546,7 +568,7 @@ const RollUI = (() => {
       ability = Classes.casting(caster(sp)).ability,
       mod = st.mods[ability];
     const mm = opts.mm || {};
-    info.types = mmTypes(info, mm);
+    info.types = opts.types || mmTypes(info, mm);
     // Bonos de subclase a esta tirada (Discípulo de la vida, Evocación potenciada, Alma radiante…).
     const fx =
       typeof SubclassFX !== 'undefined' && (info.dice || info.attack || info.save)
@@ -557,7 +579,18 @@ const RollUI = (() => {
             types: String(info.types || '').split(/,\s*|\s+y\s+/),
           })
         : [];
-    spellSession = { sp, info, crit: false, hitTarget: null, slot, mm, override: opts.override || null, fx };
+    spellSession = {
+      sp,
+      info,
+      placement: opts.placement,
+      castKinds: opts.castKinds,
+      crit: false,
+      hitTarget: null,
+      slot,
+      mm,
+      override: opts.override || null,
+      fx,
+    };
     const mmNotes = [
       mm.heightened ? 'Conjuro intensificado: un objetivo tiene desventaja en su primera salvación.' : '',
       mm.careful ? `Conjuro cuidadoso: hasta ${mm.careful} criatura(s) que elijas la superan automáticamente.` : '',
@@ -576,7 +609,7 @@ const RollUI = (() => {
       ${info.save ? `<p class="banner">Cada objetivo tira una salvación de <b>${esc(info.saveName)}</b> contra tu CD <b>${st.dc}</b>.${halfOnSave(sp) ? ' Si la supera, suele recibir la mitad.' : ''}</p>` : ''}
       ${
         info.dice || info.attack || info.save
-          ? `<h3 class="section-space">${info.heal ? 'Curación' : 'Daño'}${info.types ? ' · ' + esc(info.types) : ''}</h3><div class="form-grid">${field('Dados', 'spellDice', info.dice, 'text', 'maxlength="20" placeholder="2d8"')}<label class="check"><input type="checkbox" name="spellMod" ${info.addMod ? 'checked' : ''}>Sumar modificador de lanzamiento (${sign(mod)})</label></div>${empower}${fxFields(fx)}${info.notes.length ? `<p class="small">${esc(info.notes.join(' '))}</p>` : ''}<details class="physical-dice"><summary>Uso mis propios dados</summary>${field('Suma de mis dados', 'myDamage', '', 'number', 'min="0" max="999" inputmode="numeric"')}</details><div class="actions">${button(info.heal ? 'Tirar curación' : 'Tirar daño', 'spell-roll-damage', info.attack ? 'secondary' : '')}</div>`
+          ? `<h3 class="section-space">${info.heal ? 'Curación' : 'Daño'}${info.types ? ' · ' + esc(info.types) : ''}</h3><div class="form-grid">${field(info.fixed ? 'Curación fija (PG)' : 'Dados', 'spellDice', info.dice, 'text', 'maxlength="20" placeholder="2d8"')}<label class="check"><input type="checkbox" name="spellMod" ${info.addMod ? 'checked' : ''}>Sumar modificador de lanzamiento (${sign(mod)})</label></div>${empower}${fxFields(fx)}${info.notes.length ? `<p class="small">${esc(info.notes.join(' '))}</p>` : ''}<details class="physical-dice"><summary>Uso mis propios dados</summary>${field('Suma de mis dados', 'myDamage', '', 'number', 'min="0" max="999" inputmode="numeric"')}</details><div class="actions">${button(info.heal ? 'Tirar curación' : 'Tirar daño', 'spell-roll-damage', info.attack ? 'secondary' : '')}</div>`
           : ''
       }
       <div class="attack-log" id="attack-log" aria-live="polite"><p class="small muted">Revisá los dados: salen del texto del conjuro y podés corregirlos.</p></div>`,
@@ -680,6 +713,8 @@ const RollUI = (() => {
       sum = Number(own);
       if (!Number.isInteger(sum) || sum < 0 || sum > 999) throw Error('Revisá la suma de tus dados.');
       document.querySelector('#dialog-form [name=myDamage]').value = '';
+    } else if (info.fixed && /^\d{1,3}$/.test(expr)) {
+      sum = Number(expr);
     } else {
       if (!m) throw Error('Escribí los dados como «2d8», «3d4+3» o «2d8+4d6».');
       const k = spellSession.crit ? 2 : 1;
@@ -742,7 +777,7 @@ const RollUI = (() => {
       }
     lockSpell();
     const dice =
-      (rolls.length ? rolls.join('+') : 'dados físicos ' + sum) +
+      (rolls.length ? rolls.join('+') : info.fixed ? 'PG fijos ' + sum : 'dados físicos ' + sum) +
       (flat ? ' + ' + flat : '') +
       (empowered.length ? ' (potenciado: ' + empowered.join(', ') + ')' : '');
     sum += flat;
@@ -759,6 +794,7 @@ const RollUI = (() => {
       die: groups[0]?.[1] || 20,
       dice: each,
     });
+    projectTargets(fd);
     const applied = applySpellResult(fd, total).catch(err => {
       toast(err.message);
       return '';
@@ -775,6 +811,27 @@ const RollUI = (() => {
     spellSession.crit = false;
   }
 
+  // Fuera del mapa, una ficha identifica los objetivos por ID: cada tablero los ubica sin revelar fichas ocultas.
+  function projectTargets(fd) {
+    const kinds = spellSession.castKinds,
+      link = TableUI.link();
+    if (!kinds || !link) return;
+    const table = TableUI.targets();
+    const ids = chosen(fd).map(w =>
+      w === 'self'
+        ? { character: table.selfId }
+        : w.startsWith('pc:')
+          ? { character: w.slice(3) }
+          : { combatant: w.slice(4) },
+    );
+    const id = fd.get('target');
+    if (id) ids.push(table.monsters.find(m => m.id === id)?.player ? { character: id } : { combatant: id });
+    if (!ids.length) return;
+    spellSession.castKinds = null;
+    Cloud.broadcastSpellTargets(link.campaignId, kinds, ids).catch(() =>
+      toast('No se pudo mostrar el efecto en el tablero.'),
+    );
+  }
   // Aplica el resultado del conjuro: curación a aliados, daño a la criatura impactada o salvaciones al DM.
   async function applySpellResult(fd, total) {
     const { sp, info } = spellSession,
@@ -801,7 +858,7 @@ const RollUI = (() => {
     if (spellSession.hitTarget || autoTarget) {
       const out = await TableUI.damageTarget(spellSession.hitTarget || autoTarget, total, 'Daño con ' + sp.name, {
         crit: Boolean(spellSession.crit),
-        type: info.types?.length === 1 ? info.types[0] : '',
+        type: R.damageTypes.includes(info.types) ? info.types : '',
       });
       spellSession.hitTarget = null;
       return ` → ${esc(out.name)}: <b>${esc(TableUI.damageLabel(out))}</b>`;
@@ -868,6 +925,7 @@ const RollUI = (() => {
       t = TableUI.targets(),
       rounds = Effects.roundsFrom(sp.duration);
     if (!who.length) throw Error('Elegí al menos un objetivo.');
+    projectTargets(fd);
     const names = [],
       l = TableUI.link(),
       // Con concentración, el efecto de los aliados queda ligado a la tuya.

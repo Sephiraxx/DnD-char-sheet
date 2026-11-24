@@ -298,6 +298,112 @@ async function main() {
     await page.waitForSelector('#board-embed:not([hidden])');
     check('El tablero se carga al abrirlo desde la ficha', await page.evaluate(() => Board.isOpen()));
     await page.evaluate(() => Board.close());
+    // Lanzamiento real en una mesa simulada: pantalla → mapa → un espacio → una tirada y salvaciones.
+    await page.evaluate(() => {
+      window.castMessages = [];
+      window.castEvents = [];
+      state.extras.push('shatter');
+      TableUI.link = () => ({ campaignId: 'mesa-conjuros', characterId: 'caster' });
+      const monsters = ['inside', 'edge', 'outside', 'hidden'].map(id => ({ id, name: id, status: 'sano' }));
+      TableUI.targets = () => ({ monsters, allies: [], selfId: 'caster' });
+      TableUI.shareRoll = () => {};
+      Object.assign(Cloud, {
+        enabled: true,
+        user: async () => ({ id: 'user' }),
+        party: async () => ({
+          campaign: { id: 'mesa-conjuros', dm_id: 'dm', name: 'Mesa' },
+          characters: [],
+          combatants: [],
+          encounter: null,
+        }),
+        board: async () => ({
+          board: { map_id: 'mapa' },
+          maps: [{ id: 'mapa', name: 'Sala', grid: { cols: 11, rows: 11 }, fog: { on: false } }],
+          tokens: monsters.map((m, i) => ({
+            id: 'f-' + m.id,
+            combatant_id: m.id,
+            map_id: 'mapa',
+            kind: 'monster',
+            name: m.name,
+            x: [5, 7, 8, 5][i],
+            y: 5,
+            size: 1,
+            hidden: m.id === 'hidden',
+          })),
+        }),
+        subscribeBoard: async () => ({ send: m => castMessages.push(m), close() {} }),
+        post: async (c, kind, payload) => castEvents.push({ kind, payload }),
+      });
+      cast('shatter');
+    });
+    await page.getByRole('button', { name: 'Apuntar en el tablero' }).click();
+    await page.waitForFunction(() => Board._state().mapId === 'mapa' && Board._state().channel);
+    await page.getByRole('button', { name: 'Plegar opciones', exact: true }).click();
+    // El centro de un mapa de 11×11 está en la casilla (5,5).
+    await page.locator('#board').click();
+    await page.getByRole('button', { name: 'Registrar lanzamiento' }).click();
+    await page.waitForSelector('#dialog-form [name=spellDice]');
+    check(
+      'Hacer añicos: un espacio, una onda de trueno y solo criaturas visibles dentro del radio',
+      await page.evaluate(
+        () =>
+          state.slotsSpent[1] === 1 &&
+          castMessages.length === 1 &&
+          castMessages[0].kind === 'trueno' &&
+          castMessages[0].area.feet === 10 &&
+          document.querySelector('[name=spellDice]').value === '3d8' &&
+          [...document.querySelectorAll('[name=who]:checked')]
+            .map(n => n.value)
+            .sort()
+            .join(',') === 'mon:edge,mon:inside',
+      ),
+    );
+    await page.getByRole('button', { name: 'Tirar daño', exact: true }).click();
+    await page.waitForFunction(() => castEvents.some(e => e.kind === 'creature-save'));
+    check(
+      'Hacer añicos: la mesa recibe una misma tirada para ambas salvaciones de Constitución',
+      await page.evaluate(() => {
+        const q = castEvents.find(e => e.kind === 'creature-save').payload;
+        return (
+          q.types === 'trueno' &&
+          q.ability === 'con' &&
+          q.half &&
+          q.targets.length === 2 &&
+          q.damage >= 3 &&
+          q.damage <= 24 &&
+          castMessages.length === 1
+        );
+      }),
+    );
+    await page.evaluate(() => {
+      document.getElementById('modal').close();
+      Board.close();
+      state.extras.push('cure');
+      TableUI.targets = () => ({ monsters: [], allies: [{ characterId: 'ally', name: 'Aliada' }], selfId: 'caster' });
+      TableUI.sendTo = async (id, kind, payload) => castEvents.push({ id, kind, payload });
+      Cloud.broadcastSpellTargets = async (campaign, kinds, targets) => castMessages.push({ campaign, kinds, targets });
+      cast('cure');
+    });
+    await page.getByRole('button', { name: 'Registrar lanzamiento' }).click();
+    await page.locator('[name=who][value=self]').uncheck();
+    await page.locator('[name=who][value="pc:ally"]').check();
+    await page.getByRole('button', { name: 'Tirar curación', exact: true }).click();
+    await page.waitForFunction(() => castEvents.some(e => e.kind === 'heal'));
+    check(
+      'Curar heridas: desde la ficha se cura y se ilumina al mismo aliado en el tablero',
+      await page.evaluate(() => {
+        const [msg] = castMessages.slice(1);
+        return (
+          castMessages.length === 2 &&
+          msg.kinds.join(',') === 'heal' &&
+          msg.targets.length === 1 &&
+          msg.targets[0].character === 'ally' &&
+          castEvents.find(e => e.kind === 'heal').id === 'ally' &&
+          state.slotsSpent[0] === 1
+        );
+      }),
+    );
+    await page.evaluate(() => document.getElementById('modal').close());
     const maps = await page.evaluate(() => {
       const out = [];
       for (const [type] of BoardGen.TYPES) {
@@ -398,7 +504,11 @@ async function main() {
       !(await page.locator('#recovery-form').isVisible()),
     );
     // Flujo de aliado en la pantalla del DM, con las escrituras del servidor simuladas.
-    const dm = await browser.newPage({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+    const dm = await browser.newPage({
+      viewport: { width: 390, height: 844 },
+      hasTouch: true,
+      serviceWorkers: 'block',
+    });
     dm.on('pageerror', e => errors.push(e.message));
     await dm.route('**/config.js', route =>
       route.fulfill({ contentType: 'application/javascript', body: 'window.CLOUD_CONFIG = {};' }),
@@ -794,7 +904,7 @@ async function main() {
         Object.assign(Cloud, {
           enabled: true, user: async () => ({id: 'dm'}), party: displayParty, board: displayBoard,
           subscribe: async (_, handler) => { window.partyChanged = handler; },
-          subscribeBoard: async (_, handler) => { window.boardChanged = handler; return {close() {}}; }
+          subscribeBoard: async (_, handler, receive) => { window.boardChanged = handler; window.boardMessage = receive; return {close() {}}; }
         });`,
       }),
     );
@@ -811,6 +921,48 @@ async function main() {
         (await display.locator('#board-tools button').count()) === 0 &&
         !(await display.evaluate(() => Board._state().isDM)),
     );
+    // La pantalla del DM en el teléfono transmite al receptor real del tablero público.
+    await dm.exposeFunction('sendSceneMessage', msg => display.evaluate(m => window.boardMessage(m), msg));
+    await dm.evaluate(() => {
+      Board._state().channel.send = window.sendSceneMessage;
+    });
+    await dm.locator('[data-tool=scene]').tap();
+    await dm.getByRole('button', { name: 'Tormenta', exact: true }).tap();
+    await dm.waitForFunction(
+      () =>
+        Board._state().maps.find(m => m.id === Board._state().mapId)?.grid.weather === 'storm' &&
+        !Object.keys(Board._state().pending).length,
+    );
+    displayBoard = structuredClone(readBoard(sharedParty.campaign.id));
+    const liveMap = displayBoard.maps.find(m => m.id === displayBoard.board.map_id);
+    await display.evaluate(row => window.boardChanged('maps', { eventType: 'UPDATE', new: row }), liveMap);
+    await display.waitForFunction(() => Board._state().grid.weather === 'storm');
+    check(
+      'Efectos: la tormenta elegida en el teléfono se guarda por mapa y llega a la pantalla',
+      liveMap.grid.weather === 'storm',
+    );
+    await dm.getByRole('button', { name: 'Relámpago', exact: true }).tap();
+    await dm.getByRole('button', { name: 'Plegar opciones', exact: true }).tap();
+    // La casilla central está cubierta. El mismo toque solo aparece al revelarla.
+    const target = dm.locator('#board');
+    await target.tap();
+    await dm.waitForFunction(() => Board._state().casts.some(c => c.kind === 'lightning'));
+    check(
+      'Efectos: un impacto dentro de la niebla queda oculto',
+      await display.evaluate(() => Board._state().casts.length === 0),
+    );
+    await display.evaluate(
+      row => window.boardChanged('maps', { eventType: 'UPDATE', new: { ...row, fog: { on: false } } }),
+      liveMap,
+    );
+    await target.tap();
+    await display.waitForFunction(() => Board._state().casts.some(c => c.kind === 'lightning'));
+    await display.evaluate(() => window.boardMessage({ t: 'spell', map: 'mapa-privado', kind: 'heal', x: 1, y: 1 }));
+    check(
+      'Efectos: un toque llega a la casilla del otro dispositivo y un mapa privado queda aislado',
+      await display.evaluate(() => Board._state().casts.every(c => c.kind === 'lightning')),
+    );
+    await display.waitForFunction(() => Board._state().casts.length === 0);
     const sidebar = display.locator('#player-screen-party');
     check(
       'Pantalla para jugadores: muestra fecha, PG, ronda y turno sin revelar la criatura oculta',
