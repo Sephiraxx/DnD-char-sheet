@@ -3,7 +3,24 @@
 (function (root) {
   'use strict';
   const spells = { fire: 'Bola de fuego', lightning: 'Relámpago', frost: 'Explosión de hielo', heal: 'Curación' };
-  const colors = { fire: '#ff8832', lightning: '#ac96ff', frost: '#82deff', heal: '#74f4ba' };
+  const colors = {
+    fire: '#ff8832',
+    lightning: '#ac96ff',
+    frost: '#82deff',
+    heal: '#74f4ba',
+    ácido: '#adf55c',
+    contundente: '#d5aa86',
+    cortante: '#eee1bb',
+    fuerza: '#e085ff',
+    necrótico: '#a37cce',
+    perforante: '#b5c8e5',
+    psíquico: '#ff8bcc',
+    radiante: '#ffdf6b',
+    trueno: '#8bc8fb',
+    veneno: '#71d99d',
+    magic: '#d3bcff',
+  };
+  const typeKey = t => ({ fuego: 'fire', frío: 'frost', relámpago: 'lightning' })[t] || t;
   const tau = 2 * Math.PI;
   const particles = Array.from({ length: 96 }, (_, i) => ({
     x: root.BoardArt.hash(5, i),
@@ -49,6 +66,8 @@
       ctx.strokeStyle = '#fbf8ff';
       ctx.lineWidth *= 0.35;
       ctx.stroke();
+    } else if (kind === 'trueno' || kind === 'psíquico') {
+      for (let i = 0; i < 3; i++) ring(ctx, 0.1 + ((t + i / 3) % 1) * 1.45);
     } else if (kind === 'heal') {
       ctx.strokeStyle = '#d7ffe9';
       for (let i = 0; i < 7; i++) {
@@ -81,7 +100,7 @@
           ctx.fillStyle = i % 2 ? '#8bd8fa' : '#defaff';
           ctx.fill();
         } else {
-          glow(ctx, 0, 0, 0.15 + (1 - t) * p.size * 0.56, '#fff2ad', '#f46219bd');
+          glow(ctx, 0, 0, 0.15 + (1 - t) * p.size * 0.56, kind === 'fire' ? '#fff2ad' : color, color + 'aa');
         }
         ctx.restore();
       }
@@ -129,5 +148,5 @@
     }
     ctx.restore();
   }
-  root.BoardSceneFX = { spells, spell, weather };
+  root.BoardSceneFX = { spells, spell, weather, colors, typeKey };
 })(typeof window !== 'undefined' ? window : globalThis);

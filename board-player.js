@@ -55,6 +55,8 @@
   }
   const hooks = {
     actorId,
+    spells: () => [...new Set(Classes.usable(state))].map(spellById).filter(Boolean),
+    cast,
     pick: c => TableUI.setBoardContext(c),
     dock: () => (state && typeof combatCompact === 'function' ? combatCompact() : ''),
     reach: t => (mine(t) ? reach() : null),
@@ -98,6 +100,19 @@
     return loading;
   }
   Object.assign(actions, {
+    'spell-map-aim': e => {
+      const id = e.dataset.id,
+        link = TableUI.link();
+      if (!link) throw Error('Unite a una mesa para apuntar en el tablero.');
+      loadBoard()
+        .then(() => {
+          if (TableUI.link()?.campaignId !== link.campaignId) return;
+          document.getElementById('modal').close();
+          Board.open(link.campaignId, hooks);
+          Board.aimSpell(id);
+        })
+        .catch(err => toast(err.message));
+    },
     'board-open': e => {
       const l = TableUI.link();
       if (!l) throw Error('Unite a una mesa para usar el tablero.');

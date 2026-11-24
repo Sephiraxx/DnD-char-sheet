@@ -1881,6 +1881,7 @@ button.cc-stat {
   margin: 12px 0;
 }
 .spell-numbers-inline {
+  display: block;
   color: var(--gold);
   font-size: 0.85rem;
   margin: 6px 0 0;
@@ -1914,7 +1915,7 @@ button.cc-stat {
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
 }
 /* En la vista compacta, los dados del conjuro siguen a la vista. */
-.cc-list .battle-choice p.spell-numbers-inline {
+.cc-list .battle-choice .spell-numbers-inline {
   display: block;
   margin: 2px 0 0;
   font-size: 0.78rem;

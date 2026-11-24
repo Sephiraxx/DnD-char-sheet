@@ -52,6 +52,7 @@
     fitted: false,
     tool: 'move',
     spell: 'fire',
+    sheetSpell: '',
     casts: [],
     fogMode: 'reveal',
     paintCode: 'f',
@@ -493,6 +494,34 @@
     if (m.t === 'drop') S.remote.delete(m.id);
     if (m.t === 'moved') setTimeout(() => onMoved(m), 300); // espera que llegue la posición final
     if (m.t === 'spell' && m.map === S.mapId && m.map === activeId()) addCast(m);
+    if (
+      m.t === 'spell-targets' &&
+      m.map === S.mapId &&
+      m.map === activeId() &&
+      Array.isArray(m.kinds) &&
+      Array.isArray(m.targets)
+    ) {
+      for (const token of visibleTokens()) {
+        if (
+          !m.targets
+            .slice(0, 100)
+            .some(
+              t =>
+                t &&
+                ((token.character_id && token.character_id === t.character) ||
+                  (token.combatant_id && token.combatant_id === t.combatant)),
+            )
+        )
+          continue;
+        for (const type of m.kinds.slice(0, 13))
+          if (typeof type === 'string')
+            addCast({
+              kind: BoardSceneFX.typeKey(type),
+              x: Math.floor(token.x + token.size / 2),
+              y: Math.floor(token.y + token.size / 2),
+            });
+      }
+    }
     if (m.t === 'ping' && m.map === S.mapId) addPing(m.x, m.y, m.color, m.name);
     if (m.t === 'tpl' && m.map === S.mapId && m.tpl) addTemplate(m.tpl);
     if (m.t === 'tpl-clear' && m.map === S.mapId)
@@ -700,22 +729,106 @@
   function canSeeCast(x, y) {
     return !playerView() || ((!S.fogOn || BC.isRevealed(S.grid, S.fog, x, y)) && isSeen(seen(), x, y));
   }
-  function addCast({ kind, x, y }) {
+  function addCast({ kind, x, y, area }) {
     if (
       !S.mapId ||
       typeof kind !== 'string' ||
-      !Object.hasOwn(BoardSceneFX.spells, kind) ||
+      !Object.hasOwn(BoardSceneFX.colors, kind) ||
       !Number.isInteger(x) ||
       !Number.isInteger(y) ||
       !BC.inside(S.grid, x, y) ||
       !canSeeCast(x, y)
     )
       return false;
-    S.casts = [...S.casts.slice(-11), { kind, x, y, start: performance.now() }];
+    const shape = area && cleanTemplate({ ...area, name: '', color: BoardSceneFX.colors[kind] });
+    S.casts = [...S.casts.slice(-11), { kind, x, y, area: shape, start: performance.now() }];
     S.dirty = true;
     return true;
   }
+  function spellPlacement(sp, cell) {
+    if (
+      !shown ||
+      !S.mapId ||
+      S.mapId !== activeId() ||
+      !H.cast ||
+      !BC.inside(S.grid, cell.x, cell.y) ||
+      !canSeeCast(cell.x, cell.y)
+    )
+      return null;
+    const me = mapTokens().find(t => t.character_id === H.actorId?.()),
+      self =
+        (/^personal|^self/i.test(sp.range) &&
+          (Rules.spellImpact(sp).area || (!sp.attackKind?.length && !sp.dice?.dmg?.length))) ||
+        ['earth-tremor', 'thunderclap', 'sword-burst', 'word-of-radiance', 'aganazzars-scorcher'].includes(sp.id);
+    if (self && !me) return null;
+    const orig = me ? { x: me.x + (me.size || 1) / 2, y: me.y + (me.size || 1) / 2 } : null;
+    const area = Rules.spellImpact(sp).area;
+    const end = { x: cell.x + 0.5, y: cell.y + 0.5 };
+    let template = null;
+    if (area) {
+      const dir = orig ? Math.atan2(end.y - orig.y, end.x - orig.x) : 0;
+      const point = (self && orig) || end;
+      template = { ...area, ...point, dir };
+      if (area.kind === 'line') template.width = 5;
+      if (area.kind === 'cube' && !self) {
+        template.dir = 0;
+        template.x -= area.feet / S.grid.feet / 2;
+      }
+    }
+    const visible = visibleTokens().filter(t => t.kind !== 'object' && !(self && area && t === me));
+    const targetCell = self && orig && !area ? { x: Math.floor(orig.x), y: Math.floor(orig.y) } : cell;
+    const hits = template
+      ? BC.templateHits(S.grid, template, visible)
+      : visible.filter(
+          t => targetCell.x >= t.x && targetCell.y >= t.y && targetCell.x < t.x + t.size && targetCell.y < t.y + t.size,
+        );
+    const center = self && orig ? { x: Math.floor(orig.x), y: Math.floor(orig.y) } : cell;
+    return {
+      campaign: S.id,
+      map: S.mapId,
+      actorId: H.actorId?.(),
+      x: center.x,
+      y: center.y,
+      cell,
+      area: template,
+      hits: hits.map(t => ({ character: t.character_id, combatant: t.combatant_id })),
+    };
+  }
+  function selectedPlacement(sp) {
+    const t = tokenById(S.target) || (/^personal|^self/i.test(sp.range) && !sp.attackKind?.length ? actor() : null);
+    return t && t.map_id === S.mapId
+      ? spellPlacement(sp, { x: Math.floor(t.x + t.size / 2), y: Math.floor(t.y + t.size / 2) })
+      : null;
+  }
+  function projectSpell(placement, kinds) {
+    if (!placement || placement.map !== S.mapId || placement.campaign !== S.id) return;
+    for (const type of kinds) {
+      const msg = {
+        t: 'spell',
+        map: S.mapId,
+        kind: BoardSceneFX.typeKey(type),
+        x: placement.x,
+        y: placement.y,
+        area: placement.area,
+      };
+      if (addCast(msg)) S.channel?.send(msg);
+    }
+  }
   function castAt(cell) {
+    if (H.cast) {
+      const spells = H.spells();
+      const sp = spells.find(sp => sp.id === S.sheetSpell) || spells[0];
+      if (!sp) return;
+      const placement = spellPlacement(sp, cell);
+      if (placement) {
+        try {
+          H.cast(sp.id, false, placement);
+        } catch (err) {
+          toast(err.message);
+        }
+      }
+      return;
+    }
     const msg = { t: 'spell', map: S.mapId, kind: S.spell, x: cell.x, y: cell.y };
     if (!addCast(msg)) return;
     if (S.mapId === activeId()) S.channel?.send(msg);
@@ -741,6 +854,7 @@
     S.casts = S.casts.filter(cast => now - cast.start < spellDuration);
     for (const cast of S.casts) {
       if (!canSeeCast(cast.x, cast.y)) continue;
+      if (cast.area) drawTemplate(cast.area, true);
       ctx.save();
       ctx.translate(origin.x + (cast.x + 0.5) * cellSize, origin.y + (cast.y + 0.5) * cellSize);
       ctx.scale(cellSize, cellSize);
@@ -2252,9 +2366,15 @@
     const sizes = [0, 1, 2, 3].map(r => chip('radius', r, ['1', '3', '5', '7'][r], S.radius === r)).join('');
     let html = '';
     if (S.tool === 'scene' && S.mapId && !TV) {
-      html = `<div class="chips"><span class="small">Conjuro</span>${Object.entries(BoardSceneFX.spells)
-        .map(([id, label]) => chip('spell', id, label, S.spell === id))
-        .join('')}</div>`;
+      if (H.cast) {
+        const spells = H.spells();
+        html = spells.length
+          ? `<label class="field">Conjuro de tu ficha<select data-action="bd-sheet-spell">${spells.map(sp => `<option value="${esc(sp.id)}" ${sp.id === S.sheetSpell ? 'selected' : ''}>${esc(sp.name)}</option>`).join('')}</select></label>`
+          : '<p>Tu ficha no tiene conjuros disponibles.</p>';
+      } else
+        html = `<div class="chips"><span class="small">Conjuro</span>${Object.entries(BoardSceneFX.spells)
+          .map(([id, label]) => chip('spell', id, label, S.spell === id))
+          .join('')}</div>`;
       if (dmView())
         html += `<div class="chips"><span class="small">Clima</span>${Object.entries(BC.WEATHER)
           .map(([id, label]) => chip('weather', id, label, S.grid.weather === id))
@@ -2396,7 +2516,7 @@
   // ---------- Acciones ----------
   document.addEventListener('click', async e => {
     const el = e.target.closest('[data-action^="bd-"]');
-    if (!el || el.tagName === 'INPUT') return;
+    if (!el || ['INPUT', 'SELECT'].includes(el.tagName)) return;
     const a = el.dataset.action.slice(3);
     try {
       if (a === 'close') return close();
@@ -2510,7 +2630,8 @@
   });
   document.addEventListener('change', e => {
     const a = e.target.dataset?.action;
-    if (a === 'bd-fog-on') {
+    if (a === 'bd-sheet-spell' && H.spells) S.sheetSpell = e.target.value;
+    else if (a === 'bd-fog-on') {
       S.fogOn = e.target.checked;
       saveSoon(fogPatch());
       ui();
@@ -3197,6 +3318,15 @@
     onParty: table => S.id && onParty(table),
     refresh: () => mounted && S.id && (dock(), card()),
     context: () => combatContext(),
+    selectedPlacement,
+    spellPlacement,
+    projectSpell,
+    aimSpell: id => {
+      S.sheetSpell = id;
+      S.tool = 'scene';
+      S.panelMin = false;
+      if (S.mapId) ui();
+    },
     // Abre el panel de acciones si estaba plegado (por ejemplo, llegó algo que el DM tiene que resolver).
     expand: () => {
       if (!mounted || !S.dockMin) return;

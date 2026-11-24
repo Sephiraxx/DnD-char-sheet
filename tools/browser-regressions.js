@@ -298,6 +298,87 @@ async function main() {
     await page.waitForSelector('#board-embed:not([hidden])');
     check('El tablero se carga al abrirlo desde la ficha', await page.evaluate(() => Board.isOpen()));
     await page.evaluate(() => Board.close());
+    // Lanzamiento real en una mesa simulada: pantalla → mapa → un espacio → una tirada y salvaciones.
+    await page.evaluate(() => {
+      window.castMessages = [];
+      window.castEvents = [];
+      state.extras.push('shatter');
+      TableUI.link = () => ({ campaignId: 'mesa-conjuros', characterId: 'caster' });
+      const monsters = ['inside', 'edge', 'outside', 'hidden'].map(id => ({ id, name: id, status: 'sano' }));
+      TableUI.targets = () => ({ monsters, allies: [], selfId: 'caster' });
+      TableUI.shareRoll = () => {};
+      Object.assign(Cloud, {
+        enabled: true,
+        user: async () => ({ id: 'user' }),
+        party: async () => ({
+          campaign: { id: 'mesa-conjuros', dm_id: 'dm', name: 'Mesa' },
+          characters: [],
+          combatants: [],
+          encounter: null,
+        }),
+        board: async () => ({
+          board: { map_id: 'mapa' },
+          maps: [{ id: 'mapa', name: 'Sala', grid: { cols: 11, rows: 11 }, fog: { on: false } }],
+          tokens: monsters.map((m, i) => ({
+            id: 'f-' + m.id,
+            combatant_id: m.id,
+            map_id: 'mapa',
+            kind: 'monster',
+            name: m.name,
+            x: [5, 7, 8, 5][i],
+            y: 5,
+            size: 1,
+            hidden: m.id === 'hidden',
+          })),
+        }),
+        subscribeBoard: async () => ({ send: m => castMessages.push(m), close() {} }),
+        post: async (c, kind, payload) => castEvents.push({ kind, payload }),
+      });
+      cast('shatter');
+    });
+    await page.getByRole('button', { name: 'Apuntar en el tablero' }).click();
+    await page.waitForFunction(() => Board._state().mapId === 'mapa' && Board._state().channel);
+    await page.getByRole('button', { name: 'Plegar opciones', exact: true }).click();
+    // El centro de un mapa de 11×11 está en la casilla (5,5).
+    await page.locator('#board').click();
+    await page.getByRole('button', { name: 'Registrar lanzamiento' }).click();
+    await page.waitForSelector('#dialog-form [name=spellDice]');
+    check(
+      'Hacer añicos: un espacio, una onda de trueno y solo criaturas visibles dentro del radio',
+      await page.evaluate(
+        () =>
+          state.slotsSpent[1] === 1 &&
+          castMessages.length === 1 &&
+          castMessages[0].kind === 'trueno' &&
+          castMessages[0].area.feet === 10 &&
+          document.querySelector('[name=spellDice]').value === '3d8' &&
+          [...document.querySelectorAll('[name=who]:checked')]
+            .map(n => n.value)
+            .sort()
+            .join(',') === 'mon:edge,mon:inside',
+      ),
+    );
+    await page.getByRole('button', { name: 'Tirar daño', exact: true }).click();
+    await page.waitForFunction(() => castEvents.some(e => e.kind === 'creature-save'));
+    check(
+      'Hacer añicos: la mesa recibe una misma tirada para ambas salvaciones de Constitución',
+      await page.evaluate(() => {
+        const q = castEvents.find(e => e.kind === 'creature-save').payload;
+        return (
+          q.types === 'trueno' &&
+          q.ability === 'con' &&
+          q.half &&
+          q.targets.length === 2 &&
+          q.damage >= 3 &&
+          q.damage <= 24 &&
+          castMessages.length === 1
+        );
+      }),
+    );
+    await page.evaluate(() => {
+      document.getElementById('modal').close();
+      Board.close();
+    });
     const maps = await page.evaluate(() => {
       const out = [];
       for (const [type] of BoardGen.TYPES) {
