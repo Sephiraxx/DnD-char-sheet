@@ -227,11 +227,11 @@ async function main() {
     await page.getByLabel('Género', { exact: true }).selectOption('woman');
     await page.getByLabel('Altura (cm)').fill('187');
     await page.getByLabel('Arma o accesorio').selectOption('hammer');
-    const snapshot = () => page.locator('#mini-preview').evaluate(c => c.toDataURL());
-    const firstMini = await snapshot();
+    const miniSnapshot = () => page.locator('#mini-preview').evaluate(c => c.toDataURL());
+    const firstMini = await miniSnapshot();
     await page.locator('[name=facing]').focus();
     await page.locator('[name=facing]').press('End');
-    check('Miniaturas: la vista previa gira en el editor', firstMini !== (await snapshot()));
+    check('Miniaturas: la vista previa gira en el editor', firstMini !== (await miniSnapshot()));
     await page.getByRole('button', { name: 'Guardar miniatura' }).click();
     await page.reload();
     await page.getByRole('button', { name: 'Editar miniatura' }).click();
