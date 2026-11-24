@@ -1071,6 +1071,42 @@ async function main() {
       'Miniaturas: la pantalla de jugadores dibuja la figura de la ficha vinculada',
       await display.evaluate(() => window.seenMini.race === 'elf' && window.seenMini.height === 182),
     );
+    await display.evaluate(map => {
+      const sprite = Miniatures.creatureSprite;
+      window.seenCreatures = new Set();
+      Miniatures.creatureSprite = key => {
+        window.seenCreatures.add(key);
+        return sprite(key);
+      };
+      const tokens = [
+        ['Esqueleto', null, false],
+        ['Goblin 2', null, false],
+        ['Aguja', 'dragon-silver', false],
+        ['Dragón azul adulto', null, true],
+        ['Dragón rojo adulto', 'sigil', false],
+      ];
+      tokens.forEach(([name, creature_model, hidden], i) =>
+        window.boardChanged('map_tokens', {
+          eventType: 'INSERT',
+          new: {
+            id: 'creature-preview-' + i,
+            map_id: map,
+            kind: 'monster',
+            name,
+            creature_model,
+            hidden,
+            x: 1 + i,
+            y: 3,
+            size: 1,
+          },
+        }),
+      );
+    }, liveMap.id);
+    await display.waitForFunction(() => window.seenCreatures.has('dragon-silver'));
+    check(
+      'Pantalla para jugadores: figuras automáticas y elegidas por el DM respetan la visibilidad y el emblema',
+      await display.evaluate(() => [...window.seenCreatures].sort().join(',') === 'dragon-silver,goblin,skeleton'),
+    );
     displayParty.encounter.active = false;
     await display.evaluate(() => window.partyChanged('encounter'));
     await overlays.locator('.screen-initiative').waitFor({ state: 'hidden' });

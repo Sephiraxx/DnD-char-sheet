@@ -24,9 +24,9 @@ set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-000
 select pg_temp.check('jugador ve solo el mapa activo', (select count(*) from maps) = 1);
 select pg_temp.check('jugador ve fichas visibles del mapa activo', (select count(*) from map_tokens) = 3);
 select pg_temp.check('jugador lee solo la imagen activa', (select array_agg(name) from storage.objects) = array['10000000-0000-0000-0000-000000000001/cripta.webp']);
-update map_tokens set x = 4, y = 3, name = 'Hackeo', hidden = true, size = 6 where id = '40000000-0000-0000-0000-00000000000a';
+update map_tokens set x = 4, y = 3, name = 'Hackeo', creature_model = 'goblin', hidden = true, size = 6 where id = '40000000-0000-0000-0000-00000000000a';
 reset role; set role authenticated;
-select pg_temp.check('mueve su ficha pero no cambia nada más', (select x = 4 and y = 3 and name = 'Ana' and not hidden and size = 1 from map_tokens where id = '40000000-0000-0000-0000-00000000000a'));
+select pg_temp.check('mueve su ficha pero no cambia nada más', (select x = 4 and y = 3 and name = 'Ana' and creature_model is null and not hidden and size = 1 from map_tokens where id = '40000000-0000-0000-0000-00000000000a'));
 with u as (update map_tokens set x = 9 where id = '40000000-0000-0000-0000-00000000000b' returning 1) select pg_temp.check('no mueve la ficha de otro', (select count(*) from u) = 0);
 with u as (update map_tokens set x = 9 where id = '40000000-0000-0000-0000-000000000001' returning 1) select pg_temp.check('no mueve criaturas', (select count(*) from u) = 0);
 with u as (update maps set fog = '{"on":false}' returning 1) select pg_temp.check('no toca la niebla', (select count(*) from u) = 0);

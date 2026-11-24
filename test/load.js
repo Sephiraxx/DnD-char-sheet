@@ -40,6 +40,8 @@ const LOGIC = [
   'party-store.js',
   'combat-engine.js',
   'effects.js',
+  'miniature-mesh.js',
+  'creature-miniatures.js',
   'miniatures.js',
   'rules.js',
   'attacks.js',

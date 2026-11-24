@@ -799,6 +799,13 @@ alter table public.map_tokens drop constraint if exists map_tokens_combatant_id_
 alter table public.map_tokens add constraint map_tokens_combatant_id_fkey
   foreign key (combatant_id) references public.combatants on delete set null;
 
+alter table public.map_tokens add column if not exists creature_model text check (
+  kind in ('npc','monster') and creature_model in (
+    'sigil','goblin','skeleton','bull-skeleton','horse-skeleton','dragon-red','dragon-blue','dragon-green',
+    'dragon-black','dragon-white','dragon-brass','dragon-bronze','dragon-copper','dragon-gold','dragon-silver'
+  ) or creature_model is null
+);
+
 -- Un jugador sigue moviendo solo x/y de su ficha.
 create or replace function public.map_tokens_guard() returns trigger
 language plpgsql security definer set search_path = public as $$
@@ -813,6 +820,7 @@ begin
     new.name := old.name;
     new.label := old.label;
     new.color := old.color;
+    new.creature_model := old.creature_model;
     new.size := old.size;
     new.hidden := old.hidden;
     -- El jugador puede prender o apagar la luz de su ficha («light:<pies>»), nada más.
@@ -1310,11 +1318,11 @@ begin
     )
   then raise exception 'La copia apunta a un mapa que no existe en esta mesa.'; end if;
 
-  insert into map_tokens (campaign_id, map_id, kind, name, label, color, x, y, size, hidden, stage, elev)
-    select p_campaign, map_id, kind, name, label, color, x, y, size, hidden, stage, elev
+  insert into map_tokens (campaign_id, map_id, kind, name, label, color, x, y, size, hidden, stage, elev, creature_model)
+    select p_campaign, map_id, kind, name, label, color, x, y, size, hidden, stage, elev, creature_model
     from jsonb_to_recordset(p_tokens) as t(
       map_id uuid, kind text, name text, label text, color text, x real, y real, size real,
-      hidden boolean, stage text, elev int
+      hidden boolean, stage text, elev int, creature_model text
     );
   insert into homebrew (campaign_id, kind, name, data)
     select p_campaign, kind, name, data from jsonb_to_recordset(p_homebrew) as h(kind text, name text, data jsonb);

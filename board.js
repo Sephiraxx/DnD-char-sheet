@@ -439,6 +439,7 @@
       size: x.size || 1,
       hidden: !!x.hidden,
       ...(x.stage ? { stage: x.stage } : {}),
+      ...(x.creature_model ? { creature_model: x.creature_model } : {}),
     };
   }
 
@@ -1253,10 +1254,16 @@
     ctx.strokeStyle = rim;
     ctx.lineWidth = c * 0.035;
     ctx.stroke();
-    const img = !d.miniature && portraitImg(d.portrait);
-    if (d.miniature) {
+    const creatureToken = t.kind === 'monster' || t.kind === 'npc';
+    const override =
+      creatureToken && Object.hasOwn(CreatureMiniatures.options, t.creature_model) ? t.creature_model : null;
+    const figure = !override && d.miniature;
+    const img = !override && !figure && portraitImg(d.portrait);
+    const creature = override || (creatureToken && !figure && !d.portrait && CreatureMiniatures.identify(t.name));
+    if (figure || (creature && creature !== 'sigil')) {
+      const sprite = figure ? Miniatures.sprite(figure) : Miniatures.creatureSprite(creature);
       const diameter = rad * 1.96;
-      ctx.drawImage(Miniatures.sprite(d.miniature), cx - diameter / 2, cy - diameter / 2, diameter, diameter);
+      ctx.drawImage(sprite, cx - diameter / 2, cy - diameter / 2, diameter, diameter);
     } else if (img) {
       ctx.save();
       ctx.beginPath();
@@ -3192,9 +3199,18 @@
   }
   function tokenDialog(t, kind = t?.kind) {
     const isNew = !t;
+    const modelField = ['npc', 'monster'].includes(kind)
+      ? `<label class="field">Miniatura<select name="creature_model"><option value="">Automática</option>${Object.entries(
+          CreatureMiniatures.options,
+        )
+          .map(
+            ([key, label]) => `<option value="${key}" ${t?.creature_model === key ? 'selected' : ''}>${label}</option>`,
+          )
+          .join('')}</select></label>`
+      : '';
     modal(
       isNew ? (kind === 'object' ? 'Nuevo objeto' : 'Nuevo PNJ') : 'Editar ficha',
-      `${field('Nombre', 'name', t?.name || '', 'text', 'maxlength="100" required')}<div class="form-grid">${field('Letras o emoji', 'label', t?.label || (kind === 'object' ? '📦' : ''), 'text', 'maxlength="4"')}<label class="field">Color<input type="color" name="color" value="${esc(/^#[0-9a-f]{6}$/i.test(t?.color || '') ? t.color : kind === 'object' ? '#9e9e9e' : '#83c8bd')}"></label>${field('Tamaño (casillas)', 'size', t?.size || 1, 'number', 'min="0.5" max="6" step="0.5"')}</div><label class="check"><input type="checkbox" name="hidden" ${t?.hidden ? 'checked' : ''}>Oculta para los jugadores</label>`,
+      `${field('Nombre', 'name', t?.name || '', 'text', 'maxlength="100" required')}<div class="form-grid">${field('Letras o emoji', 'label', t?.label || (kind === 'object' ? '📦' : ''), 'text', 'maxlength="4"')}<label class="field">Color<input type="color" name="color" value="${esc(/^#[0-9a-f]{6}$/i.test(t?.color || '') ? t.color : kind === 'object' ? '#9e9e9e' : '#83c8bd')}"></label>${field('Tamaño (casillas)', 'size', t?.size || 1, 'number', 'min="0.5" max="6" step="0.5"')}</div><label class="check"><input type="checkbox" name="hidden" ${t?.hidden ? 'checked' : ''}>Oculta para los jugadores</label>${modelField}`,
       async fd => {
         const name = String(fd.get('name')).trim();
         if (!name) throw Error('Poné un nombre.');
@@ -3205,16 +3221,28 @@
           size: Math.max(0.5, Math.min(6, Number(fd.get('size')) || 1)),
           hidden: fd.has('hidden'),
         };
-        if (isNew) {
-          const r = canvas.getBoundingClientRect(),
-            center = toCell(toWorld(r.width / 2, r.height / 2));
-          const p = BC.freeSpot(S.grid, mapTokens(), center, S.terrain);
-          const [row] = await Cloud.addTokens([tokenRow({ ...patch, kind, ...p }, S.mapId)]);
-          addLocal([row]);
-          S.sel = row.id;
-        } else {
-          await patchToken(t, patch);
-          if (patch.hidden !== t.hidden) S.channel?.send({ t: 'refresh' });
+        if (modelField) {
+          const model = fd.get('creature_model') || null;
+          if (model !== (t?.creature_model || null)) patch.creature_model = model;
+        }
+        try {
+          if (isNew) {
+            const r = canvas.getBoundingClientRect(),
+              center = toCell(toWorld(r.width / 2, r.height / 2));
+            const p = BC.freeSpot(S.grid, mapTokens(), center, S.terrain);
+            const [row] = await Cloud.addTokens([tokenRow({ ...patch, kind, ...p }, S.mapId)]);
+            addLocal([row]);
+            S.sel = row.id;
+          } else {
+            await patchToken(t, patch);
+            if (patch.hidden !== t.hidden) S.channel?.send({ t: 'refresh' });
+          }
+        } catch (err) {
+          if (/creature_model/.test(err.message) && /schema cache|does not exist/i.test(err.message))
+            throw Error(
+              'Para guardar la miniatura elegida, aplicá la migración 025_creature_miniatures.sql en Supabase.',
+            );
+          throw err;
         }
         ui();
       },

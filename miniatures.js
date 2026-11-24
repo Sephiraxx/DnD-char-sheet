@@ -19,7 +19,14 @@
       other: 'Otra raza',
     },
     gender: { neutral: 'Sin especificar', woman: 'Femenino', man: 'Masculino', nonbinary: 'No binario' },
-    build: { regular: 'Mediana', broad: 'Robusta', slender: 'Esbelta', short: 'Baja' },
+    build: {
+      regular: 'Mediana',
+      broad: 'Robusta',
+      slender: 'Esbelta',
+      short: 'Baja',
+      athletic: 'Atlética',
+      heavy: 'Corpulenta',
+    },
     ears: { auto: 'Según la raza', round: 'Redondas', elf: 'Puntiagudas', horns: 'Cuernos' },
     hair: { crop: 'Corto', long: 'Largo', crest: 'Cresta', bald: 'Rapado' },
     outfit: { tunic: 'Túnica corta', armor: 'Armadura', robe: 'Vestiduras', cloak: 'Capa de viaje' },
@@ -37,6 +44,75 @@
       none: 'Manos libres',
     },
     pose: { ready: 'En guardia', rest: 'De pie' },
+  };
+  // Medidas locales de cada escultura. La cabeza, las manos y el equipo conservan su volumen.
+  const bodies = {
+    regular: {
+      hip: 0.28,
+      waist: 0.24,
+      chest: 0.34,
+      belly: 0.18,
+      bulk: 0.13,
+      knee: 0.61,
+      pelvis: 0.99,
+      stance: 0.2,
+      lean: 0.015,
+    },
+    broad: {
+      hip: 0.34,
+      waist: 0.31,
+      chest: 0.41,
+      belly: 0.22,
+      bulk: 0.16,
+      knee: 0.58,
+      pelvis: 0.96,
+      stance: 0.25,
+      lean: 0.025,
+    },
+    slender: {
+      hip: 0.25,
+      waist: 0.19,
+      chest: 0.29,
+      belly: 0.145,
+      bulk: 0.096,
+      knee: 0.71,
+      pelvis: 1.09,
+      stance: 0.16,
+      lean: -0.018,
+    },
+    short: {
+      hip: 0.32,
+      waist: 0.29,
+      chest: 0.355,
+      belly: 0.22,
+      bulk: 0.14,
+      knee: 0.46,
+      pelvis: 0.78,
+      stance: 0.23,
+      lean: 0.01,
+    },
+    athletic: {
+      hip: 0.28,
+      waist: 0.215,
+      chest: 0.42,
+      belly: 0.165,
+      bulk: 0.167,
+      knee: 0.65,
+      pelvis: 1.01,
+      stance: 0.26,
+      lean: 0.04,
+    },
+    heavy: {
+      hip: 0.4,
+      waist: 0.405,
+      chest: 0.38,
+      belly: 0.31,
+      bulk: 0.174,
+      knee: 0.55,
+      pelvis: 0.92,
+      stance: 0.29,
+      lean: -0.035,
+    },
   };
   const defaults = {
     race: 'human',
@@ -102,17 +178,10 @@
   function draw(ctx, raw, size) {
     const m = clean(raw);
     if (!m) return;
-    const faces = [],
-      turn = (m.facing * Math.PI) / 180,
-      ct = Math.cos(turn),
-      st = Math.sin(turn);
-    const pitch = 0.27,
-      cp = Math.cos(pitch),
-      sp = Math.sin(pitch);
-    const width =
-      { regular: 1, broad: 1.17, slender: 0.86, short: 1.12 }[m.build] *
-      ({ dwarf: 1.16, halfling: 1.1, elf: 0.94, orc: 1.12, dragonborn: 1.1 }[m.race] || 1);
-    const height = (m.build === 'short' ? 0.91 : 1) * Math.pow(m.height / 170, 0.38);
+    const mesh = root.MiniatureMesh.create(m.facing);
+    const { form, oval, limb, rod } = mesh;
+    const height = Math.pow(m.height / 170, 0.38);
+    const raceWidth = { dwarf: 1.12, halfling: 1.05, elf: 0.96, orc: 1.08, dragonborn: 1.08 }[m.race] || 1;
     const shoulder = { woman: 0.94, man: 1.07 }[m.gender] || 1;
     const ear =
       m.ears === 'auto'
@@ -127,182 +196,114 @@
       dark = '#313b40',
       gold = m.accent,
       skin = m.skin;
-    function camera([x, y, z]) {
-      const rx = x * ct + z * st,
-        rz = z * ct - x * st;
-      return [rx, y * cp - rz * sp, rz * cp + y * sp];
-    }
-    function polygon(points, color) {
-      const p = points.map(camera),
-        [a, b, c] = p;
-      const u = b.map((v, i) => v - a[i]),
-        v = c.map((n, i) => n - a[i]);
-      const nx = u[1] * v[2] - u[2] * v[1],
-        ny = u[2] * v[0] - u[0] * v[2],
-        nz = u[0] * v[1] - u[1] * v[0];
-      if (nz <= 0) return;
-      const light = 0.74 + 0.43 * Math.max(0, (-0.46 * nx + 0.72 * ny + 0.52 * nz) / (Math.hypot(nx, ny, nz) || 1));
-      const rgb = [1, 3, 5].map(i => Math.min(255, Math.round(parseInt(color.slice(i, i + 2), 16) * light)));
-      faces.push({ p, z: p.reduce((sum, n) => sum + n[2], 0) / p.length, color: 'rgb(' + rgb.join(',') + ')' });
-    }
-    // Secciones horizontales [altura, radio X, radio Z, desplazamiento X, desplazamiento Z].
-    function form(x, y, z, sections, color, sides = 12) {
-      // Las caras largas de dos piezas pueden cruzarse en la proyección. Dividirlas
-      // mejora la oclusión del brazo, la empuñadura y el pelo al girar la figura.
-      const slices = [sections[0]];
-      for (let j = 1; j < sections.length; j++) {
-        const a = sections[j - 1],
-          b = sections[j],
-          count = Math.ceil(Math.abs(b[0] - a[0]) / 0.11) || 1;
-        for (let i = 1; i <= count; i++)
-          slices.push(Array.from({ length: 5 }, (_, k) => (a[k] || 0) + (((b[k] || 0) - (a[k] || 0)) * i) / count));
-      }
-      const rings = slices.map(([dy, w, d, dx = 0, dz = 0]) =>
-        Array.from({ length: sides }, (_, i) => {
-          const a = (2 * Math.PI * i) / sides;
-          return [(x + dx + w * Math.cos(a)) * width, (y + dy) * height, z + dz + d * Math.sin(a)];
-        }),
-      );
-      for (let j = 1; j < rings.length; j++)
-        for (let i = 0; i < sides; i++) {
-          const k = (i + 1) % sides;
-          polygon([rings[j - 1][i], rings[j][i], rings[j][k], rings[j - 1][k]], color);
-        }
-      polygon(rings[0], color);
-      polygon(rings.at(-1).slice().reverse(), color);
-    }
-    function oval(x, y, z, w, h, d, color) {
-      form(
-        x,
-        y,
-        z,
-        [
-          [-h, 0.18 * w, 0.18 * d],
-          [-h * 0.62, w * 0.8, d * 0.8],
-          [0, w, d],
-          [h * 0.65, w * 0.77, d * 0.77],
-          [h, 0.2 * w, 0.2 * d],
-        ],
-        color,
-      );
-    }
-    function limb(a, b, r, tip, color) {
-      const [x, y, z] = a;
-      form(
-        x,
-        y,
-        z,
-        [
-          [0, r, r],
-          [b[1] - y, tip, tip, b[0] - x, b[2] - z],
-        ],
-        color,
-        10,
-      );
-    }
-    form(
-      0,
-      0,
-      0,
-      [
-        [0, 0.65, 0.51],
-        [0.05, 0.7, 0.55],
-        [0.12, 0.7, 0.55],
-        [0.16, 0.63, 0.49],
-      ],
-      '#45515a',
-      24,
-    );
-    form(
-      0,
-      0.105,
-      0,
-      [
-        [0, 0.703, 0.552],
-        [0.025, 0.691, 0.544],
-      ],
-      gold,
-      24,
-    );
-    const stride = m.pose === 'ready' ? 0.14 : 0.04;
-    for (const side of [-1, 1]) {
-      const x = side * 0.2,
-        z = side * stride;
-      oval(x, 0.23, z + 0.05, 0.15, 0.12, 0.22, leather);
-      limb([side * 0.19, 0.45, z * 0.8], [side * 0.17, 0.7, z * 0.5], 0.12, 0.14, dark);
-      limb([x, 0.28, z], [side * 0.19, 0.48, z * 0.8], 0.145, 0.14, leather);
-      limb([side * 0.17, 0.65, z * 0.5], [side * 0.14, 1.1, 0], 0.15, 0.17, dark);
-    }
+    mesh.base(gold);
+    mesh.figureScale(Math.min(1.06, height));
+    const b = bodies[m.build];
+    const hip = b.hip * raceWidth,
+      chest = b.chest * shoulder * raceWidth;
+    const waist = b.waist * raceWidth,
+      ready = m.pose === 'ready';
+    const stride = ready ? 0.19 : 0.065;
+    const lift = (b.pelvis - 0.99) * 0.78 - (ready ? 0.04 : 0);
+    const chestY = 1.48 + lift,
+      shoulderZ = b.lean + (ready ? 0.075 : 0.015);
     const armor = m.outfit === 'armor' || m.race === 'warforged',
       robe = m.outfit === 'robe';
+    for (const side of [-1, 1]) {
+      const forward = side === -1;
+      const foot = [side * b.stance, 0.26, forward ? stride : -stride];
+      const knee = [
+        side * (b.stance + 0.012),
+        b.knee - (ready && forward ? 0.045 : 0),
+        foot[2] + (forward ? 0.105 : 0.025),
+      ];
+      const thigh = [side * hip * 0.56, b.pelvis + 0.03, -0.025];
+      oval(foot[0], 0.235, foot[2] + 0.06, 0.11 + b.bulk * 0.22, 0.09, 0.205, leather);
+      limb(foot, knee, b.bulk * 0.75, b.bulk * 0.81, leather);
+      oval(
+        (foot[0] + knee[0]) / 2,
+        (foot[1] + knee[1]) / 2 + 0.028,
+        (foot[2] + knee[2]) / 2 - 0.015,
+        b.bulk * 0.92,
+        (knee[1] - foot[1]) * 0.38,
+        b.bulk * 0.95,
+        leather,
+      );
+      limb(knee, thigh, b.bulk * 0.78, b.bulk * 1.3, dark);
+      oval(knee[0], knee[1], knee[2] + 0.02, b.bulk * 0.84, 0.09, b.bulk * 0.88, armor ? steel : dark);
+    }
     if (m.outfit === 'cloak')
       form(
         0,
         0,
-        -0.14,
+        -0.13,
         [
-          [0.43, 0.47, 0.14, 0, -0.13],
-          [0.83, 0.48, 0.17],
-          [1.43, 0.36, 0.19],
-          [1.58, 0.23, 0.13],
+          [0.41, hip + 0.16, 0.14, -0.055, -0.12 - stride],
+          [b.pelvis, hip + 0.13, 0.17, -0.035, -0.09],
+          [chestY - 0.05, chest + 0.04, 0.19, 0, shoulderZ],
+          [chestY + 0.1, 0.21, 0.14, 0, shoulderZ],
         ],
         m.cloth,
       );
+    const beltY = b.pelvis + 0.13,
+      bellyZ = b.belly * 0.28;
     form(
       0,
       0,
       0,
       [
-        [robe ? 0.35 : 0.83, robe ? 0.41 : 0.34, robe ? 0.29 : 0.23],
-        [1.03, 0.27, 0.2],
-        [1.18, 0.25, 0.17],
-        [1.47, 0.34 * shoulder, 0.22],
-        [1.6, 0.27, 0.15],
+        [robe ? 0.34 : b.pelvis - 0.17, hip + (robe ? 0.14 : 0.055), robe ? 0.31 : 0.22, -0.018, robe ? -0.055 : 0],
+        [b.pelvis, hip, 0.2 + (b.hip - 0.28) * 0.55],
+        [beltY, waist, b.belly, 0, bellyZ],
+        [beltY + 0.075, (waist * 2 + chest) / 3, b.belly * 1.04, 0, bellyZ],
+        [chestY - 0.06, chest, 0.19 + b.bulk * 0.3, 0.012, shoulderZ],
+        [chestY + 0.045, chest * 0.95, 0.19, 0.012, shoulderZ],
+        [chestY + 0.12, 0.18, 0.13, 0, shoulderZ],
       ],
       armor ? steel : m.cloth,
     );
     form(
       0,
-      1.075,
-      0,
+      beltY,
+      bellyZ,
       [
-        [0, 0.286, 0.216],
-        [0.085, 0.28, 0.208],
+        [0, waist + 0.016, b.belly + 0.012],
+        [0.055, (waist * 3 + chest) / 4 + 0.012, b.belly + 0.018],
       ],
       leather,
     );
-    oval(0, 1.12, 0.21, 0.083, 0.054, 0.021, gold);
-    form(
-      0,
-      1.52,
-      0,
-      [
-        [0, 0.18, 0.15],
-        [0.21, 0.145, 0.14],
-      ],
-      skin,
-    );
+    oval(0, beltY + 0.025, bellyZ + b.belly + 0.013, 0.057, 0.042, 0.018, gold);
+    limb([0, chestY + 0.07, shoulderZ], [0, chestY + 0.24, shoulderZ], 0.14, 0.125, skin);
+    // Broche del cuello y costura de los hombros, visibles por encima del cinturón.
+    for (const side of [-1, 1]) {
+      rod(
+        [side * 0.136, chestY + 0.102, shoulderZ + 0.092],
+        [side * 0.066, chestY + 0.025, shoulderZ + 0.193],
+        0.018,
+        0.023,
+        armor ? steel : leather,
+      );
+    }
+    oval(0, chestY + 0.017, shoulderZ + 0.199, 0.034, 0.034, 0.019, gold);
+    // El equipo se desplaza con la mano que lo sostiene.
+    const gripX = Math.max(0.46, chest + 0.16),
+      gripZ = 0.24 + shoulderZ;
     for (const side of [-1, 1]) {
       const armed = side === 1 && m.gear !== 'none';
-      const hand = [side * (armed ? 0.48 : 0.43), armed || m.pose === 'ready' ? 1.08 : 0.87, armed ? 0.23 : 0.1];
-      const elbow = [side * 0.43, 1.2, armed ? 0.08 : -0.02];
-      limb(elbow, [side * 0.31 * shoulder, 1.48, 0], 0.105, 0.16, m.cloth);
-      limb(hand, elbow, 0.083, 0.11, armor ? steel : skin);
-      oval(...hand, 0.094, 0.12, 0.09, skin);
-      oval(side * 0.31 * shoulder, 1.48, -0.005, 0.166, 0.145, 0.174, armor ? steel : m.cloth);
-      if (armor)
-        form(
-          side * 0.32,
-          1.44,
-          0,
-          [
-            [0, 0.167, 0.177],
-            [0.035, 0.172, 0.18],
-          ],
-          gold,
-        );
+      const shoulderAt = [side * chest * 0.92, chestY + (side === 1 ? 0.012 : -0.013), shoulderZ];
+      const elbow = [side * (chest + 0.085 + (ready ? 0.04 : 0)), chestY - 0.26, shoulderZ + (armed ? 0.02 : -0.045)];
+      const hand = [
+        side * (armed ? gripX : chest + 0.065),
+        (armed ? 1.08 : ready ? 1.0 : 0.86) + lift,
+        armed ? gripZ : shoulderZ + (ready ? 0.28 : 0.1),
+      ];
+      rod(shoulderAt, elbow, b.bulk * 1.08, b.bulk * 0.78, m.cloth);
+      oval(...shoulderAt, b.bulk * 1.18, b.bulk * 0.98, b.bulk * 1.25, armor ? steel : m.cloth);
+      rod(elbow, hand, b.bulk * 0.85, 0.064, armor ? steel : skin);
+      oval(...hand, 0.084, 0.099, 0.081, skin);
     }
-    const head = 1.87;
+    const head = 1.87 + lift;
+    mesh.offset(0, 0, shoulderZ);
     form(
       0,
       head,
@@ -323,6 +324,7 @@
     );
     for (const side of [-1, 1]) {
       oval(side * 0.095, head + 0.015, 0.242, 0.037, 0.025, 0.022, '#322f33');
+      rod([side * 0.058, head + 0.056, 0.232], [side * 0.148, head + 0.065, 0.207], 0.012, 0.018, m.hairColor, 6);
       if (ear === 'elf')
         form(
           side * 0.235,
@@ -408,6 +410,7 @@
       if (m.hair === 'crest') oval(0, head + 0.24, -0.013, 0.1, 0.16, 0.218, m.hairColor);
       if (m.hair === 'crop') oval(-0.102, head + 0.09, 0.13, 0.143, 0.076, 0.117, m.hairColor);
     }
+    mesh.offset(gripX - 0.48, lift, gripZ - 0.23);
     if (m.gear === 'staff') {
       form(
         0.49,
@@ -568,33 +571,24 @@
       for (let i = 1; i < bow.length; i++) limb(bow[i - 1], bow[i], 0.027, 0.027, leather);
       limb(bow[0], bow.at(-1), 0.008, 0.008, '#e1d4b4');
     }
-    ctx.save();
-    // Mantiene a gigantes y armas altas dentro de su casilla sin igualar la estatura de todos.
-    const scale = (size * 0.376) / Math.max(1, height / 1.09);
-    ctx.translate(size * 0.5, size * 0.89);
-    ctx.scale(scale, -scale);
-    for (const f of faces.sort((a, b) => a.z - b.z)) {
-      ctx.beginPath();
-      f.p.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-      ctx.closePath();
-      ctx.fillStyle = ctx.strokeStyle = f.color;
-      ctx.lineWidth = 0.002;
-      ctx.fill();
-      ctx.stroke();
-    }
-    ctx.restore();
+    mesh.paint(ctx, size, 0.376);
   }
   const sprites = new Map();
-  function sprite(model) {
-    const key = JSON.stringify(model);
+  function cachedSprite(key, model, render) {
     if (!sprites.has(key)) {
       if (sprites.size >= 96) sprites.delete(sprites.keys().next().value);
       const canvas = document.createElement('canvas');
       canvas.width = canvas.height = 192;
-      draw(canvas.getContext('2d'), model, 192);
+      render(canvas.getContext('2d'), model, 192);
       sprites.set(key, canvas);
     }
     return sprites.get(key);
   }
-  root.Miniatures = { parts, defaults, initial, clean, draw, sprite };
+  function sprite(model) {
+    return cachedSprite(JSON.stringify(model), model, draw);
+  }
+  function creatureSprite(key) {
+    return cachedSprite(key, key, root.CreatureMiniatures.draw);
+  }
+  root.Miniatures = { parts, defaults, initial, clean, draw, sprite, creatureSprite };
 })(globalThis);
