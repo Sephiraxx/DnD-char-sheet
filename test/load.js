@@ -41,6 +41,8 @@ const LOGIC = [
   'combat-engine.js',
   'effects.js',
   'miniature-mesh.js',
+  'campaign-mini-models.js',
+  'campaign-miniatures.js',
   'creature-miniatures.js',
   'miniatures.js',
   'rules.js',

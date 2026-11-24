@@ -1079,6 +1079,9 @@ async function main() {
         return sprite(key);
       };
       const tokens = [
+        ['Lobo terrible 2', null, false],
+        ['El cobrador', 'mimic', false],
+        ['Trol', null, true],
         ['Esqueleto', null, false],
         ['Goblin 2', null, false],
         ['Aguja', 'dragon-silver', false],
@@ -1105,7 +1108,9 @@ async function main() {
     await display.waitForFunction(() => window.seenCreatures.has('dragon-silver'));
     check(
       'Pantalla para jugadores: figuras automáticas y elegidas por el DM respetan la visibilidad y el emblema',
-      await display.evaluate(() => [...window.seenCreatures].sort().join(',') === 'dragon-silver,goblin,skeleton'),
+      await display.evaluate(
+        () => [...window.seenCreatures].sort().join(',') === 'dragon-silver,goblin,mimic,skeleton,wolf',
+      ),
     );
     displayParty.encounter.active = false;
     await display.evaluate(() => window.partyChanged('encounter'));

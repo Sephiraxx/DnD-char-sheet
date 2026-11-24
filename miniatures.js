@@ -175,7 +175,7 @@
       gear: sheet.classId === 'bard' ? 'lute' : 'none',
     });
   }
-  function draw(ctx, raw, size) {
+  function draw(ctx, raw, size, headwear) {
     const m = clean(raw);
     if (!m) return;
     const mesh = root.MiniatureMesh.create(m.facing);
@@ -410,6 +410,7 @@
       if (m.hair === 'crest') oval(0, head + 0.24, -0.013, 0.1, 0.16, 0.218, m.hairColor);
       if (m.hair === 'crop') oval(-0.102, head + 0.09, 0.13, 0.143, 0.076, 0.117, m.hairColor);
     }
+    headwear?.(mesh, head);
     mesh.offset(gripX - 0.48, lift, gripZ - 0.23);
     if (m.gear === 'staff') {
       form(

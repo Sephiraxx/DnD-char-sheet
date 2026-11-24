@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const { load } = require('./load');
 
 test('campaign restore preserves map links, copies the image, and cleans up on failure', async () => {
-  const g = load(['creature-miniatures.js', 'campaign-archive.js']);
+  const g = load(['campaign-mini-models.js', 'creature-miniatures.js', 'campaign-archive.js']);
   Object.assign(g, { atob, Blob });
   const map = { name: 'Mapa', grid: {}, fog: {}, sort: 0 };
   const archive = {
@@ -21,7 +21,7 @@ test('campaign restore preserves map links, copies the image, and cleans up on f
         map_id: 'cellar',
         kind: 'npc',
         name: 'Tabernero',
-        creature_model: 'goblin',
+        creature_model: 'wolf',
         label: 'T',
         color: '',
         x: 0,
@@ -62,7 +62,7 @@ test('campaign restore preserves map links, copies the image, and cleans up on f
   assert.equal(restored.maps[0].image_path, image);
   assert.equal(restored.maps[0].terrain.links['0,0'], restored.maps[1].id);
   assert.equal(restored.tokens[0].map_id, restored.maps[1].id);
-  assert.equal(restored.tokens[0].creature_model, 'goblin');
+  assert.equal(restored.tokens[0].creature_model, 'wolf');
   assert.equal(restored.settings.quests[0].shared, false);
   assert.equal(prepared[0].launched, false);
 

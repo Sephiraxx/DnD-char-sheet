@@ -98,7 +98,7 @@ test('modelos públicos del catálogo y nombres numerados, sin confundir otras c
     ['Ancient Red Dragon', 'dragon-red'],
     ['Tortuga dragón', null],
     ['Veterano semidragón rojo', null],
-    ['Hobgoblin', null],
+    ['Hobgoblin', 'hobgoblin'],
     ['Goblin Hunter', null],
     ['Figura encapuchada', null],
   ])
@@ -109,9 +109,44 @@ test('modelos públicos del catálogo y nombres numerados, sin confundir otras c
   for (const m of dragons) assert.ok(C.identify(m.name)?.startsWith('dragon-'), m.name);
   for (const key of Object.keys(C.options).filter(k => k !== 'sigil')) {
     const faces = capture(ctx => C.draw(ctx, key, 64));
-    assert.ok(faces.length > 250, key);
+    assert.ok(
+      faces.some(face => face.some(([, y]) => y > 0.42)),
+      key,
+    );
     for (const [x, y] of faces.flat()) {
       assert.ok(Math.abs(x * 0.376) < 0.5 && 0.89 - y * 0.376 >= 0 && 0.89 - y * 0.376 <= 1, key);
     }
   }
+});
+
+test('el catálogo de miniaturas y la migración admiten las mismas elecciones públicas', () => {
+  const C = g.CreatureMiniatures;
+  const keys = Object.keys(C.options);
+  assert.deepEqual(
+    Object.values(C.groups).flat().sort().join(','),
+    keys
+      .filter(k => k !== 'sigil')
+      .sort()
+      .join(','),
+  );
+  for (const model of g.CampaignMiniModels)
+    for (const name of [model.label, ...model.aliases]) assert.equal(C.identify(name + ' #3'), model.id, name);
+  const sql = require('fs').readFileSync(
+    require('path').join(__dirname, '../supabase/migrations/026_campaign_miniatures.sql'),
+    'utf8',
+  );
+  const list = sql.split('and creature_model in (')[1].split(')')[0];
+  assert.deepEqual([...list.matchAll(/'([^']+)'/g)].map(m => m[1]).sort(), keys.sort());
+  for (const name of ['Caballero dragón', 'Bandit Hunter', 'El hombre de la capa'])
+    assert.equal(C.identify(name), null);
+});
+test('las tablas iniciales de mazmorras y muertos vivientes reconocen cada nombre del encuentro', () => {
+  const data = load(['encounter-tables-data.js', 'curated-encounter-data.js']);
+  const entries = tables =>
+    tables.filter(t => t.minLevel === 1).flatMap(t => t.rows.flatMap(r => r.parts.filter(p => p.type === 'creature')));
+  const curated = entries(data.CuratedEncounterData.tables);
+  assert.ok(curated.length);
+  for (const creature of curated) assert.ok(g.CreatureMiniatures.identify(creature.name), creature.name);
+  const wilderness = entries(data.EncounterTablesData.tables.filter(t => t.source === 'XGE'));
+  assert.ok(wilderness.filter(p => g.CreatureMiniatures.identify(p.name)).length > wilderness.length / 2);
 });
