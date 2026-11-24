@@ -224,7 +224,7 @@ async function main() {
 
     await page.getByRole('button', { name: 'Crear miniatura' }).click();
     await page.getByLabel('Raza de la miniatura').selectOption('orc');
-    await page.getByLabel('Género', { exact: true }).selectOption('woman');
+    await page.getByLabel('Género').selectOption('woman');
     await page.getByLabel('Altura (cm)').fill('187');
     await page.getByLabel('Arma o accesorio').selectOption('hammer');
     const miniSnapshot = () => page.locator('#mini-preview').evaluate(c => c.toDataURL());
@@ -238,7 +238,7 @@ async function main() {
     check(
       'Miniaturas: raza, género, altura y arma siguen en la ficha tras recargar',
       (await page.getByLabel('Raza de la miniatura').inputValue()) === 'orc' &&
-        (await page.getByLabel('Género', { exact: true }).inputValue()) === 'woman' &&
+        (await page.getByLabel('Género').inputValue()) === 'woman' &&
         (await page.getByLabel('Altura (cm)').inputValue()) === '187' &&
         (await page.getByLabel('Arma o accesorio').inputValue()) === 'hammer',
     );
