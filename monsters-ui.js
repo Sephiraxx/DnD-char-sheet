@@ -56,6 +56,25 @@ const MonsterUI = (() => {
       });
   }
   const byId = id => window.MonsterData?.find(m => m.id === id || m.aliasIds?.includes(id));
+  const monsterName = value =>
+    String(value || '')
+      .normalize('NFD')
+      .replace(/\p{Mark}/gu, '')
+      .toLowerCase()
+      .trim();
+  function byName(name) {
+    const key = monsterName(name).replace(/\s+#?\d+$/, '');
+    const matches = (window.MonsterData || []).filter(m => [m.name, m.english, m.id].some(n => monsterName(n) === key));
+    return matches.length === 1 ? matches[0] : matches.find(m => m.id === key) || null;
+  }
+  const profile = (m, hp = m.hp) => ({
+    hp,
+    max_hp: hp,
+    ac: m.ac,
+    saves: saveBonuses(m),
+    monster_id: m.id,
+    damage_traits: Defenses.monsterTraits(m),
+  });
   function rollDice(expr) {
     const m = /^(\d+)d(\d+)([+-]\d+)?$/.exec(String(expr).replace(/\s/g, ''));
     if (!m) return { rolls: [], total: Number(expr) || 0, mod: 0 };
@@ -346,7 +365,6 @@ const MonsterUI = (() => {
     else {
       for (const [id, n] of items) {
         const m = byId(id),
-          saves = saveBonuses(m),
           names = await claimNames(m.name, n);
         for (let i = 0; i < n; i++) {
           const hp = hpOf(m);
@@ -359,7 +377,7 @@ const MonsterUI = (() => {
               tiebreak: mod(m.ab[1]),
               hidden: pick.hidden,
             },
-            { hp, max_hp: hp, ac: m.ac, saves, monster_id: m.id },
+            profile(m, hp),
           );
         }
       }
@@ -562,7 +580,11 @@ const MonsterUI = (() => {
     const total = kept + a.atk,
       crit = kept === 20,
       hit = crit || (kept !== 1 && t && total >= t.x.ac);
-    panel.last = { crit, hit };
+    panel.last = { crit, hit, target: t?.id, attack: { total, natural: kept, attackId: crypto.randomUUID() } };
+    if (hit && t)
+      send('attack', { ...panel.last.attack, hit: true, attacker: e.name, target: t.name, targetId: t.id }, t.id).catch(
+        error => toast(error.message),
+      );
     RollFX.show({
       label: e.name + ' · ' + a.n,
       total,
@@ -629,11 +651,15 @@ const MonsterUI = (() => {
     if (!t) throw Error('Elegí un objetivo.');
     if (!Number.isInteger(base) || base < 0 || base > 9999) throw Error('Revisá el daño a aplicar.');
     if (!base && !panel.damage) throw Error('Tirá el daño o escribí cuánto aplicar.');
-    const amount = fd.has('half') ? Math.floor(base / 2) : base,
+    const amount = Defenses.afterSave(base, fd.has('half'), true),
       { a } = findAction(panel.entryId, panel.kind, panel.name),
       untouched = panel.parts && base === panel.damage,
       parts = untouched
-        ? panel.parts.map(p => ({ amount: fd.has('half') ? Math.floor(p.amount / 2) : p.amount, type: p.type }))
+        ? Defenses.partsAfterSave(
+            panel.parts.map(p => ({ amount: p.amount, type: p.type })),
+            fd.has('half'),
+            true,
+          )
         : null;
     const activePanel = panel,
       btn = document.getElementById('monster-apply');
@@ -646,6 +672,7 @@ const MonsterUI = (() => {
           {
             amount,
             crit: Boolean(untouched && activePanel.last?.crit && !fd.has('half')),
+            ...(activePanel.last?.hit && activePanel.last.target === target ? { attack: activePanel.last.attack } : {}),
             ...(parts ? { parts } : { type: a.dmg?.[0]?.[1] || '' }),
             source: tracker().entries.find(x => x.id === panel.entryId)?.name + ': ' + panel.name,
           },
@@ -867,5 +894,8 @@ const MonsterUI = (() => {
     encounterTheme,
     xp: id => byId(id)?.xp || 0,
     byId,
+    byName,
+    profile,
+    rollDice,
   };
 })();

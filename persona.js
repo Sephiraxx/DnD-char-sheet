@@ -242,12 +242,13 @@ const Persona = (() => {
     );
   }
   function editMiniature() {
-    const model = Miniatures.clean(state.miniature) || Miniatures.initial(state);
+    const model = Miniatures.boardAppearance(state.miniature || Miniatures.initial(state));
+    const A = MiniatureAncestries;
     const labels = {
       race: 'Raza de la miniatura',
       gender: 'Género',
       build: 'Complexión',
-      ears: 'Orejas y cuernos',
+      ears: 'Orejas',
       hair: 'Peinado',
       beard: 'Vello facial',
       scar: 'Cicatriz',
@@ -260,10 +261,12 @@ const Persona = (() => {
       offhand: 'Mano secundaria',
       pose: 'Postura',
     };
-    const pick = key => select(labels[key], key, Object.entries(Miniatures.parts[key]), model[key]);
+    const choices = keys =>
+      keys.map(key => select(labels[key], key, Object.entries(Miniatures.parts[key]), model[key])).join('');
+    const materialSlots = Object.fromEntries(
+      Object.values(Miniatures.forgedMaterials).map(({ core, label }) => [core, label]),
+    );
     const colors = {
-      skin: 'Piel',
-      woodColor: 'Madera',
       hairColor: 'Cabello',
       cloth: 'Tela',
       headColor: 'Capucha o sombrero',
@@ -271,30 +274,50 @@ const Persona = (() => {
     };
     const group = (title, controls) =>
       `<fieldset class="mini-group"><legend>${title}</legend><div class="form-grid">${controls}</div></fieldset>`;
-    const choices = keys => keys.map(pick).join('');
     const body = group(
       'Cuerpo',
-      pick('race') +
-        field('Altura (cm)', 'height', model.height, 'number', 'min="50" max="300" step="1" required') +
-        choices(['gender', 'build', 'ears', 'pose']),
+      choices(['race']) +
+        '<label class="field mini-height"><span>Altura (cm) <output for="mini-height"></output></span><input id="mini-height" type="range" name="height" aria-label="Altura (cm)"></label>' +
+        '<div data-mini-size></div><div data-mini-feature></div><div data-mini-lineage></div><div data-mini-plate-slot hidden></div>' +
+        Object.entries(materialSlots)
+          .map(([key, label]) => field(label, key, model[key] || Miniatures.forgedColors[key], 'color'))
+          .join('') +
+        choices(['gender', 'build', 'pose']),
+    );
+    const face = group(
+      'Rostro y cabeza',
+      '<div data-mini-crown></div>' +
+        field('Color de ojos', 'eyeColor', model.eyeColor || Miniatures.forgedColors.eyeColor, 'color') +
+        choices(['hair', 'beard', 'ears', 'scar', 'eyewear']),
     );
     const dress = group('Vestuario', choices(['outfit', 'headwear', 'neck', 'belt', 'gear', 'offhand']));
-    const face = group('Rostro y cabello', choices(['hair', 'beard', 'scar', 'eyewear']));
     const palette = group(
       'Colores',
-      Object.entries(colors)
-        .map(([key, label]) => field(label, key, model[key], 'color'))
-        .join(''),
+      `<div data-mini-skin-slot>${field('Piel', 'skin', model.skin, 'color')}</div>` +
+        Object.entries(colors)
+          .map(([key, label]) => field(label, key, model[key] || Miniatures.forgedColors[key], 'color'))
+          .join('') +
+        '<div data-mini-race-colors></div>',
     );
-    const read = fd =>
-      Miniatures.clean({
-        ...Object.fromEntries(fd),
-        height: number(fd, 'height', 50, 300),
-        facing: Number(fd.get('facing')),
+    const read = fd => {
+      const values = Object.fromEntries(fd);
+      const range = A.heightRange(values.race, values.size);
+      if (values.race === 'warforged')
+        for (const key of Object.keys(materialSlots)) values[key] = form.elements[key].value;
+      return Miniatures.clean({
+        ...values,
+        height: Number(values.height),
+        facing: Number(values.facing),
+        heightMode: Number(values.height) === range.standard ? undefined : 'custom',
       });
+    };
+    const swatches = [
+      ['f', 'Piedra'],
+      ['g', 'Pasto'],
+    ];
     modal(
       'Miniatura del personaje',
-      `<div class="mini-workbench"><div class="mini-stand"><canvas id="mini-preview" width="360" height="360" aria-label="Vista previa de la miniatura"></canvas><label class="field">Girar miniatura<input type="range" name="facing" min="0" max="359" value="${model.facing}"></label><button type="button" class="button secondary mini-zoom" data-mini-zoom aria-pressed="false">Acercar al rostro</button></div><div class="mini-parts">${dress}<button type="button" class="button secondary mini-preset" data-mini-hooded>Usar atuendo encapuchado</button>${face}${body}${palette}</div></div>${state.miniature ? button('Quitar miniatura', 'persona-mini-remove', 'secondary') : ''}`,
+      `<div class="mini-workbench"><div class="mini-stand"><canvas id="mini-preview" width="360" height="360" aria-label="Vista previa de la miniatura"></canvas><div class="mini-board-compare" hidden>${swatches.map(([code, name]) => `<figure><canvas width="116" height="156" data-ground="${code}" aria-label="Miniatura sobre ${name.toLowerCase()}"></canvas><figcaption>${name}</figcaption></figure>`).join('')}<small>${Miniatures.boardCell} px por casilla · zoom 100%</small></div><label class="field">Girar miniatura<input type="range" name="facing" min="0" max="359" value="${model.facing}"></label><div class="mini-view-controls"><button type="button" class="button secondary mini-zoom" data-mini-zoom aria-pressed="false">Acercar al rostro</button><button type="button" class="button secondary mini-zoom" data-mini-board aria-pressed="false">Vista de tablero</button></div></div><div class="mini-parts">${body}${face}${dress}<button type="button" class="button secondary mini-preset" data-mini-hooded>Usar atuendo encapuchado</button>${palette}</div></div>${state.miniature ? button('Quitar miniatura', 'persona-mini-remove', 'secondary') : ''}`,
       fd => {
         const mini = read(fd);
         commit('Miniatura actualizada', s => {
@@ -303,49 +326,224 @@ const Persona = (() => {
       },
       'Guardar miniatura',
     );
-    const form = document.getElementById('dialog-form'),
-      canvas = form.querySelector('#mini-preview'),
-      ctx = canvas.getContext('2d');
+    const form = document.getElementById('dialog-form');
+    const canvas = form.querySelector('#mini-preview');
+    const compare = form.querySelector('.mini-board-compare');
     const zoom = form.querySelector('[data-mini-zoom]');
-    const skinLabel = form.elements.skin.closest('label').firstChild;
-    const woodField = form.elements.woodColor.closest('label');
-    const materials = race => {
-      skinLabel.textContent = race === 'warforged' ? 'Hierro' : 'Piel';
-      woodField.hidden = race !== 'warforged';
+    const board = form.querySelector('[data-mini-board]');
+    const height = form.elements.height;
+    const heightValue = form.querySelector('output[for="mini-height"]');
+    const enable = (key, enabled) => {
+      const control = form.elements.namedItem(key);
+      control.disabled = !enabled;
+      control.closest('label').hidden = !enabled;
     };
-    materials(model.race);
-    const motion = matchMedia('(prefers-reduced-motion: reduce)');
-    let timer;
-    const preview = () => {
-      clearTimeout(timer);
-      if (!form.elements.height.validity.valid) return;
-      const mini = read(new FormData(form));
-      const closeUp = zoom.getAttribute('aria-pressed') === 'true';
-      const animated = !closeUp && Miniatures.hasSword(mini) && !motion.matches;
-      let previousFrame;
-      const paint = () => {
-        if (!form.isConnected || !form.closest('dialog')?.open) return;
-        const frame = animated ? Miniatures.swordFrame(performance.now()) : 0;
-        if (frame !== previousFrame) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          Miniatures.draw(ctx, mini, canvas.width, null, closeUp, frame);
-          previousFrame = frame;
+    const relabel = (key, label) => {
+      form.elements[key].closest('label').firstChild.textContent = label;
+    };
+    const raceControl = (target, label, name, options, value) => {
+      const slot = form.querySelector(`[data-mini-${target}]`);
+      slot.hidden = !options;
+      slot.innerHTML = options ? select(label, name, Object.entries(options), value) : '';
+      slot.querySelector('select')?.setAttribute('aria-label', label);
+    };
+    const optionsFor = (key, options, selected) => {
+      const control = form.elements[key];
+      control.setAttribute('aria-label', labels[key]);
+      control.replaceChildren(
+        ...Object.entries(options).map(([value, label]) => new Option(label, value, false, value === selected)),
+      );
+    };
+    const updateHeightLabel = () => {
+      heightValue.value = `${height.value} cm`;
+      height.setAttribute('aria-valuetext', heightValue.value);
+    };
+    const stature = (race, size, value, build) => {
+      const range = A.heightRange(race, size);
+      height.min = range.min;
+      height.max = range.max;
+      height.value = value >= range.min && value <= range.max ? value : range.standard;
+      updateHeightLabel();
+      const small = (size || A.appearance(race).size) === 'small';
+      const allowed = Object.fromEntries(
+        Object.entries(Miniatures.parts.build).filter(([key]) => small === (key === 'small')),
+      );
+      optionsFor('build', allowed, Object.hasOwn(allowed, build) ? build : small ? 'small' : A.appearance(race).build);
+      enable('build', !small);
+    };
+    const surfaceNames = {
+      tabaxi: 'Pelaje',
+      leonin: 'Pelaje',
+      bugbear: 'Pelaje',
+      shifter: 'Pelaje',
+      hadozee: 'Pelaje',
+      harengon: 'Pelaje',
+      aarakocra: 'Plumas',
+      kenku: 'Plumas',
+      owlin: 'Plumas',
+      lizardfolk: 'Escamas',
+      kobold: 'Escamas',
+      'yuan-ti': 'Escamas',
+    };
+    const materialColors = (race, feature) => {
+      const material = race === 'warforged' && Miniatures.forgedMaterials[feature];
+      const plates = form.querySelector('[data-mini-plate-slot]');
+      const palette = form.querySelector('[data-mini-skin-slot]');
+      plates.hidden = !material;
+      palette.hidden = !!material || race === 'dragonborn';
+      const container = material ? plates : palette;
+      const skin = form.elements.skin.closest('label');
+      if (skin.parentElement !== container) container.append(skin);
+      relabel('skin', material?.plates || surfaceNames[race] || 'Piel');
+      enable('skin', race !== 'dragonborn');
+      for (const key of Object.keys(materialSlots)) enable(key, key === material?.core);
+      enable('eyeColor', !!material);
+    };
+    let activeRace = model.race;
+    let activeMaterial = model.feature;
+    const updateRace = (look, hair = look.hair) => {
+      const race = look.race,
+        valid = A.faceOptions(race);
+      raceControl('size', 'Tamaño', 'size', A.sizeOptions(race), look.size);
+      raceControl(
+        'feature',
+        race === 'warforged' ? 'Material del cuerpo' : 'Rasgo de la raza',
+        'feature',
+        A.features[race],
+        look.feature,
+      );
+      form.querySelector('[data-mini-feature]').classList.toggle('mini-material-select', race === 'warforged');
+      raceControl(
+        'lineage',
+        'Ascendencia dracónica',
+        'ancestry',
+        race === 'dragonborn' && {
+          red: 'Rojo',
+          blue: 'Azul',
+          green: 'Verde',
+          black: 'Negro',
+          white: 'Blanco',
+          brass: 'Latón',
+          bronze: 'Bronce',
+          copper: 'Cobre',
+          gold: 'Oro',
+          silver: 'Plata',
+        },
+        look.ancestry,
+      );
+      raceControl(
+        'crown',
+        race === 'warforged' ? 'Cresta' : 'Cuernos',
+        race === 'warforged' ? 'crest' : 'hornStyle',
+        race === 'warforged' ? Miniatures.crestOptions : valid.horns,
+        race === 'warforged' ? look.crest || 'ridged' : look.hornStyle || 'natural',
+      );
+      const styles = A.hairOptions(race, Miniatures.parts.hair);
+      optionsFor('hair', styles, Object.hasOwn(styles, hair) ? hair : look.hair);
+      const { horns, ...ears } = Miniatures.parts.ears;
+      optionsFor('ears', ['custom-lineage', 'other'].includes(race) ? Miniatures.parts.ears : ears, look.ears);
+      for (const key of ['hair', 'beard', 'ears', 'scar', 'hairColor']) enable(key, valid[key]);
+      relabel('hairColor', race === 'leonin' || race === 'minotaur' ? 'Color de melena' : 'Cabello');
+      materialColors(race, look.feature);
+      const tones = A.palettes[race];
+      const paletteSlot = form.querySelector('[data-mini-race-colors]');
+      paletteSlot.hidden = !tones;
+      paletteSlot.innerHTML = tones
+        ? select(
+            'Tonos de piel',
+            'skin_preset',
+            [['', 'Personalizado'], ...tones.map(color => [color, color])],
+            tones.includes(look.skin) ? look.skin : '',
+          )
+        : '';
+      stature(race, look.size, look.height, look.build);
+    };
+    updateRace(model);
+    const terrain = new Map();
+    function boardPreview(mini) {
+      const tile = Miniatures.boardCell;
+      const pack = Miniatures.boardPack(mini);
+      const scale = tile / pack.pixelsPerSquare;
+      const { width, height } = pack.image;
+      const half = Math.max(58, Math.ceil(Math.max(pack.anchor.x, width - pack.anchor.x) * scale + 6));
+      const y = Math.max(121, Math.ceil(pack.anchor.y * scale + 8));
+      const below = Math.max(35, Math.ceil((height - pack.anchor.y) * scale + 4));
+      for (const surface of compare.querySelectorAll('canvas')) {
+        const code = surface.dataset.ground;
+        surface.width = half * 2;
+        surface.height = y + below;
+        const ctx = surface.getContext('2d');
+        const x = half;
+        if (!terrain.has(code)) {
+          const sample = document.createElement('canvas');
+          sample.width = sample.height = tile * 5;
+          BoardArt.paint(sample.getContext('2d'), { cols: 5, rows: 5 }, code.repeat(25), tile);
+          terrain.set(code, sample);
         }
-        if (animated) timer = setTimeout(paint, 100);
-      };
-      paint();
+        const dx = x - 2.5 * tile,
+          dy = y - 2.5 * tile;
+        ctx.drawImage(terrain.get(code), dx, dy);
+        ctx.beginPath();
+        for (let i = 1; i < 5; i++) {
+          const xx = dx + i * tile + 0.5,
+            yy = dy + i * tile + 0.5;
+          ctx.moveTo(xx, 0);
+          ctx.lineTo(xx, surface.height);
+          ctx.moveTo(0, yy);
+          ctx.lineTo(surface.width, yy);
+        }
+        ctx.strokeStyle = 'rgba(17,23,18,0.42)';
+        ctx.stroke();
+        const radius = tile * 0.525;
+        ctx.beginPath();
+        ctx.ellipse(x, y, radius, radius * Math.sin((55 * Math.PI) / 180), 0, 0, Math.PI * 2);
+        ctx.strokeStyle = '#4ade80b3';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.lineWidth = 1;
+        ctx.drawImage(
+          pack.image,
+          x - pack.anchor.x * scale,
+          y - pack.anchor.y * scale,
+          pack.image.width * scale,
+          pack.image.height * scale,
+        );
+      }
+    }
+    let pending = 0;
+    const preview = () => {
+      if (pending) cancelAnimationFrame(pending);
+      pending = requestAnimationFrame(() => {
+        if (!form.isConnected) return;
+        const mini = read(new FormData(form));
+        if (!compare.hidden) return boardPreview(mini);
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        Miniatures.draw(ctx, mini, canvas.width, null, zoom.getAttribute('aria-pressed') === 'true');
+      });
     };
-    motion.addEventListener('change', preview);
-    form.closest('dialog').addEventListener(
-      'close',
-      () => {
-        clearTimeout(timer);
-        motion.removeEventListener('change', preview);
-      },
-      { once: true },
-    );
     zoom.addEventListener('click', () => {
       zoom.setAttribute('aria-pressed', String(zoom.getAttribute('aria-pressed') !== 'true'));
+      preview();
+    });
+    board.addEventListener('click', async () => {
+      const active = compare.hidden;
+      if (active) {
+        board.disabled = true;
+        try {
+          await Miniatures.loadTerrainArt();
+        } catch (error) {
+          toast(error.message);
+          return;
+        } finally {
+          board.disabled = false;
+        }
+        if (!form.isConnected) return;
+      }
+      compare.hidden = !active;
+      canvas.hidden = zoom.hidden = active;
+      board.setAttribute('aria-pressed', String(active));
+      form.querySelector('.mini-workbench').classList.toggle('is-board-view', active);
       preview();
     });
     form.querySelector('[data-mini-hooded]').addEventListener('click', () => {
@@ -356,24 +554,36 @@ const Persona = (() => {
         headColor: '#242530',
         accent: '#b6a589',
       };
-      for (const [key, value] of Object.entries(vestments)) form.elements.namedItem(key).value = value;
+      for (const [key, value] of Object.entries(vestments)) form.elements[key].value = value;
       preview();
     });
-    let previousRace = model.race;
     form.addEventListener('input', event => {
-      if (event.target.name === 'race') {
-        const race = event.target.value;
-        const previous = MiniatureAncestries.appearance(previousRace);
-        const next = MiniatureAncestries.appearance(race);
-        for (const key of ['skin', 'hair']) {
-          const control = form.elements.namedItem(key);
-          if (control.value === (previous[key] ?? Miniatures.defaults[key])) {
-            control.value = next[key] ?? Miniatures.defaults[key];
-          }
+      const { name, value } = event.target;
+      if (name === 'race') {
+        const previous = Miniatures.clean({ race: activeRace });
+        const next = Miniatures.clean({ race: value });
+        const hair = form.elements.hair.value === previous.hair ? next.hair : form.elements.hair.value;
+        for (const key of ['skin', 'hairColor', 'cloth', 'beard', 'belt']) {
+          const control = form.elements[key];
+          if (control.disabled || control.value === previous[key]) control.value = next[key];
         }
-        materials(race);
-        previousRace = race;
+        activeRace = value;
+        activeMaterial = next.feature;
+        updateRace({ ...next, skin: form.elements.skin.value }, hair);
       }
+      if (name === 'size')
+        stature(activeRace, value, A.heightRange(activeRace, value).standard, form.elements.build.value);
+      if (name === 'height') updateHeightLabel();
+      if (name === 'feature' && activeRace === 'warforged') {
+        const defaultSkin = Miniatures.clean({ race: 'warforged' }).skin;
+        const plates = feature => Miniatures.forgedMaterials[feature]?.plateColor || defaultSkin;
+        if (form.elements.skin.value === plates(activeMaterial)) form.elements.skin.value = plates(value);
+        activeMaterial = value;
+        materialColors(activeRace, value);
+      }
+      if (name === 'skin_preset' && value) form.elements.skin.value = value;
+      if (name === 'skin' && form.elements.skin_preset)
+        form.elements.skin_preset.value = A.palettes[activeRace].includes(value) ? value : '';
       preview();
     });
     preview();

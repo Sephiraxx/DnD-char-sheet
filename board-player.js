@@ -57,6 +57,15 @@
     actorId,
     spells: () => [...new Set(Classes.usable(state))].map(spellById).filter(Boolean),
     cast,
+    compactCast: true,
+    spiritualTurn: () => Combat.data(state).turn,
+    prepareSpiritualAttack: strike => {
+      if (!strike.first) commit('Acción adicional: Arma espiritual', s => Combat.use(s, 'bonus', 'Arma espiritual'));
+    },
+    spiritualAttack: strike => {
+      const sp = spellById('spiritual-weapon');
+      if (sp) RollUI.spell(sp, strike.slot, { placement: { hits: strike.hits }, spiritualStrike: strike });
+    },
     pick: c => TableUI.setBoardContext(c),
     dock: () => (state && typeof combatCompact === 'function' ? combatCompact() : ''),
     reach: t => (mine(t) ? reach() : null),
@@ -68,9 +77,13 @@
     './board-core.js',
     './board-art.js',
     './board-scene-fx.js',
+    './board-spells.js',
+    './board-ink.js',
+    './board-spell-fx.js',
     './board-props.js',
     './board-gen.js',
     './sigils.js',
+    './board-casting.js',
     './board.js',
   ];
   let loading;
@@ -92,13 +105,49 @@
       });
     loading = (async () => {
       if (!document.querySelector('link[href="./board.css"]')) await load('./board.css', true);
-      for (const src of scripts) if (!document.querySelector('script[src="' + src + '"]')) await load(src);
+      if (!document.querySelector('link[href="./board-casting.css"]')) await load('./board-casting.css', true);
+      for (const src of scripts) {
+        if (src === './board-art.js') await Miniatures.loadTerrainArt();
+        else if (!document.querySelector('script[src="' + src + '"]')) await load(src);
+      }
     })().catch(error => {
       loading = null;
       throw error;
     });
     return loading;
   }
+  window.BoardPlayer = {
+    async openCast(id) {
+      const link = TableUI.link();
+      if (!link) return cast(id);
+      try {
+        await loadBoard();
+        if (TableUI.link()?.campaignId !== link.campaignId) return;
+        document.getElementById('modal').close();
+        if (!Board.isOpen()) Board.open(link.campaignId, hooks);
+        await Board.startCasting(id);
+      } catch (error) {
+        toast(error.message);
+      }
+    },
+    async resolveSpellSave(campaign, request, subject, result) {
+      await loadBoard();
+      return Board.resolveSpellSave(campaign, request, subject, result);
+    },
+    projectAbility(id, name, target = null) {
+      const l = TableUI.link();
+      if (!l) return;
+      const targets = [target || { character: l.characterId }];
+      const spell = {
+        id,
+        name,
+        caster: l.characterId,
+        castId: globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2),
+      };
+      if (!globalThis.Board?.projectAbility(l.campaignId, spell, targets))
+        Cloud.broadcastSpellTargets(l.campaignId, ['magic'], targets, spell).catch(() => {});
+    },
+  };
   Object.assign(actions, {
     'spell-map-aim': e => {
       const id = e.dataset.id,
@@ -109,7 +158,7 @@
           if (TableUI.link()?.campaignId !== link.campaignId) return;
           document.getElementById('modal').close();
           Board.open(link.campaignId, hooks);
-          Board.aimSpell(id);
+          Board.startCasting(id).catch(err => toast(err.message));
         })
         .catch(err => toast(err.message));
     },

@@ -901,10 +901,27 @@ label.check:has(input[name='heroic']:checked) {
 }
 .enc-mark {
   display: block;
-  width: clamp(2.75rem, min(7vw, 8vh), 6rem);
-  height: clamp(2.75rem, min(7vw, 8vh), 6rem);
+  width: clamp(4rem, min(19vw, 17vh), 9rem);
+  aspect-ratio: 1;
   margin: 0 auto clamp(10px, 2vmin, 24px);
-  fill: currentColor;
+  background: url('./assets/encounter-seal.png') left center / 2400% 100% no-repeat;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 3px 5px #000);
+  animation: enc-seal-turn 2s steps(24, jump-none) infinite;
+}
+.enc-ambush .enc-mark {
+  background-image: url('./assets/encounter-ambush.png');
+}
+.enc-boss .enc-mark {
+  background-image: url('./assets/encounter-boss.png');
+}
+.enc-reinforce .enc-mark {
+  background-image: url('./assets/encounter-reinforce.png');
+}
+@keyframes enc-seal-turn {
+  to {
+    background-position-x: 100%;
+  }
 }
 .enc-battle .enc-heading::before {
   content: '';
@@ -1124,7 +1141,7 @@ body.enc-stomp .workspace {
 }
 @media (prefers-reduced-motion: reduce) {
   .enc-fx {
-    animation: enc-flash 0.3s ease-in reverse both;
+    animation: none;
   }
   .enc-fx *,
   .enc-fx *::before,
@@ -2267,6 +2284,48 @@ button.cc-stat {
   border-color: var(--gold);
   color: var(--gold);
 }
+.mini-view-controls {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.mini-height output {
+  float: right;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+.mini-material-select {
+  grid-column: 1 / -1;
+}
+.mini-board-compare {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+.mini-board-compare figure {
+  margin: 0;
+  font-size: 0.75rem;
+}
+.mini-board-compare canvas {
+  display: block;
+  outline: 1px solid var(--line);
+  border-radius: 7px;
+}
+.mini-board-compare small {
+  flex-basis: 100%;
+  color: var(--muted);
+}
+.mini-workbench :is(.mini-board-compare, #mini-preview, .mini-zoom)[hidden] {
+  display: none;
+}
+@media (min-width: 561px) {
+  .mini-workbench.is-board-view {
+    grid-template-columns: minmax(276px, 0.95fr) minmax(0, 1.3fr);
+  }
+}
 @media (max-height: 450px) {
   .mini-stand {
     position: static;
@@ -2292,6 +2351,12 @@ button.cc-stat {
   }
   .mini-stand .field {
     margin: 0;
+  }
+  .is-board-view .mini-stand {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .mini-board-compare {
+    grid-column: 1 / -1;
   }
   .mini-zoom {
     padding: 0.35rem 0.55rem;

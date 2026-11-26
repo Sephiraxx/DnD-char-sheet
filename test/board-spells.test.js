@@ -1,0 +1,183 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const spells = require('../board-spells.js');
+
+const grid = { cols: 20, rows: 15, feet: 5 };
+const includes = (cells, x, y) => cells.some(([cx, cy]) => cx === x && cy === y);
+
+test('persistent zones distinguish start, entry, end, and damage on cast', () => {
+  for (const id of ['spirit-guardians', 'moonbeam', 'cloud-of-daggers']) {
+    const rule = spells.zoneRule(id);
+    assert.equal(Boolean(rule.initial), false);
+    assert.equal(rule.enter, true);
+    assert.equal(rule.start, true);
+    assert.equal(Boolean(rule.end), false);
+  }
+  assert.equal(spells.zoneRule('spike-growth').travel, true);
+  const wall = spells.zoneRule('wall-of-fire');
+  assert.equal(wall.initial && wall.enter && wall.end && wall.noSave, true);
+  assert.equal(Boolean(wall.start), false);
+});
+
+test('moving through a zone detects entry even when the creature finishes outside', () => {
+  const shape = spells.areaFor({ id: 'cloud-of-daggers', level: 2 });
+  const area = spells.makeTemplate(grid, shape, null, { x: 5.4, y: 4.7 });
+  const movement = [
+    { x: 4, y: 4 },
+    { x: 5, y: 4 },
+    { x: 6, y: 4 },
+  ];
+  const rule = spells.zoneRule('cloud-of-daggers');
+  assert.equal(spells.zoneMovement(grid, area, { size: 1 }, movement, rule).enters, true);
+  assert.equal(spells.zoneMovement(grid, area, { size: 1 }, movement.slice(1), rule).enters, false);
+});
+
+test('Spike Growth uses ground travel and counts Tiny token half-square moves', () => {
+  const area = { kind: 'circle', x: 5, y: 5, feet: 20, origin: { x: 5, y: 5 } };
+  const path = [
+    { x: 5, y: 5 },
+    { x: 5.5, y: 5 },
+    { x: 6, y: 5 },
+    { x: 6.5, y: 5 },
+  ];
+  const rule = spells.zoneRule('spike-growth');
+  assert.equal(spells.zoneMovement(grid, area, { size: 0.5 }, path, rule).feet, 7.5);
+  assert.equal(spells.zoneMovement(grid, area, { size: 0.5, elev: 5 }, path, rule).feet, 0);
+});
+
+test('Wall of Fire checks entry in the wall and end of turn on the selected hot side', () => {
+  const area = { kind: 'wall', x: 2, y: 6, dir: 0, feet: 30, width: 1, height: 20 };
+  const hot = { x: 4, y: 7, size: 1 },
+    cold = { ...hot, y: 4 };
+  assert.equal(spells.zoneContains(grid, area, hot, { hot: true }), true);
+  assert.equal(spells.zoneContains(grid, area, cold, { hot: true }), false);
+  assert.equal(spells.zoneContains(grid, area, cold, { hot: true, wallSide: -1 }), true);
+  assert.equal(spells.zoneContains(grid, area, hot), false);
+  assert.equal(spells.zoneContains(grid, area, { ...hot, elev: 20 }, { hot: true }), false);
+});
+
+test('2014 spell data separates ranged attacks, direct strikes and self-centered aura modes', () => {
+  assert.equal(spells.kindFor('chill-touch'), 'projectile');
+  assert.equal(spells.kindFor('sacred-flame'), 'strike');
+  assert.equal(spells.kindFor('psychic-scream'), 'strike');
+  assert.equal(spells.kindFor('earth-tremor'), 'aura-instant');
+  assert.equal(spells.kindFor('spirit-guardians'), 'aura-persistent');
+  assert.equal(spells.kindFor('zephyr-strike'), 'on-hit');
+  assert.equal(spells.rangeFor('60ft'), 60);
+  assert.equal(spells.rangeFor('1,000 pies'), 1000);
+  assert.equal(spells.rangeFor('Personal (cono de 15 pies)'), 0);
+});
+
+test('spherical spell volumes snap to intersections and include half covered squares', () => {
+  const fireball = spells.areaFor({ id: 'fireball', level: 3 });
+  const blast = spells.makeTemplate(grid, fireball, null, { x: 6.83, y: 6.15 });
+  assert.deepEqual(blast.origin, { x: 7, y: 6 });
+  const cells = spells.affectedCells(grid, blast);
+  assert.equal(includes(cells, 10, 6), true);
+  assert.equal(includes(cells, 10, 8), false);
+  assert.equal(spells.areaFor({ id: 'fog-cloud', level: 1 }, 3).feet, 60);
+});
+
+test('creatures are picked by occupied grid cells, including all Tiny corners', () => {
+  const rats = [
+    [0, 0],
+    [0.5, 0],
+    [0, 0.5],
+    [0.5, 0.5],
+  ].map(([x, y], id) => ({ id, x: 4 + x, y: 3 + y, size: 0.5 }));
+  const giant = { id: 'giant', x: 5, y: 3, size: 3 };
+  assert.deepEqual(spells.affectedTokens([[4, 3]], [...rats, giant]), rats);
+  assert.deepEqual(spells.affectedTokens([[7, 5]], [...rats, giant]), [giant]);
+});
+
+test('cones use the caster side, Earth Tremor uses the center, and walls block outgoing effects', () => {
+  const caster = { x: 2, y: 2, size: 2 };
+  const cone = spells.makeTemplate(grid, spells.areaFor({ id: 'burning-hands', level: 1 }), caster, { x: 12, y: 3 });
+  assert.equal(cone.x, 4);
+  const blocked = spells.affectedCells(grid, cone, [[5, 0, 5, 7]]);
+  assert.equal(includes(blocked, 5, 3), false);
+  assert.equal(includes(spells.affectedCells(grid, cone), 5, 3), true);
+  const tremor = spells.makeTemplate(grid, spells.areaFor({ id: 'earth-tremor', level: 1 }), caster, { x: 14, y: 12 });
+  assert.deepEqual(tremor.origin, { x: 3, y: 3 });
+  assert.equal(spells.distance(caster, { x: 5, y: 2, size: 1, elev: 30 }, null, 5), 30);
+});
+
+test('visual families keep cylinder, cube and wall geometry distinct', () => {
+  const moonbeam = spells.areaFor({ id: 'moonbeam', level: 2 });
+  assert.deepEqual(moonbeam, { kind: 'cylinder', feet: 5, height: 40, self: false });
+  assert.equal(spells.areaFor({ id: 'thunderwave', level: 1 }).feet, 15);
+  const wall = spells.areaFor({ id: 'wall-of-fire', level: 4 });
+  assert.deepEqual(wall, { kind: 'wall', feet: 60, width: 1, height: 20, self: false });
+  const from = { x: 11, y: 3 },
+    to = { x: 31, y: 5 };
+  assert.deepEqual(spells.clipRay(grid, from, to), { x: 20, y: 3.9 });
+  assert.deepEqual(spells.clipRay(grid, { x: 5, y: 2 }, { x: 7, y: -8 }), { x: 5.4, y: 0 });
+  assert.equal(spells.missileCount(1), 3);
+  assert.equal(spells.missileCount(2), 4);
+  assert.equal(spells.missileCount(9), 11);
+});
+
+test('supported archetypes are registered with expiry or area rules where applicable', () => {
+  const ids = [
+    'disintegrate',
+    'moonbeam',
+    'thunderwave',
+    'wall-of-fire',
+    'thunderclap',
+    'spirit-guardians',
+    'shocking-grasp',
+    'bless',
+    'bane',
+    'healingword',
+    'spiritual-weapon',
+    'misty-step',
+    'prestidigitation',
+    'toll-the-dead',
+  ];
+  assert.ok(ids.every(spells.implemented));
+  assert.equal(spells.implemented('freedom-of-the-waves'), true);
+  assert.equal(spells.markedCast(spells.kindFor('bless')), true);
+  assert.equal(spells.debuff('bane'), true);
+  assert.equal(spells.debuff('bless'), false);
+  assert.equal(spells.destinationRange('misty-step'), 30);
+});
+
+test('party effects use board archetypes, and Eldritch Blast scales by character level', () => {
+  assert.equal(spells.kindFor('halo-of-spores'), 'strike');
+  assert.equal(spells.kindFor('barbarian-rage'), 'buff');
+  assert.equal(spells.kindFor('symbiotic-entity'), 'buff');
+  assert.equal(spells.kindFor('bardic-inspiration'), 'buff');
+  assert.ok(spells.implemented('eldritch-blast'));
+  assert.deepEqual([1, 4, 5, 10, 11, 16, 17, 20].map(spells.beamCount), [1, 1, 2, 2, 3, 3, 4, 4]);
+  assert.equal(spells.areaFor({ id: 'entangle', level: 1 }).feet, 20);
+  assert.deepEqual([undefined, 'unknown', 'mace', 'axe'].map(spells.weaponForm), ['hammer', 'hammer', 'mace', 'axe']);
+});
+
+test('fire walls snap to grid lines, cover both neighboring rows and stop at the map edge', () => {
+  const caster = { x: 2, y: 4, size: 1 };
+  const area = spells.makeTemplate(grid, spells.areaFor({ id: 'wall-of-fire', level: 4 }), caster, { x: 14.7, y: 5.2 });
+  assert.deepEqual(area.origin, { x: 15, y: 5 });
+  assert.equal(area.dir, 0);
+  const cells = spells.affectedCells(grid, area);
+  assert.ok(includes(cells, 19, 4) && includes(cells, 19, 5));
+  assert.ok(!includes(cells, 19, 6) && !includes(cells, 20, 5));
+});
+
+test('Thunderwave has a three-by-three area flush with the casting side and pushes up to 10 feet', () => {
+  const caster = { x: 3, y: 3, size: 1 };
+  const spell = spells.areaFor({ id: 'thunderwave', level: 1 });
+  const area = spells.makeTemplate(grid, spell, caster, { x: 10.2, y: 4 });
+  assert.deepEqual(area.origin, { x: 4, y: 3.5 });
+  const cells = spells.affectedCells(grid, area);
+  assert.deepEqual(
+    cells,
+    [2, 3, 4].flatMap(y => [4, 5, 6].map(x => [x, y])),
+  );
+  const victim = { x: 4, y: 3, size: 1 };
+  assert.equal(spells.pushDestination(grid, { x: 3.5, y: 3.5 }, victim, () => true).x, 6);
+  assert.equal(spells.pushDestination(grid, { x: 3.5, y: 3.5 }, victim, at => at.x < 6).x, 5);
+  assert.equal(
+    spells.pushDestination(grid, { x: 3.5, y: 3.5 }, victim, () => false),
+    null,
+  );
+});

@@ -19,7 +19,8 @@ function digest(src = fs.readFileSync(SW, 'utf8')) {
     if (f === './') continue;
     hash.update(f + '\0');
     // Sin \r: un checkout de Windows tiene que dar el mismo resumen que GitHub Pages.
-    hash.update(fs.readFileSync(path.join(root, f), 'utf8').replace(/\r\n/g, '\n'));
+    const bytes = fs.readFileSync(path.join(root, f));
+    hash.update(bytes.includes(0) ? bytes : bytes.toString('utf8').replace(/\r\n/g, '\n'));
   }
   return hash.digest('hex').slice(0, 12);
 }

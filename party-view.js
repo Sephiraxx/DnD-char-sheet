@@ -68,6 +68,14 @@
         ...(s.wildShape ? ['Forma salvaje: ' + s.wildShape.name] : []),
         ...(s.timedEffects || []).map(x => x.name + (x.rounds !== null ? ' (' + x.rounds + ')' : '')),
       ],
+      boardTraits: [
+        ...(s.raging ? ['barbarian-rage'] : []),
+        ...(s.symbiotic && s.temp > 0 ? ['symbiotic-entity'] : []),
+        ...((s.timedEffects || []).some(e => e.spell === 'shillelagh') ? ['shillelagh'] : []),
+        ...((s.bonusDice || []).some(b => /^Inspiración bárdica de /i.test(b.reason || ''))
+          ? ['bardic-inspiration']
+          : []),
+      ],
       bonusDice: (s.bonusDice || []).map(b => 'd' + b.die + (b.reason ? ' · ' + b.reason : '')),
       inCombat: Boolean(c.active),
       darkvision: Number(root.Campaign?.race?.(s)?.darkvision) || 0,
@@ -110,6 +118,9 @@
         : [],
       conditions: strings(x.conditions),
       effects: strings(x.effects),
+      boardTraits: strings(x.boardTraits).filter(trait =>
+        ['barbarian-rage', 'symbiotic-entity', 'shillelagh', 'bardic-inspiration'].includes(trait),
+      ),
       bonusDice: strings(x.bonusDice),
       concentration: text(x.concentration),
       onTurn: Boolean(x.onTurn),

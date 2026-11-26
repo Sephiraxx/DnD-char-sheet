@@ -125,10 +125,10 @@ const TableUI = (() => {
     'a punto de caer': 'A punto de caer',
     derrotado: 'Derrotado',
   };
-  function encounter() {
+  function encounter(includeBoardOnly = false) {
     const enc = party?.encounter;
     const entries = Cloud.order(party?.combatants || [], enc?.active)
-      .filter(c => !c.hidden)
+      .filter(c => !c.hidden && (includeBoardOnly || !c.board_only))
       .map(c => ({
         id: c.id,
         kind: c.kind,
@@ -167,7 +167,7 @@ const TableUI = (() => {
         selfId: l.characterId,
       };
     return {
-      monsters: encounter().entries.filter(e => e.kind === 'monster' && e.status !== 'derrotado'),
+      monsters: encounter(true).entries.filter(e => e.kind === 'monster' && e.status !== 'derrotado'),
       allies: (party?.characters || [])
         .filter(c => c.id !== l?.characterId)
         .map(c => ({ characterId: c.id, name: c.name })),
@@ -176,7 +176,12 @@ const TableUI = (() => {
   }
   async function resolveTarget(id, total, natural, label, crit = false) {
     const player = targets().monsters.find(e => e.id === id && e.player);
-    if (!player) return Cloud.resolveAttack(id, total, natural, label, state.name);
+    if (!player) {
+      const result = await Cloud.resolveAttack(id, total, natural, label, state.name);
+      if (!result || showEnemyAC()) return result;
+      const { ac, ...privateResult } = result;
+      return privateResult;
+    }
     const hit = natural !== 1 && (crit || natural === 20 || total >= player.ac);
     await Cloud.post(link().campaignId, 'attack', {
       attacker: state.name,
@@ -189,10 +194,10 @@ const TableUI = (() => {
     });
     return { hit, name: player.name };
   }
+  const showEnemyAC = () => party?.campaign?.settings?.showEnemyAC === true;
   async function damageTarget(id, amount, label, details = {}) {
     const target = targets().monsters.find(e => e.id === id);
-    if (!target?.player)
-      return Cloud.damageCombatant(id, amount, label, state.name, target?.characterId ? details : undefined);
+    if (!target?.player) return Cloud.damageCombatant(id, amount, label, state.name, details);
     const player = target;
     if (amount > 0) await sendTo(id, 'damage', { ...details, amount, source: label });
     return { name: player.name, pending: amount > 0 };
@@ -325,6 +330,19 @@ const TableUI = (() => {
   }
 
   const saveCommandError = 'La ficha no pudo guardarse. Liberá espacio para recibir la orden pendiente.';
+  let pendingShield = null;
+  const shieldDecisions = new Map();
+  function requestShield(event) {
+    if (event.attackId && shieldDecisions.has(event.attackId)) return shieldDecisions.get(event.attackId);
+    if (pendingShield) return pendingShield;
+    const offered = globalThis.Board?.offerSpellReaction({ id: 'shield', ...event });
+    if (offered) pendingShield = offered.finally(() => (pendingShield = null));
+    if (event.attackId && pendingShield) {
+      shieldDecisions.set(event.attackId, pendingShield);
+      if (shieldDecisions.size > 40) shieldDecisions.delete(shieldDecisions.keys().next().value);
+    }
+    return pendingShield;
+  }
   function applyCommand(ev) {
     const p = ev.payload || {};
     const apply = (label, fn) =>
@@ -339,6 +357,11 @@ const TableUI = (() => {
     const n = v => Math.max(0, Math.min(9999, Math.floor(Number(v) || 0)));
     switch (ev.kind) {
       case 'damage': {
+        if (
+          Effects.active(state, 'shield') &&
+          (p.magicMissile || (p.attack && p.attack.natural !== 20 && p.attack.total < R.stats(state).ac))
+        )
+          return 'Escudo evitó el daño.';
         if (state.hp === null) return 'Daño del DM pendiente: confirmá tus PG actuales.';
         const parts = Defenses.partsOf(p),
           raw = parts.reduce((t, x) => t + n(x.amount), 0),
@@ -505,6 +528,14 @@ const TableUI = (() => {
     for (const ev of fresh) {
       if (appliedIds().has(ev.id)) continue;
       try {
+        if (
+          ev.kind === 'damage' &&
+          (ev.payload?.magicMissile || ev.payload?.attack) &&
+          !Effects.active(state, 'shield')
+        ) {
+          await requestShield(ev.payload.attack || { magicMissile: true });
+          if (appliedIds().has(ev.id) || (ev.target_character && ev.target_character !== link()?.characterId)) continue;
+        }
         const msg = applyCommand(ev);
         if (typeof msg === 'string' && !msg.includes('pendiente')) {
           if (!(state.dmCommandsApplied || []).includes(ev.id))
@@ -604,6 +635,11 @@ const TableUI = (() => {
         remember(s);
       });
       if (fx.length) toast(fx.join('. ') + '.');
+    } else if (p.round && Number(c.tableTurn.key.split(':')[2]) !== p.round) {
+      commit('Ronda ' + p.round + ': reacción disponible', s => {
+        s.reactionUsed = false;
+        remember(s);
+      });
     }
   }
 
@@ -620,6 +656,13 @@ const TableUI = (() => {
     if (table === 'events' && payload.eventType === 'INSERT') {
       const ev = payload.new;
       feed = [ev, ...feed.filter(x => x.id !== ev.id)].slice(0, 100);
+      if (ev.kind === 'attack' && ev.payload?.hit && ev.payload.targetId === l.characterId) {
+        requestShield({ total: ev.payload.total, natural: ev.payload.natural, attackId: ev.payload.attackId });
+      }
+      if (ev.kind === 'creature-save-result') {
+        const request = feed.find(e => e.id === ev.payload.requestId);
+        if (request?.payload?.board) globalThis.Board?.showSpellSave(request.payload.board.castId, ev.payload);
+      }
       if (ev.target_character === l.characterId && Cloud.COMMANDS.includes(ev.kind)) applyCommands([ev]);
       else if (ev.kind === 'encounter-sync') refresh();
       else if (ev.kind === 'session-start') toast('Empezó la sesión ' + ev.payload.n + '. ¡A jugar!');
@@ -639,7 +682,7 @@ const TableUI = (() => {
       // actualizar la app, que la aplica sola al abrirse.
       else if (
         ev.target_character === l.characterId &&
-        !['roll', 'roll-response', 'creature-save', 'creature-save-result'].includes(ev.kind)
+        !['attack', 'roll', 'roll-response', 'creature-save', 'creature-save-result'].includes(ev.kind)
       ) {
         globalThis.AppUpdates?.check();
         toast('El DM te mandó algo que esta versión de la app no conoce. Actualizala para recibirlo.');
@@ -886,6 +929,41 @@ const TableUI = (() => {
   }
 
   // Salvación de área (Bola de fuego de un aliado, aliento de un dragón…): tirás y la ficha aplica el daño.
+  function resolveAreaSave(p, { roll: given, silent = false } = {}) {
+    const l = link(),
+      bonus = R.saveBonus(state, p.ability);
+    const form = new FormData();
+    form.set('adv', RollUI.conditionMods(state, 'save', p.ability).mode);
+    const rolled = given || RollUI.readD20(form);
+    const r = given || { ...rolled, total: rolled.kept + bonus };
+    let done = Promise.resolve();
+    // Paralizado, aturdido, inconsciente o petrificado: falla sola las salvaciones de FUE y DES.
+    const out = RollUI.conditionMods(state, 'save', p.ability).autoFail;
+    const success = !out && r.kept !== 1 && (r.kept === 20 || r.total >= Number(p.dc));
+    const parts = Defenses.partsAfterSave(Defenses.partsOf({ ...p, amount: p.damage }), success, p.half);
+    const amount = parts.reduce((sum, part) => sum + part.amount, 0);
+    const resolved = Defenses.apply(state, parts).total;
+    const conc = state.concentration;
+    const beforeHP = state.hp;
+    if (amount) applyCommand({ kind: 'damage', payload: { amount, parts, source: p.spell, from: p.caster } });
+    if (l && p.board && globalThis.BoardPlayer) {
+      const destroyed = !success && p.spellId === 'disintegrate' && beforeHP > 0 && state.hp === 0;
+      const finish = () => {
+        if (destroyed && state.hp === 0)
+          commit('Desintegración', s => Effects.add(s, { name: 'Cuerpo desintegrado', spell: 'disintegrated-body' }));
+      };
+      done = BoardPlayer.resolveSpellSave(l.campaignId, p, { character: l.characterId }, { saved: success, destroyed })
+        .catch(err => toast(err.message))
+        .finally(finish);
+    }
+    if (!silent)
+      toast(
+        `${success ? 'Salvaste' : 'Fallaste'}: ${resolved ? resolved + ' de daño' : 'sin daño'} (${p.spell}).` +
+          (resolved && conc && state.hp > 0 ? ' Tirá la salvación de concentración.' : ''),
+      );
+    return { face: r.kept, total: r.total, bonus: r.total - r.kept, success, damage: resolved, done };
+  }
+
   function areaSave(req, local = false) {
     const l = link(),
       p = req.payload,
@@ -899,17 +977,7 @@ const TableUI = (() => {
       share: false,
       onDone: r =>
         setTimeout(() => {
-          // Paralizado, aturdido, inconsciente o petrificado: falla sola las salvaciones de FUE y DES.
-          const out = RollUI.conditionMods(state, 'save', p.ability).autoFail;
-          const success = !out && r.kept !== 1 && (r.kept === 20 || r.total >= Number(p.dc));
-          const amount = success ? (p.half ? Math.floor(Number(p.damage) / 2) : 0) : Number(p.damage) || 0;
-          const conc = state.concentration;
-          if (amount)
-            applyCommand({ kind: 'damage', payload: { amount, type: p.types, source: p.spell, from: p.caster } });
-          toast(
-            `${success ? 'Salvaste' : 'Fallaste'}: ${amount ? amount + ' de daño' : 'sin daño'} (${p.spell}).` +
-              (amount && conc && state.hp > 0 ? ' Tirá la salvación de concentración.' : ''),
-          );
+          const { success, damage: amount } = resolveAreaSave(p, { roll: r });
           if (local || !l) return;
           Cloud.post(
             l.campaignId,
@@ -1062,8 +1130,10 @@ const TableUI = (() => {
     statusLabel: st => CREATURE_STATUS[st] || st,
     damageLabel: out => (out.pending ? 'Daño enviado' : CREATURE_STATUS[out.status] || out.status || 'Sin daño'),
     resolveTarget,
+    showEnemyAC,
     damageTarget,
     areaSave,
+    resolveAreaSave,
     watch,
     shareRoll,
     requestBanner,

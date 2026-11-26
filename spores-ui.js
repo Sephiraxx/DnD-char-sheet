@@ -32,6 +32,9 @@ const SporesUI = (() => {
   function rollHalo() {
     let r;
     commit('Halo de esporas', s => (r = Spores.useHalo(s)));
+    const context = globalThis.TableUI?.boardContext();
+    const target = context?.target && context.distance <= 10 ? { token: context.target.id } : null;
+    if (target) globalThis.BoardPlayer?.projectAbility('halo-of-spores', 'Halo de esporas', target);
     const text = `Halo de esporas: <b>${r.total}</b> necrótico [${r.rolls.join(', ')}] · salvación de CON CD ${r.dc}`;
     if (typeof RollFX !== 'undefined')
       RollFX.show({
@@ -56,7 +59,10 @@ const SporesUI = (() => {
           `<p>Usás tu acción y un uso de Forma salvaje. Ganás <b>${Spores.tempFor(state)} PG temporales</b>${
             state.temp ? ` (ahora tenés ${state.temp}; no se suman, te quedás con el número más alto)` : ''
           }.</p><p class="small">Dura 10 minutos, hasta que pierdas esos PG temporales o hasta que vuelvas a usar Forma salvaje.</p>`,
-          () => commit('Entidad simbiótica', s => Spores.start(s)),
+          () => {
+            commit('Entidad simbiótica', s => Spores.start(s));
+            globalThis.BoardPlayer?.projectAbility('symbiotic-entity', 'Entidad simbiótica');
+          },
           'Activar',
         ),
       'spores-end': () => commit('Entidad simbiótica terminada', s => Spores.end(s)),

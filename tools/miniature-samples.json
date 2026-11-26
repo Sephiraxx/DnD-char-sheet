@@ -1,0 +1,64 @@
+[
+  {
+    "id": "forjado",
+    "name": "Forjado",
+    "size": "medium",
+    "faction": "ally",
+    "miniature": {
+      "race": "warforged",
+      "height": 197,
+      "build": "athletic",
+      "hair": "bald",
+      "pose": "ready",
+      "outfit": "armor",
+      "gear": "spear",
+      "skin": "#535b61",
+      "woodColor": "#8d532e",
+      "accent": "#aa7e53"
+    }
+  },
+  {
+    "id": "enano",
+    "name": "Enano",
+    "size": "medium",
+    "faction": "ally",
+    "miniature": {
+      "race": "dwarf",
+      "height": 137,
+      "build": "stocky",
+      "hair": "long",
+      "hairColor": "#a34d2b",
+      "beard": "braided",
+      "pose": "ready",
+      "outfit": "armor",
+      "gear": "hammer",
+      "offhand": "shield",
+      "cloth": "#90412c",
+      "accent": "#c8a055"
+    }
+  },
+  {
+    "id": "cleriga-elfa",
+    "name": "Clériga elfa",
+    "size": "medium",
+    "faction": "ally",
+    "miniature": {
+      "race": "elf",
+      "build": "slender",
+      "hair": "long",
+      "headwear": "hood",
+      "headColor": "#2c344a",
+      "neck": "holy",
+      "outfit": "vestments",
+      "gear": "staff",
+      "offhand": "book",
+      "cloth": "#3d4963",
+      "accent": "#e7cb89"
+    }
+  },
+  { "id": "skeleton", "name": "Esqueleto", "size": "medium", "faction": "enemy" },
+  { "id": "dragon-red", "name": "Dragón rojo", "size": "large", "faction": "enemy" },
+  { "id": "goblin", "name": "Goblin", "size": "small", "faction": "enemy" },
+  { "id": "wolf", "name": "Lobo", "size": "medium", "faction": "enemy" },
+  { "id": "ghost", "name": "Fantasma", "size": "medium", "faction": "enemy" }
+]

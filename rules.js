@@ -165,7 +165,7 @@
     ),
     S(
       'silvery',
-      'Silvery Barbs',
+      'Silvery Barbs · Púas plateadas',
       1,
       'Reacción',
       '60 pies',
@@ -339,6 +339,8 @@
   // Ampliación del catálogo; conserva los identificadores de las fichas anteriores.
   for (const sp of root.Catalog?.spells || []) {
     if (sp.homebrew) continue; // el homebrew se suma en vivo (allSpells): puede llegar después
+    sp.range = sp.range?.replace(/(\d)\s*ft\b(?!-)/gi, '$1 pies');
+    if (sp.id === 'silvery') sp.name = 'Silvery Barbs · Púas plateadas';
     const old = spells.find(x => x.id === sp.id);
     if (old) {
       const spanishText = old.text,
@@ -432,7 +434,11 @@
     return sc;
   }
   function stats(s) {
-    if (root.Classes) return root.Classes.stats(s);
+    if (root.Classes) {
+      const value = root.Classes.stats(s);
+      if (root.Effects?.active(s, 'shield')) value.ac += 5;
+      return value;
+    }
     let p = prof(s.level),
       m = Object.fromEntries(Object.entries(s.abilities).map(([k, v]) => [k, mod(v)]));
     return {

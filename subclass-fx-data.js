@@ -103,7 +103,7 @@
         lv: 6,
         when: x => x.s.raging,
         conditions: ['Hechizado', 'Asustado'],
-        auto: 'Mientras dura la Rabia no podés quedar hechizado ni asustado.',
+        auto: 'Mientras dura la Furia no podés quedar hechizado ni asustado.',
       },
     },
     'barbarian-path-of-the-zealot': {
@@ -118,7 +118,7 @@
           once: true,
           weapon: true,
         },
-        auto: 'Con Rabia, en Atacar aparece «Furia divina»: el primer impacto del turno suma 1d6 + la mitad de tu nivel.',
+        auto: 'Con Furia, en Atacar aparece «Furia divina»: el primer impacto del turno suma 1d6 + la mitad de tu nivel.',
       },
     },
     'bard-college-of-valor': { 'Extra Attack': extra(6) },

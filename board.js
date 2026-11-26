@@ -21,7 +21,7 @@
       if (e.key === 'dnd-calendar-update-' + S.id) onParty('calendar');
     });
   }
-  const CELL = 70; // px por casilla en mapas sin imagen
+  const CELL = Miniatures.boardCell;
   const MAX_IMAGE = 4096; // lado máximo de la imagen guardada
 
   const S = {
@@ -54,12 +54,19 @@
     spell: 'fire',
     sheetSpell: '',
     casts: [],
+    spellCasts: [],
+    spellAim: null,
     fogMode: 'reveal',
     paintCode: 'f',
     paintMode: 'brush',
     radius: 0,
     showWalls: true,
     sel: null,
+    selected: new Set(),
+    multiSelect: false,
+    aimFacing: false,
+    poseUndo: [],
+    rotationPreview: new Map(),
     drag: null,
     remote: new Map(), // arrastres de otros: id → {x, y}
     pings: [],
@@ -82,6 +89,8 @@
     H = {}, // ganchos de la página que monta el tablero (ficha o pantalla del DM)
     shown = STANDALONE;
   const canvasListeners = [];
+  let casting, castDrag;
+  let quickPick;
   const onCanvas = (...a) => canvasListeners.push(a);
 
   // ---------- Utilidades de interfaz ----------
@@ -139,10 +148,13 @@
   const playerView = () => S.asPlayer || !S.isDM;
   const myCharacters = () => (S.party?.characters || []).filter(c => c.owner_id === S.me?.id).map(c => c.id);
   const mapTokens = () => S.tokens.filter(t => t.map_id === S.mapId);
-  const cellPx = () => (S.img ? S.grid.size : CELL);
-  const origin = () => (S.img ? { x: S.grid.ox, y: S.grid.oy } : { x: 0, y: 0 });
+  const cellPx = () => CELL;
+  const imageScale = () => CELL / S.grid.size;
+  const origin = () => (S.img ? { x: S.grid.ox * imageScale(), y: S.grid.oy * imageScale() } : { x: 0, y: 0 });
   const worldSize = () =>
-    S.img ? { w: S.img.width, h: S.img.height } : { w: S.grid.cols * CELL, h: S.grid.rows * CELL };
+    S.img
+      ? { w: S.img.width * imageScale(), h: S.img.height * imageScale() }
+      : { w: S.grid.cols * CELL, h: S.grid.rows * CELL };
   function rememberMaps(rows) {
     const maps = new Map(S.maps.map(row => [row.id, row]));
     for (const row of rows) maps.set(row.id, row);
@@ -196,7 +208,7 @@
     try {
       const data = await Cloud.board(id, { liveOnly: TV });
       if (id !== S.id) return;
-      Object.assign(S, { board: data.board, maps: data.maps, tokens: data.tokens });
+      Object.assign(S, { board: data.board, maps: data.maps, tokens: data.tokens.map(sizedToken) });
       await openMap(activeId() || (S.isDM ? S.maps[0]?.id : null));
     } catch (e) {
       if (id !== S.id) return;
@@ -211,9 +223,12 @@
         return;
       }
     }
-    const channel = await Cloud.subscribeBoard(id, onBoard, onMessage);
+    const channel = await Cloud.subscribeBoard(id, onBoard, onMessage, () => {
+      if (id === S.id) queueMicrotask(() => casting?.connectionChanged());
+    });
     if (id !== S.id) return channel.close();
     S.channel = channel;
+    casting?.connectionChanged();
     // Dentro de la ficha o la pantalla del DM, la página ya escucha la mesa y avisa con Board.onParty.
     if (STANDALONE && !PLAYER_SCREEN) await Cloud.subscribe(S.id, onParty);
     await refreshPrepared();
@@ -243,7 +258,23 @@
     S.mapId = id;
     S.templates = [];
     S.casts = [];
+    S.spellCasts = [];
+    spellZones.clear();
+    zoneTurn = null;
+    S.spellAim = null;
+    spellCrumbles.clear();
+    teleportFrames.clear();
+    weaponAim = null;
+    spellClouds = [];
+    receivedCasts.clear();
     S.sel = null;
+    S.selected.clear();
+    S.multiSelect = S.aimFacing = false;
+    S.poseUndo = [];
+    S.rotationPreview.clear();
+    displayFacings.clear();
+    hoverToken = null;
+    landing.clear();
     S.fitted = false;
     S.touched = false;
     const m = currentMap();
@@ -255,8 +286,21 @@
     S.img = null;
     S.imgPath = '';
     if (m?.image_path) await loadImage(m.image_path);
+    if (m && !TV && Cloud.spellZones) {
+      const campaign = S.id;
+      Cloud.spellZones(campaign, id)
+        .then(events => {
+          if (campaign !== S.id || id !== S.mapId) return;
+          for (const { payload } of events.reverse()) {
+            const rounds = zoneRoundsLeft(payload.zone);
+            if (rounds > 0) addSpellCast({ ...payload, rounds, restored: true });
+          }
+        })
+        .catch(err => console.warn('No se pudieron recuperar las zonas de conjuro.', err));
+    }
     fit();
     ui();
+    queueEnemyFacing();
   }
   function loadMapFields(m) {
     if (m && S.pending[m.id]) m = { ...m, ...S.pending[m.id].patch };
@@ -295,7 +339,7 @@
       const data = await Cloud.board(id, { liveOnly: TV });
       if (id !== S.id || version !== reloadVersion) return;
       const keep = S.mapId;
-      Object.assign(S, { board: data.board, maps: data.maps, tokens: data.tokens });
+      Object.assign(S, { board: data.board, maps: data.maps, tokens: data.tokens.map(sizedToken) });
       const want =
         !S.isDM || TV ? activeId() : S.maps.some(m => m.id === keep) ? keep : activeId() || S.maps[0]?.id || null;
       if (want !== S.mapId || (currentMap()?.image_path || '') !== S.imgPath) await openMap(want);
@@ -345,6 +389,28 @@
     ensureTimer = 0;
   const firstSeen = new Map();
   const lastHidden = new Map();
+  const monsterLinks = new Set();
+  async function linkPlacedMonsters(on) {
+    if (typeof MonsterUI === 'undefined' || !Cloud.linkBoardMonster) return;
+    const secrets = new Map((S.party?.secrets || []).map(s => [s.combatant_id, s]));
+    const pending = on.filter(
+      t =>
+        t.kind === 'monster' &&
+        !t.character_id &&
+        !monsterLinks.has(t.id) &&
+        (t.combatant_id ? !secrets.get(t.combatant_id)?.damage_traits : !t.stage || t.stage === 'placed'),
+    );
+    if (!pending.length) return;
+    await MonsterUI.load({ sharedOnly: STANDALONE });
+    for (const t of pending) {
+      const prior = secrets.get(t.combatant_id);
+      const block = prior?.monster_id ? MonsterUI.byId(prior.monster_id) : MonsterUI.byName(t.name);
+      if (!block) continue;
+      const id = await Cloud.linkBoardMonster(t.id, MonsterUI.profile(block));
+      t.combatant_id = id;
+      monsterLinks.add(t.id);
+    }
+  }
   async function ensureTokens() {
     const map = activeId();
     if (!S.isDM || TV || !map || ensuring) return;
@@ -355,20 +421,27 @@
         t = BC.cells(g, m?.terrain?.cells || ''),
         on = S.tokens.filter(x => x.map_id === map),
         rows = [];
+      await linkPlacedMonsters(on).catch(err => {
+        if (!/029_board_monster_combat/.test(err.message)) throw err;
+      });
       for (const c of S.party.characters || [])
         if (
           !on.some(x => x.character_id === c.id) &&
           (c.data?.friendlyNpc !== true || S.party.combatants?.some(x => x.character_id === c.id))
         ) {
-          const p = BC.freeSpot(g, [...on, ...rows], { x: 1, y: Math.floor(g.rows / 2) }, t);
-          rows.push(tokenRow({ kind: 'pc', character_id: c.id, name: c.name, ...p }, map));
+          const occupied = [...on, ...rows];
+          const p = BC.freeSpot(g, occupied, { x: 1, y: Math.floor(g.rows / 2) }, t);
+          if (BC.roomFor(g, t, p, occupied))
+            rows.push(tokenRow({ kind: 'pc', character_id: c.id, name: c.name, ...p }, map));
         }
       const now = performance.now();
       for (const c of S.party.combatants || []) {
+        if (c.board_only) continue;
         if (c.kind !== 'monster') continue;
         // La ficha puede estar en otro mapa (encuentro preparado): no se duplica.
         const tok = S.tokens.find(x => x.combatant_id === c.id);
         if (!firstSeen.has(c.id)) firstSeen.set(c.id, now);
+        if (!tok && c.status === 'derrotado') continue;
         if (!tok && now - firstSeen.get(c.id) < 3000) {
           // Recién lanzada: la pantalla del DM puede estar vinculándola con su ficha preparada.
           clearTimeout(ensureTimer);
@@ -376,7 +449,10 @@
           continue;
         }
         if (!tok) {
-          const p = BC.freeSpot(g, [...on, ...rows], { x: g.cols - 2, y: Math.floor(g.rows / 2) }, t);
+          const size = modelFootprint(c.name);
+          const occupied = [...on, ...rows];
+          const p = BC.freeSpot(g, occupied, { x: g.cols - 2, y: Math.floor(g.rows / 2) }, t, size);
+          if (!BC.roomFor(g, t, { ...p, size }, occupied)) continue;
           rows.push(
             tokenRow(
               {
@@ -384,6 +460,7 @@
                 combatant_id: c.id,
                 character_id: c.character_id,
                 name: c.name,
+                size,
                 hidden: c.hidden,
                 ...p,
               },
@@ -399,7 +476,7 @@
         lastHidden.set(c.id, c.hidden);
       }
       // Fichas de criaturas que ya no están en combate: las preparadas vuelven a esperar ocultas; el resto se quita.
-      for (const k of S.tokens.filter(x => x.kind === 'monster' && !x.combatant_id)) {
+      for (const k of S.tokens.filter(x => x.kind === 'monster' && !x.combatant_id && x.stage !== 'placed')) {
         if (k.stage && !k.hidden) await patchToken(k, { hidden: true });
         else if (!k.stage) {
           await Cloud.removeToken(k.id);
@@ -421,7 +498,7 @@
   }
   // Fichas recién creadas: el aviso en vivo puede llegar antes que la respuesta; sin duplicados.
   function addLocal(rows) {
-    S.tokens = [...S.tokens.filter(k => !rows.some(r => r.id === k.id)), ...rows];
+    S.tokens = [...S.tokens.filter(k => !rows.some(r => r.id === k.id)), ...rows.map(sizedToken)];
     S.dirty = true;
   }
   function tokenRow(x, map) {
@@ -440,6 +517,8 @@
       hidden: !!x.hidden,
       ...(x.stage ? { stage: x.stage } : {}),
       ...(x.creature_model ? { creature_model: x.creature_model } : {}),
+      ...(x.model_form != null ? { model_form: x.model_form } : {}),
+      ...(x.show_hp ? { show_hp: true } : {}),
     };
   }
 
@@ -479,9 +558,18 @@
       else {
         const row = p.new;
         if (S.drag?.token?.id === row.id) return; // lo estoy moviendo yo
+        const previous = tokenById(row.id);
+        if (previous?.updated_at > row.updated_at) return;
         S.tokens = S.tokens.filter(t => t.id !== row.id);
-        if (!TV || (!row.hidden && row.map_id === activeId())) S.tokens.push(row);
+        if (!TV || (!row.hidden && row.map_id === activeId())) S.tokens.push(sizedToken(row));
         S.remote.delete(row.id);
+        if (row.map_id === S.mapId && (!previous || previous.x !== row.x || previous.y !== row.y)) queueEnemyFacing();
+      }
+      if (p.eventType === 'DELETE') {
+        S.selected.delete(p.old.id);
+        displayFacings.delete(p.old.id);
+        missingFacings.delete(p.old.id);
+        queueEnemyFacing();
       }
       if (S.sel && !S.tokens.some(t => t.id === S.sel)) S.sel = null;
       if (S.target && !S.tokens.some(t => t.id === S.target)) S.target = null;
@@ -491,10 +579,24 @@
   }
   function onMessage(m) {
     if (!m || typeof m !== 'object') return;
-    if (m.t === 'drag' && m.map === S.mapId) S.remote.set(m.id, { x: m.x, y: m.y });
-    if (m.t === 'drop') S.remote.delete(m.id);
+    if (m.t === 'drag' && m.map === S.mapId) S.remote.set(m.id, { x: m.x, y: m.y, facing: m.facing });
+    if (m.t === 'drop' && S.remote.delete(m.id)) landing.set(m.id, performance.now());
     if (m.t === 'moved') setTimeout(() => onMoved(m), 300); // espera que llegue la posición final
     if (m.t === 'spell' && m.map === S.mapId && m.map === activeId()) addCast(m);
+    if (m.t === 'spell-fx' && m.map === S.mapId && m.map === activeId() && addSpellCast(m.cast)) {
+      const source = visibleTokens().find(t => t.id === m.cast.caster),
+        me = actor();
+      if (source && me && enemies(me, source)) {
+        if (m.cast.id === 'magic-missile' && m.cast.darts?.includes(me.id))
+          offerSpellReaction({ id: 'shield', magicMissile: true });
+        else if (Spells.distance(me, source, tokenCenter(source), S.grid.feet) <= 60)
+          offerSpellReaction({ id: 'counter', source });
+      }
+    }
+    if (m.t === 'spell-resolution' && m.map === S.mapId && m.map === activeId()) {
+      spellResolution(m);
+      if (typeof m.saved === 'boolean') casting?.updateSave(m.castId, m.token, m.saved);
+    }
     if (
       m.t === 'spell-targets' &&
       m.map === S.mapId &&
@@ -502,18 +604,30 @@
       Array.isArray(m.kinds) &&
       Array.isArray(m.targets)
     ) {
-      for (const token of visibleTokens()) {
-        if (
-          !m.targets
-            .slice(0, 100)
-            .some(
-              t =>
-                t &&
-                ((token.character_id && token.character_id === t.character) ||
-                  (token.combatant_id && token.combatant_id === t.combatant)),
-            )
-        )
-          continue;
+      const targets = visibleTokens().filter(token =>
+        m.targets
+          .slice(0, 100)
+          .some(
+            t =>
+              t &&
+              (token.id === t.token ||
+                (token.character_id && token.character_id === t.character) ||
+                (token.combatant_id && token.combatant_id === t.combatant)),
+          ),
+      );
+      if (m.spell && Spells.implemented(m.spell.id) && targets.length) {
+        const caster = visibleTokens().find(t => t.character_id === m.spell.caster);
+        const [first] = targets;
+        addSpellCast({
+          ...m.spell,
+          caster: caster?.id,
+          targets: targets.map(t => t.id),
+          point: { x: first.x + BC.tokenSpan(first) / 2, y: first.y + BC.tokenSpan(first) / 2 },
+          element: BoardSceneFX.typeKey(m.kinds[0]),
+        });
+        return;
+      }
+      for (const token of targets) {
         for (const type of m.kinds.slice(0, 13))
           if (typeof type === 'string')
             addCast({
@@ -555,18 +669,41 @@
       ui();
     }, 250);
   }
+  function projectAbility(campaign, spell, targets) {
+    if (campaign !== S.id || !S.channel || !S.mapId || S.mapId !== activeId()) return false;
+    const m = { t: 'spell-targets', map: S.mapId, kinds: ['magic'], targets, spell };
+    onMessage(m);
+    S.channel.send(m);
+    return true;
+  }
 
   // ---------- Cámara ----------
   function resize() {
     const r = canvas.parentElement.getBoundingClientRect(),
       dpr = window.devicePixelRatio || 1;
     if (!r.width || !r.height) return;
+    const prevWidth = canvas.width / dpr,
+      prevHeight = canvas.height / dpr;
+    const old = S.view;
+    const center = toWorld(prevWidth / 2, prevHeight / 2);
     canvas.width = Math.round(r.width * dpr);
     canvas.height = Math.round(r.height * dpr);
     canvas.style.width = r.width + 'px';
     canvas.style.height = r.height + 'px';
     // Si nadie movió la cámara, se vuelve a encuadrar (por ejemplo, al abrirse el panel de acciones).
     if (!S.fitted || !S.touched) fit();
+    else if (
+      playerView() &&
+      !TV &&
+      S.mapId &&
+      prevWidth &&
+      prevHeight &&
+      (Math.abs(prevWidth - r.width) > 1 || Math.abs(prevHeight - r.height) > 1)
+    ) {
+      const { w, h } = worldSize();
+      const wasCovered = old.s * w >= prevWidth - 1 && old.s * h >= prevHeight - 1;
+      if (wasCovered) coverView(center.x, center.y, old.s);
+    }
     S.dirty = true;
   }
   // Encuadre: el DM ve todo el mapa; con niebla, los jugadores ven la zona revelada.
@@ -591,6 +728,7 @@
         const c = cellPx(),
           o = origin(),
           pad = 1;
+        if (!TV) return coverView(o.x + ((x0 + x1 + 1) * c) / 2, o.y + ((y0 + y1 + 1) * c) / 2);
         return fitRect(
           o.x + (x0 - pad) * c,
           o.y + (y0 - pad) * c,
@@ -599,7 +737,25 @@
         );
       }
     }
-    fitRect(0, 0, w, h);
+    if (playerView() && !TV) {
+      const me = actor(),
+        o = origin(),
+        c = cellPx(),
+        p = me && tokenCenter(me);
+      coverView(p ? o.x + (p.x + 1.8) * c : w / 2, p ? o.y + p.y * c : h / 2);
+    } else fitRect(0, 0, w, h);
+  }
+  function coverView(x, y, minScale = 0) {
+    const r = canvas.getBoundingClientRect(),
+      { w, h } = worldSize();
+    if (!r.width || !r.height || !w || !h) return;
+    const s = Math.max(minScale, r.width / w, r.height / h);
+    S.view = {
+      s,
+      x: Math.min(0, Math.max(r.width - w * s, r.width / 2 - x * s)),
+      y: Math.min(0, Math.max(r.height - h * s, r.height / 2 - y * s)),
+    };
+    S.dirty = true;
   }
   function fitRect(x, y, w, h) {
     const r = canvas.getBoundingClientRect();
@@ -660,7 +816,9 @@
           out.ring = x.maxHP ? Math.max(0, Math.min(1, (x.hp ?? x.maxHP) / x.maxHP)) : null;
           out.conditions = x.conditions;
           out.portrait = x.portrait;
+          out.traits = x.boardTraits;
           out.miniature = x.miniature;
+          out.name = x.name || row.name;
           out.cls = x.cls || '';
           out.color = x.color || '';
           out.speed = x.speed || 30;
@@ -686,6 +844,7 @@
       }
       out.turn = !!current && current.id === t.combatant_id;
     }
+    if (playerView() && t.kind === 'monster') out.ring = t.show_hp ? (t.hp_fraction ?? out.ring) : null;
     return out;
   }
   // Resumen de la ficha (PG, retrato…): se calcula una vez por versión, no en cada cuadro.
@@ -698,40 +857,656 @@
     }
     return summaries.get(key);
   }
-  const portraits = new Map();
+  const portraits = new Map(),
+    failedPortraits = new Set();
   function portraitImg(src) {
     if (!src) return null;
     if (!portraits.has(src)) {
       const img = new Image();
       img.onload = () => (S.dirty = true);
+      img.onerror = () => {
+        failedPortraits.add(src);
+        S.dirty = true;
+      };
       img.src = src;
       portraits.set(src, img);
     }
     const img = portraits.get(src);
     return img.complete && img.naturalWidth ? img : null;
   }
-  function visibleTokens() {
+  function visibleTokens(silhouettes = false) {
     const mine = myCharacters(),
-      bits = playerView() ? seen() : null;
+      bits = playerView() ? seen() : null,
+      baseline = playerView() && silhouettes && spellClouds.length ? seen(true) : bits;
     return mapTokens().filter(t => {
+      if (t.character_id && !spellCrumbles.has(t.id)) {
+        const row = S.party?.characters?.find(c => c.id === t.character_id);
+        const sheet = row && summary(row);
+        if (sheet?.hp === 0 && sheet.effects?.includes('Cuerpo desintegrado')) return false;
+      }
       if (!playerView()) return true;
       if (t.hidden || (t.combatant_id && S.party?.combatants?.some(c => c.id === t.combatant_id && c.hidden)))
         return false;
-      if (mine.includes(t.character_id) || t.kind === 'pc') return true;
-      // En la niebla, o fuera de la vista de la party, no se ven las fichas.
-      const c = Math.round(t.x + (t.size - 1) / 2),
-        r = Math.round(t.y + (t.size - 1) / 2);
-      if (!isSeen(bits, c, r)) return false;
-      return !S.fogOn || BC.isRevealed(S.grid, S.fog, c, r);
+      const c = Math.floor(t.x + BC.tokenSpan(t) / 2),
+        r = Math.floor(t.y + BC.tokenSpan(t) / 2);
+      const obscured = tokenInSpellCloud(t);
+      if (!obscured && (mine.includes(t.character_id) || t.kind === 'pc')) return true;
+      if (!silhouettes && obscured) return mine.includes(t.character_id);
+      const revealed = !S.fogOn || BC.isRevealed(S.grid, S.fog, c, r);
+      if (silhouettes && obscured) return revealed && isSeen(baseline, c, r);
+      return revealed && isSeen(bits, c, r);
     });
   }
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  let lastSceneFrame = -Infinity,
-    hasVisibleSword = false,
-    lastSwordFrame = 0;
+  let lastSceneFrame = -Infinity;
+  reducedMotion.addEventListener?.('change', () => (S.dirty = true));
   const spellDuration = 1400;
-  function canSeeCast(x, y) {
-    return !playerView() || ((!S.fogOn || BC.isRevealed(S.grid, S.fog, x, y)) && isSeen(seen(), x, y));
+  const Spells = globalThis.BoardSpells;
+  const SpellFX = globalThis.BoardSpellFX;
+  const receivedCasts = new Set();
+  const spellCrumbles = new Map();
+  const teleportFrames = new Map();
+  let weaponAim = null;
+  const fxPrefs = { reduced: false, shake: true };
+  try {
+    const prefs = JSON.parse(localStorage.getItem('dnd-board-spell-effects') || '{}');
+    fxPrefs.reduced = prefs.reduced === true;
+    fxPrefs.shake = prefs.shake !== false;
+    fxPrefs.reactionSeconds = prefs.reactionSeconds;
+  } catch {}
+  const reduceEffects = () => fxPrefs.reduced || reducedMotion.matches;
+  const reactionSeconds = () => Math.min(60, Math.max(3, Number(fxPrefs.reactionSeconds) || 10));
+  let wallCache = {};
+  function targetingWalls() {
+    if (wallCache.grid !== S.grid || wallCache.terrain !== S.terrain || wallCache.walls !== S.walls)
+      wallCache = {
+        grid: S.grid,
+        terrain: S.terrain,
+        walls: S.walls,
+        value: BC.sightBlockers(S.grid, S.terrain, S.walls),
+      };
+    return wallCache.value;
+  }
+  const burstSpreads = new Set([
+    'fireball',
+    'fog-cloud',
+    'darkness',
+    'cloudkill',
+    'incendiary-cloud',
+    'stinking-cloud',
+  ]);
+  const canSeeGround = (p, ignoreClouds = false) =>
+    canSeeCast(Math.min(S.grid.cols - 1, Math.floor(p.x)), Math.min(S.grid.rows - 1, Math.floor(p.y)), ignoreClouds);
+  const tokenCenter = t => ({ x: t.x + BC.tokenSpan(t) / 2, y: t.y + BC.tokenSpan(t) / 2 });
+  const spellPoint = p =>
+    p &&
+    Number.isFinite(p.x) &&
+    Number.isFinite(p.y) &&
+    p.x >= 0 &&
+    p.y >= 0 &&
+    p.x <= S.grid.cols &&
+    p.y <= S.grid.rows;
+  function spellResolution(m) {
+    const event = S.spellCasts.find(e => e.castId === m.castId);
+    const token = visibleTokens().find(t => t.id === m.token);
+    const now = performance.now();
+    if (m.action === 'teleport-cancel' && event?.teleport) {
+      teleportFrames.delete(event.caster);
+      event.teleport = null;
+      event.started = now - 3200;
+    } else if (
+      m.action === 'bane' &&
+      event?.id === 'bane' &&
+      event.targets.includes(m.token) &&
+      typeof m.saved === 'boolean'
+    ) {
+      event.saved.set(m.token, m.saved);
+    } else if (m.action === 'swing' && event?.id === 'spiritual-weapon' && token && spellPoint(m.point)) {
+      event.swing = { at: now, point: m.point };
+    } else if (m.action === 'weapon-impact' && event?.id === 'spiritual-weapon' && token) {
+      event.attackImpact = { at: now, point: tokenCenter(token), span: BC.tokenSpan(token) };
+    } else if (m.action === 'crumble' && token && !spellCrumbles.has(token.id)) {
+      globalThis.BoardInk?.prepare('disintegrate', 'beam');
+      spellCrumbles.set(token.id, { at: now, point: tokenCenter(token), span: BC.tokenSpan(token) });
+    } else return;
+    S.dirty = true;
+  }
+  async function resolveSpellSave(campaign, request, subject, result) {
+    const meta = request.board;
+    if (!meta?.map || !meta.castId || !['thunderwave', 'disintegrate', 'bane'].includes(request.spellId)) return;
+    if (result.saved && request.spellId !== 'bane') return;
+    if (request.spellId === 'disintegrate' && !result.destroyed) return;
+    const data = await Cloud.board(campaign);
+    if (data.board?.map_id !== meta.map) return;
+    const map = data.maps.find(row => row.id === meta.map);
+    const tokens = data.tokens.filter(t => t.map_id === meta.map).map(sizedToken);
+    const token = tokens.find(t =>
+      subject.combatant
+        ? t.combatant_id === subject.combatant
+        : subject.character && t.character_id === subject.character,
+    );
+    if (!map || !token) return;
+    const publish = async fields => {
+      const m = { t: 'spell-resolution', map: meta.map, castId: meta.castId, token: token.id, ...fields };
+      if (S.id === campaign && S.mapId === meta.map && S.channel) {
+        spellResolution(m);
+        await S.channel.send(m);
+      } else await Cloud.broadcastBoardSpell(campaign, m);
+    };
+    if (request.spellId === 'bane') return publish({ action: 'bane', saved: Boolean(result.saved) });
+    if (request.spellId === 'disintegrate') {
+      try {
+        await publish({ action: 'crumble' });
+      } finally {
+        if (subject.combatant) {
+          await new Promise(resolve => setTimeout(resolve, 820));
+          await Cloud.removeToken(token.id);
+        }
+      }
+      return;
+    }
+    if (!Number.isFinite(meta.origin?.x) || !Number.isFinite(meta.origin?.y)) return;
+    const grid = BC.normGrid(map.grid || {});
+    const terrain = BC.cells(grid, map.terrain?.cells || '');
+    const walls = BC.sightBlockers(grid, terrain, map.terrain?.walls || []);
+    const others = tokens.filter(t => t.id !== token.id && t.kind !== 'object');
+    const next = Spells.pushDestination(
+      grid,
+      meta.origin,
+      token,
+      (candidate, prior) =>
+        BC.roomFor(grid, terrain, candidate, others) &&
+        Spells.unobstructed(tokenCenter(prior), tokenCenter(candidate), walls),
+    );
+    if (!next) return;
+    const patch = { x: next.x, y: next.y };
+    if (
+      S.id === campaign &&
+      S.mapId === meta.map &&
+      tokenById(token.id)?.x === token.x &&
+      tokenById(token.id)?.y === token.y
+    ) {
+      await applyPoses([{ id: token.id, patch }], {});
+      afterMove({ token, start: token, free: true }, next.x, next.y);
+    } else await Cloud.poseTokens(campaign, meta.map, [{ id: token.id, patch, before: token.savedXY }]);
+  }
+
+  let spellClouds = [];
+  function updateSpellClouds(now) {
+    const previous = spellClouds;
+    spellClouds = S.spellCasts
+      .filter(
+        event =>
+          event.id === 'fog-cloud' &&
+          event.area &&
+          now >= event.started + 300 &&
+          (event.endedAt ?? (event.held ? Infinity : event.until)) > now,
+      )
+      .map(({ area }) => ({ x: area.x, y: area.y, r: area.feet / S.grid.feet }));
+    if (previous.length !== spellClouds.length && (S.sel || S.target)) pick();
+  }
+  function tokenInSpellCloud(token) {
+    const t = tokenPos(token),
+      r = BC.tokenSpan(token) / 2;
+    return spellClouds.some(cloud => Math.hypot(t.x + r - cloud.x, t.y + r - cloud.y) < cloud.r);
+  }
+  function movementOfSpell(id, caster, point) {
+    const token = mapTokens().find(t => t.id === caster);
+    if (id !== 'fire-bolt' || !token) return undefined;
+    const span = BC.tokenSpan(token) / 2;
+    const distance = Math.hypot(point.x - (token.x + span), point.y - (token.y + span));
+    return Math.max(150, Math.min(1150, (distance * 350) / 6));
+  }
+  const ownsSpellEffect = (row, cast) =>
+    row?.data ? row.data.concentration === cast.id : summary(row).concentration === cast.name;
+  const spellZones = new Map();
+  let zoneTurn = null;
+  function zoneRoundsLeft(zone) {
+    if (!zone) return 0;
+    const enc = S.party?.encounter;
+    if (enc?.active && zone.turn && Number(enc.round) >= zone.round) return zone.rounds - (enc.round - zone.round);
+    return (zone.expiry - Date.now()) / 6000;
+  }
+  function rememberSpellZone(cast) {
+    if (!cast?.zone || !cast.area || !Spells.zoneRule(cast.id) || spellZones.has(cast.castId)) return;
+    if (cast.concentration) {
+      for (const prior of spellZones.values())
+        if (prior.caster === cast.caster && prior.concentration) {
+          if (prior.zone.created >= cast.zone.created) return;
+          spellZones.delete(prior.castId);
+        }
+    }
+    spellZones.set(cast.castId, cast);
+  }
+  function activeSpellZones() {
+    return [...spellZones.values()].filter(cast => {
+      const source = tokenById(cast.caster);
+      if (!source || zoneRoundsLeft(cast.zone) <= 0) {
+        spellZones.delete(cast.castId);
+        return false;
+      }
+      if (!dmView() && source.id !== actor()?.id) return false;
+      const own = H.compactCast && source.id === actor()?.id;
+      const row = own
+        ? { data: state }
+        : source.character_id &&
+          [...(S.party?.characters || []), ...(S.party?.enemyNpcs || [])].find(
+            candidate => candidate.id === source.character_id,
+          );
+      const concentrating = row && ownsSpellEffect(row, cast);
+      if (concentrating) cast.observedConcentration = true;
+      if (
+        cast.concentration &&
+        row &&
+        !concentrating &&
+        (own || cast.observedConcentration || Date.now() - cast.zone.created > 6000)
+      ) {
+        spellZones.delete(cast.castId);
+        return false;
+      }
+      return true;
+    });
+  }
+  function zoneArea(cast) {
+    if (!cast.area.self) return cast.area;
+    const source = tokenById(cast.caster),
+      center = tokenCenter(source);
+    return { ...cast.area, ...center, origin: center, elev: source.elev || 0 };
+  }
+  function zoneTarget(cast, token, rule) {
+    if (!token || !sideOf(token) || info(token).dead) return false;
+    if (!rule.hostile) return true;
+    if (token.id === cast.caster || cast.zone.excluded.includes(token.id)) return false;
+    return cast.zone.included.includes(token.id) || enemies(tokenById(cast.caster), token);
+  }
+  function postZoneTrigger(cast, token, phase, turn, id, units = 1) {
+    const rule = Spells.zoneRule(cast.id),
+      zone = cast.zone;
+    const roll = rule.rolls?.[phase] || zone;
+    const ability = rule.noSave ? '' : roll.ability;
+    const formula = units > 1 ? String(2 * units) + 'd4' : roll.formula;
+    if (!formula && !ability) return;
+    const key = [cast.castId, token.id, turn, phase, id].join(':');
+    if (zoneTriggers.has(key)) return;
+    zoneTriggers.add(key);
+    if (zoneTriggers.size > 2500) zoneTriggers.delete(zoneTriggers.values().next().value);
+    Cloud.post(
+      S.id,
+      'spell-zone-trigger',
+      {
+        key,
+        phase,
+        caster: zone.caster,
+        spell: cast.name,
+        spellId: cast.id,
+        board: { castId: cast.castId, map: S.mapId, origin: cast.area.origin },
+        formula,
+        ability,
+        dc: zone.dc,
+        half: Boolean(ability && roll.half),
+        types: roll.types,
+        magical: true,
+        targets: [{ id: token.combatant_id, character: token.character_id, name: token.name, token: token.id }],
+      },
+      { visibility: 'dm' },
+    ).catch(err => {
+      if (err.code === '23505' || /duplicate key/i.test(err.message)) return;
+      zoneTriggers.delete(key);
+      toast(err.message);
+    });
+  }
+  const zoneTriggers = new Set(),
+    zoneTravel = new Map();
+  const turnZoneKey = enc =>
+    enc?.active && enc.current_id ? [enc.round, enc.current_id, enc.updated_at || ''].join(':') : null;
+  function checkZoneTurn(token, phase, turn) {
+    if (!token) return;
+    const walls = targetingWalls();
+    for (const cast of activeSpellZones()) {
+      const rule = Spells.zoneRule(cast.id);
+      if (
+        rule[phase] &&
+        zoneTarget(cast, token, rule) &&
+        Spells.zoneContains(S.grid, zoneArea(cast), token, { ...rule, walls, wallSide: cast.wallSide })
+      )
+        postZoneTrigger(cast, token, phase, turn, '');
+    }
+  }
+  function checkZoneMove(token, msg) {
+    const turn = msg.turn || turnZoneKey(S.party?.encounter) || msg.moveId;
+    if (!turn || !msg.moveId) return;
+    const span = Math.min(1, BC.tokenSpan(token));
+    const path = msg.teleport
+      ? msg.path
+      : msg.path
+          .slice(1)
+          .reduce((steps, point, i) => steps.concat(BC.steps(msg.path[i], point, span).slice(1)), msg.path.slice(0, 1));
+    const walls = targetingWalls();
+    for (const cast of activeSpellZones()) {
+      const rule = Spells.zoneRule(cast.id);
+      if (!zoneTarget(cast, token, rule) || (!rule.enter && !rule.travel)) continue;
+      const { enters, feet } = Spells.zoneMovement(S.grid, zoneArea(cast), token, path, { ...rule, walls });
+      if (rule.enter && enters) postZoneTrigger(cast, token, 'enter', turn, '');
+      if (!msg.teleport && rule.travel && feet) {
+        const key = cast.castId + ':' + token.id,
+          prior = zoneTravel.get(key);
+        if (prior?.moveId === msg.moveId) continue;
+        const total = (prior?.remainder || 0) + feet;
+        zoneTravel.set(key, { moveId: msg.moveId, remainder: total % 5 });
+        if (total >= 5) postZoneTrigger(cast, token, 'travel', turn, msg.moveId, Math.floor(total / 5));
+      }
+    }
+  }
+  const syncableArea = new Set(['cone', 'circle', 'cube', 'line', 'cylinder', 'wall']);
+  function addSpellCast(raw) {
+    if (
+      !raw ||
+      typeof raw !== 'object' ||
+      typeof raw.id !== 'string' ||
+      !Spells.implemented(raw.id) ||
+      typeof raw.castId !== 'string' ||
+      raw.castId.length > 80 ||
+      receivedCasts.has(raw.castId)
+    )
+      return false;
+    const boundedPoint = p =>
+      p &&
+      Number.isFinite(p.x) &&
+      Number.isFinite(p.y) &&
+      p.x >= 0 &&
+      p.y >= 0 &&
+      p.x <= S.grid.cols &&
+      p.y <= S.grid.rows;
+    if (!boundedPoint(raw.point)) return false;
+    const area =
+      raw.area &&
+      syncableArea.has(raw.area.kind) &&
+      Number.isFinite(raw.area.x) &&
+      Number.isFinite(raw.area.y) &&
+      boundedPoint(raw.area.origin) &&
+      cleanTemplate(raw.area, true);
+    if (!canSeeGround(raw.point) && !area) return false;
+    if (area) {
+      area.ring = raw.area.ring === true && area.kind === 'wall';
+      area.self = raw.area.self === true;
+      area.origin = raw.area.origin;
+      area.height = Math.max(0, Math.min(600, Number(raw.area.height) || 0));
+    }
+    if (!raw.restored && raw.concentration && !raw.zone) {
+      for (const prior of spellZones.values())
+        if (prior.caster === raw.caster && prior.concentration) spellZones.delete(prior.castId);
+    }
+    if (raw.zone && area) rememberSpellZone({ ...raw, area });
+    const clock = performance.now();
+    const duration = Number(raw.rounds);
+    const finite = Number.isFinite(duration) && duration > 0;
+    const event = {
+      castId: raw.castId,
+      id: raw.id,
+      name: String(raw.name || '').slice(0, 120),
+      kind: Spells.kindFor(raw.id),
+      point: raw.point,
+      area: area || null,
+      caster: typeof raw.caster === 'string' ? raw.caster : '',
+      targets: Array.isArray(raw.targets) ? raw.targets.filter(id => typeof id === 'string').slice(0, 80) : [],
+      darts: Array.isArray(raw.darts) ? raw.darts.slice(0, 11).map(id => (typeof id === 'string' ? id : null)) : [],
+      allies: new Set(Array.isArray(raw.allies) ? raw.allies.filter(id => typeof id === 'string').slice(0, 80) : []),
+      travelMs: movementOfSpell(raw.id, raw.caster, raw.point),
+      element: Object.hasOwn(BoardSceneFX.colors, raw.element) ? raw.element : 'magic',
+      school: typeof raw.school === 'string' ? raw.school.slice(0, 32) : '',
+      level: Math.max(0, Math.min(9, Number(raw.level) || 0)),
+      concentration: raw.concentration === true,
+      started: raw.restored ? clock - 1500 : clock,
+      until: finite ? clock + Math.min(duration, 14400) * 6000 : 0,
+      seed: raw.castId.charCodeAt(raw.castId.length - 1) || 0,
+      slot: Math.max(1, Math.min(9, Number(raw.level) || 1)),
+      beats: Math.min(4, Math.max(1, Math.floor(Number(raw.beams)) || 1)),
+      rays: Array.isArray(raw.rays) ? raw.rays.filter(id => typeof id === 'string').slice(0, 4) : [],
+      weaponForm: Spells.weaponForm(raw.weaponForm),
+      wallSide: raw.wallSide === -1 ? -1 : 1,
+      saved: new Map(),
+      saveTargets: new Set(
+        Array.isArray(raw.saveTargets) ? raw.saveTargets.filter(id => typeof id === 'string').slice(0, 80) : [],
+      ),
+    };
+    if (event.id === 'misty-step' && event.caster && boundedPoint(raw.departure)) {
+      event.teleport = { from: raw.departure, to: event.point };
+      if (Number.isFinite(raw.sentAt)) event.started -= Math.max(0, Math.min(850, Date.now() - raw.sentAt));
+      teleportFrames.set(event.caster, event);
+    }
+    if ((!area && !Spells.markedCast(event.kind)) || !(finite || event.concentration)) event.until = 0;
+    else if (!event.until) event.until = Infinity;
+    if (event.concentration && event.caster)
+      for (const prior of S.spellCasts)
+        if (prior.caster === event.caster && prior.concentration && prior.until && prior.endedAt == null)
+          prior.endedAt = clock;
+    globalThis.BoardInk?.prepare(event.id, event.kind);
+    if (event.id === 'spiritual-weapon')
+      for (const prior of S.spellCasts)
+        if (prior.id === event.id && prior.caster === event.caster && prior.endedAt == null) prior.endedAt = clock;
+    receivedCasts.add(event.castId);
+    if (receivedCasts.size > 300) receivedCasts.delete(receivedCasts.values().next().value);
+    S.spellCasts = [...S.spellCasts.slice(-39), event];
+    S.dirty = true;
+    return true;
+  }
+
+  let lastSpellPoses = [];
+  function evaluateSpellCasts(now, pieces) {
+    const visible = new Map(pieces.map(piece => [piece.t.id, piece]));
+    const byId = new Map(mapTokens().map(token => [token.id, token]));
+    const rows = [...(S.party?.characters || []), ...(S.party?.enemyNpcs || [])];
+    const o = origin(),
+      c = cellPx();
+    function tokenPose(id) {
+      const piece = visible.get(id);
+      if (!piece) return null;
+      const { bounds, foot, t, facing } = piece;
+      const heading = ((facing || 0) * Math.PI) / 4;
+      return {
+        x: (foot.x - o.x) / c + Math.sin(-heading) * 0.17 * BC.tokenSpan(t),
+        y: (bounds.y + bounds.h * 0.48 - o.y) / c - Math.max(0, ((t.elev || 0) / S.grid.feet) * 0.18),
+        baseX: (foot.x - o.x) / c,
+        baseY: (foot.y - o.y) / c,
+        span: BC.tokenSpan(t),
+        id: t.id,
+        obscured: playerView() && tokenInSpellCloud(t),
+      };
+    }
+    lastSpellPoses = [];
+    S.spellCasts = S.spellCasts.filter(event => {
+      const token = byId.get(event.caster);
+      const row = token?.character_id && rows.find(item => item.id === token.character_id);
+      const zone = spellZones.get(event.castId);
+      let expires = zone?.zone.turn && zoneRoundsLeft(zone.zone) > 0 && inCombat() ? Infinity : event.until;
+      event.held = false;
+      if (expires && event.endedAt == null && row) {
+        const active = event.concentration
+          ? ownsSpellEffect(row, event)
+          : summary(row).effects?.some(effect => effect === event.name || effect.startsWith(event.name + ' ('));
+        if (active) {
+          event.observedDuration = true;
+          if (S.party?.encounter?.active) {
+            expires = Infinity;
+            event.held = true;
+          }
+        } else if (event.observedDuration || (event.concentration && now - event.started > 12000)) {
+          event.endedAt = now;
+        }
+      }
+      expires = event.endedAt ?? expires;
+      const phase = SpellFX.phase(event, now, reduceEffects());
+      const linger = expires ? Math.min(1, Math.max(0, (expires + 500 - now) / 500)) : 0;
+      if (phase.done && phase.decal >= 1 && !linger) return false;
+      const casterPose = tokenPose(event.caster);
+      const hand = casterPose?.obscured ? null : casterPose;
+      let area = event.area;
+      if (area?.self && event.kind === 'aura-persistent' && event.id !== 'globe-of-invulnerability') {
+        if (!hand) return true;
+        area = { ...area, x: hand.baseX, y: hand.baseY };
+      }
+      const targets = event.targets.map(tokenPose).filter(p => p && !p.obscured);
+      const explicitPoint = ['teleport', 'summon'].includes(event.kind);
+      const target =
+        !explicitPoint && !area && targets.length ? targets[0] : canSeeGround(event.point) ? event.point : null;
+      if (!area && !target && !hand) return true;
+      if (area && !canSeeGround(area.origin, event.id === 'fog-cloud') && !targets.length && !hand) return true;
+      if (!event.castSound && hand && !phase.hit) {
+        event.castSound = true;
+        document.dispatchEvent(
+          new CustomEvent('board-spell-sound', {
+            detail: { spellId: event.id, archetype: event.kind, element: event.element, phase: 'cast' },
+          }),
+        );
+      }
+      if (phase.hit && !event.sounded && (target || hand || targets.length)) {
+        event.sounded = true;
+        document.dispatchEvent(
+          new CustomEvent('board-spell-sound', {
+            detail: { spellId: event.id, archetype: event.kind, element: event.element, phase: 'impact' },
+          }),
+        );
+      }
+      const base = hand ? { x: hand.baseX, y: hand.baseY, span: hand.span } : null;
+      const rowY = Math.max(area?.y || 0, target?.y || 0, ...targets.map(p => p.baseY));
+      const top = 0;
+      const caster = visible.get(event.caster)?.t;
+      const casterName = hand && caster ? caster.name : '';
+      const allies = new Set(event.allies);
+      if (caster?.kind === 'pc')
+        for (const p of targets) if (visible.get(p.id)?.t.kind === 'pc' && p.id !== event.caster) allies.add(p.id);
+      const fogAlpha = event.id === 'fog-cloud' && phase.hit ? Math.min(1, phase.elapsed / 450) * linger : 0;
+      lastSpellPoses.push({
+        event,
+        hand,
+        base,
+        area,
+        target,
+        targets,
+        linger,
+        rowY,
+        casterName,
+        allies,
+        top,
+        fogAlpha,
+        swing: event.swing,
+        wallBounds:
+          event.id === 'wall-of-fire'
+            ? pieces
+                .filter(p => !tokenInSpellCloud(p.t) && p.alpha > 0.04)
+                .map(({ bounds: b }) => [(b.x - o.x) / c, (b.y - o.y) / c, b.w / c, b.h / c])
+            : null,
+      });
+      return true;
+    });
+    lastSpellPoses.sort((a, b) => a.rowY - b.rowY);
+  }
+  function drawSpellLayer(now, layer) {
+    if (!lastSpellPoses.length && !(layer === 'air' && spellCrumbles.size)) return;
+    const o = origin(),
+      c = cellPx();
+    ctx.save();
+    ctx.translate(o.x, o.y);
+    ctx.scale(c, c);
+    ctx.beginPath();
+    ctx.rect(0, 0, S.grid.cols, S.grid.rows);
+    ctx.clip();
+    const budget = SpellFX.beginFrame();
+    for (const pose of lastSpellPoses) {
+      if (layer === 'ground') SpellFX.drawGround(ctx, pose.event, pose, now, reduceEffects(), S.grid, budget);
+      else if (layer === 'fog') SpellFX.drawFog(ctx, pose, now, reduceEffects(), S.grid, !playerView());
+      else SpellFX.drawAir(ctx, pose.event, pose, now, reduceEffects(), S.grid, budget);
+    }
+    if (layer === 'air') {
+      SpellFX.drawWardMarkers(ctx, lastSpellPoses, now, reduceEffects());
+      for (const { at, point, span } of spellCrumbles.values()) {
+        const t = (now - at) / 760;
+        if (t >= 0 && t < 1)
+          BoardInk.draw(ctx, 'disintegrate-dust', t, point.x, point.y, span * 1.3, span * 1.65, { anchorY: 0.71 });
+      }
+    }
+    ctx.restore();
+  }
+  function drawThunderRipple(now, dpr, shake) {
+    if (reduceEffects()) return;
+    const o = origin(),
+      s = S.view.s,
+      c = cellPx() * s,
+      x = S.view.x + shake + o.x * s,
+      y = S.view.y + shake * 0.45 + o.y * s;
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.beginPath();
+    ctx.rect(x, y, c * S.grid.cols, c * S.grid.rows);
+    ctx.clip();
+    for (const pose of lastSpellPoses) {
+      if (pose.event.id !== 'thunderclap' || !pose.area) continue;
+      const t = (now - pose.event.started - 300) / 210;
+      const width = ((2 * pose.area.feet) / S.grid.feet) * c;
+      if (t >= 0 && t < 1)
+        BoardInk.draw(ctx, 'thunder-ripple', t, x + pose.area.x * c, y + pose.area.y * c, width, width, {
+          opacity: 0.54,
+        });
+    }
+    ctx.restore();
+  }
+  let traitsVisible = false;
+  function drawBoardTraits(pieces, now) {
+    traitsVisible = false;
+    const o = origin();
+    const c = cellPx();
+    ctx.save();
+    ctx.translate(o.x, o.y);
+    ctx.scale(c, c);
+    ctx.beginPath();
+    ctx.rect(0, 0, S.grid.cols, S.grid.rows);
+    ctx.clip();
+    for (const p of pieces) {
+      if (!p.d.traits?.length || p.d.dead || p.alpha < 0.5 || (playerView() && tokenInSpellCloud(p.t))) continue;
+      traitsVisible = true;
+      const span = BC.tokenSpan(p.t);
+      const base = { x: (p.foot.x - o.x) / c, y: (p.foot.y - o.y) / c };
+      const hand = {
+        x: base.x - Math.sin((p.facing * Math.PI) / 4) * 0.17 * span,
+        y: (p.bounds.y + p.bounds.h * 0.48 - o.y) / c,
+      };
+      SpellFX.drawTraits(ctx, p.d.traits, base, hand, span, now, reduceEffects());
+    }
+    ctx.restore();
+  }
+  function drawCastBanner(now, dpr) {
+    const pose = lastSpellPoses.reduce(
+      (recent, p) => (!recent || p.event.started > recent.event.started ? p : recent),
+      null,
+    );
+    if (!pose || !pose.event.name) return;
+    const age = Math.max(0, now - pose.event.started);
+    if (age >= 1500) return;
+    const label = pose.casterName ? pose.casterName + ' · ' + pose.event.name : pose.event.name;
+    const color = SpellFX.colorFor(pose.event.id, pose.event.element, pose.event.school)[1];
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.globalAlpha = Math.min(1, (1500 - age) / 380);
+    ctx.font = '600 14px system-ui';
+    const width = Math.min(canvas.width / dpr - 30, ctx.measureText(label).width + 39);
+    ctx.fillStyle = '#141c1ce8';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(15, 15, width, 32, 6);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.fillRect(24, 25, 2, 12);
+    ctx.fillStyle = '#fff5e5';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.fillText(label, 33, 31, width - 33);
+    ctx.restore();
+  }
+  const pingDuration = 2200;
+  function canSeeCast(x, y, ignoreClouds = false) {
+    return !playerView() || ((!S.fogOn || BC.isRevealed(S.grid, S.fog, x, y)) && isSeen(seen(ignoreClouds), x, y));
   }
   function addCast({ kind, x, y, area }) {
     if (
@@ -749,63 +1524,550 @@
     S.dirty = true;
     return true;
   }
-  function spellPlacement(sp, cell, slot = sp.level) {
-    if (
-      !shown ||
-      !S.mapId ||
-      S.mapId !== activeId() ||
-      !H.cast ||
-      !BC.inside(S.grid, cell.x, cell.y) ||
-      !canSeeCast(cell.x, cell.y)
-    )
-      return null;
-    const me = mapTokens().find(t => t.character_id === H.actorId?.()),
-      self =
-        (/^personal|^self/i.test(sp.range) &&
-          (Rules.spellImpact(sp).area || (!sp.attackKind?.length && !sp.dice?.dmg?.length))) ||
-        ['earth-tremor', 'thunderclap', 'sword-burst', 'word-of-radiance', 'aganazzars-scorcher'].includes(sp.id);
-    if (self && !me) return null;
-    const orig = me ? { x: me.x + (me.size || 1) / 2, y: me.y + (me.size || 1) / 2 } : null;
-    const area = Rules.spellImpact(sp, slot).area;
-    const end = { x: cell.x + 0.5, y: cell.y + 0.5 };
-    let template = null;
-    if (area) {
-      const dir = orig ? Math.atan2(end.y - orig.y, end.x - orig.x) : 0;
-      const point = (self && orig) || end;
-      template = { ...area, ...point, dir };
-      if (area.kind === 'line') template.width = 5;
-      if (area.kind === 'cube' && !self) {
-        template.dir = 0;
-        template.x -= area.feet / S.grid.feet / 2;
+  const activeSpell = () => {
+    const spells = H.spells?.() || [];
+    return spells.find(sp => sp.id === S.sheetSpell) || spells[0];
+  };
+  function spellPlacement(sp, cell, slot = sp.level, aimed = null, tokenId = null) {
+    if (!shown || !S.mapId || S.mapId !== activeId() || !H.cast || !BC.inside(S.grid, cell.x, cell.y)) return null;
+    const aim = aimed || { x: cell.x + 0.5, y: cell.y + 0.5 };
+    const tokens = visibleTokens();
+    const me = tokens.find(t => t.character_id === H.actorId?.());
+    const legacy = Rules.spellImpact(sp, slot).area;
+    const shape = Spells.areaFor(sp, slot, legacy);
+    const travelRange = Spells.destinationRange(sp.id);
+    const range = travelRange || Spells.rangeFor(sp.range) + (sp.id === 'produce-flame' ? 30 : 0);
+    const self = range === 0 || shape?.self === true;
+    const subject = tokens.find(t => t.id === tokenId) || tokens.find(t => BC.inFootprint(t, aim.x, aim.y));
+    const base = t => ({ x: t.x + BC.tokenSpan(t) / 2, y: t.y + BC.tokenSpan(t) / 2 });
+    const aimPoint = shape && !self && shape.kind !== 'wall' ? Spells.snapIntersection(aim, S.grid) : aim;
+    const destination = travelRange || Spells.kindFor(sp.id) === 'summon';
+    const teleport = sp.id === 'misty-step' && me && mistyDestination(me, aim);
+    const targetPoint = destination
+      ? teleport
+        ? base(teleport)
+        : aim
+      : self && !shape && me
+        ? base(me)
+        : !shape && subject
+          ? base(subject)
+          : aimPoint;
+    const relevant = myCharacters();
+    const placement = {
+      map: S.mapId,
+      campaign: S.id,
+      actorId: H.actorId?.(),
+      cell,
+      aim,
+      tokenId: subject?.id || null,
+      point: targetPoint,
+      caster: me?.id || '',
+      casterBase: me && { ...base(me), span: BC.tokenSpan(me) },
+      range,
+      hits: [],
+      cells: [],
+      tokens: [],
+      allies: [],
+    };
+    if (!me) return { ...placement, error: 'Primero ubicá tu ficha lanzadora en el mapa activo.' };
+    if (sp.id === 'misty-step') {
+      if (!canMove(me)) return { ...placement, error: 'No tenés permiso para mover la ficha lanzadora.' };
+      if (!BC.roomFor(S.grid, S.terrain, teleport, []) || overlapsPieces(teleport, tokens))
+        return { ...placement, error: 'Paso brumoso necesita casillas libres para toda la ficha.' };
+      placement.teleport = { x: teleport.x, y: teleport.y };
+    }
+    if (!canSeeGround(targetPoint) && !self) return { ...placement, error: 'Elegí un punto visible del mapa activo.' };
+    const area = Spells.makeTemplate(S.grid, shape && { ...shape, self }, me, aimPoint);
+    placement.area = area;
+    const distance = self
+      ? 0
+      : Spells.distance(me, teleport || (shape || destination ? null : subject), targetPoint, S.grid.feet);
+    if (distance > range) return { ...placement, error: 'Fuera de alcance (' + distance + ' / ' + range + ' pies).' };
+    if (!self && sp.id !== 'misty-step' && !Spells.unobstructed(base(me), targetPoint, targetingWalls()))
+      return { ...placement, error: 'Hay cobertura total entre tu ficha y el punto elegido.' };
+    const eligible = tokens.filter(t => t.kind !== 'object');
+    const affected = destination
+      ? travelRange
+        ? [me]
+        : []
+      : area
+        ? Spells.affectedTokens(
+            (placement.cells = Spells.affectedCells(S.grid, area, targetingWalls(), burstSpreads.has(sp.id))),
+            eligible,
+          )
+        : self
+          ? [me]
+          : subject && subject.kind !== 'object'
+            ? [subject]
+            : [];
+    const excluded = new Set([
+      'earth-tremor',
+      'thunderclap',
+      'word-of-radiance',
+      'sword-burst',
+      'arms-of-hadar',
+      'burning-hands',
+      'frost-fingers',
+      'color-spray',
+      'rimes-binding-ice',
+      'lightning-bolt',
+      'thunderwave',
+      'fear',
+    ]);
+    const hits = affected.filter(
+      t => t !== me || !(excluded.has(sp.id) || (self && (area?.kind === 'cone' || area?.kind === 'line'))),
+    );
+    placement.hits = hits.map(t => ({ character: t.character_id, combatant: t.combatant_id, token: t.id }));
+    placement.tokens = hits.map(t => t.id);
+    placement.allies = hits
+      .filter(t => t !== me && (t.kind === 'pc' || relevant.includes(t.character_id)))
+      .map(t => t.id);
+    placement.x = Math.min(S.grid.cols - 1, Math.floor(targetPoint.x));
+    placement.y = Math.min(S.grid.rows - 1, Math.floor(targetPoint.y));
+    return placement;
+  }
+  const castRays = new Set(['magic-missile', 'scorching-ray', 'eldritch-blast']);
+  const friendlySpells = new Set(['bless', 'cure', 'healingword', 'aid', 'heroism', 'shield-of-faith']);
+  const castCell = p => ({
+    x: Math.min(S.grid.cols - 1, Math.floor(p.x)),
+    y: Math.min(S.grid.rows - 1, Math.floor(p.y)),
+  });
+  const castDirection = a => a && (a.kind === 'line' || a.kind === 'cone' || (a.kind === 'cube' && a.self));
+  const castHit = t => ({
+    id: t.id,
+    token: t.id,
+    character: t.character_id,
+    combatant: t.combatant_id,
+    name: info(t).name || t.name,
+  });
+  function compactToken(sp, t, object) {
+    if (!t || (t.kind === 'object') !== object) return false;
+    if (info(t).dead && !Rules.spellImpact(sp).healing) return false;
+    if (friendlySpells.has(sp.id) && !['pc', 'npc'].includes(t.kind)) return false;
+    const aim = tokenCenter(t),
+      p = spellPlacement(sp, castCell(aim), sp.level, aim, t.id);
+    return p && !p.error && !(castRays.has(sp.id) && p.caster === t.id);
+  }
+  function prepareCompactCast(p, spell, level, s) {
+    const visible = visibleTokens();
+    if (p.area?.kind === 'wall') {
+      if (s.ring) p.area = { ...p.area, ring: true, feet: 10, width: 1 };
+      else if (s.wallEnd) {
+        const end = Spells.snapIntersection(s.wallEnd, S.grid);
+        const dx = end.x - p.area.x,
+          dy = end.y - p.area.y;
+        const horiz = Math.abs(dx) >= Math.abs(dy),
+          feet = Math.abs(horiz ? dx : dy) * S.grid.feet;
+        if (feet)
+          p.area = {
+            ...p.area,
+            feet: Math.min(p.area.feet, feet),
+            dir: horiz ? (dx < 0 ? Math.PI : 0) : dy < 0 ? -Math.PI / 2 : Math.PI / 2,
+          };
+      }
+      p.wallSide = s.wallSide;
+      p.cells = Spells.affectedCells(S.grid, p.area, targetingWalls());
+      p.tokens = Spells.affectedTokens(
+        p.cells,
+        visible.filter(t => t.kind !== 'object'),
+      ).map(t => t.id);
+    }
+    if (p.area) {
+      let targets = visible.filter(t => p.tokens.includes(t.id));
+      if (spell.id === 'spirit-guardians') {
+        const source = tokenById(p.caster);
+        targets = targets.filter(
+          t => t.id !== p.caster && !s.excluded.has(t.id) && (enemies(source, t) || s.included.has(t.id)),
+        );
+        p.zoneExcluded = [...s.excluded];
+        p.zoneIncluded = [...s.included];
+      }
+      p.hits = targets.map(castHit);
+    } else if (s.selected.length) {
+      const targets = s.selected.map(id => visible.find(t => t.id === id));
+      if (targets.some(t => !compactToken(spell, t, s.object))) throw Error('Revisá los objetivos en el mapa.');
+      if (spell.id === 'magic-missile') return assignMissiles(p, spell, level, s.selected);
+      if (castRays.has(spell.id)) return assignRays(p, spell, s.max, s.selected);
+      p.hits = targets.map(castHit);
+    } else p.hits = visible.filter(t => p.tokens.includes(t.id)).map(castHit);
+    p.tokens = p.hits.map(t => t.id);
+    p.allies = visible.filter(t => t.kind === 'pc' && t.id !== p.caster && p.tokens.includes(t.id)).map(t => t.id);
+    if (['bane', 'hold', 'hold-monster'].includes(spell.id)) p.saveTargets = p.tokens;
+    return p;
+  }
+  function compactPlan(s, max) {
+    const me = actor();
+    if (!me) return { ready: false, prompt: 'Tu ficha no está en este mapa' };
+    const { sp, slot } = s,
+      center = tokenCenter(me),
+      shape = Spells.areaFor(sp, slot.level, Rules.spellImpact(sp, slot.level).area);
+    const destination = Spells.destinationRange(sp.id),
+      range = destination || Spells.rangeFor(sp.range);
+    const groundPoint = !destination && Spells.kindFor(sp.id) === 'summon';
+    const allowObject =
+      ['fire-bolt', 'light', 'heat-metal', 'disintegrate'].includes(sp.id) ||
+      /criatura (?:u|o) objeto/i.test(sp.text || '');
+    const tokens = visibleTokens(),
+      picked = tokens.find(t => t.id === s.selected[0]);
+    const far = {
+      x: Math.min(S.grid.cols - 0.5, center.x + Math.max(1, Math.min(6, range / S.grid.feet))),
+      y: center.y,
+    };
+    const aim = s.aim || (picked && tokenCenter(picked)) || (shape ? far : center);
+    let placement = spellPlacement(sp, castCell(aim), slot.level, aim, picked?.id);
+    if (placement?.error && shape && !s.aim) placement = spellPlacement(sp, castCell(center), slot.level, center);
+    const count = s.selected.length,
+      rays = castRays.has(sp.id);
+    const tokenSpell = !shape && !destination && !groundPoint && range > 0;
+    const valid = tokenSpell ? new Set(tokens.filter(t => compactToken(sp, t, s.object)).map(t => t.id)) : null;
+    let ready = Boolean(
+      placement &&
+      !placement.error &&
+      (destination || groundPoint ? s.aim : tokenSpell ? count && (rays ? count === max : count <= max) : true),
+    );
+    if (ready) {
+      try {
+        placement = prepareCompactCast(placement, sp, slot.level, { ...s, max });
+      } catch {
+        ready = false;
       }
     }
-    const visible = visibleTokens().filter(t => t.kind !== 'object' && !(self && area && t === me));
-    const targetCell = self && orig && !area ? { x: Math.floor(orig.x), y: Math.floor(orig.y) } : cell;
-    const hits = template
-      ? BC.templateHits(S.grid, template, visible)
-      : visible.filter(
-          t => targetCell.x >= t.x && targetCell.y >= t.y && targetCell.x < t.x + t.size && targetCell.y < t.y + t.size,
-        );
-    const center = self && orig ? { x: Math.floor(orig.x), y: Math.floor(orig.y) } : cell;
+    const prompt = destination
+      ? 'Tocá un destino libre'
+      : groundPoint
+        ? 'Tocá un punto de invocación'
+        : castDirection(shape)
+          ? 'Arrastrá el control para apuntar'
+          : shape?.kind === 'wall'
+            ? 'Arrastrá para dibujar el muro'
+            : sp.id === 'spirit-guardians'
+              ? 'Tocá una ficha para incluirla o excluirla'
+              : shape && !shape.self
+                ? 'Arrastrá el área para moverla'
+                : tokenSpell
+                  ? s.object
+                    ? 'Elegí un objeto'
+                    : 'Tocá las fichas para elegir'
+                  : 'Sobre vos';
+    const warn = (Rules.spellImpact(sp).types.length && (shape || rays)) || sp.id === 'spirit-guardians';
     return {
-      campaign: S.id,
-      map: S.mapId,
-      actorId: H.actorId?.(),
-      x: center.x,
-      y: center.y,
-      cell,
-      area: template,
-      hits: hits.map(t => ({ character: t.character_id, combatant: t.combatant_id })),
+      ready,
+      prompt,
+      placement,
+      allowObject,
+      valid,
+      destination,
+      groundPoint,
+      shape,
+      range,
+      center,
+      aim,
+      max,
+      counter: tokenSpell
+        ? count + '/' + max + (rays ? (sp.id === 'magic-missile' ? ' dardos' : ' rayos') : ' objetivos')
+        : '',
+      allies: warn ? (placement?.allies || []).map(id => tokens.find(t => t.id === id)?.name).filter(Boolean) : [],
     };
   }
-  function selectedPlacement(sp, slot = sp.level) {
-    const t = tokenById(S.target) || (/^personal|^self/i.test(sp.range) && !sp.attackKind?.length ? actor() : null);
-    return t && t.map_id === S.mapId
-      ? spellPlacement(sp, { x: Math.floor(t.x + t.size / 2), y: Math.floor(t.y + t.size / 2) }, slot)
-      : null;
+  function wallArrow(a, side) {
+    if (a.ring) return { x: a.x, y: a.y + (side === 1 ? 1.35 : 2.55) };
+    const tip = Spells.clipRay(S.grid, a, {
+      x: a.x + (Math.cos(a.dir) * a.feet) / S.grid.feet,
+      y: a.y + (Math.sin(a.dir) * a.feet) / S.grid.feet,
+    });
+    return {
+      x: (a.x + tip.x) / 2 - Math.sin(a.dir) * side * 0.57,
+      y: (a.y + tip.y) / 2 + Math.cos(a.dir) * side * 0.57,
+    };
   }
-  function projectSpell(placement, kinds) {
-    if (!placement || placement.map !== S.mapId || placement.campaign !== S.id) return;
+  function compactTarget(s, { w, start, drag, rotation }, max, held) {
+    const aim = toCellF(w),
+      cell = toCell(w),
+      p = compactPlan(s, max);
+    if (!p.center || !BC.inside(S.grid, cell.x, cell.y)) return false;
+    const id = hitToken(w)?.id;
+    if (p.valid) {
+      if (drag || !p.valid.has(id)) return false;
+      const at = s.selected.lastIndexOf(id);
+      if (castRays.has(s.sp.id)) {
+        if (held && at >= 0) s.selected.splice(at, 1);
+        else if (!held && s.selected.length < max) s.selected.push(id);
+      } else if (at >= 0) s.selected.splice(at, 1);
+      else if (max === 1) s.selected = [id];
+      else if (s.selected.length < max) s.selected.push(id);
+      return true;
+    }
+    if (s.sp.id === 'spirit-guardians') {
+      const t = visibleTokens().find(t => t.id === id);
+      if (drag || !t || t.id === p.placement?.caster || !Spells.affectedTokens(p.placement?.cells || [], [t]).length)
+        return false;
+      const set = enemies(tokenById(p.placement.caster), t) ? s.excluded : s.included;
+      set.has(id) ? set.delete(id) : set.add(id);
+      return true;
+    }
+    if (!p.shape && !p.destination && !p.groundPoint) return false;
+    if (p.shape?.kind === 'wall' && !drag && p.placement?.area) {
+      const arrow = wallArrow(p.placement.area, s.wallSide);
+      if (Math.hypot(aim.x - arrow.x, aim.y - arrow.y) < 0.75) {
+        s.wallSide = -s.wallSide;
+        return true;
+      }
+    }
+    let next = aim;
+    if (rotation != null)
+      next = {
+        x: Math.max(0, Math.min(S.grid.cols - 0.01, p.center.x + Math.cos(rotation) * 4)),
+        y: Math.max(0, Math.min(S.grid.rows - 0.01, p.center.y + Math.sin(rotation) * 4)),
+      };
+    if (p.shape?.kind === 'wall' && drag && !s.ring) next = toCellF(start);
+    const test = spellPlacement(s.sp, castCell(next), s.slot.level, next);
+    if (!test || test.error) return false;
+    s.aim = next;
+    if (p.shape?.kind === 'wall' && drag && !s.ring) s.wallEnd = aim;
+    return true;
+  }
+  function focusCasting(sp) {
+    const me = actor();
+    if (!me || !canvas.clientWidth) return;
+    resize();
+    const o = origin(),
+      c = cellPx(),
+      center = tokenCenter(me),
+      size = worldSize();
+    const min = Math.max(canvas.clientWidth / size.w, canvas.clientHeight / size.h);
+    const range = sp
+      ? (Spells.destinationRange(sp.id) || Spells.rangeFor(sp.range)) / S.grid.feet
+      : Math.max(S.grid.cols, S.grid.rows);
+    const span = Math.max(6, Math.min(Math.max(S.grid.cols, S.grid.rows), range * 2 + 2));
+    const scale = Math.max(min, canvas.clientWidth / (Math.min(13, span) * c));
+    S.view = {
+      s: scale,
+      x: Math.min(
+        0,
+        Math.max(canvas.clientWidth - size.w * scale, canvas.clientWidth * 0.45 - (o.x + (center.x + 1.8) * c) * scale),
+      ),
+      y:
+        size.h * scale < canvas.clientHeight
+          ? (canvas.clientHeight - size.h * scale) / 2
+          : Math.min(
+              0,
+              Math.max(canvas.clientHeight - size.h * scale, canvas.clientHeight / 2 - (o.y + center.y * c) * scale),
+            ),
+    };
+    S.touched = true;
+    S.dirty = true;
+  }
+  function offerSpellReaction(event) {
+    if (!castCanReact(event.id)) return;
+    const spell = H.spells().find(sp => sp.id === event.id),
+      me = actor();
+    if (!spell || !me || Combat.spellBlock(state, spell)) return;
+    const available = Combat.availableSlots(state, spell),
+      slot = available[0];
+    if (!slot && !Combat.specialCast(state, spell)) return;
+    const ac = Rules.stats(state).ac + 5;
+    const body =
+      event.id === 'shield'
+        ? `+5 CA → ${ac}. ${event.magicMissile ? 'Anula Proyectil mágico.' : Number.isFinite(event.total) && event.natural !== 20 && event.total < ac ? 'El ataque fallaría.' : ''}`
+        : `Nivel ${slot?.level || spell.level}${slot ? ' · ' + slot.left + ' disponibles' : ''}. ${event.level != null ? (event.level <= (slot?.level || spell.level) ? 'Interrupción automática.' : 'Prueba CD ' + (10 + event.level) + '.') : 'Nivel del conjuro enemigo sin revelar.'}`;
+    return new Promise(resolve => {
+      if (
+        !casting.promptReaction({
+          label: `¿Usar ${spell.name}?`,
+          body,
+          seconds: reactionSeconds(),
+          pass: () => resolve(false),
+          use: async () => {
+            if (Combat.spellBlock(state, spell)) return resolve(false);
+            casting.begin(spell.id, event);
+            if (event.source) {
+              const p = tokenCenter(event.source),
+                o = origin();
+              const w = { x: o.x + p.x * cellPx(), y: o.y + p.y * cellPx() };
+              casting.mapTap({ w, start: w });
+            }
+            if (event.id === 'shield') await casting.confirm();
+            resolve(event.id === 'shield' && Boolean(Effects.active(state, 'shield')));
+          },
+        })
+      )
+        resolve(false);
+    });
+  }
+  function useConcentrationSave() {
+    const dc = Combat.data(state).checks[0];
+    if (!state.concentration || !dc) return;
+    const form = new FormData(),
+      bonus = Rules.saveBonus(state, 'con');
+    const mods = RollUI.conditionMods(state, 'save', 'con');
+    form.set('adv', globalThis.FeatFX?.concentrationAdvantage(state) ? (mods.mode === 'dis' ? '' : 'adv') : mods.mode);
+    const roll = RollUI.readD20(form),
+      total = roll.kept + bonus,
+      success = total >= dc;
+    commit('Salvación de concentración', s => {
+      Combat.data(s).checks.shift();
+      if (!success) Combat.endConcentration(s);
+    });
+    TableUI.shareRoll({ label: 'Concentración (CD ' + dc + ')', rolls: roll.rolls, bonus, total });
+    casting.showResult({
+      name: 'Salvación de concentración',
+      face: roll.kept,
+      total,
+      formula: 'CON · CD ' + dc,
+      rows: [success ? 'Mantenés la concentración' : 'Terminó la concentración'],
+      saves: {},
+    });
+  }
+  function castCanReact(id) {
+    return shown && H.compactCast && casting && !S.isDM && (id === 'shield' || id === 'counter');
+  }
+  function mistyDestination(token, point) {
+    const span = BC.tokenSpan(token);
+    return { ...token, x: BC.snapToken(point.x - span / 2, span), y: BC.snapToken(point.y - span / 2, span) };
+  }
+  function selectedPlacement(sp, slot = sp.level) {
+    if (Spells.destinationRange(sp.id)) return null;
+    const t = tokenById(S.target) || (Spells.rangeFor(sp.range) === 0 ? actor() : null);
+    if (!t || t.map_id !== S.mapId) return null;
+    const aim = { x: t.x + BC.tokenSpan(t) / 2, y: t.y + BC.tokenSpan(t) / 2 };
+    return spellPlacement(sp, { x: Math.floor(aim.x), y: Math.floor(aim.y) }, slot, aim, t.id);
+  }
+  function missileOptions(placement, spell) {
+    if (!placement || placement.map !== S.mapId || placement.campaign !== S.id || !placement.caster) return [];
+    return visibleTokens()
+      .filter(t => t.kind !== 'object' && t.id !== placement.caster && !info(t).dead)
+      .flatMap(t => {
+        const p = { x: t.x + BC.tokenSpan(t) / 2, y: t.y + BC.tokenSpan(t) / 2 };
+        const target = spellPlacement(spell, { x: Math.floor(p.x), y: Math.floor(p.y) }, spell.level, p, t.id);
+        if (!target || target.error || target.tokens[0] !== t.id) return [];
+        return [
+          {
+            id: t.id,
+            name: info(t).name || t.name,
+            character: t.character_id,
+            combatant: t.combatant_id,
+            ally: t.kind === 'pc',
+          },
+        ];
+      });
+  }
+  function assignMissiles(placement, spell, slot, ids) {
+    const available = new Map(missileOptions(placement, spell).map(t => [t.id, t]));
+    const count = Spells.missileCount(slot);
+    const missiles = Array.from({ length: count }, (_, i) => available.get(ids[i] || placement.tokenId));
+    if (missiles.some(dart => !dart)) throw Error('Cada dardo necesita un objetivo visible y en alcance.');
+    const unique = [...new Map(missiles.map(dart => [dart.id, dart])).values()];
+    return {
+      ...placement,
+      missiles,
+      tokens: unique.map(dart => dart.id),
+      hits: unique.map(({ character, combatant }) => ({ character, combatant })),
+      allies: unique.filter(dart => dart.ally).map(dart => dart.id),
+    };
+  }
+  function assignRays(placement, spell, count, ids) {
+    const available = new Map(missileOptions(placement, spell).map(t => [t.id, t]));
+    const options = Array.from({ length: count }, (_, i) => available.get(ids[i] || placement.tokenId));
+    if (options.some(t => !t)) throw Error('Cada rayo necesita un objetivo visible y al alcance.');
+    const targets = [...new Map(options.map(t => [t.id, t])).values()];
+    return {
+      ...placement,
+      beams: count,
+      rays: options,
+      tokens: targets.map(t => t.id),
+      hits: targets,
+      allies: targets.filter(t => t.ally).map(t => t.id),
+    };
+  }
+  function wardTargets(placement, spell, slot) {
+    if (!Spells.wardCount(spell.id, slot)) return [];
+    return visibleTokens().flatMap(t => {
+      const span = BC.tokenSpan(t);
+      const aim = { x: t.x + span / 2, y: t.y + span / 2 };
+      const target = spellPlacement(spell, { x: Math.floor(aim.x), y: Math.floor(aim.y) }, slot, aim, t.id);
+      return !target || target.error || !target.tokens.includes(t.id) || info(t).dead
+        ? []
+        : [
+            {
+              id: t.id,
+              name: info(t).name || t.name,
+              character: t.character_id,
+              combatant: t.combatant_id,
+              token: t.id,
+            },
+          ];
+    });
+  }
+  function assignWard(placement, spell, slot, ids) {
+    const options = new Map(wardTargets(placement, spell, slot).map(t => [t.id, t]));
+    const chosen = [...new Set(ids)].map(id => options.get(id));
+    const max = Spells.wardCount(spell.id, slot);
+    if (!chosen.length || chosen.length > max || chosen.some(t => !t))
+      throw Error('Elegí entre 1 y ' + max + ' criaturas visibles dentro del alcance.');
+    return {
+      ...placement,
+      tokens: chosen.map(t => t.id),
+      hits: chosen,
+      saveTargets: spell.id === 'bane' ? chosen.filter(t => t.character || t.combatant).map(t => t.id) : [],
+    };
+  }
+  function projectSpell(placement, kinds, spell, slot = spell?.level, zone) {
+    if (!placement || placement.error || placement.map !== S.mapId || placement.campaign !== S.id) return;
+    if (spell && Spells.implemented(spell.id)) {
+      const cast = {
+        castId: globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2),
+        id: spell.id,
+        name: spell.name,
+        school: spell.school,
+        level: slot,
+        element: BoardSceneFX.typeKey(kinds[0]),
+        point: placement.point,
+        area: placement.area,
+        caster: placement.caster,
+        targets: placement.tokens,
+        saveTargets: placement.saveTargets,
+        darts: placement.missiles?.map(dart => dart.id),
+        beams: placement.beams,
+        rays: placement.rays?.map(t => t.id),
+        weaponForm: placement.weaponForm,
+        wallSide: placement.wallSide,
+        allies: placement.allies,
+        concentration: spell.concentration,
+        rounds: globalThis.Effects?.roundsFrom(spell.duration),
+      };
+      if (zone && cast.area) {
+        const created = Date.now(),
+          encounter = S.party?.encounter,
+          rounds = cast.rounds || 1;
+        cast.zone = {
+          ...zone,
+          created,
+          expiry: created + 6000 * rounds,
+          rounds,
+          turn: turnZoneKey(encounter),
+          round: encounter?.round || 0,
+          excluded: placement.zoneExcluded || [],
+          included: placement.zoneIncluded || [],
+        };
+        Cloud.post(S.id, 'spell-zone', { ...cast, map: S.mapId }).catch(err => toast(err.message));
+      }
+      if (spell.id === 'misty-step') {
+        if (!placement.teleport || !placement.casterBase) return;
+        cast.departure = { x: placement.casterBase.x, y: placement.casterBase.y };
+        cast.sentAt = Date.now();
+      }
+      if (addSpellCast(cast)) S.channel?.send({ t: 'spell-fx', map: S.mapId, cast });
+      if (spell.id === 'misty-step') moveMistyStep(placement, cast.castId);
+      S.spellAim = null;
+      S.dirty = true;
+      if (spell.id === 'spiritual-weapon') {
+        const weapon = S.spellCasts.find(e => e.castId === cast.castId);
+        if (weapon) weapon.summonedTurn = H.spiritualTurn?.();
+        panel();
+        tools();
+      }
+      return { castId: cast.castId, map: S.mapId, origin: placement.casterBase, zone: Boolean(cast.zone) };
+    }
     for (const type of kinds) {
       const msg = {
         t: 'spell',
@@ -817,15 +2079,98 @@
       };
       if (addCast(msg)) S.channel?.send(msg);
     }
+    S.spellAim = null;
+    S.dirty = true;
   }
-  function castAt(cell) {
+  function moveMistyStep(placement, castId) {
+    setTimeout(async () => {
+      try {
+        if (placement.map !== S.mapId || placement.campaign !== S.id) return;
+        const t = tokenById(placement.caster);
+        if (!t || !canMove(t)) throw Error('La ficha lanzadora ya no se puede mover.');
+        const { x, y } = placement.teleport;
+        if (!BC.roomFor(S.grid, S.terrain, { ...t, x, y }, []) || overlapsPieces({ ...t, x, y }, visibleTokens()))
+          throw Error('Las casillas de destino se ocuparon.');
+        if (
+          t.x + BC.tokenSpan(t) / 2 !== placement.casterBase.x ||
+          t.y + BC.tokenSpan(t) / 2 !== placement.casterBase.y
+        )
+          throw Error('La ficha lanzadora se movió antes de teletransportarse.');
+        await applyPoses([{ id: t.id, patch: { x, y } }], {});
+        afterMove(
+          {
+            token: t,
+            start: { x: placement.casterBase.x - BC.tokenSpan(t) / 2, y: placement.casterBase.y - BC.tokenSpan(t) / 2 },
+            free: true,
+          },
+          x,
+          y,
+          true,
+        );
+        pick();
+      } catch (err) {
+        const m = { t: 'spell-resolution', map: placement.map, castId, action: 'teleport-cancel' };
+        spellResolution(m);
+        S.channel?.send(m);
+        toast(err.message);
+      }
+    }, 530);
+  }
+  function setSpellAim(world) {
+    if (weaponAim) return null;
+    const sp = S.tool === 'scene' && H.cast && activeSpell();
+    const cell = toCell(world);
+    if (!sp || !BC.inside(S.grid, cell.x, cell.y)) {
+      if (S.spellAim) S.dirty = true;
+      S.spellAim = null;
+      return null;
+    }
+    const placement = spellPlacement(sp, cell, sp.level, toCellF(world), hitToken(world)?.id);
+    const effect = Rules.spellImpact(sp);
+    const kind = BoardSceneFX.typeKey(effect.types[0] || (effect.healing ? 'heal' : 'magic'));
+    S.spellAim = placement && {
+      world,
+      placement,
+      color: SpellFX.colorFor(sp.id, kind, sp.school)[1],
+      warn:
+        effect.types.length > 0 ||
+        ['web', 'grease', 'hypnotic', 'sleep', 'entangle', 'fear', 'color-spray'].includes(sp.id),
+      wallWarning: sp.id === 'wall-of-fire' && placement?.tokens.length > 0,
+    };
+    hint(
+      placement?.error ||
+        (S.spellAim?.wallWarning
+          ? 'Criaturas en las casillas del muro: ' +
+            placement.tokens.length +
+            '. El muro puede dañarlas. Tocá para confirmar.'
+          : placement?.allies.length && S.spellAim?.warn
+            ? 'Aliados en el área: ' + placement.allies.length + '. Tocá para confirmar el punto.'
+            : 'Tocá para elegir el punto. Arrastrá para mover la cámara.'),
+    );
+    S.dirty = true;
+    return placement;
+  }
+  function castAt(cell, world) {
+    if (weaponAim) {
+      const t = hitToken(world);
+      if (!t) return toast('Elegí una criatura junto al arma espiritual.');
+      try {
+        const strike = swingSpiritualWeapon(t.id, weaponAim, H.prepareSpiritualAttack);
+        H.spiritualAttack?.(strike);
+        weaponAim = null;
+        if (H.compactCast) S.tool = 'move';
+        tools();
+        panel();
+      } catch (err) {
+        toast(err.message);
+      }
+      return;
+    }
     if (H.cast) {
-      const spells = H.spells();
-      const sp = spells.find(sp => sp.id === S.sheetSpell) || spells[0];
+      const sp = activeSpell();
       if (!sp) return;
-      const placement = spellPlacement(sp, cell);
-      if (!placement)
-        return toast('Elegí una casilla visible del mapa activo. Para un efecto personal, ubicá primero tu ficha.');
+      const placement = setSpellAim(world);
+      if (!placement || placement.error) return toast(placement?.error || 'Elegí una casilla visible del mapa activo.');
       try {
         H.cast(sp.id, false, placement);
       } catch (err) {
@@ -837,6 +2182,222 @@
     if (!addCast(msg)) return;
     if (S.mapId === activeId()) S.channel?.send(msg);
   }
+  function activeSpiritualWeapon() {
+    const me = actor();
+    const now = performance.now();
+    return (
+      me &&
+      S.spellCasts.findLast(
+        e => e.id === 'spiritual-weapon' && e.caster === me.id && (e.held || e.until > now) && !e.endedAt,
+      )
+    );
+  }
+  function swingSpiritualWeapon(id, castId, beforeSwing = null) {
+    const weapon = activeSpiritualWeapon();
+    if (!weapon || weapon.castId !== castId) throw Error('El arma espiritual ya no está activa.');
+    const token = visibleTokens().find(t => t.id === id && t.kind !== 'object' && !info(t).dead);
+    if (!token) throw Error('Elegí una criatura visible.');
+    const span = BC.tokenSpan(token);
+    const { x, y } = weapon.point;
+    const distance = Math.max(token.x - x, x - token.x - span, token.y - y, y - token.y - span, 0) * S.grid.feet;
+    if (distance > 5 || !Spells.unobstructed(weapon.point, tokenCenter(token), targetingWalls()))
+      throw Error('El objetivo debe estar al alcance de 5 pies del arma.');
+    const strike = {
+      castId,
+      token: token.id,
+      slot: weapon.slot,
+      first: !weapon.swing && weapon.summonedTurn === H.spiritualTurn?.(),
+      hits: [{ character: token.character_id, combatant: token.combatant_id }],
+    };
+    beforeSwing?.(strike);
+    const m = { t: 'spell-resolution', map: S.mapId, castId, action: 'swing', token: id, point: tokenCenter(token) };
+    spellResolution(m);
+    S.channel?.send(m);
+    return strike;
+  }
+  function spiritualImpact(castId, id) {
+    const weapon = activeSpiritualWeapon();
+    if (!weapon || weapon.castId !== castId || !visibleTokens().some(t => t.id === id)) return;
+    const m = { t: 'spell-resolution', map: S.mapId, castId, action: 'weapon-impact', token: id };
+    spellResolution(m);
+    S.channel?.send(m);
+  }
+
+  function drawSpellAim(ground, pieces) {
+    const compact = casting?.plan();
+    if (compact) return drawCompactAim(compact, ground, pieces);
+    const aim = S.tool === 'scene' && S.spellAim;
+    if (!aim) return;
+    const { placement, color, warn, wallWarning } = aim;
+    const c = cellPx(),
+      o = origin();
+    ctx.save();
+    ctx.translate(o.x, o.y);
+    ctx.scale(c, c);
+    ctx.beginPath();
+    ctx.rect(0, 0, S.grid.cols, S.grid.rows);
+    ctx.clip();
+    if (ground) {
+      if (placement.casterBase && Number.isFinite(placement.range) && placement.range > 0) {
+        const r = placement.range / S.grid.feet + placement.casterBase.span / 2;
+        const { x, y } = placement.casterBase;
+        ctx.setLineDash([0.12, 0.12]);
+        ctx.strokeStyle = hexA(color, 0.36);
+        ctx.lineWidth = 0.024;
+        ctx.strokeRect(x - r, y - r, 2 * r, 2 * r);
+      }
+      ctx.setLineDash([]);
+      ctx.lineWidth = 0.046;
+      ctx.strokeStyle = placement.error ? '#fb725e' : color;
+      const a = placement.area;
+      if (a) {
+        ctx.fillStyle = wallWarning ? '#ff612b6b' : hexA(ctx.strokeStyle, 0.26);
+        for (const [x, y] of placement.cells) if (canSeeCast(x, y)) ctx.fillRect(x, y, 1, 1);
+        const points = Spells.outline(S.grid, a);
+        ctx.beginPath();
+        points.forEach(([x, y], i) => ctx[i ? 'lineTo' : 'moveTo'](x, y));
+        ctx.closePath();
+        ctx.stroke();
+      } else if (placement.point) {
+        ctx.beginPath();
+        ctx.arc(placement.point.x, placement.point.y, 0.24, 0, 2 * Math.PI);
+        ctx.stroke();
+      }
+    } else if (!placement.error) {
+      const hits = new Set(placement.tokens),
+        allies = new Set(placement.allies);
+      for (const { t, foot } of pieces)
+        if (hits.has(t.id)) {
+          const radius = Math.max(0.23, BC.tokenSpan(t) * 0.45);
+          ctx.strokeStyle = wallWarning ? '#ff7040' : warn && allies.has(t.id) ? '#ffab67' : color;
+          ctx.lineWidth = 0.05;
+          ctx.beginPath();
+          ctx.ellipse((foot.x - o.x) / c, (foot.y - o.y) / c, radius, radius * 0.65, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+    }
+    ctx.restore();
+  }
+  function drawCompactAim(plan, ground, pieces) {
+    const s = casting.aim(),
+      p = plan.placement;
+    if (!s || !plan.center) return;
+    const o = origin(),
+      c = cellPx(),
+      gold = '#f5ca78',
+      bright = '#82e3bf';
+    ctx.save();
+    ctx.translate(o.x, o.y);
+    ctx.scale(c, c);
+    ctx.beginPath();
+    ctx.rect(0, 0, S.grid.cols, S.grid.rows);
+    ctx.clip();
+    if (ground) {
+      if (plan.range) {
+        ctx.beginPath();
+        ctx.arc(
+          plan.center.x,
+          plan.center.y,
+          plan.range / S.grid.feet + (p?.casterBase?.span || 1) / 2,
+          0,
+          2 * Math.PI,
+        );
+        ctx.setLineDash([0.12, 0.11]);
+        ctx.strokeStyle = '#8bdcc0bb';
+        ctx.lineWidth = 0.035;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      if (plan.destination) {
+        const r = Math.ceil(plan.range / S.grid.feet),
+          { x, y } = plan.center,
+          selected = p?.teleport;
+        for (let row = Math.max(0, Math.floor(y) - r); row < Math.min(S.grid.rows, y + r); row++)
+          for (let col = Math.max(0, Math.floor(x) - r); col < Math.min(S.grid.cols, x + r); col++) {
+            const test = spellPlacement(s.sp, { x: col, y: row }, s.slot.level, { x: col + 0.5, y: row + 0.5 });
+            if (test?.error || !test) continue;
+            ctx.fillStyle =
+              selected && s.aim && test.teleport.x === selected.x && test.teleport.y === selected.y
+                ? '#a9f2c9a0'
+                : '#71d1ae48';
+            ctx.fillRect(col + 0.04, row + 0.04, 0.92, 0.92);
+          }
+      }
+      if (p?.area) {
+        const points = Spells.outline(S.grid, p.area);
+        ctx.beginPath();
+        points.forEach(([x, y], i) => ctx[i ? 'lineTo' : 'moveTo'](x, y));
+        ctx.closePath();
+        ctx.strokeStyle = gold;
+        ctx.lineWidth = p.area.ring ? p.area.width / S.grid.feet : 0.04;
+        ctx.fillStyle = p.area.kind === 'wall' ? '#f171356f' : '#f7c36846';
+        if (!p.area.ring) ctx.fill();
+        ctx.stroke();
+      }
+    } else {
+      const affected = new Set(p?.tokens || []);
+      for (const { t, foot } of pieces) {
+        const x = (foot.x - o.x) / c,
+          y = (foot.y - o.y) / c;
+        const radius = Math.max(0.21, BC.tokenSpan(t) * 0.44),
+          count = s.selected.filter(id => id === t.id).length;
+        if (dimCastTarget(plan, s, t)) {
+          ctx.strokeStyle = '#e4d9c3dc';
+          ctx.lineWidth = 0.035;
+          ctx.beginPath();
+          ctx.ellipse(x, y, radius, radius * 0.62, 0, 0, 2 * Math.PI);
+          ctx.moveTo(x - radius * 0.72, y + radius * 0.43);
+          ctx.lineTo(x + radius * 0.72, y - radius * 0.43);
+          ctx.stroke();
+        }
+        if (count || (p?.area && affected.has(t.id))) {
+          const ally = p?.allies.includes(t.id);
+          ctx.strokeStyle = ally ? '#ff9871' : bright;
+          ctx.lineWidth = 0.065;
+          ctx.beginPath();
+          ctx.ellipse(x, y, radius, radius * 0.62, 0, 0, 2 * Math.PI);
+          ctx.stroke();
+          castBadge(
+            x + radius * 0.7,
+            y + radius * 0.47,
+            castRays.has(s.sp.id) ? '×' + count : '✓',
+            ally ? '#ff9871' : bright,
+          );
+        }
+      }
+      const a = p?.area;
+      if (a?.kind === 'wall') {
+        const arrow = wallArrow(a, s.wallSide);
+        castBadge(arrow.x, arrow.y, s.wallSide === 1 ? '↻' : '↺', '#ff9b61');
+      } else if (castDirection(a)) {
+        const at = Spells.clipRay(S.grid, a, { x: a.x + Math.cos(a.dir) * 1.4, y: a.y + Math.sin(a.dir) * 1.4 });
+        castBadge(at.x, at.y, '↻', gold);
+      }
+    }
+    ctx.restore();
+  }
+  function dimCastTarget(plan, selection, token) {
+    const p = plan?.placement;
+    if (!selection || token.id === p?.caster) return false;
+    if (plan.valid) return !plan.valid.has(token.id);
+    if (selection.sp.id !== 'spirit-guardians' || !p?.cells || token.kind === 'object') return false;
+    return Spells.affectedTokens(p.cells, [token]).length > 0 && !p.tokens.includes(token.id);
+  }
+  function castBadge(x, y, label, color) {
+    ctx.beginPath();
+    ctx.arc(x, y, 0.24, 0, 2 * Math.PI);
+    ctx.fillStyle = '#122427';
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 0.035;
+    ctx.stroke();
+    ctx.font = 'bold 0.27px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = color;
+    ctx.fillText(label, x, y + 0.015);
+  }
+
   function drawScene(now, cellSize, origin, width, height, dpr) {
     if (S.grid.weather === 'clear' && !S.casts.length) return;
     ctx.save();
@@ -846,13 +2407,7 @@
     if (S.grid.weather !== 'clear') {
       ctx.save();
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      BoardSceneFX.weather(
-        ctx,
-        S.grid.weather,
-        canvas.clientWidth,
-        canvas.clientHeight,
-        reducedMotion.matches ? 0 : now / 1000,
-      );
+      BoardSceneFX.weather(ctx, S.grid.weather, canvas.clientWidth, canvas.clientHeight, 0);
       ctx.restore();
     }
     S.casts = S.casts.filter(cast => now - cast.start < spellDuration);
@@ -862,7 +2417,7 @@
       ctx.save();
       ctx.translate(origin.x + (cast.x + 0.5) * cellSize, origin.y + (cast.y + 0.5) * cellSize);
       ctx.scale(cellSize, cellSize);
-      BoardSceneFX.spell(ctx, cast.kind, reducedMotion.matches ? 0.4 : (now - cast.start) / spellDuration);
+      BoardSceneFX.spell(ctx, cast.kind, reduceEffects() ? 0.4 : (now - cast.start) / spellDuration);
       ctx.restore();
     }
     ctx.restore();
@@ -870,19 +2425,37 @@
   function draw() {
     if (!shown) return requestAnimationFrame(draw);
     const now = performance.now();
-    const animating = S.mapId && (S.casts.length || (S.grid.weather !== 'clear' && !reducedMotion.matches));
-    const swordFrame = reducedMotion.matches ? 0 : Miniatures.swordFrame(now);
+    for (const [id, e] of teleportFrames) if (now - e.started > 950) teleportFrames.delete(id);
+    for (const [id, e] of spellCrumbles) if (now - e.at > 850) spellCrumbles.delete(id);
+    const settling = landing.size > 0;
+    for (const [id, start] of landing) if (now - start >= 150) landing.delete(id);
+    const animating = S.mapId && S.casts.length;
+    const spellAnimating = S.mapId && S.spellCasts.length;
+    const fastSpell =
+      spellCrumbles.size ||
+      teleportFrames.size ||
+      (spellAnimating &&
+        S.spellCasts.some(
+          event =>
+            now - event.started < 2200 ||
+            (event.swing && now - event.swing.at < 560) ||
+            (event.attackImpact && now - event.attackImpact.at < 400),
+        ));
+    const rotating = [...displayFacings.values()].some(f => f.previous);
+    if (rotating)
+      for (const f of displayFacings.values()) if (reducedMotion.matches || now - f.at >= 120) f.previous = null;
     if (
       !S.dirty &&
-      !S.pings.length &&
-      !S.remote.size &&
-      !(hasVisibleSword && swordFrame !== lastSwordFrame) &&
-      !(animating && now - lastSceneFrame >= 1000 / 24)
+      !settling &&
+      !rotating &&
+      !S.pings.some(ping => now - ping.at >= pingDuration) &&
+      !(animating && now - lastSceneFrame >= 1000 / 24) &&
+      !(fastSpell && now - lastSceneFrame >= 15) &&
+      !(traitsVisible && !reduceEffects() && now - lastSceneFrame >= 1000 / 15) &&
+      !(spellAnimating && now - lastSceneFrame >= (fastSpell ? 15 : 1000 / 15))
     )
       return requestAnimationFrame(draw);
     lastSceneFrame = now;
-    hasVisibleSword = false;
-    lastSwordFrame = swordFrame;
     S.dirty = false;
     const dpr = window.devicePixelRatio || 1,
       { w, h } = worldSize(),
@@ -893,7 +2466,11 @@
     ctx.fillStyle = playerView() && (S.fogOn || S.grid.vision?.los) ? '#05090b' : '#071014';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (!S.mapId) return requestAnimationFrame(draw);
-    ctx.setTransform(dpr * S.view.s, 0, 0, dpr * S.view.s, dpr * S.view.x, dpr * S.view.y);
+    const shake =
+      fastSpell && fxPrefs.shake && !reduceEffects()
+        ? S.spellCasts.reduce((acc, event) => acc || SpellFX.shake(event, now), 0)
+        : 0;
+    ctx.setTransform(dpr * S.view.s, 0, 0, dpr * S.view.s, dpr * (S.view.x + shake), dpr * (S.view.y + shake * 0.45));
     // Celdas visibles en pantalla (para no dibujar todo el mapa en cada cuadro).
     const tl = toCell(toWorld(0, 0)),
       br = toCell(toWorld(canvas.width / dpr, canvas.height / dpr));
@@ -902,7 +2479,7 @@
       x1 = Math.min(g.cols - 1, br.x + 1),
       y1 = Math.min(g.rows - 1, br.y + 1);
     // Fondo
-    if (S.img) ctx.drawImage(S.img, 0, 0);
+    if (S.img) ctx.drawImage(S.img, 0, 0, w, h);
     else {
       ctx.fillStyle = '#1d2a2e';
       ctx.fillRect(0, 0, w, h);
@@ -959,8 +2536,26 @@
     if (S.drag?.area) drawTemplate({ ...S.drag.area, ...whoAmI() }, true);
     drawLights();
     // Fichas
-    const list = visibleTokens().sort((a, b) => (a.kind === 'object' ? -1 : 0) - (b.kind === 'object' ? -1 : 0));
-    for (const t of list) drawToken(t, swordFrame);
+    updateSpellClouds(now);
+    const list = visibleTokens(true).sort(tokenOrder);
+    const inView = list.filter(t => {
+      const p = tokenPos(t),
+        size = t.size || 1;
+      return (
+        p.x + size >= tl.x - 2 * size && p.x <= br.x + 2 * size && p.y + size >= tl.y - size && p.y <= br.y + 3 * size
+      );
+    });
+    const pieces = inView.map(t => presentToken(t, now));
+    if (spellAnimating) evaluateSpellCasts(now, pieces);
+    else lastSpellPoses = [];
+    drawSpellAim(true, pieces);
+    drawSpellLayer(now, 'ground');
+    drawPieces(pieces);
+    drawBoardTraits(pieces, now);
+    drawSpellLayer(now, 'air');
+    drawThunderRipple(now, dpr, shake);
+    drawSpellLayer(now, 'fog');
+    drawSpellAim(false, pieces);
     drawScene(now, c, o, w, h, dpr);
     // Niebla
     if (S.fogOn) {
@@ -982,7 +2577,8 @@
       }
     }
     // Línea de visión: lo que la party no tiene a la vista (opaco para jugadores, velado para el DM).
-    const bits = seen();
+    const bits = seen(!playerView());
+    const clearSight = playerView() && spellClouds.length ? seen(true) : null;
     if (bits) {
       const solid = playerView(),
         pad = solid ? 0.5 : 0;
@@ -990,7 +2586,11 @@
       ctx.beginPath();
       for (let y = y0; y <= y1; y++)
         for (let x = x0; x <= x1; x++)
-          if (!bits[y * g.cols + x]) ctx.rect(o.x + x * c - pad, o.y + y * c - pad, c + pad * 2, c + pad * 2);
+          if (!bits[y * g.cols + x]) {
+            const soft =
+              spellClouds.some(p => Math.hypot(x + 0.5 - p.x, y + 0.5 - p.y) < p.r) && isSeen(clearSight, x, y);
+            if (!soft) ctx.rect(o.x + x * c - pad, o.y + y * c - pad, c + pad * 2, c + pad * 2);
+          }
       ctx.fill();
       if (solid && S.img && !S.fogOn) {
         ctx.fillRect(-w, -h, w * 3, h + o.y);
@@ -1017,6 +2617,11 @@
       ctx.setLineDash([]);
     }
     drawPings();
+    const readable = playerView() ? pieces.filter(p => !tokenInSpellCloud(p.t)) : pieces;
+    drawMiniLabel(readable);
+    positionCard(readable);
+    positionRotationHandle(readable);
+    drawCastBanner(now, dpr);
     requestAnimationFrame(draw);
   }
   const hexA = (hex, a) => {
@@ -1209,180 +2814,564 @@
   function tokenPos(t) {
     const r =
       S.drag?.token?.id === t.id ? S.drag.token : S.drag?.group?.find(k => k.id === t.id) || S.remote.get(t.id) || t;
-    return { x: r.x, y: r.y };
+    return { x: r.x, y: r.y, facing: r.facing };
   }
-  // Aclara (k > 0) u oscurece (k < 0) un color #rrggbb.
-  function shade(hex, k) {
-    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
-    if (!m) return hex;
-    const n = parseInt(m[1], 16),
-      f = v => Math.round(k > 0 ? v + (255 - v) * k : v * (1 + k));
-    return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
-  }
-  function luminance(hex) {
-    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
-    if (!m) return 0.5;
-    const n = parseInt(m[1], 16);
-    return (0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
-  }
-  function drawToken(t, swordFrame) {
-    const c = cellPx(),
-      o = origin(),
-      p = tokenPos(t),
-      d = info(t),
-      size = t.size || 1,
-      cx = o.x + (p.x + size / 2) * c,
-      cy = o.y + (p.y + size / 2) * c,
-      rad = (size * c) / 2 - c * 0.06;
-    ctx.save();
-    if (t.hidden) ctx.globalAlpha = 0.45;
-    // Turno actual: halo dorado.
-    if (d.turn) {
-      ctx.beginPath();
-      ctx.arc(cx, cy, rad + c * 0.12, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(224,190,128,0.35)';
-      ctx.fill();
+
+  const factionColors = { ally: '#4ade80', enemy: '#ef4444', neutral: '#facc15' };
+  const propSizes = { tiny: 0.5, small: 1, medium: 1, large: 2, huge: 3, gargantuan: 4 };
+  const miniPack = new Map();
+  const characterPack = new Map();
+  const landing = new Map();
+  let hoverToken = null;
+  let coveredPieces = [];
+  async function loadMiniPack() {
+    if (typeof fetch !== 'function') return;
+    try {
+      const response = await fetch('./assets/minis/index.json');
+      if (!response.ok) return;
+      for (const entry of await response.json()) {
+        if (!/^[A-Za-z0-9_-]+\.png$/.test(entry.image) || typeof entry.id !== 'string') continue;
+        if (!Number.isFinite(entry.anchor?.x) || !Number.isFinite(entry.anchor?.y)) continue;
+        if (entry.pixelsPerSquare !== CELL || !propSizes[entry.size]) continue;
+        miniPack.set(entry.id, entry);
+        if (typeof entry.appearance === 'string') characterPack.set(entry.appearance, entry);
+      }
+      S.dirty = true;
+    } catch {
+      // El tablero también abre sin un paquete de imágenes.
     }
-    // Sombra bajo la ficha, para que se despegue del mapa.
-    ctx.beginPath();
-    ctx.ellipse(cx + c * 0.04, cy + c * 0.07, rad * 1.02, rad * 0.98, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.38)';
-    ctx.fill();
-    // Disco con luz arriba a la izquierda; el color elegido para la ficha del personaje pisa al del token.
-    const base = d.color || t.color || BC.colorFor(t.id, t.kind),
-      disc = ctx.createRadialGradient(cx - rad * 0.35, cy - rad * 0.4, rad * 0.1, cx, cy, rad * 1.05);
-    disc.addColorStop(0, shade(base, 0.35));
-    disc.addColorStop(0.55, base);
-    disc.addColorStop(1, shade(base, -0.4));
-    ctx.beginPath();
-    ctx.arc(cx, cy, rad, 0, Math.PI * 2);
-    ctx.fillStyle = disc;
-    ctx.fill();
-    // Aro claro arriba y oscuro abajo: borde con volumen.
-    const rim = ctx.createLinearGradient(cx, cy - rad, cx, cy + rad);
-    rim.addColorStop(0, 'rgba(255,255,255,0.55)');
-    rim.addColorStop(1, 'rgba(0,0,0,0.45)');
-    ctx.strokeStyle = rim;
-    ctx.lineWidth = c * 0.035;
-    ctx.stroke();
-    const creatureToken = t.kind === 'monster' || t.kind === 'npc';
-    const override =
-      creatureToken && Object.hasOwn(CreatureMiniatures.options, t.creature_model) ? t.creature_model : null;
-    const figure = !override && d.miniature;
-    const img = !override && !figure && portraitImg(d.portrait);
-    const creature = override || (creatureToken && !figure && !d.portrait && CreatureMiniatures.identify(t.name));
-    if (figure || (creature && creature !== 'sigil')) {
-      const sword = figure && !d.dead && Miniatures.hasSword(figure);
-      if (sword) hasVisibleSword = true;
-      const sprite = figure ? Miniatures.sprite(figure, sword ? swordFrame : 0) : Miniatures.creatureSprite(creature);
-      const diameter = rad * 1.96;
-      ctx.drawImage(sprite, cx - diameter / 2, cy - diameter / 2, diameter, diameter);
-    } else if (img) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(cx, cy, rad - c * 0.05, 0, Math.PI * 2);
-      ctx.clip();
-      const k = (rad * 2) / Math.min(img.width, img.height);
-      ctx.drawImage(img, cx - (img.width * k) / 2, cy - (img.height * k) / 2, img.width * k, img.height * k);
-      ctx.restore();
-    } else {
-      // Sin retrato: el emblema de la clase (personajes) o del tipo de criatura, y la etiqueta encima.
-      const G = globalThis.Sigils,
-        pc = t.kind === 'pc',
-        dark = luminance(base) > 0.45,
-        ink = dark ? '#10252a' : '#ffffff',
-        glyph = !G || t.kind === 'object' ? '' : pc ? (G.has(d.cls) ? d.cls : '') : G.forName(t.name),
-        label = t.label || BC.initials(t.name);
-      // Anillo interior, como el canto de una moneda.
-      ctx.beginPath();
-      ctx.arc(cx, cy, rad * 0.86, 0, Math.PI * 2);
-      ctx.strokeStyle = dark ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.25)';
-      ctx.lineWidth = c * 0.018;
-      ctx.stroke();
-      const drawn =
-        glyph && G.draw(ctx, glyph, cx, cy - (pc ? 0 : rad * 0.06), rad * (pc ? 1.25 : 1.35), ink, pc ? 0.92 : 0.42);
-      if (!(drawn && pc)) {
-        ctx.font = `800 ${Math.max(8, rad * (String(label).length > 2 ? 0.6 : 0.78))}px Inter, system-ui, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.lineWidth = c * 0.05;
-        ctx.strokeStyle = dark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.55)';
-        ctx.strokeText(label, cx, cy + rad * 0.04);
-        ctx.fillStyle = ink;
-        ctx.fillText(label, cx, cy + rad * 0.04);
+  }
+  function modelFootprint(name) {
+    return propSizes[CreatureMiniatures.selection(name)?.size] || 1;
+  }
+  function creatureFor(t, appearance = info(t)) {
+    if (!['monster', 'npc'].includes(t.kind)) return null;
+    if (!t.creature_model && (appearance.miniature || appearance.portrait)) return null;
+    return CreatureMiniatures.selection(t.name, t.creature_model, t.model_form, t.size);
+  }
+  function creaturePack(model) {
+    if (!model) return null;
+    const form = model.age || model.variant;
+    return (
+      miniPack.get(form ? `${model.id}-${form}` : model.id) || (model.age === 'young' ? miniPack.get(model.id) : null)
+    );
+  }
+  function displayTokenName(t, model) {
+    if (!model || CreatureMiniatures.resolve(t.name)?.id !== model.id) return t.name || '';
+    const indexed = /(?:^|\s)#?\d+$/.exec(t.name)?.[0] || '';
+    const name = creaturePack(model)?.name || model.name;
+    const age = model.age && CreatureMiniatures.forms(model.id).find(form => form.age === model.age)?.label;
+    return name + (age ? ' ' + age.toLowerCase() : '') + indexed;
+  }
+  function sizedToken(t) {
+    if (t.kind === 'object') return t;
+    const model = creatureFor(t);
+    const size =
+      propSizes[model?.size] ||
+      (t.kind === 'pc' || t.character_id ? 1 : [0.5, 1, 2, 3, 4].includes(t.size) ? t.size : 1);
+    return { ...t, size, savedXY: { x: t.x, y: t.y }, x: BC.snapToken(t.x, size), y: BC.snapToken(t.y, size) };
+  }
+  function tokenFoot(t, position = tokenPos(t)) {
+    const { x, y, span } = BC.footprintRect({ ...position, size: t.size });
+    const c = cellPx(),
+      o = origin();
+    return {
+      x: o.x + (x + span / 2) * c,
+      y: o.y + (y + span / 2) * c,
+      diameter: span * c,
+    };
+  }
+  function tokenOrder(a, b) {
+    return BC.depthOrder({ ...a, ...tokenPos(a) }, { ...b, ...tokenPos(b) });
+  }
+  function landingAmount(t, now) {
+    if (reducedMotion.matches) return 0;
+    if ((press?.moved && (S.drag?.token?.id === t.id || S.drag?.group?.some(k => k.id === t.id))) || S.remote.has(t.id))
+      return 1;
+    const start = landing.get(t.id);
+    if (start === undefined) return 0;
+    return Math.max(0, 1 - (now - start) / 150) ** 2;
+  }
+  const displayFacings = new Map(),
+    missingFacings = new Set();
+  const fixedStands = new Set([
+    'bat',
+    'hawk',
+    'owl',
+    'stirge',
+    'wasp',
+    'bat-swarm',
+    'raven-swarm',
+    'insect-swarm',
+    'wisp',
+    'beholder',
+    'flying-sword',
+  ]);
+  const boardSpriteUrl = filename => `./assets/minis/${filename}?px=${CELL}`;
+  function frameImage(frame) {
+    if (
+      !/^[A-Za-z0-9_-]+\.png$/.test(frame?.image) ||
+      !Number.isFinite(frame.anchor?.x) ||
+      !Number.isFinite(frame.anchor?.y)
+    )
+      return null;
+    const image = portraitImg(boardSpriteUrl(frame.image));
+    return image && { image, anchor: frame.anchor };
+  }
+  function presentToken(t, now) {
+    const tele = teleportFrames.get(t.id);
+    const travel = tele && now - tele.started;
+    const endpoint = tele && (travel < 535 ? tele.teleport.from : tele.teleport.to);
+    const span = BC.tokenSpan(t);
+    const foot = tokenFoot(t, endpoint ? { x: endpoint.x - span / 2, y: endpoint.y - span / 2 } : undefined),
+      d = info(t),
+      model = creatureFor(t, d);
+    const crumb = spellCrumbles.get(t.id);
+    const crumble = crumb ? Math.max(0, Math.min(1, (now - crumb.at) / 690)) : 0;
+    const teleportAlpha = !endpoint
+      ? 1
+      : travel < 495
+        ? Math.min(1, (495 - travel) / 145)
+        : travel < 690
+          ? 0
+          : Math.min(1, (travel - 690) / 190);
+    if (!endpoint && !crumb && !reduceEffects()) {
+      const shock = S.spellCasts.find(
+        e => e.id === 'thunderwave' && e.targets.includes(t.id) && now - e.started >= 300 && now - e.started < 570,
+      );
+      if (shock) {
+        const origin = shock.area?.origin || shock.point;
+        const dx = foot.x - origin.x * CELL - (S.img ? S.grid.ox * imageScale() : 0);
+        const dy = foot.y - origin.y * CELL - (S.img ? S.grid.oy * imageScale() : 0);
+        const f =
+          (Math.max(0, Math.sin(((now - shock.started - 300) / 270) * Math.PI)) * 8) / (Math.hypot(dx, dy) || 1);
+        foot.x += dx * f;
+        foot.y += dy * f;
       }
     }
-    // Borde: blanco; seleccionado: dorado.
-    ctx.lineWidth = (S.sel === t.id ? 4 : 2) * (c / 70);
-    ctx.strokeStyle = S.sel === t.id ? '#e0be80' : 'rgba(255,255,255,0.85)';
-    ctx.beginPath();
-    ctx.arc(cx, cy, rad, 0, Math.PI * 2);
-    ctx.stroke();
-    // Criatura preparada (todavía no está en combate): anillo punteado.
-    if (t.stage?.startsWith('enc:') && !t.combatant_id) {
+    const creature = model?.id,
+      figure = !t.creature_model && d.miniature;
+    const portrait = !t.creature_model && !figure && portraitImg(d.portrait);
+    const pack = figure ? characterPack.get(Miniatures.appearanceKey(figure)) : creaturePack(model);
+    const facing = BC.heading(S.rotationPreview.get(t.id) ?? tokenPos(t).facing ?? t.facing);
+    const rotation =
+      BC.heading((figure && pack ? Math.round((figure.facing - (pack.facing ?? 20)) / 45) : 0) - facing) * 45;
+    const key = String(rotation).padStart(3, '0');
+    const fixed = fixedStands.has(creature) || !!pack?.fixture;
+    const fixedModel = fixedStands.has(creature) && !pack?.fixture;
+    const staticFrame = !fixedModel && pack && (pack.rotations?.[key] || (rotation === 0 ? pack : null));
+    const incomplete = pack && !fixedModel && Object.keys(pack.rotations || {}).length !== 8;
+    const sourceFailed = staticFrame && failedPortraits.has(boardSpriteUrl(staticFrame.image));
+    const unavailable = incomplete || sourceFailed;
+    if (unavailable) missingFacings.add(t.id);
+    else missingFacings.delete(t.id);
+    const file = !sourceFailed && frameImage(staticFrame);
+    const legacy = !file && unavailable && frameImage(pack);
+    let fixture = frameImage(pack?.fixture);
+    let frame = file || (legacy && { ...legacy, mirror: BC.headingDelta(0, facing) > 0 });
+    const old = displayFacings.get(t.id);
+    if (!frame && staticFrame && !sourceFailed && old) frame = old.current;
+    if (!frame && figure) {
+      const custom = Miniatures.boardPack(figure).rotations[key];
+      frame = { image: custom.sculpt, anchor: custom.sculpt.anchor };
+    }
+    if (!frame && creature) {
+      const art = Miniatures.creatureSprite(creature, t.size || 1, {
+        ...model,
+        rotation,
+        layer: fixed ? 'figure' : undefined,
+      });
+      frame = { image: art, anchor: art.anchor };
+    }
+    if (fixedModel) {
+      const base = Miniatures.creatureSprite(creature, t.size || 1, { ...model, layer: 'fixture' });
+      fixture = { image: base, anchor: base.anchor };
+    }
+    if (portrait) frame = null;
+    const lift = landingAmount(t, now),
+      zoom = 1 + 0.06 * lift;
+    const rise = (t.elev > 0 ? CELL * 0.16 : 0) + (lift * 6) / S.view.s;
+    const boundsFor = art =>
+      art
+        ? {
+            x: foot.x - (art.mirror ? art.image.width - art.anchor.x : art.anchor.x) * zoom,
+            y: foot.y - art.anchor.y * zoom - rise,
+            w: art.image.width * zoom,
+            h: art.image.height * zoom,
+          }
+        : {
+            x: foot.x - foot.diameter * 0.27,
+            y: foot.y - foot.diameter * 0.32 - rise,
+            w: foot.diameter * 0.54,
+            h: foot.diameter * 0.54,
+          };
+    const same = old?.current.image === frame?.image && old?.current.mirror === frame?.mirror;
+    let current = old;
+    if (frame && !same) {
+      current = {
+        current: frame,
+        facing,
+        previous: old && old.facing !== facing && !reducedMotion.matches ? old.current : null,
+        at: now,
+        direction: Math.sign(BC.headingDelta(old?.facing ?? facing, facing)),
+      };
+      displayFacings.set(t.id, current);
+    } else if (frame && old && !staticFrame) old.facing = facing;
+    if (current?.previous && now - current.at >= 120) current.previous = null;
+    return {
+      t,
+      alpha: teleportAlpha * (1 - crumble),
+      crumble,
+      foot,
+      d,
+      sprite: frame?.image,
+      frame,
+      portrait,
+      fixture,
+      bounds: boundsFor(frame),
+      previous: current?.previous,
+      prevBounds: current?.previous && boundsFor(current.previous),
+      blend: current?.previous ? Math.max(0, Math.min(1, (now - current.at) / 120)) : 1,
+      direction: current?.direction || 0,
+      facing,
+      lift,
+      faction: t.kind === 'pc' ? 'ally' : t.kind === 'monster' ? 'enemy' : 'neutral',
+      ghost: creature === 'ghost',
+      name: d.name || displayTokenName(t, model),
+    };
+  }
+  function drawMiniGround({ t, foot, d, lift, faction, ghost, facing }) {
+    const { x, y, diameter } = foot;
+    const color = factionColors[faction] || factionColors.neutral;
+    ctx.save();
+    ctx.globalAlpha = t.hidden ? 0.45 : 1;
+    {
       ctx.save();
-      ctx.setLineDash([c * 0.12, c * 0.08]);
-      ctx.lineWidth = 3 * (c / 70);
-      ctx.strokeStyle = S.group && t.stage.startsWith('enc:' + S.group + ':') ? '#e0be80' : 'rgba(255,255,255,0.9)';
-      ctx.beginPath();
-      ctx.arc(cx, cy, rad + c * 0.08, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.translate(x + diameter * 0.055, y + diameter * 0.06);
+      ctx.scale(1, 0.65);
+      const radius = diameter * (0.63 + 0.18 * lift);
+      const shadow = ctx.createRadialGradient(0, 0, radius * 0.15, 0, 0, radius);
+      shadow.addColorStop(0, ghost ? '#99f6fa62' : 'rgba(0,0,0,0.35)');
+      shadow.addColorStop(0.65, ghost ? '#63e9ec36' : 'rgba(0,0,0,0.24)');
+      shadow.addColorStop(1, 'transparent');
+      ctx.fillStyle = shadow;
+      ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
       ctx.restore();
     }
-    // Anillo de PG.
-    if (d.ring !== null && d.ring !== undefined && t.kind !== 'object') {
-      ctx.lineWidth = 5 * (c / 70);
-      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    if (t.kind !== 'object') {
       ctx.beginPath();
-      ctx.arc(cx, cy, rad + c * 0.05, 0, Math.PI * 2);
+      ctx.ellipse(x, y, diameter * 0.525, diameter * 0.525 * Math.sin((55 * Math.PI) / 180), 0, 0, Math.PI * 2);
+      ctx.strokeStyle = hexA(color, 0.7);
+      ctx.lineWidth = Math.max(2 / S.view.s, diameter * 0.048);
+      if (t.stage?.startsWith('enc:') && !t.combatant_id) ctx.setLineDash([diameter * 0.12, diameter * 0.07]);
       ctx.stroke();
-      ctx.strokeStyle = d.ring > 0.5 ? '#6fcf97' : d.ring > 0.25 ? '#f2c94c' : '#eb5757';
+      ctx.setLineDash([]);
+      if (d.turn || S.sel === t.id || S.selected.has(t.id)) {
+        ctx.beginPath();
+        ctx.ellipse(x, y, diameter * 0.58, diameter * 0.476, 0, 0, Math.PI * 2);
+        ctx.lineWidth = 2 / S.view.s;
+        ctx.strokeStyle = '#e0be80';
+        ctx.stroke();
+      }
+    }
+    if (S.grid.rotation.marker && t.kind !== 'object') {
+      const angle = (facing * Math.PI) / 4;
+      const px = -Math.sin(angle),
+        py = Math.cos(angle) * Math.sin((55 * Math.PI) / 180);
       ctx.beginPath();
-      ctx.arc(cx, cy, rad + c * 0.05, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * d.ring);
+      ctx.moveTo(x + diameter * 0.44 * px, y + diameter * 0.44 * py);
+      ctx.lineTo(x + diameter * 0.6 * px, y + diameter * 0.6 * py);
+      ctx.strokeStyle = '#171d21';
+      ctx.lineWidth = 5 / S.view.s;
       ctx.stroke();
-    }
-    if (d.dead) {
-      ctx.strokeStyle = '#eb5757';
-      ctx.lineWidth = 5 * (c / 70);
-      ctx.beginPath();
-      ctx.moveTo(cx - rad * 0.6, cy - rad * 0.6);
-      ctx.lineTo(cx + rad * 0.6, cy + rad * 0.6);
-      ctx.moveTo(cx + rad * 0.6, cy - rad * 0.6);
-      ctx.lineTo(cx - rad * 0.6, cy + rad * 0.6);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2 / S.view.s;
       ctx.stroke();
-    }
-    // Estados: puntitos arriba a la derecha.
-    d.conditions.slice(0, 4).forEach((_, i) => {
-      ctx.fillStyle = '#b39ddb';
-      ctx.beginPath();
-      ctx.arc(cx + rad * 0.75 - i * c * 0.14, cy - rad * 0.8, c * 0.07, 0, Math.PI * 2);
-      ctx.fill();
-    });
-    // Altura: etiqueta abajo a la izquierda.
-    if (t.elev) {
-      const txt = (t.elev > 0 ? '↑' : '↓') + Math.abs(t.elev);
-      ctx.font = `700 ${c * 0.2}px Inter, system-ui, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const wE = ctx.measureText(txt).width + c * 0.1;
-      ctx.fillStyle = '#12324a';
-      ctx.fillRect(cx - rad, cy + rad * 0.45, wE, c * 0.26);
-      ctx.fillStyle = '#cfe9ff';
-      ctx.fillText(txt, cx - rad + wE / 2, cy + rad * 0.45 + c * 0.13);
-    }
-    // Nombre debajo cuando hay espacio.
-    if (S.view.s * c > 34) {
-      ctx.font = `600 ${c * 0.2}px Inter, system-ui, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      const label = t.name + (t.hidden ? ' (oculta)' : '');
-      const wTxt = ctx.measureText(label).width;
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(cx - wTxt / 2 - c * 0.06, cy + rad + c * 0.08, wTxt + c * 0.12, c * 0.26);
-      ctx.fillStyle = '#f1f1e8';
-      ctx.fillText(label, cx, cy + rad + c * 0.1);
     }
     ctx.restore();
+  }
+  function drawToken(
+    { t, foot, d, sprite, frame, portrait, bounds, fixture, previous, prevBounds, blend, direction },
+    opacity = 1,
+    silhouette = false,
+  ) {
+    const { x, y, diameter } = foot;
+    ctx.save();
+    ctx.globalAlpha = opacity * (t.hidden ? 0.45 : 1);
+    if (silhouette) ctx.filter = 'grayscale(1) brightness(.52) blur(1.3px)';
+    if (fixture) ctx.drawImage(fixture.image, x - fixture.anchor.x, y - fixture.anchor.y);
+    if (sprite) {
+      const alpha = ctx.globalAlpha;
+      const drawFrame = (art, b, weight, angle) => {
+        if (weight <= 0) return;
+        ctx.save();
+        ctx.globalAlpha = alpha * weight;
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        if (art.mirror) ctx.scale(-1, 1);
+        ctx.drawImage(art.image, art.mirror ? x - b.x - b.w : b.x - x, b.y - y, b.w, b.h);
+        ctx.restore();
+      };
+      const turn = direction * 0.045;
+      if (previous) drawFrame(previous, prevBounds, 1 - blend, turn * blend);
+      drawFrame(frame, bounds, blend, -turn * (1 - blend));
+    } else if (portrait) ctx.drawImage(portrait, bounds.x, bounds.y, bounds.w, bounds.h);
+    else if (!silhouette) {
+      const glyph = t.kind === 'pc' ? d.cls : globalThis.Sigils?.forName(t.name);
+      const hasGlyph =
+        glyph && globalThis.Sigils?.draw(ctx, glyph, x, y - diameter * 0.1, diameter * 0.46, '#fff4da', 1);
+      if (!hasGlyph) {
+        ctx.font = '800 ' + diameter * 0.31 + 'px system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.strokeStyle = '#17201e';
+        ctx.lineWidth = 3 / S.view.s;
+        ctx.strokeText(t.label || BC.initials(t.name), x, y - diameter * 0.1);
+        ctx.fillStyle = '#fff4da';
+        ctx.fillText(t.label || BC.initials(t.name), x, y - diameter * 0.1);
+      }
+    }
+    ctx.restore();
+  }
+  function drawTokenStatus({ t, foot, d }) {
+    const { x, y, diameter } = foot;
+    ctx.save();
+    if (t.hidden) ctx.globalAlpha = 0.45;
+    // PG y estados: marcas cerca de la base, independientes del color del bando.
+    if (d.ring != null && t.kind !== 'object') {
+      const w = diameter * 0.32,
+        h = Math.max(2 / S.view.s, diameter * 0.025),
+        yy = y + diameter * 0.33;
+      ctx.fillStyle = '#171e1f';
+      ctx.fillRect(x - w / 2, yy, w, h);
+      ctx.fillStyle = d.ring > 0.5 ? '#b6e2ad' : d.ring > 0.25 ? '#f4ba5e' : '#ef777c';
+      ctx.fillRect(x - w / 2, yy, w * d.ring, h);
+    }
+    for (const [i] of d.conditions.slice(0, 4).entries()) {
+      ctx.beginPath();
+      ctx.arc(x + diameter * (0.24 + i * 0.085), y + diameter * 0.2, diameter * 0.035, 0, 2 * Math.PI);
+      ctx.fillStyle = '#c4a6ee';
+      ctx.fill();
+    }
+    if (d.dead || t.elev) drawAltitude(foot, d.dead, t.elev);
+    ctx.restore();
+  }
+  function drawAltitude({ x, y, diameter }, dead, elevation) {
+    const text = dead ? '\u2020' : `${elevation > 0 ? '+' : '\u2212'}${Math.abs(elevation)} ft`;
+    const size = Math.max(10 / S.view.s, Math.min(14 / S.view.s, diameter * 0.13));
+    ctx.font = `700 ${size}px system-ui`;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
+    const xx = x + diameter * 0.41,
+      yy = y - diameter * 0.38;
+    const w = ctx.measureText(text).width + size * 0.65;
+    ctx.fillStyle = '#15262bed';
+    ctx.fillRect(xx - w / 2, yy - size * 0.65, w, size * 1.3);
+    ctx.fillStyle = dead ? '#ff8e8e' : '#d3f0fa';
+    ctx.fillText(text, xx, yy);
+  }
+  const spriteMasks = new WeakMap();
+  let occlusionLayer, occlusionOutline;
+  function spriteMask(sprite, mirror = false) {
+    const cached = spriteMasks.get(sprite) || {};
+    const key = mirror ? 'mirrored' : 'forward';
+    if (cached[key]) return cached[key];
+    const mask = document.createElement('canvas');
+    const scale = Math.min(1, 256 / Math.max(sprite.width, sprite.height));
+    mask.width = Math.max(1, Math.ceil(sprite.width * scale));
+    mask.height = Math.max(1, Math.ceil(sprite.height * scale));
+    const mc = mask.getContext('2d', { willReadFrequently: true });
+    if (mirror) mc.setTransform(-1, 0, 0, 1, mask.width, 0);
+    mc.drawImage(sprite, 0, 0, mask.width, mask.height);
+    const image = mc.getImageData(0, 0, mask.width, mask.height);
+    let solidPixels = 0;
+    const solid = Uint8Array.from({ length: mask.width * mask.height }, (_, i) => {
+      const alpha = image.data[i * 4 + 3] >= 102 ? 255 : 0;
+      if (alpha) solidPixels++;
+      image.data[i * 4 + 3] = alpha;
+      return alpha;
+    });
+    mc.putImageData(image, 0, 0);
+    const top = Math.max(0, Math.floor(solid.indexOf(255) / mask.width)) / mask.height;
+    const record = { mask, solid, top, solidPixels };
+    cached[key] = record;
+    spriteMasks.set(sprite, cached);
+    return record;
+  }
+  function covers(a, b) {
+    if (!a.sprite || !b.sprite || b.t.hidden) return false;
+    const back = a.bounds,
+      front = b.bounds;
+    const left = Math.max(back.x, front.x),
+      right = Math.min(back.x + back.w, front.x + front.w);
+    const top = Math.max(back.y, front.y),
+      bottom = Math.min(back.y + back.h, front.y + front.h);
+    if (right <= left || bottom <= top) return false;
+    const [ma, mb] = [spriteMask(a.sprite, a.frame?.mirror), spriteMask(b.sprite, b.frame?.mirror)];
+    const pixel = (r, m, x, y) =>
+      m.solid[
+        Math.floor(((y - r.y) * m.mask.height) / r.h) * m.mask.width + Math.floor(((x - r.x) * m.mask.width) / r.w)
+      ];
+    const step = Math.max(1, cellPx() / CELL);
+    // Tails and wingtips can touch without covering enough of the figure to need a marker.
+    const area = (ma.solidPixels * back.w * back.h) / (ma.mask.width * ma.mask.height);
+    const minimum = Math.max(1, Math.ceil((area * 0.18) / (step * step)));
+    if ((right - left) * (bottom - top) < area * 0.18) return false;
+    let covered = 0;
+    for (let y = top + step / 2; y < bottom; y += step)
+      for (let x = left + step / 2; x < right; x += step)
+        if (pixel(back, ma, x, y) && pixel(front, mb, x, y) && ++covered >= minimum) return true;
+    return false;
+  }
+  function drawOcclusion(item, blockers) {
+    const b = item.bounds;
+    const { mask, top } = spriteMask(item.sprite, item.frame?.mirror);
+    const color = factionColors[item.faction];
+    const stroke = 2 / S.view.s;
+    occlusionLayer ||= document.createElement('canvas');
+    occlusionOutline ||= document.createElement('canvas');
+    const scale = Math.min(ctx.getTransform().a, 512 / Math.max(b.w, b.h));
+    const w = b.w + stroke * 2,
+      h = b.h + stroke * 2;
+    occlusionLayer.width = occlusionOutline.width = Math.ceil(w * scale);
+    occlusionLayer.height = occlusionOutline.height = Math.ceil(h * scale);
+    const sx = occlusionLayer.width / w,
+      sy = occlusionLayer.height / h;
+    const frame = occlusionLayer.getContext('2d');
+    frame.setTransform(sx, 0, 0, sy, stroke * sx, stroke * sy);
+    for (const { bounds: f, sprite, frame: art } of blockers)
+      frame.drawImage(spriteMask(sprite, art?.mirror).mask, f.x - b.x, f.y - b.y, f.w, f.h);
+    frame.globalCompositeOperation = 'destination-in';
+    frame.drawImage(mask, 0, 0, b.w, b.h);
+    frame.globalCompositeOperation = 'source-in';
+    frame.fillStyle = hexA(color, 0.2);
+    frame.fillRect(-stroke, -stroke, w, h);
+    const edge = occlusionOutline.getContext('2d');
+    edge.setTransform(sx, 0, 0, sy, stroke * sx, stroke * sy);
+    for (let i = 0; i < 8; i++) {
+      const angle = (i * Math.PI) / 4;
+      edge.drawImage(mask, Math.cos(angle) * stroke, Math.sin(angle) * stroke, b.w, b.h);
+    }
+    edge.globalCompositeOperation = 'destination-out';
+    edge.drawImage(mask, 0, 0, b.w, b.h);
+    edge.globalCompositeOperation = 'source-in';
+    edge.fillStyle = color;
+    edge.fillRect(-stroke, -stroke, w, h);
+    ctx.save();
+    ctx.globalAlpha = item.t.hidden ? 0.45 : 1;
+    ctx.drawImage(occlusionLayer, b.x - stroke, b.y - stroke, w, h);
+    ctx.drawImage(occlusionOutline, b.x - stroke, b.y - stroke, w, h);
+    const x = item.foot.x,
+      y = b.y + b.h * top - 10 / S.view.s,
+      r = 5 / S.view.s;
+    ctx.translate(x, y);
+    ctx.beginPath();
+    ctx.moveTo(-r, -r / 2);
+    ctx.lineTo(0, -r);
+    ctx.lineTo(r, -r / 2);
+    ctx.lineTo(r, r / 3);
+    ctx.lineTo(0, r);
+    ctx.lineTo(-r, r / 3);
+    ctx.closePath();
+    ctx.fillStyle = '#14221f';
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2 / S.view.s;
+    ctx.stroke();
+    ctx.restore();
+  }
+  function drawPieces(pieces) {
+    pieces = pieces.filter(piece => piece.alpha > 0);
+    const plan = casting?.plan(),
+      selection = casting?.aim();
+    const faded = new Set(),
+      occluded = [];
+    const obscured = new Set(pieces.filter(p => tokenInSpellCloud(p.t)).map(p => p.t.id));
+    const silhouette = piece => playerView() && obscured.has(piece.t.id);
+    const clear = pieces.filter(p => !silhouette(p));
+    coveredPieces = [];
+    for (let i = 0; i < pieces.length - 1; i++) {
+      const item = pieces[i];
+      if (silhouette(item)) continue;
+      const blockers = pieces.slice(i + 1).filter(front => !silhouette(front) && covers(item, front));
+      if (!blockers.length) continue;
+      coveredPieces.push(item);
+      occluded.push([item, blockers]);
+      if (item.t.id === hoverToken || item.t.id === S.sel) for (const blocker of blockers) faded.add(blocker.t.id);
+    }
+    for (const piece of clear) if (piece.alpha > 0.6) drawMiniGround(piece);
+    for (const piece of pieces) {
+      const faint = silhouette(piece);
+      const alpha = faint
+        ? 0.83
+        : dimCastTarget(plan, selection, piece.t)
+          ? 0.6
+          : obscured.has(piece.t.id)
+            ? 0.93
+            : faded.has(piece.t.id)
+              ? 0.4
+              : 1;
+      if (!piece.crumble || reduceEffects()) drawToken(piece, alpha * piece.alpha, faint);
+      else {
+        const b = piece.bounds;
+        const band = b.h / 10;
+        ctx.save();
+        ctx.beginPath();
+        for (let i = 0; i < 10; i++) {
+          const keep = Math.max(0, 1 - piece.crumble * (1.1 + Math.sin(i * 8) * 0.38));
+          const left = i % 2 === 0 ? 0 : b.w * (1 - keep);
+          ctx.rect(b.x + left, b.y + i * band, b.w * keep, band * (1 - piece.crumble * 0.52));
+        }
+        ctx.clip();
+        drawToken(piece, alpha * piece.alpha, faint);
+        ctx.restore();
+      }
+    }
+    for (const [item, blockers] of occluded) drawOcclusion(item, blockers);
+    for (const piece of clear) if (piece.alpha > 0.76) drawTokenStatus(piece);
+  }
+  function drawMiniLabel(tokens) {
+    const fallback = $('#board-hover-name');
+    if (fallback) fallback.hidden = true;
+    if (!TV && hoverToken === S.sel && !$('#board-card').hidden) return;
+    const item = tokens.find(({ t }) => t.id === hoverToken);
+    if (!item?.name) return;
+    const {
+        foot: { x, y, diameter },
+        name,
+      } = item,
+      scale = S.view.s;
+    const font = 12 / scale,
+      h = 19 / scale;
+    ctx.font = '600 ' + font + 'px system-ui';
+    const w = ctx.measureText(name).width + 14 / scale;
+    const below = Math.max(y + diameter * 0.44, item.bounds.y + item.bounds.h);
+    const min = toWorld(5, 5),
+      max = toWorld(canvas.clientWidth - 5, canvas.clientHeight - 5);
+    const candidates = [4, 14, 26].map(gap => [x, below + gap / scale]);
+    candidates.push([x, item.bounds.y - h - 4 / scale]);
+    for (const side of [-1, 1]) candidates.push([x + side * (diameter * 0.52 + w / 2 + 4 / scale), y]);
+    for (const [xx, yy] of candidates) {
+      if (xx - w / 2 < min.x || xx + w / 2 > max.x || yy < min.y || yy + h > max.y) continue;
+      if (
+        tokens.some(
+          ({ bounds: b, t }) =>
+            t.id !== item.t.id && xx - w / 2 < b.x + b.w && xx + w / 2 > b.x && yy < b.y + b.h && yy + h > b.y,
+        )
+      )
+        continue;
+      ctx.fillStyle = '#131916ed';
+      ctx.fillRect(xx - w / 2, yy, w, h);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff4da';
+      ctx.fillText(name, xx, yy + h / 2);
+      return;
+    }
+    if (fallback) {
+      if (fallback.textContent !== name) fallback.textContent = name;
+      fallback.hidden = false;
+    }
   }
   // Objetivo: mira roja y línea desde quien actúa, con la distancia.
   function drawTarget() {
@@ -1390,11 +3379,9 @@
       me = actor();
     if (!t || t.map_id !== S.mapId || !visibleTokens().includes(t)) return;
     const c = cellPx(),
-      o = origin(),
       center = k => {
-        const p = tokenPos(k),
-          s = k.size || 1;
-        return { x: o.x + (p.x + s / 2) * c, y: o.y + (p.y + s / 2) * c, r: (s * c) / 2 };
+        const { x, y, diameter } = tokenFoot(k);
+        return { x, y, r: diameter / 2 };
       };
     const b = center(t),
       ctxInfo = combatContext();
@@ -1403,7 +3390,7 @@
     ctx.lineWidth = 3 * (c / 70);
     ctx.setLineDash([c * 0.1, c * 0.07]);
     ctx.beginPath();
-    ctx.arc(b.x, b.y, b.r + c * 0.16, 0, Math.PI * 2);
+    ctx.ellipse(b.x, b.y, b.r + c * 0.11, b.r * 0.819 + c * 0.085, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
     for (const k of [0, 1, 2, 3]) {
@@ -1448,7 +3435,7 @@
       ay = o.y + (a.y + size / 2) * c,
       bx = o.x + (b.x + size / 2) * c,
       by = o.y + (b.y + size / 2) * c;
-    const ft = plan ? plan.cost : BC.feet(S.grid, a, { x: BC.snap(b.x), y: BC.snap(b.y) }),
+    const ft = plan ? plan.cost : Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y)) * S.grid.feet,
       diff = BC.difficultOnPath(S.grid, S.terrain, a, b),
       over = plan ? !plan.ok : speed && ft > speed;
     ctx.strokeStyle = over || risk?.length ? '#eb5757' : '#e0be80';
@@ -1488,17 +3475,13 @@
   }
   function drawPings() {
     const now = performance.now();
-    S.pings = S.pings.filter(p => now - p.at < 2200);
+    S.pings = S.pings.filter(p => now - p.at < pingDuration);
     for (const p of S.pings) {
-      const k = (now - p.at) / 2200;
-      for (const off of [0, 0.3]) {
-        const kk = (k + off) % 1;
-        ctx.strokeStyle = hexA(/^#[0-9a-f]{6}$/i.test(p.color) ? p.color : '#e0be80', 1 - kk);
-        ctx.lineWidth = 4 / S.view.s;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, (12 + kk * 70) / S.view.s, 0, Math.PI * 2);
-        ctx.stroke();
-      }
+      ctx.strokeStyle = hexA(/^#[0-9a-f]{6}$/i.test(p.color) ? p.color : '#e0be80', 0.85);
+      ctx.lineWidth = 3 / S.view.s;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 22 / S.view.s, 0, Math.PI * 2);
+      ctx.stroke();
       if (p.name) {
         ctx.fillStyle = '#f1f1e8';
         ctx.font = `700 ${14 / S.view.s}px Inter, system-ui, sans-serif`;
@@ -1514,28 +3497,331 @@
     press = null;
   const canMove = t =>
     !TV && (S.isDM ? !S.asPlayer || myCharacters().includes(t.character_id) : myCharacters().includes(t.character_id));
+  const canRotate = t =>
+    !!t &&
+    !TV &&
+    t.kind !== 'object' &&
+    (dmView() ||
+      (t.kind === 'pc' && myCharacters().includes(t.character_id)) ||
+      (t.kind === 'monster' && S.grid.rotation.playerMonsters && !t.hidden));
+  const rotationGroup = () => visibleTokens().filter(t => (S.selected.has(t.id) || t.id === S.sel) && canRotate(t));
+  const autoMode = t => (t.facing_mode && t.facing_mode !== 'inherit' ? t.facing_mode : S.grid.rotation.mode);
+  let nearestTimer;
+  function queueEnemyFacing() {
+    clearTimeout(nearestTimer);
+    const map = S.mapId;
+    nearestTimer = setTimeout(async () => {
+      if (map !== S.mapId || TV || !shown) return;
+      const list = visibleTokens();
+      const changes = list
+        .filter(t => canRotate(t) && canMove(t) && autoMode(t) === 'enemy' && !t.facing_manual)
+        .flatMap(t => {
+          const facing = enemyHeading(t, list);
+          return facing == null || facing === BC.heading(t.facing) ? [] : [{ id: t.id, patch: { facing } }];
+        });
+      try {
+        await applyPoses(changes, null, false);
+      } catch {
+        /* A later update will retry automatic facing. */
+      }
+    }, 100);
+  }
+  function enemyHeading(t, list = visibleTokens()) {
+    const target = list
+      .filter(k => enemies(t, k) && !k.hidden && !info(k).dead)
+      .sort((a, b) => BC.gap(t, a) - BC.gap(t, b) || String(a.id).localeCompare(String(b.id)))[0];
+    return target ? BC.facingTo(t, target) : null;
+  }
+  function movePose(t, x, y) {
+    const mode = autoMode(t);
+    const facing =
+      mode === 'travel' ? BC.headingTo(x - t.x, y - t.y) : mode === 'enemy' ? enemyHeading({ ...t, x, y }) : null;
+    return { x, y, ...(facing != null && { facing }), ...(t.facing_manual && { facing_manual: false }) };
+  }
+  const poseDefaults = { facing: 0, facing_mode: 'inherit', facing_manual: false };
+  const poseValue = (t, key) => t[key] ?? poseDefaults[key];
+  let poseWrites = Promise.resolve();
+  async function applyPoses(specs, movement, record = true) {
+    const map = S.mapId,
+      campaign = S.id;
+    const changes = specs
+      .map(({ id, patch }) => {
+        const t = tokenById(id);
+        patch = Object.fromEntries(Object.entries(patch).filter(([key, value]) => poseValue(t, key) !== value));
+        const before = Object.fromEntries(Object.keys(patch).map(key => [key, poseValue(t, key)]));
+        const expected = Object.fromEntries(Object.keys(patch).map(key => [key, t.savedXY?.[key] ?? before[key]]));
+        return { id, patch, before, expected };
+      })
+      .filter(c => Object.keys(c.patch).length);
+    if (!changes.length) return;
+    const merge = (patches, undo = false) => {
+      const indexed = new Map(patches.map(c => [c.id, c]));
+      S.tokens = S.tokens.map(t => {
+        const edit = indexed.get(t.id);
+        if (!edit || t.map_id !== map) return t;
+        if (!undo) return { ...t, ...edit.patch };
+        return {
+          ...t,
+          ...Object.fromEntries(
+            Object.entries(edit.patch)
+              .filter(([key, val]) => poseValue(t, key) === val)
+              .map(([key]) => [key, edit.before[key]]),
+          ),
+        };
+      });
+    };
+    const write = async () => {
+      if (map !== S.mapId || campaign !== S.id) return;
+      merge(changes);
+      S.dirty = true;
+      try {
+        let rows;
+        try {
+          rows = await Cloud.poseTokens(
+            campaign,
+            map,
+            changes.map(({ id, patch, expected }) => ({ id, patch, before: expected })),
+          );
+        } catch (err) {
+          if (!/commit_board_token_poses|PGRST202/.test(err.message)) throw err;
+          if (!movement) throw Error('Para girar y guardar la orientación, aplicá la migración 028_token_facing.sql.');
+          rows = (
+            await Promise.all(
+              changes
+                .filter(c => 'x' in c.patch || 'y' in c.patch)
+                .map(c =>
+                  Cloud.updateToken(c.id, {
+                    ...(Object.hasOwn(c.patch, 'x') && { x: c.patch.x }),
+                    ...(Object.hasOwn(c.patch, 'y') && { y: c.patch.y }),
+                  }),
+                ),
+            )
+          ).flat();
+        }
+        if (rows.length !== changes.length) throw Error('No se pudo guardar el cambio de las fichas.');
+        if (map !== S.mapId || campaign !== S.id) return;
+        const byId = new Map(rows.map(row => [row.id, row]));
+        S.tokens = S.tokens.map(t =>
+          byId.has(t.id) && !(t.updated_at > byId.get(t.id).updated_at) ? sizedToken(byId.get(t.id)) : t,
+        );
+        if (record) {
+          const saved = changes.map(c => ({
+            ...c,
+            patch: Object.fromEntries(Object.keys(c.patch).map(key => [key, poseValue(byId.get(c.id), key)])),
+          }));
+          S.poseUndo.push({ changes: saved, movement });
+          if (S.poseUndo.length > 40) S.poseUndo.shift();
+        }
+        return true;
+      } catch (err) {
+        if (map === S.mapId && campaign === S.id) merge(changes, true);
+        throw err;
+      } finally {
+        S.dirty = true;
+      }
+    };
+    const queued = poseWrites.then(write, write);
+    poseWrites = queued.catch(() => {});
+    return queued;
+  }
+  async function undoPose() {
+    await poseWrites;
+    const last = S.poseUndo.at(-1);
+    if (!last) return;
+    if (last.movement?.turn && last.movement.turn !== S.turnId) throw Error('Ese movimiento fue en otro turno.');
+    for (const { id, patch, before } of last.changes) {
+      const t = tokenById(id);
+      if (!t || t.map_id !== S.mapId || Object.keys(patch).some(key => poseValue(t, key) !== patch[key]))
+        throw Error('La ficha cambió desde la última acción.');
+      if (
+        ('x' in before || 'y' in before) &&
+        overlapsPieces(
+          { ...t, ...before },
+          mapTokens().filter(k => !last.changes.some(c => c.id === k.id)),
+        )
+      )
+        throw Error('La casilla anterior está ocupada.');
+    }
+    if (
+      await applyPoses(
+        last.changes.map(c => ({ id: c.id, patch: c.before })),
+        last.movement,
+        false,
+      )
+    ) {
+      S.poseUndo.pop();
+      if (last.movement?.pts) {
+        moves().tokens[last.movement.id] = last.movement.pts;
+        saveMoves();
+      }
+      pick();
+    }
+  }
+  let turnsQueued = Promise.resolve();
+  function rotateSelection(directory, ids = rotationGroup().map(t => t.id)) {
+    const map = S.mapId;
+    turnsQueued = turnsQueued
+      .then(async () => {
+        if (map !== S.mapId) return;
+        const choices = ids
+          .map(tokenById)
+          .filter(canRotate)
+          .map(t => ({ id: t.id, patch: { facing: BC.heading(directory(t)), facing_manual: true } }));
+        await applyPoses(choices);
+        pick();
+      })
+      .catch(err => toast(err.message));
+    return turnsQueued;
+  }
+  const turnBy = n => rotateSelection(t => BC.heading(t.facing) + n);
+  function selectForRotation(t) {
+    if (!canRotate(t)) return;
+    if (!S.selected.size && S.sel) S.selected.add(S.sel);
+    if (S.selected.has(t.id) && S.selected.size > 1) S.selected.delete(t.id);
+    else S.selected.add(t.id);
+    S.sel = S.selected.has(t.id) ? t.id : S.selected.values().next().value;
+    pick();
+  }
   function hitToken(w) {
-    const c = cellPx(),
-      o = origin();
-    const list = visibleTokens().slice().reverse();
-    return list.find(t => {
-      const p = tokenPos(t),
-        size = t.size || 1,
-        cx = o.x + (p.x + size / 2) * c,
-        cy = o.y + (p.y + size / 2) * c;
-      return Math.hypot(w.x - cx, w.y - cy) <= (size * c) / 2;
-    });
+    const list = visibleTokens().sort(tokenOrder).reverse();
+    const p = toCellF(w);
+    return list.find(t => BC.inFootprint({ ...t, ...tokenPos(t) }, p.x, p.y));
   }
   function local(e) {
     const r = canvas.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   }
+  const pointerAngle = (a, b) => Math.atan2(b.y - a.y, b.x - a.x);
+  function turnGesture(angle) {
+    const start = rotationGroup().map(t => [t.id, BC.heading(t.facing)]);
+    return { start, angle, sweep: 0, steps: 0, map: S.mapId };
+  }
+  function turnGestureMove(g, angle) {
+    g.sweep += Math.atan2(Math.sin(angle - g.angle), Math.cos(angle - g.angle));
+    g.angle = angle;
+    g.steps = Math.round(g.sweep / (Math.PI / 4));
+    S.rotationPreview = new Map(g.start.map(([id, facing]) => [id, BC.heading(facing + g.steps)]));
+    S.dirty = true;
+  }
+  function turnGestureEnd(g, cancel) {
+    S.rotationPreview.clear();
+    S.dirty = true;
+    if (!cancel && g.steps && g.map === S.mapId)
+      rotateSelection(
+        t => BC.heading(t.facing) + g.steps,
+        g.start.map(([id]) => id),
+      );
+  }
+  let rotationHandle;
+  function mountRotationHandle() {
+    rotationHandle = document.createElement('button');
+    rotationHandle.type = 'button';
+    rotationHandle.className = 'board-rotate-handle';
+    rotationHandle.setAttribute('aria-label', 'Girar ficha');
+    rotationHandle.title = 'Arrastrá para girar · Q / E';
+    rotationHandle.innerHTML = '<span aria-hidden="true">↻</span>';
+    rotationHandle.hidden = true;
+    canvas.parentElement.append(rotationHandle);
+    let drag;
+    rotationHandle.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      const t = tokenById(S.sel);
+      if (!canRotate(t)) return;
+      const p = local(e);
+      if (e.shiftKey || e.ctrlKey || e.metaKey || S.multiSelect || S.aimFacing) {
+        const target = hitToken(toWorld(p.x, p.y));
+        if (S.aimFacing) {
+          S.aimFacing = false;
+          if (target) rotateSelection(item => BC.facingTo(item, target) ?? item.facing);
+          tools();
+        } else selectForRotation(target);
+        e.preventDefault();
+        return;
+      }
+      const foot = tokenFoot(t),
+        center = { x: foot.x * S.view.s + S.view.x, y: foot.y * S.view.s + S.view.y };
+      drag = { center, ...turnGesture(pointerAngle(center, p)) };
+      rotationHandle.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    rotationHandle.addEventListener('pointermove', e => {
+      if (drag) turnGestureMove(drag, pointerAngle(drag.center, local(e)));
+    });
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture'])
+      rotationHandle.addEventListener(type, e => {
+        if (!drag) return;
+        const gesture = drag;
+        drag = null;
+        turnGestureEnd(gesture, type !== 'pointerup');
+        if (type === 'pointerup' && Math.abs(gesture.sweep) < 0.09) rotationDialog();
+      });
+    rotationHandle.addEventListener('click', e => {
+      if (e.detail === 0) rotationDialog();
+    });
+  }
+  function positionRotationHandle(pieces) {
+    const item = pieces.find(({ t }) => t.id === S.sel && canRotate(t));
+    if (!item || S.multiSelect || S.aimFacing || !['move', 'tokens', 'enc'].includes(S.tool)) {
+      rotationHandle.hidden = true;
+      return;
+    }
+    const { s, x, y } = S.view,
+      f = item.foot;
+    const cx = f.x * s + x,
+      cy = f.y * s + y;
+    const w = canvas.clientWidth,
+      h = canvas.clientHeight;
+    rotationHandle.hidden = cx < 0 || cx > w || cy < 0 || cy > h;
+    if (rotationHandle.hidden) return;
+    const r = f.diameter * s;
+    const right = Math.max(22, Math.min(w - 22, cx + r * 0.43));
+    const bottom = Math.max(22, Math.min(h - 22, cy + r * 0.39 + 3));
+    rotationHandle.style.left = `${right}px`;
+    rotationHandle.style.top = `${bottom}px`;
+  }
   onCanvas('pointerdown', e => {
     canvas.setPointerCapture(e.pointerId);
     pointers.set(e.pointerId, local(e));
+    if (casting?.aim()) {
+      const p = local(e),
+        world = toWorld(p.x, p.y);
+      const shape = casting.plan()?.shape;
+      if (pointers.size === 1) {
+        castDrag = {
+          p,
+          world,
+          time: performance.now(),
+          moved: false,
+          view: { ...S.view },
+          template: shape && (!shape.self || castDirection(shape)),
+        };
+      } else if (pointers.size === 2) {
+        const [a, b] = [...pointers.values()];
+        castDrag = {
+          multi: true,
+          dir: pointerAngle(a, b),
+          length: Math.hypot(a.x - b.x, a.y - b.y),
+          rotation: castDirection(shape) ? (casting.plan()?.placement?.area?.dir ?? 0) : null,
+        };
+      }
+      return;
+    }
     if (pointers.size === 2) {
       const [a, b] = [...pointers.values()];
-      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), m: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
+      const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      const selected = rotationGroup().some(t => {
+        const f = tokenFoot(t);
+        return [a, b, m].some(p => {
+          const w = toWorld(p.x, p.y),
+            radius = f.diameter / 2 + 12 / S.view.s;
+          return Math.abs(w.x - f.x) <= radius && Math.abs(w.y - f.y) <= radius;
+        });
+      });
+      pinch =
+        e.pointerType === 'touch' && selected
+          ? { turn: turnGesture(pointerAngle(a, b)) }
+          : { d: Math.hypot(a.x - b.x, a.y - b.y), m };
+      if (S.drag?.token) S.channel?.send({ t: 'drop', id: S.drag.token.id });
       S.drag = null;
       clearTimeout(press?.timer);
       return;
@@ -1552,6 +3838,10 @@
         return;
       }
       const t = hitToken(w);
+      if (S.aimFacing || S.multiSelect || e.shiftKey || e.ctrlKey || e.metaKey) {
+        S.drag = { rotationTap: true, tap: t?.id };
+        return;
+      }
       const group = t && S.group && t.stage?.startsWith('enc:' + S.group + ':') ? groupTokens(S.group) : null;
       if (t && canMove(t))
         S.drag = {
@@ -1572,8 +3862,10 @@
           press = null;
         }
       }, 550);
-    } else if (tool === 'scene') S.drag = { cast: true, pan: { x: S.view.x, y: S.view.y, p } };
-    else if (tool === 'ruler') S.drag = { ruler: { a: cell, b: cell } };
+    } else if (tool === 'scene') {
+      S.drag = { cast: true, pan: { x: S.view.x, y: S.view.y, p } };
+      if (e.pointerType !== 'touch') setSpellAim(w);
+    } else if (tool === 'ruler') S.drag = { ruler: { a: cell, b: cell } };
     else if (tool === 'ping') ping(w);
     else if (tool === 'area') {
       const f = toCellF(w);
@@ -1600,9 +3892,35 @@
   onCanvas('pointermove', e => {
     if (!pointers.has(e.pointerId)) return hover(e);
     pointers.set(e.pointerId, local(e));
+    if (castDrag) {
+      const p = local(e),
+        w = toWorld(p.x, p.y),
+        d = castDrag;
+      if (d.multi && pointers.size === 2) {
+        const [a, b] = [...pointers.values()],
+          dist = Math.hypot(a.x - b.x, a.y - b.y),
+          angle = pointerAngle(a, b);
+        if (d.rotation != null && Math.abs(angle - d.dir) > 0.055 && Math.abs(dist / d.length - 1) < 0.12) {
+          d.rotation += angle - d.dir;
+          casting.mapTap({ w, drag: true, start: w, rotation: d.rotation });
+        } else if (d.length && dist) zoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, dist / d.length);
+        d.dir = angle;
+        d.length = dist;
+      } else if (!d.multi && Math.hypot(p.x - d.p.x, p.y - d.p.y) > 6) {
+        d.moved = true;
+        if (d.template) casting.mapTap({ w, start: d.world, drag: true });
+        else {
+          S.view.x = d.view.x + p.x - d.p.x;
+          S.view.y = d.view.y + p.y - d.p.y;
+          S.dirty = true;
+        }
+      }
+      return;
+    }
     if (pinch && pointers.size === 2) {
-      const [a, b] = [...pointers.values()],
-        d = Math.hypot(a.x - b.x, a.y - b.y),
+      const [a, b] = [...pointers.values()];
+      if (pinch.turn) return turnGestureMove(pinch.turn, pointerAngle(a, b));
+      const d = Math.hypot(a.x - b.x, a.y - b.y),
         m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       zoomAt(m.x, m.y, d / pinch.d);
       S.view.x += m.x - pinch.m.x;
@@ -1625,11 +3943,24 @@
       S.view.y = d.pan.y + p.y - d.pan.p.y;
     } else if (d.token) {
       const c = cellPx();
-      d.token.x = d.start.x + (w.x - d.grab.x) / c;
-      d.token.y = d.start.y + (w.y - d.grab.y) / c;
+      const size = BC.tokenSpan(d.token);
+      const others = d.group || [];
+      const step = others.some(k => BC.tokenSpan(k) >= 1) ? 1 : size;
+      const dx = BC.snapToken((w.x - d.grab.x) / c, step);
+      const dy = BC.snapToken((w.y - d.grab.y) / c, step);
+      d.token.x = others.length ? d.start.x + dx : Math.max(0, Math.min(S.grid.cols - size, d.start.x + dx));
+      d.token.y = others.length ? d.start.y + dy : Math.max(0, Math.min(S.grid.rows - size, d.start.y + dy));
       for (const k of d.group || []) {
         k.x = k.sx + d.token.x - d.start.x;
         k.y = k.sy + d.token.y - d.start.y;
+      }
+      if (d.token.x !== d.start.x || d.token.y !== d.start.y) {
+        const before = tokenById(d.token.id);
+        if (before) d.token.facing = movePose(before, d.token.x, d.token.y).facing ?? before.facing;
+        for (const k of d.group || []) {
+          const prior = tokenById(k.id);
+          if (prior) k.facing = movePose(prior, k.x, k.y).facing ?? prior.facing;
+        }
       }
       trackPath(d);
       sendDrag(d.token);
@@ -1645,19 +3976,42 @@
   });
   function endPointer(e) {
     pointers.delete(e.pointerId);
+    if (castDrag) {
+      const d = castDrag;
+      if (!pointers.size) castDrag = null;
+      if (!d.multi && !d.moved && e.type === 'pointerup')
+        casting.mapTap({ w: d.world, start: d.world }, performance.now() - d.time > 540);
+      return;
+    }
     if (pinch) {
-      if (pointers.size < 2) pinch = null;
+      if (pointers.size < 2) {
+        if (pinch.turn) turnGestureEnd(pinch.turn, e.type === 'pointercancel');
+        pinch = null;
+        press = null;
+      }
       return;
     }
     clearTimeout(press?.timer);
     const d = S.drag;
     S.drag = null;
-    if (d?.token) {
+    if (d?.rotationTap && e.type !== 'pointercancel' && !press?.moved) {
+      const target = tokenById(d.tap);
+      if (S.aimFacing) {
+        S.aimFacing = false;
+        if (target) rotateSelection(t => BC.facingTo(t, target) ?? t.facing);
+        tools();
+      } else selectForRotation(target);
+    } else if (d?.token) {
       // Mayúsculas o Alt al soltar: movimiento libre (empujón, teletransporte…), no provoca.
       d.free = e.shiftKey || e.altKey;
-      dropToken(d);
+      if (press?.moved) for (const token of [d.token, ...(d.group || [])]) landing.set(token.id, performance.now());
+      if (e.type !== 'pointercancel') dropToken(d);
+      else S.channel?.send({ t: 'drop', id: d.token.id });
     } else if (d?.cast) {
-      if (e.type === 'pointerup' && press && !press.moved && !TV) castAt(toCell(toWorld(press.p.x, press.p.y)));
+      if (e.type === 'pointerup' && press && !press.moved && !TV) {
+        const world = toWorld(press.p.x, press.p.y);
+        castAt(toCell(world), world);
+      }
     } else if (d?.pan && !press?.moved && !TV) {
       // Tocar una puerta o una escalera sin ficha encima: se abre, se cierra o se sube.
       if (S.tool === 'props') S.propHover = null;
@@ -1682,10 +4036,27 @@
   }
   onCanvas('pointerup', endPointer);
   onCanvas('pointercancel', endPointer);
+  onCanvas('pointerleave', () => {
+    if (S.spellAim && !S.drag?.cast) {
+      S.spellAim = null;
+      S.dirty = true;
+    }
+    if (hoverToken === null) return;
+    hoverToken = null;
+    S.dirty = true;
+  });
   onCanvas(
     'wheel',
     e => {
       e.preventDefault();
+      if ((rotationKey || e.altKey) && rotationGroup().length && e.deltaY) {
+        const now = performance.now();
+        if (now - lastWheelTurn >= 65) {
+          lastWheelTurn = now;
+          turnBy(Math.sign(e.deltaY));
+        }
+        return;
+      }
       const p = local(e);
       zoomAt(p.x, p.y, Math.exp(-e.deltaY * 0.0015));
     },
@@ -1693,6 +4064,12 @@
   );
   onCanvas('contextmenu', e => e.preventDefault());
   function hover(e) {
+    if (casting?.active()) return;
+    if (S.tool === 'scene' && H.cast && !TV) {
+      const p = local(e);
+      setSpellAim(toWorld(p.x, p.y));
+      return;
+    }
     if (S.tool === 'props' && !TV) {
       const cell = toCell(toWorld(local(e).x, local(e).y));
       if (S.propHover?.x !== cell.x || S.propHover?.y !== cell.y) {
@@ -1701,26 +4078,54 @@
       }
       return;
     }
+    const p = local(e),
+      w = toWorld(p.x, p.y);
+    const t = S.mapId && hitToken(w);
+    const near = 9 / S.view.s;
+    const id =
+      t?.id ||
+      coveredPieces.find(
+        ({ foot }) =>
+          Math.abs(w.x - foot.x) <= foot.diameter / 2 + near && Math.abs(w.y - foot.y) <= foot.diameter / 2 + near,
+      )?.t.id ||
+      null;
+    if (hoverToken !== id) {
+      hoverToken = id;
+      S.dirty = true;
+    }
     if (!['move', 'tokens'].includes(S.tool) || TV) return;
-    const t = hitToken(toWorld(local(e).x, local(e).y));
     canvas.style.cursor = t && canMove(t) ? 'grab' : 'default';
   }
   let lastSend = 0;
+  let rotationKey = false,
+    lastWheelTurn = -Infinity;
   function sendDrag(t) {
     const now = performance.now();
     if (now - lastSend < 80) return;
     lastSend = now;
-    S.channel?.send({ t: 'drag', id: t.id, map: S.mapId, x: t.x, y: t.y });
+    S.channel?.send({ t: 'drag', id: t.id, map: S.mapId, x: t.x, y: t.y, facing: BC.heading(t.facing) });
   }
   async function dropToken(d) {
     const t = d.token,
-      size = t.size || 1;
-    const x = Math.max(0, Math.min(S.grid.cols - Math.max(1, size), Math.round(t.x))),
-      y = Math.max(0, Math.min(S.grid.rows - Math.max(1, size), Math.round(t.y)));
+      size = BC.tokenSpan(t);
+    if (d.group?.length && (t.x !== d.start.x || t.y !== d.start.y)) {
+      S.channel?.send({ t: 'drop', id: t.id });
+      return dropGroup(d, t.x - d.start.x, t.y - d.start.y);
+    }
+    const x = Math.max(0, Math.min(S.grid.cols - size, BC.snapToken(t.x, size))),
+      y = Math.max(0, Math.min(S.grid.rows - size, BC.snapToken(t.y, size)));
     const moved = x !== d.start.x || y !== d.start.y;
     S.channel?.send({ t: 'drop', id: t.id });
-    if (moved && d.group?.length) return dropGroup(d, x - d.start.x, y - d.start.y);
     if (!moved) return tapToken(t.id);
+    const occupied = dmView() ? mapTokens() : visibleTokens();
+    if (overlapsPieces({ ...t, x, y }, occupied)) {
+      toast('Esa casilla ya está ocupada.');
+      return pick();
+    }
+    if (!d.free && !BC.roomFor(S.grid, S.terrain, { ...t, x, y }, [])) {
+      toast('La ficha no cabe en ese terreno.');
+      return pick();
+    }
     const before = S.tokens.find(k => k.id === t.id);
     let plan = null;
     if (before && limited(before)) {
@@ -1729,7 +4134,7 @@
         toast(why);
         return pick();
       }
-      plan = BC.moveTo(S.grid, S.terrain, turnPts(before), { x, y }, budget(before));
+      plan = BC.moveTo(S.grid, S.terrain, turnPts(before), { x, y }, budget(before), size);
       if (!plan.ok) {
         toast(`No te alcanza el movimiento: te quedan ${plan.left} de ${budget(before)} pies este turno.`);
         return pick();
@@ -1742,20 +4147,22 @@
       ]);
       if (risk.length && !(await confirmMove(risk))) return pick();
     }
-    S.tokens = S.tokens.map(k => (k.id === t.id ? { ...k, x, y } : k));
     S.sel = t.id;
     if (dmView() && !enemies(t, tokenById(S.target))) S.target = null;
     pick();
     try {
-      const rows = await Cloud.updateToken(t.id, { x, y });
-      if (!rows.length) throw Error('No podés mover esa ficha.');
+      await applyPoses([{ id: t.id, patch: movePose(before || t, x, y) }], {
+        id: t.id,
+        turn: plan && S.turnId,
+        pts: plan && turnPts(before),
+      });
       if (plan) {
         moves().tokens[t.id] = plan.pts;
         saveMoves();
       }
       afterMove(d, x, y);
+      queueEnemyFacing();
     } catch (e) {
-      S.tokens = S.tokens.map(k => (k.id === t.id ? before : k));
       toast(e.message);
     }
     pick();
@@ -1767,8 +4174,8 @@
       ? { by: 'dm', name: 'DM', color: '#e0be80' }
       : { by: S.me?.id || 'yo', name: me?.name || '', color: me ? BC.colorFor(me.id, 'pc') : '#7fd1c1' };
   };
-  function cleanTemplate(t) {
-    if (!t || !Object.hasOwn(BC.SHAPES, t.kind)) return null;
+  function cleanTemplate(t, spell = false) {
+    if (!t || (!Object.hasOwn(BC.SHAPES, t.kind) && !(spell && syncableArea.has(t.kind)))) return null;
     const n = (v, min, max, def) => (Number.isFinite(Number(v)) ? Math.max(min, Math.min(max, Number(v))) : def);
     return {
       id: String(t.id || '').slice(0, 40) || Math.random().toString(36).slice(2),
@@ -1777,7 +4184,7 @@
       y: n(t.y, -50, 1000, 0),
       dir: n(t.dir, -7, 7, 0),
       feet: n(t.feet, 5, 600, 20),
-      width: n(t.width, 5, 100, 5),
+      width: n(t.width, spell && t.kind === 'wall' ? 0.1 : 5, 100, 5),
       by: String(t.by || '').slice(0, 60),
       name: String(t.name || '').slice(0, 60),
       color: /^#[0-9a-f]{6}$/i.test(t.color) ? t.color : '#e0be80',
@@ -1847,7 +4254,7 @@
   }
 
   // ---------- Visión: lo que los personajes tienen a la vista ----------
-  let sight = { key: '', terrain: null, walls: null, bits: null };
+  const sightCache = [{}, {}];
   function darkvision(t) {
     const row = (S.party?.characters || []).find(c => c.id === t.character_id);
     try {
@@ -1869,16 +4276,17 @@
       }))
       .concat(BP ? BP.lights(S.props).map(l => ({ ...l, range: l.feet / S.grid.feet })) : []);
   }
-  function seen() {
-    const v = S.grid.vision;
-    if (!v?.los) return null;
-    const lights = v.dark ? lightSources() : [],
+  function seen(ignoreClouds = false) {
+    const v = S.grid.vision || {};
+    const clouds = ignoreClouds ? [] : spellClouds;
+    if (!v.los && !clouds.length) return null;
+    const lights = v.los && v.dark ? lightSources() : [],
       viewers = mapTokens()
         .filter(t => t.kind === 'pc' && !t.hidden)
         .map(t => ({
           x: t.x + (t.size || 1) / 2,
           y: t.y + (t.size || 1) / 2,
-          range: v.dark ? Math.max(v.light, darkvision(t), BC.lightFeet(t.stage)) / S.grid.feet : Infinity,
+          range: v.los && v.dark ? Math.max(v.light, darkvision(t), BC.lightFeet(t.stage)) / S.grid.feet : Infinity,
         }));
     const key =
       S.mapId +
@@ -1891,9 +4299,17 @@
       '|' +
       viewers.map(p => `${p.x},${p.y},${p.range}`).join(';') +
       '|' +
-      lights.map(p => `${p.x},${p.y},${p.range}`).join(';');
+      lights.map(p => `${p.x},${p.y},${p.range}`).join(';') +
+      '|' +
+      clouds.map(p => [p.x, p.y, p.r].join(',')).join(';');
+    const sight = sightCache[Number(ignoreClouds)];
     if (sight.key !== key || sight.terrain !== S.terrain || sight.walls !== S.walls)
-      sight = { key, terrain: S.terrain, walls: S.walls, bits: BC.sight(S.grid, S.terrain, S.walls, viewers, lights) };
+      Object.assign(sight, {
+        key,
+        terrain: S.terrain,
+        walls: S.walls,
+        bits: BC.sight(S.grid, v.los ? S.terrain : '', v.los ? S.walls : [], viewers, lights, clouds),
+      });
     return sight.bits;
   }
   // Resplandor cálido alrededor de cada luz, solo sobre las casillas que realmente alumbra.
@@ -2082,6 +4498,7 @@
   // Tocar una ficha: con alguien que actúa, tocar a otro lo marca como objetivo (el DM elige objetivo
   // solo entre enemigos de su criatura; tocar a otra la selecciona).
   function tapToken(id) {
+    S.selected.clear();
     const t = tokenById(id),
       me = actor();
     if (!t) {
@@ -2112,7 +4529,17 @@
     const base = {
       actor: me ? { id: me.id, name: me.name, characterId: me.character_id, combatantId: me.combatant_id } : null,
     };
-    if (!me || !t || t.map_id !== S.mapId || t.id === me.id) return { ...base, target: null };
+    if (
+      !me ||
+      !t ||
+      t.map_id !== S.mapId ||
+      t.id === me.id ||
+      (playerView() &&
+        spellClouds.length &&
+        (!visibleTokens().some(v => v.id === t.id) ||
+          !canSeeGround({ x: t.x + BC.tokenSpan(t) / 2, y: t.y + BC.tokenSpan(t) / 2 })))
+    )
+      return { ...base, target: null };
     const feet = S.grid.feet || 5,
       live = visibleTokens().filter(k => k.kind !== 'object' && !info(k).dead);
     const allies = live.filter(k => k.id !== me.id && k.id !== t.id && sideOf(k) === sideOf(me));
@@ -2143,6 +4570,88 @@
     card();
     S.dirty = true;
   }
+  const autoChoices = { off: 'Desactivada', travel: 'Dirección de avance', enemy: 'Enemigo más cercano' };
+  const directionNames = ['Sur', 'Suroeste', 'Oeste', 'Noroeste', 'Norte', 'Noreste', 'Este', 'Sureste'];
+  function rotationDialog() {
+    const group = rotationGroup();
+    if (!group.length) return;
+    const primary = group.find(t => t.id === S.sel) || group[0];
+    const modeChoices = { inherit: 'Usar ajuste del tablero', ...autoChoices };
+    const configurable = group.every(canMove);
+    const directionGrid = [3, 4, 5, 2, null, 6, 1, 0, 7]
+      .map(n =>
+        n == null
+          ? '<span aria-hidden="true">✥</span>'
+          : `<button type="button" class="button secondary" data-direction="${n}" aria-label="${directionNames[n]}" aria-pressed="${group.every(t => BC.heading(t.facing) === n)}">${BC.headings[n]}</button>`,
+      )
+      .join('');
+    const options = Object.entries(modeChoices)
+      .map(
+        ([key, label]) =>
+          `<option value="${key}" ${key === (primary.facing_mode || 'inherit') ? 'selected' : ''}>${label}</option>`,
+      )
+      .join('');
+    modal(
+      group.length > 1 ? `Girar ${group.length} fichas` : `Girar · ${info(primary).name || primary.name}`,
+      `<div class="board-compass" aria-label="Dirección">${directionGrid}</div><div class="actions"><button class="button secondary" type="button" data-look-at>Mirar a…</button><button class="button secondary" type="button" data-select-group>${S.multiSelect ? 'Terminar selección' : 'Seleccionar varias'}</button>${S.poseUndo.length ? '<button class="button secondary" type="button" data-undo-pose>Deshacer</button>' : ''}</div>${group.some(t => missingFacings.has(t.id)) ? '<p class="small muted">Faltan vistas de giro. La miniatura quedó marcada para volver a renderizar.</p>' : ''}${configurable ? `<label class="field">Orientación automática<select name="mode">${options}</select></label>` : ''}`,
+      configurable
+        ? async fd => {
+            await applyPoses(group.map(t => ({ id: t.id, patch: { facing_mode: fd.get('mode') } })));
+            queueEnemyFacing();
+            pick();
+          }
+        : null,
+    );
+    const modalEl = $('#modal');
+    for (const direction of modalEl.querySelectorAll('[data-direction]'))
+      direction.addEventListener('click', () => {
+        modalEl.close();
+        rotateSelection(() => Number(direction.dataset.direction));
+      });
+    modalEl.querySelector('[data-look-at]').onclick = () => {
+      modalEl.close();
+      S.aimFacing = true;
+      $('#board-card').setAttribute('data-offscreen', '');
+      rotationHandle.hidden = true;
+      if (!['move', 'tokens', 'enc'].includes(S.tool)) S.tool = 'move';
+      hint('Tocá la ficha hacia la que querés mirar.');
+      S.dirty = true;
+    };
+    modalEl.querySelector('[data-select-group]').onclick = () => {
+      modalEl.close();
+      S.multiSelect = !S.multiSelect;
+      if (!['move', 'tokens', 'enc'].includes(S.tool)) S.tool = 'move';
+      tools();
+    };
+    modalEl.querySelector('[data-undo-pose]')?.addEventListener('click', () => {
+      modalEl.close();
+      undoPose().catch(err => toast(err.message));
+    });
+  }
+  function rotationSettings() {
+    if (!dmView() || !S.mapId) return;
+    const { mode, marker, playerMonsters } = S.grid.rotation;
+    modal(
+      'Orientación del tablero',
+      `<label class="field">Orientación automática<select name="mode">${Object.entries(autoChoices)
+        .map(([key, label]) => `<option value="${key}" ${key === mode ? 'selected' : ''}>${label}</option>`)
+        .join(
+          '',
+        )}</select></label><label class="check"><input type="checkbox" name="marker" ${marker ? 'checked' : ''}>Marca de orientación en las peanas</label><label class="check"><input type="checkbox" name="playerMonsters" ${playerMonsters ? 'checked' : ''}>Los jugadores pueden girar monstruos visibles</label>`,
+      async fd => {
+        const grid = {
+          ...currentMap().grid,
+          rotation: { mode: fd.get('mode'), marker: fd.has('marker'), playerMonsters: fd.has('playerMonsters') },
+        };
+        const map = S.mapId;
+        const saved = await Cloud.saveMap(S.id, { grid }, map);
+        rememberMaps([saved]);
+        if (map === S.mapId) S.grid.rotation = BC.normGrid(grid).rotation;
+        queueEnemyFacing();
+        ui();
+      },
+    );
+  }
   function targetLine(c) {
     if (!c?.target) return '';
     return `${esc(c.name)} · ${c.distance} pies${c.flank ? ` · <b>flanqueo con ${esc(c.flankWith)}</b>: ventaja cuerpo a cuerpo` : ''}${c.foeAdjacent ? ' · enemigo al lado: desventaja a distancia' : ''}`;
@@ -2153,7 +4662,7 @@
     if (!el) return;
     const c = combatContext(),
       html = shown && H.dock ? H.dock(c) : '';
-    el.hidden = !html;
+    el.hidden = !html || casting?.active();
     if (!html) return;
     const scroll = el.querySelector('.board-dock-body')?.scrollTop || 0;
     const me = actor(),
@@ -2166,10 +4675,9 @@
   // Recorrido de la ficha durante el arrastre, casilla por casilla.
   function trackPath(d) {
     const last = d.path[d.path.length - 1],
-      x = Math.round(d.token.x),
-      y = Math.round(d.token.y);
+      { x, y, span } = BC.footprintRect(d.token);
     if (x === last.x && y === last.y) return;
-    d.path.push(...BC.steps(last, { x, y }).slice(1));
+    d.path.push(...BC.steps(last, { x, y }, Math.min(1, span)).slice(1));
     // Solo cuenta dónde empieza y dónde termina: tantear el recorrido arrastrando no provoca nada.
     const t = tokenById(d.token.id);
     d.risk = inCombat() && !d.group?.length && t && !isFree(d, t) ? threats({ ...t, x, y }, [d.start, { x, y }]) : [];
@@ -2177,7 +4685,7 @@
       t && limited(t)
         ? turnBlock(t)
           ? { ok: false, blocked: true, cost: 0 }
-          : { ...BC.moveTo(S.grid, S.terrain, turnPts(t), { x, y }, budget(t)), budget: budget(t) }
+          : { ...BC.moveTo(S.grid, S.terrain, turnPts(t), { x, y }, budget(t), span), budget: budget(t) }
         : null;
   }
   const isFree = (d, t) => d.free || !!H.disengaged?.(t) || (!!t.combatant_id && S.disengaged.has(t.combatant_id));
@@ -2211,9 +4719,10 @@
   // Puntos del turno; si el DM la movió mientras tanto, se sigue desde donde está.
   function turnPts(t) {
     const list = moves().tokens[t.id];
-    if (!list?.length) return [{ x: t.x, y: t.y, ft: 0 }];
+    const { x, y } = BC.footprintRect(t);
+    if (!list?.length) return [{ x, y, ft: 0 }];
     const last = list[list.length - 1];
-    return last.x === t.x && last.y === t.y ? list : [{ x: t.x, y: t.y, ft: last.ft }];
+    return last.x === x && last.y === y ? list : [{ x, y, ft: last.ft }];
   }
   function turnBlock(t) {
     const c = (S.party?.combatants || []).find(x => x.character_id && x.character_id === t.character_id);
@@ -2244,15 +4753,24 @@
     return BC.provokers(mover, path, others, S.grid.feet || 5).map(p => p.token);
   }
   // Tras mover: avisa a todos el recorrido; cada pantalla ve si alguna de sus fichas puede reaccionar.
-  function afterMove(d, x, y) {
-    if (!inCombat() || d.group?.length) return;
+  function afterMove(d, x, y, teleport = false) {
+    if (d.group?.length) return;
     const t = tokenById(d.token.id);
     if (!t || !sideOf(t)) return;
     const path = [
       { x: d.start.x, y: d.start.y },
       { x, y },
     ];
-    const msg = { t: 'moved', id: t.id, map: S.mapId, path, free: isFree(d, t) };
+    const msg = {
+      t: 'moved',
+      id: t.id,
+      map: S.mapId,
+      path,
+      free: teleport || isFree(d, t),
+      teleport,
+      turn: turnZoneKey(S.party?.encounter),
+      moveId: globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2),
+    };
     S.channel?.send(msg);
     onMoved(msg);
   }
@@ -2263,9 +4781,26 @@
     return k.kind === 'pc' && (id ? k.character_id === id : myCharacters().includes(k.character_id));
   }
   function onMoved(m) {
-    if (m.free || m.map !== S.mapId || !inCombat() || !Array.isArray(m.path) || m.path.length < 2) return;
+    if (
+      m.map !== S.mapId ||
+      !Array.isArray(m.path) ||
+      m.path.length < 2 ||
+      m.path.length > 200 ||
+      !m.path.every(
+        p =>
+          Number.isFinite(p.x) &&
+          Number.isFinite(p.y) &&
+          p.x >= 0 &&
+          p.y >= 0 &&
+          p.x <= S.grid.cols &&
+          p.y <= S.grid.rows,
+      )
+    )
+      return;
     const mover = tokenById(m.id);
     if (!mover) return;
+    checkZoneMove(mover, m);
+    if (m.free || !inCombat()) return;
     const reactors = mapTokens()
       .filter(k => k.id !== mover.id && mine(k) && enemies(k, mover) && !info(k).dead)
       .map(k => ({ token: k, reach: H.reach?.(k) || 5 }));
@@ -2282,6 +4817,18 @@
   function turnChanged() {
     const enc = S.party?.encounter,
       id = enc?.active ? enc.current_id : null;
+    const zoneKey = turnZoneKey(enc);
+    if (zoneKey !== zoneTurn?.key) {
+      const tokenFor = combatant =>
+        mapTokens().find(
+          k =>
+            k.combatant_id === combatant ||
+            (k.character_id && S.party?.combatants?.some(c => c.id === combatant && c.character_id === k.character_id)),
+        );
+      if (zoneTurn && zoneKey) checkZoneTurn(tokenFor(zoneTurn.id), 'end', zoneTurn.key);
+      zoneTurn = zoneKey ? { key: zoneKey, id } : null;
+      if (zoneTurn) checkZoneTurn(tokenFor(id), 'start', zoneKey);
+    }
     if (id === S.turnId) return;
     S.turnId = id;
     S.disengaged.clear();
@@ -2323,7 +4870,7 @@
     const enc = party.encounter;
     const initiative = enc?.active
       ? Cloud.order(
-          party.combatants.filter(c => !c.hidden),
+          party.combatants.filter(c => !c.hidden && !c.board_only),
           true,
         ).map(c => {
           const name = c.name || 'Sin nombre';
@@ -2353,6 +4900,13 @@
     const m = currentMap(),
       live = m && m.id === activeId();
     const back = S.isDM ? `./dm.html#${encodeURIComponent(S.id)}` : './#table';
+    $('#board-top').classList.toggle('board-top-compact', playerView() && !TV);
+    if (playerView() && !TV) {
+      const follow = S.follow ? 'Dejar de seguir al DM' : 'Seguir al DM';
+      $('#board-top').innerHTML =
+        `${STANDALONE ? `<a class="icon-btn" href="${back}" aria-label="Volver">←</a>` : '<button type="button" class="icon-btn" data-action="bd-close" aria-label="Cerrar el tablero">←</button>'}<div class="board-title"><b>${esc(m?.name || 'Esperando al DM')}</b></div><span id="board-hover-name" hidden></span><div class="board-top-actions"><button type="button" class="icon-btn" data-action="bd-follow" aria-label="${follow}" aria-pressed="${S.follow}" title="${follow}">◎</button>${S.isDM ? button('Vista DM', 'as-player') : ''}${typeof Sound !== 'undefined' ? Sound.toggleHTML() : ''}<button type="button" class="icon-btn" data-action="bd-fit" aria-label="Centrar el mapa" title="Centrar el mapa">⤢</button></div>`;
+      return;
+    }
     if (PLAYER_SCREEN) {
       $('#board-top').innerHTML =
         `<div class="board-title"><b>${esc(S.party?.campaign.name || '')}</b><span>${esc(m?.name || 'Tablero')}</span></div><button type="button" class="icon-btn" data-action="bd-fullscreen" aria-label="Pantalla completa" title="Pantalla completa">⛶</button>`;
@@ -2360,7 +4914,7 @@
     }
     $('#board-top').innerHTML = TV
       ? `<span class="board-title">${esc(m?.name || 'Esperando un mapa…')}</span><button type="button" class="icon-btn" data-action="bd-fullscreen" title="Pantalla completa" aria-label="Pantalla completa">⛶</button>`
-      : `${STANDALONE ? `<a class="icon-btn" href="${back}" aria-label="Volver" title="Volver">←</a>` : `<button type="button" class="icon-btn" data-action="bd-close" aria-label="Cerrar el tablero" title="Volver">←</button>`}<div class="board-title"><span class="eyebrow">${esc(S.party?.campaign.name || 'TABLERO')}</span><b>${esc(m?.name || (S.isDM ? 'Sin mapa' : 'Esperando al DM'))}</b>${S.isDM && m ? `<span class="tag ${live ? '' : 'warn'}">${live ? 'En la mesa' : 'Solo el DM'}</span>` : ''}</div><div class="board-top-actions">${S.isDM ? (m && !live ? button('Mostrar a la mesa', 'go-live', '') : '') + button('Mapas', 'maps') + button(S.asPlayer ? 'Vista DM' : 'Ver como jugador', 'as-player') + button('📺 Tele', 'tv') : button(S.follow ? 'Siguiendo al DM' : 'Seguir al DM', 'follow')}${typeof Sound !== 'undefined' ? Sound.toggleHTML() : ''}<button type="button" class="icon-btn" data-action="bd-fit" title="Ver todo el mapa" aria-label="Ver todo el mapa">⤢</button></div>`;
+      : `${STANDALONE ? `<a class="icon-btn" href="${back}" aria-label="Volver" title="Volver">←</a>` : `<button type="button" class="icon-btn" data-action="bd-close" aria-label="Cerrar el tablero" title="Volver">←</button>`}<div class="board-title"><span class="eyebrow">${esc(S.party?.campaign.name || 'TABLERO')}</span><b>${esc(m?.name || (S.isDM ? 'Sin mapa' : 'Esperando al DM'))}</b>${S.isDM && m ? `<span class="tag ${live ? '' : 'warn'}">${live ? 'En la mesa' : 'Solo el DM'}</span>` : ''}</div><span id="board-hover-name" class="board-hover-name" hidden></span><div class="board-top-actions">${S.isDM ? (m && !live ? button('Mostrar a la mesa', 'go-live', '') : '') + button('Mapas', 'maps') + (m && dmView() ? button('Orientación', 'rotation-settings') : '') + button(S.asPlayer ? 'Vista DM' : 'Ver como jugador', 'as-player') + button('📺 Tele', 'tv') : button(S.follow ? 'Siguiendo al DM' : 'Seguir al DM', 'follow')}${typeof Sound !== 'undefined' ? Sound.toggleHTML() : ''}<button type="button" class="icon-btn" data-action="bd-fit" title="Ver todo el mapa" aria-label="Ver todo el mapa">⤢</button></div>`;
   }
   function tools() {
     if (TV) return ($('#board-tools').innerHTML = '');
@@ -2370,7 +4924,9 @@
       t('move', '✋', 'Mover') +
       t('ruler', '📏', 'Medir') +
       t('ping', '📍', 'Señalar') +
-      (S.mapId ? t('area', '💥', 'Área') + t('scene', '✦', 'Efectos') : '') +
+      (S.mapId
+        ? t('area', '💥', 'Área') + (H.compactCast ? t('cast', '✦', 'Lanzar') : t('scene', '✦', 'Efectos'))
+        : '') +
       (S.isDM && S.mapId && !S.asPlayer
         ? t('fog', '🌫', 'Niebla') +
           t('paint', '🧱', 'Terreno') +
@@ -2378,6 +4934,16 @@
           t('tokens', '♟', 'Fichas') +
           t('enc', '⚔', 'Encuentros')
         : '');
+    if (H.compactCast)
+      $('#board-tools').insertAdjacentHTML(
+        'beforeend',
+        button('⚙', 'cast-settings', 'secondary', 'aria-label="Ajustes del tablero"'),
+      );
+    if (H.compactCast && activeSpiritualWeapon())
+      $('#board-tools').insertAdjacentHTML(
+        'beforeend',
+        button('Arma', 'weapon-swing', 'secondary', 'aria-label="Atacar con arma espiritual"'),
+      );
     hint(
       {
         move: S.isDM
@@ -2396,6 +4962,10 @@
           : 'Colocá tus encuentros preparados. Arrastrá cada criatura o mové el grupo entero.',
       }[S.tool] || '',
     );
+    if (S.multiSelect) {
+      $('#board-tools').insertAdjacentHTML('beforeend', button('Terminar selección', 'selection-done'));
+      hint('Tocá las fichas que querés girar juntas.');
+    }
   }
   function panel() {
     const el = $('#board-panel');
@@ -2403,16 +4973,19 @@
       `<button type="button" class="chip ${on ? 'selected' : ''}" data-action="bd-${action}" data-v="${esc(value)}" aria-pressed="${on}" ${extra}>${label}</button>`;
     const sizes = [0, 1, 2, 3].map(r => chip('radius', r, ['1', '3', '5', '7'][r], S.radius === r)).join('');
     let html = '';
-    if (S.tool === 'scene' && S.mapId && !TV) {
+    if (S.tool === 'scene' && S.mapId && !TV && !H.compactCast) {
       if (H.cast) {
         const spells = H.spells();
         html = spells.length
           ? `<label class="field">Conjuro de tu ficha<select data-action="bd-sheet-spell">${spells.map(sp => `<option value="${esc(sp.id)}" ${sp.id === S.sheetSpell ? 'selected' : ''}>${esc(sp.name)}</option>`).join('')}</select></label>`
           : '<p>Tu ficha no tiene conjuros disponibles.</p>';
+        if (activeSpiritualWeapon())
+          html += button(weaponAim ? 'Cancelar ataque del arma' : 'Atacar con arma espiritual', 'weapon-swing');
       } else
         html = `<div class="chips"><span class="small">Conjuro</span>${Object.entries(BoardSceneFX.spells)
           .map(([id, label]) => chip('spell', id, label, S.spell === id))
           .join('')}</div>`;
+      html += `<div class="board-row"><label class="check"><input type="checkbox" data-action="bd-fx-reduced" \${fxPrefs.reduced ? 'checked' : ''}>Efectos reducidos</label><label class="check"><input type="checkbox" data-action="bd-fx-shake" \${fxPrefs.shake ? 'checked' : ''}>Vibración leve</label></div>`;
       if (dmView())
         html += `<div class="chips"><span class="small">Clima</span>${Object.entries(BC.WEATHER)
           .map(([id, label]) => chip('weather', id, label, S.grid.weather === id))
@@ -2457,7 +5030,7 @@
         )}</div><p class="small muted">${S.props.length} ${S.props.length === 1 ? 'pieza' : 'piezas'} en este mapa. Las marcadas con ✦ dan luz.${S.props.length ? ` <button type="button" class="chip" data-action="bd-prop-clear">Quitar todas</button>` : ''}</p>`;
     } else if (S.tool === 'tokens' && S.isDM) {
       const list = mapTokens().sort((a, b) => a.name.localeCompare(b.name, 'es'));
-      html = `<div class="actions">${button('+ PNJ', 'token-new', '', 'data-kind="npc"')}${button('+ Objeto', 'token-new', 'secondary', 'data-kind="object"')}${button('+ Antorcha', 'light-new', 'secondary', 'data-light="torch"')}${button('+ Farol', 'light-new', 'secondary', 'data-light="lantern"')}${button('+ Fogata', 'light-new', 'secondary', 'data-light="campfire"')}${S.mapId === activeId() ? button('Traer a la party', 'ensure') : ''}</div><div class="board-token-list">${
+      html = `<div class="actions">${button('+ Criatura', 'token-new', '', 'data-kind="monster"')}${button('+ PNJ', 'token-new', 'secondary', 'data-kind="npc"')}${button('+ Objeto', 'token-new', 'secondary', 'data-kind="object"')}${button('+ Antorcha', 'light-new', 'secondary', 'data-light="torch"')}${button('+ Farol', 'light-new', 'secondary', 'data-light="lantern"')}${button('+ Fogata', 'light-new', 'secondary', 'data-light="campfire"')}${S.mapId === activeId() ? button('Traer a la party', 'ensure') : ''}</div><div class="board-token-list">${
         list
           .map(
             t =>
@@ -2519,22 +5092,95 @@
       el.hidden = true;
       return;
     }
+    if (el.hidden || el.dataset.token !== t.id) el.setAttribute('data-offscreen', '');
+    el.dataset.token = t.id;
     const d = info(t),
-      dm = S.isDM && !S.asPlayer;
+      dm = dmView();
+    const attrs = `data-id="${esc(t.id)}"`;
+    const light = BC.lightFeet(t.stage);
+    const selectionCount = rotationGroup().length;
+    const actions = [
+      H.compactCast && mine(t) && button('Lanzar', 'cast-picker'),
+      canMove(t) &&
+        t.kind !== 'object' &&
+        button('Altura', 'token-elev', 'secondary', `${attrs} title="Altura: ${Number(t.elev) || 0} pies"`),
+      ((dm && t.kind !== 'monster') || (t.kind === 'pc' && canMove(t))) &&
+        button('Luz', 'token-light', 'secondary', `${attrs} title="Luz: ${light || 0} pies"`),
+      dm && button(t.hidden ? 'Mostrar' : 'Ocultar', 'token-hide', 'secondary', attrs),
+      dm && button('Editar', 'token-edit', 'secondary', attrs),
+      selectionCount && button('Girar', 'token-rotate', 'secondary', attrs),
+      dm && button('Quitar', 'token-remove', 'danger', attrs),
+    ]
+      .filter(Boolean)
+      .join('');
     el.hidden = false;
-    el.innerHTML = `<div class="board-card-head"><i style="background:${esc(t.color || '#888')}">${esc(t.label)}</i><div><b>${esc(t.name)}</b><p class="small muted">${t.stage && !t.combatant_id ? 'Preparada · ' + esc(prepared().find(e => t.stage.startsWith('enc:' + e.id + ':'))?.name || 'encuentro') + ' · ' : ''}${{ pc: 'Personaje', monster: 'Criatura', npc: 'PNJ', object: 'Objeto' }[t.kind]}${d.status ? ' · ' + esc(d.status) : ''}${d.conditions.length ? ' · ' + esc(d.conditions.join(', ')) : ''}</p>${t.id === S.target ? `<p class="small board-target-line">🎯 ${targetLine(combatContext())}</p>` : ''}</div><button type="button" class="icon-btn" data-action="bd-deselect" aria-label="Cerrar">×</button></div>${
-      canMove(t) && t.kind !== 'object'
-        ? `<div class="actions">${button(t.elev ? `Altura: ${t.elev} pies` : 'Altura', 'token-elev', 'secondary', `data-id="${t.id}"`)}</div>`
-        : ''
-    }${
-      (dm && t.kind !== 'monster') || (t.kind === 'pc' && canMove(t))
-        ? `<div class="actions">${button(BC.lightFeet(t.stage) ? `Luz: ${BC.lightFeet(t.stage)} pies` : 'Luz', 'token-light', 'secondary', `data-id="${t.id}"`)}</div>`
-        : ''
-    }${
-      dm
-        ? `<div class="actions">${button(t.hidden ? 'Mostrar' : 'Ocultar', 'token-hide', 'secondary', `data-id="${t.id}"`)}${button('Tamaño −', 'token-size', 'secondary', `data-id="${t.id}" data-d="-1"`)}${button('Tamaño +', 'token-size', 'secondary', `data-id="${t.id}" data-d="1"`)}${button('Editar', 'token-edit', 'secondary', `data-id="${t.id}"`)}${button('Quitar', 'token-remove', 'danger', `data-id="${t.id}"`)}</div>`
-        : ''
-    }`;
+    el.innerHTML = `<div class="board-card-head"><i style="background:${esc(t.color || '#888')}">${esc(t.label)}</i><div><b>${esc(d.name || displayTokenName(t, creatureFor(t, d)))}</b><p class="small muted">${t.stage?.startsWith('enc:') && !t.combatant_id ? 'Preparada · ' + esc(prepared().find(e => t.stage.startsWith('enc:' + e.id + ':'))?.name || 'encuentro') + ' · ' : ''}${{ pc: 'Personaje', monster: 'Criatura', npc: 'PNJ', object: 'Objeto' }[t.kind]}${d.status ? ' · ' + esc(d.status) : ''}${selectionCount > 1 ? ` · ${selectionCount} seleccionadas` : ''}${d.conditions.length ? ' · ' + esc(d.conditions.join(', ')) : ''}</p>${t.id === S.target ? `<p class="small board-target-line">🎯 ${targetLine(combatContext())}</p>` : ''}</div><button type="button" class="icon-btn" data-action="bd-deselect" aria-label="Cerrar">×</button></div>${actions ? `<div class="board-card-actions">${actions}</div>` : ''}`;
+  }
+  function positionCard(pieces) {
+    const el = $('#board-card');
+    if (el.hidden) return;
+    const selected = pieces.find(({ t }) => t.id === S.sel);
+    const visible = !!selected && !S.multiSelect && !S.aimFacing;
+    el.toggleAttribute('data-offscreen', !visible);
+    if (!visible) return;
+    const { s, x, y } = S.view;
+    const { clientWidth: width, clientHeight: height } = canvas;
+    const w = el.offsetWidth,
+      h = el.offsetHeight;
+    const b = selected.bounds,
+      f = selected.foot;
+    const sprite = { left: b.x * s + x, right: (b.x + b.w) * s + x, top: b.y * s + y, bottom: (b.y + b.h) * s + y };
+    const fx = f.x * s + x,
+      fy = f.y * s + y;
+    if (sprite.right < 0 || sprite.left > width || sprite.bottom < 0 || sprite.top > height) {
+      el.setAttribute('data-offscreen', '');
+      return;
+    }
+    const gap = 10,
+      margin = 8;
+    const candidates = [
+      ['right', sprite.right + gap, fy - h / 2, width - sprite.right - gap - w],
+      ['left', sprite.left - gap - w, fy - h / 2, sprite.left - gap - w],
+      ['top', fx - w / 2, sprite.top - gap - h, sprite.top - gap - h],
+      ['bottom', fx - w / 2, sprite.bottom + gap, height - sprite.bottom - gap - h],
+    ];
+    const stage = canvas.getBoundingClientRect();
+    const blockers = ['#board-panel', '#board-turn'].flatMap(selector => {
+      const node = $(selector);
+      if (!node || node.hidden) return [];
+      const r = node.getBoundingClientRect();
+      return [
+        {
+          left: r.left - stage.left,
+          right: r.right - stage.left,
+          top: r.top - stage.top,
+          bottom: r.bottom - stage.top,
+        },
+      ];
+    });
+    const neighbors = pieces
+      .filter(p => p !== selected)
+      .map(({ foot }) => {
+        const r = (foot.diameter * s) / 2;
+        const cx = foot.x * s + x,
+          cy = foot.y * s + y;
+        return { left: cx - r, right: cx + r, top: cy - r, bottom: cy + r };
+      });
+    const overlap = (left, top, box) =>
+      Math.max(0, Math.min(left + w, box.right) - Math.max(left, box.left)) *
+      Math.max(0, Math.min(top + h, box.bottom) - Math.max(top, box.top));
+    const ranked = candidates.map(([side, left, top, room]) => {
+      left = Math.round(Math.max(margin, Math.min(width - w - margin, left)));
+      top = Math.round(Math.max(margin, Math.min(height - h - margin, top)));
+      const crowding = blockers.reduce((area, box) => area + overlap(left, top, box), 0);
+      const occupied = neighbors.reduce((area, box) => area + overlap(left, top, box), 0);
+      const score = room - (overlap(left, top, sprite) * 3000 + crowding * 2800 + occupied * 700) / Math.max(1, w * h);
+      return { side, left, top, score };
+    });
+    const { side, left, top } = ranked.sort((a, b) => b.score - a.score)[0];
+    el.dataset.side = side;
+    el.style.left = `${left}px`;
+    el.style.top = `${top}px`;
   }
   function turn() {
     const el = $('#board-turn'),
@@ -2558,6 +5204,16 @@
     const a = el.dataset.action.slice(3);
     try {
       if (a === 'close') return close();
+      if (a === 'cast-picker' || (a === 'tool' && el.dataset.tool === 'cast')) {
+        if (!quickPick?.swiped) casting?.begin();
+        return;
+      }
+      if (a === 'cast-settings')
+        return modal(
+          'Ajustes del tablero',
+          `<label class="check"><input type="checkbox" data-action="bd-fx-reduced" ${fxPrefs.reduced ? 'checked' : ''}>Efectos reducidos</label><label class="check"><input type="checkbox" data-action="bd-fx-shake" ${fxPrefs.shake ? 'checked' : ''}>Vibración leve</label><label class="field">Segundos para reaccionar<input type="number" min="3" max="60" data-action="bd-reaction-seconds" value="${reactionSeconds()}"></label>`,
+          null,
+        );
       if (a === 'dock-min') S.dockMin = !S.dockMin;
       else if (a === 'untarget') setTarget(null);
       else if (a === 'disengage') {
@@ -2570,7 +5226,7 @@
         if (S.tool === 'enc') await refreshPrepared();
       } else if (a === 'fit') fit();
       else if (a === 'panel-min') S.panelMin = !S.panelMin;
-      else if (a === 'enc-place') await placeEncounter(el.dataset.id);
+      else if (a === 'enc-place') return await placeEncounterDialog(el.dataset.id);
       else if (a === 'enc-remove') await removeEncounter(el.dataset.id);
       else if (a === 'enc-group') S.group = S.group === el.dataset.id ? null : el.dataset.id;
       else if (a === 'enc-show') showGroup(el.dataset.id);
@@ -2583,7 +5239,14 @@
       } else if (a === 'tv') return tvDialog();
       else if (a === 'go-live') await goLive(S.mapId);
       else if (a === 'spell' && !TV && Object.hasOwn(BoardSceneFX.spells, el.dataset.v)) S.spell = el.dataset.v;
-      else if (a === 'weather' && dmView() && S.mapId && Object.hasOwn(BC.WEATHER, el.dataset.v)) {
+      else if (a === 'weapon-swing' && H.cast) {
+        weaponAim = weaponAim ? null : activeSpiritualWeapon()?.castId || null;
+        if (H.compactCast) S.tool = weaponAim ? 'scene' : 'move';
+        S.spellAim = null;
+        panel();
+        hint(weaponAim ? 'Elegí una criatura a 5 pies del arma espiritual.' : '');
+        return;
+      } else if (a === 'weather' && dmView() && S.mapId && Object.hasOwn(BC.WEATHER, el.dataset.v)) {
         S.grid.weather = el.dataset.v;
         saveSoon({ grid: { ...currentMap()?.grid, weather: S.grid.weather } });
       } else if (a === 'area-kind') S.area.kind = el.dataset.v;
@@ -2606,7 +5269,13 @@
       } else if (a === 'paint-code') S.paintCode = el.dataset.v;
       else if (a === 'paint-mode') S.paintMode = el.dataset.v;
       else if (a === 'select') tapToken(el.dataset.id);
-      else if (a === 'deselect') S.sel = null;
+      else if (a === 'deselect') {
+        S.sel = null;
+        S.selected.clear();
+        S.multiSelect = false;
+      } else if (a === 'token-rotate') return rotationDialog();
+      else if (a === 'selection-done') S.multiSelect = false;
+      else if (a === 'rotation-settings') return rotationSettings();
       else if (a === 'ensure') await ensureTokens();
       else if (a === 'token-new') return tokenDialog(null, el.dataset.kind);
       else if (a === 'light-new') await addLight(el.dataset.light);
@@ -2616,11 +5285,6 @@
         const t = S.tokens.find(x => x.id === el.dataset.id);
         await patchToken(t, { hidden: !t.hidden });
         S.channel?.send({ t: 'refresh' });
-      } else if (a === 'token-size') {
-        const t = S.tokens.find(x => x.id === el.dataset.id),
-          steps = [0.5, 1, 2, 3, 4],
-          i = Math.max(0, steps.indexOf(t.size)) + Number(el.dataset.d);
-        await patchToken(t, { size: steps[Math.max(0, Math.min(steps.length - 1, i))] });
       } else if (a === 'token-remove') {
         const t = S.tokens.find(x => x.id === el.dataset.id);
         if (!confirm(`¿Quitar «${t.name}» del mapa?`)) return;
@@ -2668,8 +5332,20 @@
   });
   document.addEventListener('change', e => {
     const a = e.target.dataset?.action;
-    if (a === 'bd-sheet-spell' && H.spells) S.sheetSpell = e.target.value;
-    else if (a === 'bd-fog-on') {
+    if (a === 'bd-sheet-spell' && H.spells) {
+      S.sheetSpell = e.target.value;
+      globalThis.BoardInk?.prepare(S.sheetSpell, Spells.kindFor(S.sheetSpell));
+      if (S.spellAim) setSpellAim(S.spellAim.world);
+    } else if (a === 'bd-reaction-seconds') {
+      fxPrefs.reactionSeconds = Number(e.target.value);
+      localStorage.setItem('dnd-board-spell-effects', JSON.stringify(fxPrefs));
+    } else if (a === 'bd-fx-reduced' || a === 'bd-fx-shake') {
+      fxPrefs[a === 'bd-fx-reduced' ? 'reduced' : 'shake'] = e.target.checked;
+      try {
+        localStorage.setItem('dnd-board-spell-effects', JSON.stringify(fxPrefs));
+      } catch {}
+      S.dirty = true;
+    } else if (a === 'bd-fog-on') {
       S.fogOn = e.target.checked;
       saveSoon(fogPatch());
       ui();
@@ -2680,7 +5356,8 @@
   });
   async function patchToken(t, patch) {
     const rows = await Cloud.updateToken(t.id, patch);
-    S.tokens = S.tokens.map(x => (x.id === t.id ? rows[0] || { ...x, ...patch } : x));
+    if (!rows.length) throw Error('No se pudo actualizar esa ficha.');
+    S.tokens = S.tokens.map(x => (x.id === t.id ? sizedToken(rows[0]) : x));
     if (dmView() && t.combatant_id && Object.hasOwn(patch, 'hidden')) {
       if (!(await Cloud.hiddenTurnsReady())) {
         toast('La ficha del mapa se actualizó. La iniciativa necesita la actualización de privacidad de tu mesa.');
@@ -2767,15 +5444,63 @@
       })
       .join('')}</div>`;
   }
-  async function placeEncounter(encId) {
+  const footprintNames = {
+    tiny: 'Diminuto · ½ casilla',
+    small: 'Pequeño · 1 casilla',
+    medium: 'Mediano · 1 casilla',
+    large: 'Grande · 2 × 2',
+    huge: 'Enorme · 3 × 3',
+    gargantuan: 'Gargantuesco · 4 × 4',
+  };
+  function variantOptions(model) {
+    if (!model) return '';
+    const forms = CreatureMiniatures.forms(model.id);
+    if (!forms.length) return '';
+    const option = (value, label, size) =>
+      `<option value="${esc(value)}" ${value === (model.age || model.variant || '') ? 'selected' : ''}>${esc(label)} · ${footprintNames[size]}</option>`;
+    const base = CreatureMiniatures.metadata(model.id, { base: true });
+    return (
+      (forms.some(f => f.age) ? '' : option('', base.name, base.size)) +
+      forms.map(f => option(f.age || f.variant, f.label, f.size)).join('')
+    );
+  }
+  async function placeEncounterDialog(encId) {
+    const enc = prepared().find(e => e.id === encId);
+    const prefix = `enc:${encId}:`;
+    const here = new Set(groupTokens(encId).map(k => k.stage));
+    const selections = (enc?.monsters || [])
+      .filter(m => !here.has(prefix + m.uid))
+      .map(m => {
+        const prior = S.tokens.find(k => k.stage === prefix + m.uid);
+        return { m, options: variantOptions(prior ? creatureFor(prior) : CreatureMiniatures.selection(m.name)) };
+      })
+      .filter(r => r.options);
+    if (!selections.length) {
+      await placeEncounter(encId);
+      return ui();
+    }
+    modal(
+      'Variantes del encuentro',
+      selections
+        .map(
+          ({ m, options }) =>
+            `<label class="field">${esc(m.name)}<select name="${esc(m.uid)}">${options}</select></label>`,
+        )
+        .join(''),
+      async fd => {
+        await placeEncounter(encId, fd);
+        ui();
+      },
+      'Colocar',
+    );
+  }
+  async function placeEncounter(encId, variants = new FormData()) {
     const enc = prepared().find(e => e.id === encId);
     if (!enc?.monsters?.length) throw Error('Ese encuentro no tiene criaturas.');
     if (enc.monsters.some(m => !m.uid))
       throw Error('Abrí la pantalla del DM una vez para actualizar este encuentro y volvé a intentar.');
     // Si estaba en otro mapa, se trae (las fichas preparadas viven en un solo mapa).
     const away = S.tokens.filter(k => String(k.stage || '').startsWith('enc:' + encId + ':') && k.map_id !== S.mapId);
-    for (const k of away) await Cloud.removeToken(k.id);
-    S.tokens = S.tokens.filter(k => !away.includes(k));
     const here = groupTokens(encId);
     const r = canvas.getBoundingClientRect(),
       center = toCell(toWorld(r.width / 2, r.height / 2));
@@ -2783,16 +5508,46 @@
     const count = {},
       total = {};
     for (const m of enc.monsters) total[m.name] = (total[m.name] || 0) + 1;
-    const rows = [];
+    const rows = [],
+      transfers = [],
+      planned = [];
     for (const m of enc.monsters) {
       count[m.name] = (count[m.name] || 0) + 1;
       const stage = 'enc:' + encId + ':' + m.uid;
       if (here.some(k => k.stage === stage)) continue;
       const name = total[m.name] > 1 ? m.name + ' ' + count[m.name] : m.name;
-      const p = BC.freeSpot(S.grid, [...mapTokens(), ...rows], center, S.terrain);
-      rows.push(tokenRow({ kind: 'monster', name, hidden: true, stage, ...p }, S.mapId));
+      const prior = away.find(k => k.stage === stage);
+      const modelForm = variants.get(m.uid) ?? prior?.model_form;
+      const model = CreatureMiniatures.selection(name, prior?.creature_model, modelForm, prior?.size);
+      const size = propSizes[model?.size] || 1;
+      const occupied = [...mapTokens(), ...planned].filter(k => k.kind !== 'object');
+      const p = BC.freeSpot(S.grid, occupied, center, S.terrain, size);
+      if (!BC.roomFor(S.grid, S.terrain, { ...p, size }, occupied))
+        throw Error('No hay lugar en el mapa para ' + name + '.');
+      const row = tokenRow(
+        {
+          kind: 'monster',
+          name,
+          hidden: true,
+          stage,
+          size,
+          creature_model: prior?.creature_model,
+          model_form: modelForm,
+          show_hp: prior?.show_hp,
+          ...p,
+        },
+        S.mapId,
+      );
+      planned.push(row);
+      if (prior)
+        transfers.push({
+          prior,
+          patch: { map_id: row.map_id, size, ...p, ...(modelForm != null && { model_form: modelForm }) },
+        });
+      else rows.push(row);
     }
     addLocal(await Cloud.addTokens(rows));
+    for (const { prior, patch } of transfers) await patchToken(prior, patch);
     S.group = encId;
     toast(`«${enc.name}» colocado. Arrastralo junto o criatura por criatura.`);
   }
@@ -2816,20 +5571,45 @@
     S.group = encId;
   }
   // Mover el grupo entero: todas las fichas se desplazan lo mismo y se guardan juntas.
+  function overlapsPieces(a, others) {
+    if (a.kind === 'object') return false;
+    return others.some(b => a.id !== b.id && b.kind !== 'object' && BC.overlaps(a, b));
+  }
   async function dropGroup(d, dx, dy) {
     const all = [d.token, ...d.group].map(k => S.tokens.find(x => x.id === k.id)).filter(Boolean);
-    const before = all.map(k => ({ ...k }));
-    const clampX = (v, k) => Math.max(0, Math.min(S.grid.cols - Math.max(1, k.size || 1), v)),
-      clampY = (v, k) => Math.max(0, Math.min(S.grid.rows - Math.max(1, k.size || 1), v));
-    const moved = all.map(k => ({ ...k, x: clampX(k.x + dx, k), y: clampY(k.y + dy, k) }));
-    S.tokens = S.tokens.map(k => moved.find(m => m.id === k.id) || k);
-    S.dirty = true;
+    if (all.some(k => k.size !== 0.5)) {
+      dx = Math.round(dx);
+      dy = Math.round(dy);
+    }
+    const moved = all.map(k => ({ ...k, x: BC.snapToken(k.x + dx, k.size), y: BC.snapToken(k.y + dy, k.size) }));
+    const other = visibleTokens().filter(t => !moved.some(k => k.id === t.id));
+    if (
+      moved.some(t => {
+        const size = BC.tokenSpan(t);
+        return (
+          t.x < 0 ||
+          t.y < 0 ||
+          t.x + size > S.grid.cols ||
+          t.y + size > S.grid.rows ||
+          overlapsPieces(t, other) ||
+          (!d.free && !BC.roomFor(S.grid, S.terrain, t, []))
+        );
+      })
+    ) {
+      toast('El grupo no entra en esas casillas.');
+      return pick();
+    }
     try {
-      await Promise.all(moved.map(k => Cloud.updateToken(k.id, { x: k.x, y: k.y })));
+      await applyPoses(
+        moved.map((k, i) => ({ id: k.id, patch: movePose(all[i], k.x, k.y) })),
+        {},
+      );
+      moved.forEach((k, i) => afterMove({ token: all[i], start: all[i], free: true }, k.x, k.y));
+      queueEnemyFacing();
     } catch (e) {
-      S.tokens = S.tokens.map(k => before.find(b => b.id === k.id) || k);
       toast(e.message);
     }
+    pick();
   }
 
   // ---------- Nuevos mapas ----------
@@ -2893,8 +5673,10 @@
         if (!activeId()) await goLive(made[0].id);
         const enc = String(fd.get('enc') || '');
         if (enc) {
-          await placeEncounter(enc);
-          toast('Mapa generado y encuentro colocado. Acomodá las criaturas con «Encuentros».');
+          $('#modal').addEventListener('close', () => placeEncounterDialog(enc).catch(err => toast(err.message)), {
+            once: true,
+          });
+          toast('Mapa generado.');
         } else
           toast(
             made.length > 1
@@ -3210,7 +5992,41 @@
       },
     );
   }
-  function tokenDialog(t, kind = t?.kind) {
+  function tokenDimensions(t, size) {
+    if (size === t.size) return { size };
+    const next = { ...t, size, x: BC.snapToken(t.x, size), y: BC.snapToken(t.y, size) };
+    const blockers = mapTokens().filter(k => k.id !== t.id && k.kind !== 'object');
+    if (!BC.roomFor(S.grid, S.terrain, next, blockers))
+      throw Error(
+        'No hay lugar en esas casillas para este tamaño. Mové la ficha a un espacio libre antes de cambiarla.',
+      );
+    return { size, x: next.x, y: next.y };
+  }
+  async function tokenDialog(t, kind = t?.kind) {
+    const linkable = kind === 'monster' && !t?.character_id && (!t?.stage || t.stage === 'placed' || t.combatant_id);
+    const priorBlock = (S.party?.secrets || []).find(row => row.combatant_id === t?.combatant_id)?.monster_id;
+    const blocks =
+      linkable && typeof MonsterUI !== 'undefined'
+        ? (await MonsterUI.load({ sharedOnly: STANDALONE }), globalThis.MonsterData || [])
+        : [];
+    const statField = blocks.length
+      ? '<label class="field">Bloque de estadísticas<select name="monster_block"><option value="">Buscar por el nombre de la ficha</option>' +
+        [...blocks]
+          .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+          .map(
+            m =>
+              '<option value="' +
+              esc(m.id) +
+              '" ' +
+              (priorBlock === m.id ? 'selected' : '') +
+              '>' +
+              esc(m.name + ' · ' + m.id) +
+              '</option>',
+          )
+          .join('') +
+        '</select></label>'
+      : '';
+
     const isNew = !t;
     const modelOption = key =>
       `<option value="${key}" ${t?.creature_model === key ? 'selected' : ''}>${esc(CreatureMiniatures.options[key])}</option>`;
@@ -3219,60 +6035,137 @@
           CreatureMiniatures.groups,
         )
           .map(([group, keys]) => `<optgroup label="${esc(group)}">${keys.map(modelOption).join('')}</optgroup>`)
-          .join('')}</select></label>`
+          .join(
+            '',
+          )}</select></label><label class="field" id="token-form-field" hidden>Edad o variante<select name="model_form"></select></label>`
       : '';
+    const canSize = !t?.character_id && kind !== 'pc';
+    const categories = [
+      ['0.5', 'Diminuto'],
+      ['1', 'Pequeño o mediano'],
+      ['2', 'Grande'],
+      ['3', 'Enorme'],
+      ['4', 'Gargantuesco'],
+    ];
+    const sizeOptions = categories
+      .map(
+        ([size, label]) =>
+          `<option value="${size}" ${Number(size) === (t?.size || 1) ? 'selected' : ''}>${label}</option>`,
+      )
+      .join('');
+    const hp =
+      kind === 'monster'
+        ? `<label class="check"><input type="checkbox" name="show_hp" ${t?.show_hp ? 'checked' : ''}>Mostrar la barra de PG a los jugadores</label>`
+        : '';
     modal(
-      isNew ? (kind === 'object' ? 'Nuevo objeto' : 'Nuevo PNJ') : 'Editar ficha',
-      `${field('Nombre', 'name', t?.name || '', 'text', 'maxlength="100" required')}<div class="form-grid">${field('Letras o emoji', 'label', t?.label || (kind === 'object' ? '📦' : ''), 'text', 'maxlength="4"')}<label class="field">Color<input type="color" name="color" value="${esc(/^#[0-9a-f]{6}$/i.test(t?.color || '') ? t.color : kind === 'object' ? '#9e9e9e' : '#83c8bd')}"></label>${field('Tamaño (casillas)', 'size', t?.size || 1, 'number', 'min="0.5" max="6" step="0.5"')}</div><label class="check"><input type="checkbox" name="hidden" ${t?.hidden ? 'checked' : ''}>Oculta para los jugadores</label>${modelField}`,
+      isNew ? { object: 'Nuevo objeto', npc: 'Nuevo PNJ', monster: 'Colocar criatura' }[kind] : 'Editar ficha',
+      `${field('Nombre', 'name', t?.name || '', 'text', 'maxlength="100" required')}<div class="form-grid">${field('Letras o emoji', 'label', t?.label || '', 'text', 'maxlength="4"')}<label class="field">Color<input type="color" name="color" value="${esc(/^#[0-9a-f]{6}$/i.test(t?.color || '') ? t.color : kind === 'object' ? '#9e9e9e' : '#83c8bd')}"></label><label class="field">Tamaño<select name="size" ${canSize ? '' : 'disabled'}>${sizeOptions}</select></label></div><label class="check"><input type="checkbox" name="hidden" ${t?.hidden ? 'checked' : ''}>Oculta para los jugadores</label>${modelField}${statField}${hp}`,
       async fd => {
         const name = String(fd.get('name')).trim();
         if (!name) throw Error('Poné un nombre.');
+        const block = blocks.length ? MonsterUI.byId(fd.get('monster_block')) || MonsterUI.byName(name) : null;
+        if (linkable && blocks.length && !block && !t?.combatant_id)
+          throw Error('Elegí un bloque del bestiario para esta criatura.');
+        const model = fd.get('creature_model') || null;
+        const form = fd.get('model_form');
+        const appearance = t && info(t);
+        const selected =
+          modelField && (model || !(appearance?.miniature || appearance?.portrait))
+            ? CreatureMiniatures.selection(name, model, form)
+            : null;
         const patch = {
           name,
           label: String(fd.get('label') || '').trim() || BC.initials(name),
           color: fd.get('color'),
-          size: Math.max(0.5, Math.min(6, Number(fd.get('size')) || 1)),
+          size: propSizes[selected?.size] || (canSize ? Number(fd.get('size')) || 1 : 1),
           hidden: fd.has('hidden'),
         };
-        if (modelField) {
-          const model = fd.get('creature_model') || null;
-          if (model !== (t?.creature_model || null)) patch.creature_model = model;
-        }
+        if (modelField && model !== (t?.creature_model || null)) patch.creature_model = model;
+        if (modelField && form !== (t?.model_form ?? null)) patch.model_form = form;
+        if (kind === 'monster' && fd.has('show_hp') !== !!t?.show_hp) patch.show_hp = fd.has('show_hp');
         try {
           if (isNew) {
             const r = canvas.getBoundingClientRect(),
               center = toCell(toWorld(r.width / 2, r.height / 2));
-            const p = BC.freeSpot(S.grid, mapTokens(), center, S.terrain);
-            const [row] = await Cloud.addTokens([tokenRow({ ...patch, kind, ...p }, S.mapId)]);
+            const tokens = mapTokens().filter(k => k.kind !== 'object');
+            const p = BC.freeSpot(S.grid, tokens, center, S.terrain, patch.size);
+            if (!BC.roomFor(S.grid, S.terrain, { ...p, size: patch.size }, tokens))
+              throw Error('No hay casillas libres para este tamaño.');
+            const stage = kind === 'monster' ? 'placed' : null;
+            const [row] = await Cloud.addTokens([tokenRow({ ...patch, kind, stage, ...p }, S.mapId)]);
+            if (block) {
+              try {
+                row.combatant_id = await Cloud.linkBoardMonster(row.id, MonsterUI.profile(block));
+                monsterLinks.add(row.id);
+              } catch (error) {
+                await Cloud.removeToken(row.id);
+                throw error;
+              }
+            }
             addLocal([row]);
             S.sel = row.id;
           } else {
-            await patchToken(t, patch);
-            if (patch.hidden !== t.hidden) S.channel?.send({ t: 'refresh' });
+            await patchToken(t, { ...patch, ...tokenDimensions(t, patch.size) });
+            if (block) {
+              t.combatant_id = await Cloud.linkBoardMonster(t.id, MonsterUI.profile(block));
+              monsterLinks.add(t.id);
+            }
+            if (patch.hidden !== t.hidden || block) S.channel?.send({ t: 'refresh' });
           }
         } catch (err) {
+          if (/model_form|show_hp/.test(err.message) && /schema cache|does not exist/i.test(err.message))
+            throw Error(
+              'Aplicá la migración 027_board_miniatures.sql en Supabase para guardar variantes y barras de PG.',
+            );
           if (
             patch.creature_model &&
-            /check constraint/i.test(err.message) &&
-            /creature_model|map_tokens_check/.test(err.message)
+            /creature_model/i.test(err.message) &&
+            /check constraint|schema cache|does not exist/i.test(err.message)
           )
-            throw Error('Para guardar esta miniatura, aplicá la migración 026_campaign_miniatures.sql en Supabase.');
-          if (/creature_model/.test(err.message) && /schema cache|does not exist/i.test(err.message))
-            throw Error('Para guardar la miniatura elegida, aplicá las migraciones 025 y 026 en orden en Supabase.');
+            throw Error('Para guardar la miniatura elegida, aplicá las migraciones 025 y 026 en Supabase.');
           throw err;
         }
         ui();
       },
       isNew ? 'Agregar' : 'Guardar',
     );
+    if (!modelField) return;
+    const { name, creature_model: miniature, model_form: form, size } = $('#dialog-form').elements;
+    const formField = $('#token-form-field');
+    const appearance = t && info(t);
+    function selection(value, initial = false) {
+      if (!miniature.value && (appearance?.miniature || appearance?.portrait)) return null;
+      return CreatureMiniatures.selection(name.value, miniature.value, value, initial ? t?.size : undefined);
+    }
+    function syncSize(model) {
+      size.disabled = !canSize || !!model;
+      if (model) size.value = propSizes[model.size];
+    }
+    function syncForms(initial = false) {
+      const model = selection(initial ? t?.model_form : null, initial);
+      form.innerHTML = variantOptions(model);
+      formField.hidden = form.disabled = !form.options.length;
+      syncSize(model);
+    }
+    miniature.addEventListener('change', () => {
+      if (!name.value.trim() && miniature.value && miniature.value !== 'sigil')
+        name.value = CreatureMiniatures.options[miniature.value];
+      syncForms();
+    });
+    name.addEventListener('input', () => {
+      if (!miniature.value) syncForms();
+    });
+    form.addEventListener('change', () => syncSize(selection(form.value)));
+    syncForms(true);
   }
 
   // ---------- Inicio ----------
   // Marcado del tablero cuando se monta dentro de otra página (en board.html ya está en el HTML).
   const SHELL = `<div class="board-shell">
   <header class="board-top" id="board-top"></header>
+  <div id="bc-status" class="bc-status" hidden></div>
   <div class="board-main">
-    <div class="board-stage" id="stage">
+    <div class="board-stage board-table" id="stage">
       <canvas id="board" aria-label="Mapa del tablero"></canvas>
       <div class="board-turn" id="board-turn" hidden></div>
       <div class="board-hint" id="board-hint" role="status" aria-live="polite"></div>
@@ -3281,15 +6174,47 @@
     </div>
     <aside class="board-dock" id="board-dock" aria-label="Acciones de combate" hidden></aside>
   </div>
+  <aside id="board-casting" class="board-casting" hidden aria-label="Lanzamiento"></aside>
   <nav class="board-tools" id="board-tools" aria-label="Herramientas del tablero"></nav>
 </div>
 <div class="board-message" id="board-message" hidden></div>`;
+  document.addEventListener('pointerdown', e => {
+    if (!casting || casting.active() || e.pointerType !== 'touch' || !e.target.closest('[data-tool="cast"]')) return;
+    quickPick = { id: e.pointerId, y: e.clientY, swiped: false, item: null };
+  });
+  document.addEventListener('pointermove', e => {
+    const q = quickPick;
+    if (!q || q.id !== e.pointerId) return;
+    if (!q.swiped && q.y - e.clientY > 18) {
+      q.swiped = true;
+      document.body.setPointerCapture(e.pointerId);
+      casting.begin();
+    }
+    if (!q.swiped) return;
+    q.item?.classList.remove('bc-swipe-target');
+    q.item = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-bc="choose"]:not(:disabled)');
+    q.item?.classList.add('bc-swipe-target');
+  });
+  for (const type of ['pointerup', 'pointercancel'])
+    document.addEventListener(type, e => {
+      const q = quickPick;
+      if (!q || q.id !== e.pointerId) return;
+      if (q.swiped) {
+        q.item?.classList.remove('bc-swipe-target');
+        if (type === 'pointerup') q.item?.click();
+        setTimeout(() => {
+          if (quickPick === q) quickPick = null;
+        }, 0);
+      } else quickPick = null;
+    });
   let mounted = false;
   function mount() {
     if (mounted) return;
     mounted = true;
     canvas = $('#board');
     ctx = canvas.getContext('2d');
+    mountRotationHandle();
+    loadMiniPack();
     for (const a of canvasListeners) canvas.addEventListener(...a);
     new ResizeObserver(resize).observe($('#stage'));
     resize();
@@ -3297,9 +6222,32 @@
   }
   document.addEventListener('keydown', e => {
     if (!mounted || !shown || e.target.closest('input, textarea, select') || $('#modal').open) return;
+    const key = e.key.toLowerCase();
+    if (['shift', 'control', 'meta'].includes(key)) $('#stage').classList.add('board-selection-modifier');
+    if (key === 'r' && !TV) rotationKey = true;
+    if (!e.ctrlKey && !e.metaKey && (key === 'q' || key === 'e') && rotationGroup().length) {
+      e.preventDefault();
+      turnBy(key === 'q' ? -1 : 1);
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && key === 'z' && S.poseUndo.length) {
+      e.preventDefault();
+      undoPose().catch(err => toast(err.message));
+      return;
+    }
     if (e.key === 'Escape') {
+      if (casting?.active()) return casting.close();
+      if (S.aimFacing) {
+        S.aimFacing = false;
+        tools();
+        pick();
+        return;
+      }
       if (!S.sel && !STANDALONE) return close();
       S.sel = null;
+      S.selected.clear();
+      S.multiSelect = false;
+      tools();
       card();
     }
     if (e.key === '+' || e.key === '=') zoomAt(canvas.clientWidth / 2, canvas.clientHeight / 2, 1.2);
@@ -3307,6 +6255,14 @@
     if ((e.key === 'Delete' || e.key === 'Backspace') && S.sel && S.isDM && !S.asPlayer)
       document.querySelector('[data-action=bd-token-remove]')?.click();
     S.dirty = true;
+  });
+  document.addEventListener('keyup', e => {
+    if (e.key.toLowerCase() === 'r') rotationKey = false;
+    if (!e.shiftKey && !e.ctrlKey && !e.metaKey) $('#stage')?.classList.remove('board-selection-modifier');
+  });
+  window.addEventListener('blur', () => {
+    rotationKey = false;
+    $('#stage')?.classList.remove('board-selection-modifier');
   });
   const failed = e => message(`<h1>No se pudo abrir el tablero</h1><p>${esc(e.message)}</p>`);
   async function reconnectBoard() {
@@ -3343,6 +6299,39 @@
     if (typeof Sound !== 'undefined') Sound.ambient(S.mapId ? S.grid.ambient : '');
     document.documentElement.classList.add('board-open');
     mount();
+    if (hooks.compactCast && !casting) {
+      casting = BoardCasting.mount($('#board-casting'), {
+        spells: () => H.spells(),
+        plan: compactPlan,
+        target: compactTarget,
+        focus: focusCasting,
+        cast: (id, placement, options) => H.cast(id, false, placement, options),
+        online: () => navigator.onLine && Boolean(S.channel) && S.channel.connected !== false,
+        scope: () => [S.id, S.mapId, H.actorId?.()].join(':'),
+        status: html => {
+          const status = $('#bc-status');
+          status.innerHTML = html;
+          status.hidden = !html;
+        },
+        dirty: () => {
+          S.dirty = true;
+        },
+      });
+      $('#bc-status').addEventListener('click', e => {
+        const action = e.target.closest('[data-bc]')?.dataset.bc;
+        if (action === 'concentration')
+          modal(
+            'Concentración',
+            `<p>${esc(e.target.textContent)}</p><button class="button danger" type="button" data-action="concentration-end" data-close-concentration>Terminar conjuro</button>`,
+            null,
+          );
+        if (action === 'concentration-save') useConcentrationSave();
+      });
+      document.addEventListener('click', e => {
+        if (e.target.closest('[data-close-concentration]')) $('#modal').close();
+      });
+      for (const name of ['online', 'offline']) window.addEventListener(name, () => casting.connectionChanged());
+    }
     if (S.id !== campaignId) {
       S.channel?.close();
       Object.assign(S, {
@@ -3365,6 +6354,7 @@
     }
   }
   function close() {
+    casting?.close();
     flushSave();
     const host = $('#board-embed');
     if (host) host.hidden = true;
@@ -3379,13 +6369,41 @@
     isOpen: () => shown && !STANDALONE,
     // La página avisa los cambios de la mesa (personajes, iniciativa…) y cuándo cambió su propia ficha.
     onParty: table => S.id && onParty(table),
-    refresh: () => mounted && S.id && (dock(), card()),
+    refresh: () => mounted && S.id && (dock(), card(), casting?.top()),
     context: () => combatContext(),
     selectedPlacement,
     spellPlacement,
     projectSpell,
+    projectAbility,
+    prepareCompactCast,
+    offerSpellReaction,
+    showSpellSave(castId, save) {
+      const token = mapTokens().find(t => t.combatant_id === save.targetId);
+      if (token)
+        casting?.updateSave(castId, token.id, save.success, {
+          damage: save.damage,
+          roll: save.roll,
+          total: save.total,
+        });
+    },
+    async startCasting(id) {
+      if (!casting) return;
+      for (let i = 0; !S.mapId && i < 100 && shown; i++) await new Promise(resolve => setTimeout(resolve, 40));
+      if (shown) casting.begin(id);
+    },
+    missileOptions,
+    assignMissiles,
+    assignRays,
+    wardTargets,
+    assignWard,
+    resolveSpellSave,
+    swingSpiritualWeapon,
+    spiritualImpact,
+    undoPose,
     aimSpell: id => {
       S.sheetSpell = id;
+      globalThis.BoardInk?.prepare(id, Spells.kindFor(id));
+      S.spellAim = null;
       S.tool = 'scene';
       S.panelMin = false;
       if (S.mapId) ui();

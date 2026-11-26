@@ -225,10 +225,14 @@ async function main() {
     await page.getByRole('button', { name: 'Crear miniatura' }).click();
     await page.getByLabel('Raza de la miniatura').selectOption('minotaur');
     await page.getByLabel('Género').selectOption('woman');
-    await page.getByLabel('Altura (cm)').fill('187');
+    await page.getByLabel('Altura (cm)').fill('218');
     await page.getByLabel('Mano principal').selectOption('hammer');
     await page.getByLabel('Mano secundaria').selectOption('shield');
-    const miniSnapshot = () => page.locator('#mini-preview').evaluate(c => c.toDataURL());
+    const miniSnapshot = () =>
+      page.locator('#mini-preview').evaluate(async c => {
+        await new Promise(requestAnimationFrame);
+        return c.toDataURL();
+      });
     const plainMini = await miniSnapshot();
     await page.getByLabel(/^Peinado/).selectOption('braid');
     await page.getByLabel(/^Cicatriz/).selectOption('claw');
@@ -260,7 +264,7 @@ async function main() {
       'Miniaturas: raza, género, altura y arma siguen en la ficha tras recargar',
       (await page.getByLabel('Raza de la miniatura').inputValue()) === 'minotaur' &&
         (await page.getByLabel('Género').inputValue()) === 'woman' &&
-        (await page.getByLabel('Altura (cm)').inputValue()) === '187' &&
+        (await page.getByLabel('Altura (cm)').inputValue()) === '218' &&
         (await page.getByLabel('Mano principal').inputValue()) === 'hammer' &&
         (await page.getByLabel('Mano secundaria').inputValue()) === 'shield',
     );
@@ -279,7 +283,7 @@ async function main() {
     check('Miniaturas: madera solo en forjados', !(await page.getByLabel('Madera', { exact: true }).isVisible()));
     await page.getByLabel('Raza de la miniatura').selectOption('warforged');
     for (const [label, color] of [
-      ['Hierro', '#607880'],
+      ['Placas de hierro o acero', '#607880'],
       ['Madera', '#955331'],
     ])
       await page.getByLabel(label, { exact: true }).evaluate((input, value) => {
@@ -287,16 +291,23 @@ async function main() {
         input.dispatchEvent(new Event('input', { bubbles: true }));
       }, color);
     await page.getByLabel('Mano principal').selectOption('sword');
-    const atRest = await miniSnapshot();
-    await page.waitForFunction(previous => document.querySelector('#mini-preview').toDataURL() !== previous, atRest);
-    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const woodAndIron = await miniSnapshot();
+    await page.getByLabel('Material del cuerpo').selectOption('iron');
+    await page.getByLabel('Cables metálicos').fill('#9aa6aa');
+    await page.getByLabel('Color de ojos').fill('#77ddff');
+    check(
+      'Miniaturas: el forjado puede cambiar a todo hierro',
+      !(await page.getByLabel('Madera', { exact: true }).isVisible()) && (await miniSnapshot()) !== woodAndIron,
+    );
     await page.getByRole('button', { name: 'Guardar miniatura' }).click();
     await page.reload();
     await page.getByRole('button', { name: 'Editar miniatura' }).click();
     check(
-      'Miniaturas: guarda los dos materiales del forjado',
-      (await page.getByLabel('Hierro', { exact: true }).inputValue()) === '#607880' &&
-        (await page.getByLabel('Madera', { exact: true }).inputValue()) === '#955331',
+      'Miniaturas: guarda el material, los cables y los ojos del forjado',
+      (await page.getByLabel('Material del cuerpo').inputValue()) === 'iron' &&
+        (await page.getByLabel('Placas de hierro o acero', { exact: true }).inputValue()) === '#607880' &&
+        (await page.getByLabel('Cables metálicos').inputValue()) === '#9aa6aa' &&
+        (await page.getByLabel('Color de ojos').inputValue()) === '#77ddff',
     );
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await page.getByRole('button', { name: 'Quitar miniatura' }).click();
@@ -398,17 +409,29 @@ async function main() {
         board: async () => ({
           board: { map_id: 'mapa' },
           maps: [{ id: 'mapa', name: 'Sala', grid: { cols: 11, rows: 11 }, fog: { on: false } }],
-          tokens: monsters.map((m, i) => ({
-            id: 'f-' + m.id,
-            combatant_id: m.id,
-            map_id: 'mapa',
-            kind: 'monster',
-            name: m.name,
-            x: [5, 7, 8, 5][i],
-            y: 5,
-            size: 1,
-            hidden: m.id === 'hidden',
-          })),
+          tokens: [
+            {
+              id: 'caster-token',
+              character_id: 'caster',
+              map_id: 'mapa',
+              kind: 'pc',
+              name: 'Lanzador',
+              x: 1,
+              y: 5,
+              size: 1,
+            },
+            ...monsters.map((m, i) => ({
+              id: 'f-' + m.id,
+              combatant_id: m.id,
+              map_id: 'mapa',
+              kind: 'monster',
+              name: m.name,
+              x: [5, 7, 8, 5][i],
+              y: 5,
+              size: 1,
+              hidden: m.id === 'hidden',
+            })),
+          ],
         }),
         subscribeBoard: async () => ({ send: m => castMessages.push(m), close() {} }),
         post: async (c, kind, payload) => castEvents.push({ kind, payload }),
@@ -428,8 +451,10 @@ async function main() {
         () =>
           state.slotsSpent[1] === 1 &&
           castMessages.length === 1 &&
-          castMessages[0].kind === 'trueno' &&
-          castMessages[0].area.feet === 10 &&
+          castMessages[0].t === 'spell-fx' &&
+          castMessages[0].cast.id === 'shatter' &&
+          castMessages[0].cast.element === 'trueno' &&
+          castMessages[0].cast.area.feet === 10 &&
           document.querySelector('[name=spellDice]').value === '3d8' &&
           [...document.querySelectorAll('[name=who]:checked')]
             .map(n => n.value)

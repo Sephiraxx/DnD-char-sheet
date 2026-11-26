@@ -39,6 +39,68 @@
     return hit ? hit[0] : ALIAS[c] || '';
   }
   const label = t => ES[t] || t;
+  const amount = value => Math.max(0, Math.floor(Number(value) || 0));
+  function afterSave(damage, saved, half) {
+    const total = amount(damage);
+    return saved ? (half ? Math.floor(total / 2) : 0) : total;
+  }
+  function partsAfterSave(parts, saved, half) {
+    let subtotal = 0;
+    return parts.map(part => {
+      const previous = afterSave(subtotal, saved, half);
+      subtotal += amount(part.amount);
+      return { ...part, amount: afterSave(subtotal, saved, half) - previous };
+    });
+  }
+  // A qualifier after a list of physical types belongs to that list, even after commas.
+  function monsterTraits(monster) {
+    const physical = new Set(['bludgeoning', 'piercing', 'slashing']);
+    const out = { resist: [], immune: [], vulnerable: [], weapon: [] };
+    for (const [key, field] of [
+      ['resist', 'res'],
+      ['immune', 'imm'],
+      ['vulnerable', 'vuln'],
+    ]) {
+      for (const clause of String(monster?.[field] || '').split(';')) {
+        const words = canon(clause).match(/[a-z]+/g) || [];
+        const types = [...new Set(words.map(normalize).filter(Boolean))];
+        const nonmagical = /\b(no magic\w*|nonmagical|non magical)\b/.test(canon(clause));
+        const silver = /\b(plat\w*|silver\w*)\b/.test(canon(clause));
+        const adamantine = /\badamantin\w*/.test(canon(clause));
+        for (const type of types) {
+          if (physical.has(type) && (nonmagical || silver || adamantine))
+            out.weapon.push({ type, kind: key, nonmagical, silver, adamantine });
+          else if (!out[key].includes(type)) out[key].push(type);
+        }
+      }
+    }
+    return out;
+  }
+  function monsterDamage(traits, parts) {
+    const totals = new Map();
+    for (const p of parts) {
+      const type = normalize(p.type);
+      const key = JSON.stringify([type, !!p.magical, !!p.silvered, !!p.adamantine]);
+      const part = totals.get(key) || { ...p, type, amount: 0 };
+      part.amount += amount(p.amount);
+      totals.set(key, part);
+    }
+    return [...totals.values()].reduce((sum, part) => {
+      const applies = kind =>
+        traits?.[kind]?.includes(part.type) ||
+        traits?.weapon?.some(
+          r =>
+            r.kind === kind &&
+            r.type === part.type &&
+            (!r.nonmagical || !part.magical) &&
+            (!r.silver || !part.silvered) &&
+            (!r.adamantine || !part.adamantine),
+        );
+      if (applies('immune')) return sum;
+      const damage = applies('resist') ? Math.floor(part.amount / 2) : part.amount;
+      return sum + damage * (applies('vulnerable') ? 2 : 1);
+    }, 0);
+  }
   const CONDITIONS = {
     poisoned: 'envenenado',
     charmed: 'hechizado',
@@ -141,6 +203,19 @@
     )
       throw Error('Resistencias inválidas.');
   }
-  root.Defenses = { TYPES, normalize, label, conditionLabel, of, apply, partsOf, validate };
+  root.Defenses = {
+    TYPES,
+    normalize,
+    label,
+    conditionLabel,
+    of,
+    apply,
+    partsOf,
+    afterSave,
+    partsAfterSave,
+    monsterTraits,
+    monsterDamage,
+    validate,
+  };
   if (typeof module !== 'undefined') module.exports = root.Defenses;
 })(typeof window !== 'undefined' ? window : globalThis);

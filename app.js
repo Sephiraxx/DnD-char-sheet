@@ -243,7 +243,13 @@ function pool(title, type, index = '', help = '') {
   return `<div class="pool-row"><div class="pool-head"><span>${title}</span><button class="text-btn" data-action="pool-edit" data-type="${type}" data-index="${esc(index)}"><strong>${used === null ? '—' : max - used} / ${max}</strong></button></div><div class="pips">${Array.from({ length: max }, (_, i) => `<button class="pip ${used === null ? 'unknown' : i < used ? 'spent' : ''}" data-action="pip" data-type="${type}" data-index="${esc(index)}" data-pip="${i}" aria-label="${esc(title)}: ${used === null ? 'ajustar cantidad' : i < used ? 'recuperar un uso' : 'gastar un uso'}">${used === null ? '?' : i < used ? '−' : '✦'}</button>`).join('')}</div>${help ? `<div class="pool-help">${help}</div>` : ''}</div>`;
 }
 function spellById(id) {
-  return R.allSpells(state).find(s => s.id === id);
+  const spell = R.allSpells(state).find(s => s.id === id);
+  if (id !== 'counter' || !spell) return spell;
+  return {
+    ...spell,
+    brief: 'Interrumpís un conjuro dentro de 60 pies.',
+    text: 'Si el conjuro enemigo es de nivel 3 o inferior, falla automáticamente. Si es de nivel 4 o superior, hacé una prueba de característica de lanzamiento con CD 10 + el nivel del conjuro enemigo. Al usar un espacio superior, interrumpís automáticamente conjuros de nivel igual o inferior al espacio gastado.',
+  };
 }
 function spellName(id) {
   return spellById(id)?.name || 'Conjuro';
@@ -259,11 +265,14 @@ function spellNumbersHtml(sp, slot) {
   const lines = R.spellNumbersFor(state, sp, slot);
   return lines.length ? `<p class="spell-numbers">${lines.map(esc).join('<br>')}</p>` : '';
 }
+function spellDetailHTML(sp, slot) {
+  return spellNumbersHtml(sp, slot) + Campaign.spellHelp(sp);
+}
 function spellCard(s) {
   const race = typeof Campaign !== 'undefined' && Campaign.raceSpells(state).spells.some(x => x.id === s.id),
     extra = state.extras.includes(s.id) && !race,
     headline = R.spellHeadline(state, s);
-  return `<details class="spell" id="spell-${esc(s.id)}"><summary><div class="spell-title"><div><h2>${esc(s.name)}</h2>${spellHeadlineHtml(headline)}<div class="spell-meta">${s.level ? 'Nivel ' + s.level : 'Truco'} · ${esc(s.time)} · ${esc(s.range)}</div></div>${race ? '<span class="tag">Raza</span>' : extra ? '<span class="tag">Extra DM</span>' : s.concentration ? '<span class="tag">Conc.</span>' : ''}</div>${s.brief && headline !== s.brief ? `<p class="spell-brief">${esc(s.brief)}</p>` : ''}</summary><div class="spell-body"><p>${esc(s.text)}</p><p class="small">${libraryLink(s.name)}</p>${typeof OfficialContent !== 'undefined' ? OfficialContent.spellHtml(s.id) : ''}${spellNumbersHtml(s)}${button('Explicación y requisitos', 'spell-help', 'secondary', `data-id="${esc(s.id)}"`)}<p class="small">Componentes: ${esc(s.components)}<br>Duración: ${esc(s.duration)}${s.concentration ? ' · Concentración' : ''}<br>Fuente: ${esc(s.source)}</p><div class="spell-footer">${button(s.level ? 'Lanzar' : 'Usar truco', 'cast', '', `data-id="${esc(s.id)}"`)}${Classes.ritualAllowed(state, s) ? button('Ritual · sin espacio', 'ritual', 'secondary', `data-id="${esc(s.id)}"`) : ''}${button('Editar', 'spell-edit', 'secondary', `data-id="${esc(s.id)}"`)}</div></div></details>`;
+  return `<details class="spell" id="spell-${esc(s.id)}"><summary ${TableUI.link() ? `data-action="cast" data-id="${esc(s.id)}"` : ''}><div class="spell-title"><div><h2>${esc(s.name)}</h2>${spellHeadlineHtml(headline)}<div class="spell-meta">${s.level ? 'Nivel ' + s.level : 'Truco'} · ${esc(s.time)} · ${esc(s.range)}</div></div>${race ? '<span class="tag">Raza</span>' : extra ? '<span class="tag">Extra DM</span>' : s.concentration ? '<span class="tag">Conc.</span>' : ''}</div>${s.brief && headline !== s.brief ? `<p class="spell-brief">${esc(s.brief)}</p>` : ''}</summary><div class="spell-body"><p>${esc(s.text)}</p><p class="small">${libraryLink(s.name)}</p>${typeof OfficialContent !== 'undefined' ? OfficialContent.spellHtml(s.id) : ''}${spellNumbersHtml(s)}${button('Explicación y requisitos', 'spell-help', 'secondary', `data-id="${esc(s.id)}"`)}<p class="small">Componentes: ${esc(s.components)}<br>Duración: ${esc(s.duration)}${s.concentration ? ' · Concentración' : ''}<br>Fuente: ${esc(s.source)}</p><div class="spell-footer">${button(s.level ? 'Lanzar' : 'Usar truco', 'cast', '', `data-id="${esc(s.id)}"`)}${Classes.ritualAllowed(state, s) ? button('Ritual · sin espacio', 'ritual', 'secondary', `data-id="${esc(s.id)}"`) : ''}${button('Editar', 'spell-edit', 'secondary', `data-id="${esc(s.id)}"`)}</div></div></details>`;
 }
 // Carga: lo que llevás encima frente a tu capacidad, con la regla variante si la mesa la usa.
 function loadMeter() {
@@ -539,7 +548,7 @@ function editPool(type, index) {
     fd => commit('Ajuste de usos disponibles', s => setPool(s, type, index, max - number(fd, 'usos', 0, max))),
   );
 }
-function cast(id, ritual = false, placement = null) {
+function cast(id, ritual = false, placement = null, boardCastOptions = null) {
   const sp = spellById(id);
   if (ritual && !sp?.ritual) throw Error('No es ritual.');
   const MM = typeof Metamagic !== 'undefined' ? Metamagic : null;
@@ -660,86 +669,187 @@ function cast(id, ritual = false, placement = null) {
   if (!c.active)
     html +=
       '<p class="small">Fuera del seguimiento: se registran espacios, reacción y concentración. Activá «Mi turno» en Combate para controlar acción y adicional.</p>';
-  modal(
-    ritual ? 'Lanzamiento ritual' : sp.name,
-    html,
-    fd => {
-      const slot =
-        sp.level && !ritual && (!special || featFree || grant?.slotRequired)
-          ? fd.get('espacio') === 'pact'
-            ? 'pact'
-            : number(fd, 'espacio', featFree ? 0 : sp.level, 9)
-          : 0;
-      const castLevel = slot === 'pact' ? d.pact.level : slot || grant?.castLevel || sp.level;
-      // Metamagia: el conjuro de esta vez (acelerado, distante, extendido…) y su coste en puntos.
-      const pick = MM && !ritual ? MM.fromForm(fd) : { picks: [] };
-      const mm =
-        MM && !ritual ? MM.plan(state, sp, pick.picks, { slot: castLevel, damageType: pick.damageType }) : null;
-      if (onlyQuick && !mm?.keys.includes('quickened')) throw Error(reason);
-      if (mm?.cost > MM.points(state))
-        throw Error(`La metamagia elegida cuesta ${mm.cost} punto(s) y te quedan ${MM.points(state)}.`);
-      const now = { ...(mm?.sp || sp), castAbility: Classes.casting(Classes.spellCaster(state, sp.id, slot)).ability };
-      const selectedType = impact.choices.includes(fd.get('castType')) ? fd.get('castType') : '';
-      const types = R.castDamageTypes(impact, selectedType, mm?.roll);
-      const kinds = [...types, ...(impact.healing ? ['heal'] : [])];
-      if (!kinds.length) kinds.push('magic');
-      let point = null;
-      if (!ritual && placement) {
-        point = globalThis.Board?.spellPlacement(now, placement.cell, castLevel);
-        if (
-          !point ||
-          point.map !== placement.map ||
-          point.campaign !== placement.campaign ||
-          point.actorId !== placement.actorId
+  const missileOptions =
+    sp.id === 'magic-missile' && !ritual && placement ? globalThis.Board?.missileOptions(placement, sp) || [] : [];
+  if (missileOptions.length) {
+    const options = missileOptions.map(({ id, name }) => [id, name]);
+    const max = Math.max(
+      1,
+      grant?.castLevel || 1,
+      ...eligible.map(([value]) => (value === 'pact' ? d.pact.level : Number(value))),
+    );
+    html +=
+      '<fieldset id="spell-missile-targets" class="target-list"><legend>Asigná cada dardo</legend>' +
+      Array.from(
+        { length: BoardSpells.missileCount(max) },
+        (_, i) => '<div data-dart>' + select('Dardo ' + (i + 1), 'dart', options, placement.tokenId) + '</div>',
+      ).join('') +
+      '<p class="small muted">Podés elegir la misma criatura para varios dardos.</p></fieldset>';
+  }
+  const wardOptions = placement && !ritual ? globalThis.Board?.wardTargets(placement, sp, sp.level) || [] : [];
+  const rayCount =
+    !ritual && sp.id === 'eldritch-blast' ? globalThis.BoardSpells?.beamCount(R.totalLevel(state)) || 1 : 0;
+  const rayOptions = rayCount > 1 && placement ? globalThis.Board?.missileOptions(placement, sp) || [] : [];
+  if (rayOptions.length) {
+    const options = rayOptions.map(t => [t.id, t.name]);
+    html +=
+      '<fieldset class="target-list"><legend>Elegí los objetivos de los rayos</legend>' +
+      Array.from({ length: rayCount }, (_, i) => select('Rayo ' + (i + 1), 'ray', options, placement.tokenId)).join(
+        '',
+      ) +
+      '</fieldset>';
+  }
+  if (sp.id === 'wall-of-fire' && placement?.tokens.length)
+    html += `<p class="banner">El muro atraviesa las casillas de ${placement.tokens.length} criatura(s). Pueden recibir daño.</p>`;
+  if (sp.id === 'wall-of-fire' && !ritual && placement)
+    html += select(
+      'Lado caliente (mirando desde el inicio hacia el extremo)',
+      'wallSide',
+      [
+        ['right', 'Derecha'],
+        ['left', 'Izquierda'],
+      ],
+      'right',
+    );
+  if (sp.id === 'spiritual-weapon' && !ritual && placement)
+    html += select(
+      'Forma del arma espiritual',
+      'spiritForm',
+      [
+        ['hammer', 'Martillo'],
+        ['mace', 'Maza'],
+        ['axe', 'Hacha'],
+      ],
+      'hammer',
+    );
+  if (wardOptions.length)
+    html +=
+      '<fieldset class="target-list"><legend>Elegí las criaturas</legend>' +
+      wardOptions
+        .map(
+          t =>
+            `<label class="check"><input type="checkbox" name="ward" value="${esc(t.id)}" ${t.id === placement.tokenId ? 'checked' : ''}>${esc(t.name)}</label>`,
         )
-          throw Error('El mapa o la ficha cambió. Volvé a elegir el punto.');
-      } else if (!ritual && globalThis.Board?.isOpen()) point = Board.selectedPlacement(now, castLevel);
-      commit(
-        (ritual ? 'Ritual: ' : 'Lanzado: ') +
-          sp.name +
-          (slot ? ' · ' + (slot === 'pact' ? 'pacto nivel ' + castLevel : 'espacio ' + slot) : '') +
-          (mm?.label || '') +
-          (mm?.cost ? ` (${mm.cost} pt)` : ''),
-        s => {
-          Combat.cast(s, now, slot, ritual);
-          if (mm?.cost) MM.pay(s, mm.cost);
-          if (!ritual)
-            Effects.fromSpell(s, now, {
-              slot: castLevel,
-              object: fd.get('heatObject') || '',
-              weaponId: fd.get('shillelaghWeapon'),
-            });
-          const target = String(fd.get('ventaja') || '').trim();
-          if (sp.id === 'silvery' && target) {
-            const effects = Combat.data(s).effects;
-            const old = effects.find(x => x.kind === 'advantage' && x.target.toLowerCase() === target.toLowerCase());
-            if (old) old.target = target;
-            else effects.push({ id: uid(), kind: 'advantage', target, value: 0 });
-          }
-        },
+        .join('') +
+      '<p class="small muted">Hasta tres criaturas con un espacio de nivel 1. Una más por cada nivel superior.</p></fieldset>';
+  const register = fd => {
+    const slot =
+      sp.level && !ritual && (!special || featFree || grant?.slotRequired)
+        ? fd.get('espacio') === 'pact'
+          ? 'pact'
+          : number(fd, 'espacio', featFree ? 0 : sp.level, 9)
+        : 0;
+    const castLevel = slot === 'pact' ? d.pact.level : slot || grant?.castLevel || sp.level;
+    // Metamagia: el conjuro de esta vez (acelerado, distante, extendido…) y su coste en puntos.
+    const pick = MM && !ritual ? MM.fromForm(fd) : { picks: [] };
+    const mm = MM && !ritual ? MM.plan(state, sp, pick.picks, { slot: castLevel, damageType: pick.damageType }) : null;
+    if (onlyQuick && !mm?.keys.includes('quickened')) throw Error(reason);
+    if (mm?.cost > MM.points(state))
+      throw Error(`La metamagia elegida cuesta ${mm.cost} punto(s) y te quedan ${MM.points(state)}.`);
+    const now = { ...(mm?.sp || sp), castAbility: Classes.casting(Classes.spellCaster(state, sp.id, slot)).ability };
+    const selectedType = impact.choices.includes(fd.get('castType')) ? fd.get('castType') : '';
+    const types = R.castDamageTypes(impact, selectedType, mm?.roll);
+    const kinds = [...types, ...(impact.healing ? ['heal'] : [])];
+    if (!kinds.length) kinds.push('magic');
+    let point = null;
+    if (!ritual && placement) {
+      point = globalThis.Board?.spellPlacement(now, placement.cell, castLevel, placement.aim, placement.tokenId);
+      if (
+        !point ||
+        point.map !== placement.map ||
+        point.campaign !== placement.campaign ||
+        point.actorId !== placement.actorId
+      )
+        throw Error('El mapa o la ficha cambió. Volvé a elegir el punto.');
+    } else if (!ritual && globalThis.Board?.isOpen()) point = Board.selectedPlacement(now, castLevel);
+    if (point?.error) throw Error(point.error);
+    if (boardCastOptions && placement && point)
+      point = Board.prepareCompactCast(point, now, castLevel, boardCastOptions);
+    if (!boardCastOptions && point && sp.id === 'magic-missile')
+      point = Board.assignMissiles(point, now, castLevel, fd.getAll('dart'));
+    if (!boardCastOptions && point && wardOptions.length)
+      point = Board.assignWard(point, now, castLevel, fd.getAll('ward'));
+    if (point && sp.id === 'spiritual-weapon') point.weaponForm = BoardSpells.weaponForm(fd.get('spiritForm'));
+    if (!boardCastOptions && point && sp.id === 'wall-of-fire') point.wallSide = fd.get('wallSide') === 'left' ? -1 : 1;
+    if (point && rayOptions.length) point = Board.assignRays(point, now, rayCount, fd.getAll('ray'));
+    else if (point && rayCount) point.beams = rayCount;
+    commit(
+      (ritual ? 'Ritual: ' : 'Lanzado: ') +
+        sp.name +
+        (slot ? ' · ' + (slot === 'pact' ? 'pacto nivel ' + castLevel : 'espacio ' + slot) : '') +
+        (mm?.label || '') +
+        (mm?.cost ? ` (${mm.cost} pt)` : ''),
+      s => {
+        Combat.cast(s, now, slot, ritual);
+        if (mm?.cost) MM.pay(s, mm.cost);
+        if (!ritual)
+          Effects.fromSpell(s, now, {
+            slot: castLevel,
+            object: fd.get('heatObject') || '',
+            weaponId: fd.get('shillelaghWeapon'),
+          });
+        const target = String(fd.get('ventaja') || '').trim();
+        if (sp.id === 'silvery' && target) {
+          const effects = Combat.data(s).effects;
+          const old = effects.find(x => x.kind === 'advantage' && x.target.toLowerCase() === target.toLowerCase());
+          if (old) old.target = target;
+          else effects.push({ id: uid(), kind: 'advantage', target, value: 0 });
+        }
+      },
+    );
+    // Si el conjuro tiene ataque, salvación o dados, se abre su tirada.
+    const zone =
+      point?.area && RollUI.zoneRoll(now, castLevel, selectedType ? types.join(' y ') : '', fd.get('spellDice'));
+    const boardCast = point && Board.projectSpell(point, kinds, now, castLevel, zone);
+    if (!point && !ritual && ['shield', 'shillelagh'].includes(sp.id))
+      globalThis.BoardPlayer?.projectAbility(sp.id, sp.name);
+    if (boardCastOptions)
+      return RollUI.resolveBoardCast(now, castLevel, {
+        ...boardCastOptions,
+        placement: point,
+        boardCast,
+        types: selectedType ? types.join(' y ') : '',
+      });
+    if (
+      !ritual &&
+      RollUI.rollable(sp) &&
+      !(point && sp.id === 'spiritual-weapon') &&
+      !(boardCast?.zone && !BoardSpells.zoneRule(sp.id).initial)
+    )
+      setTimeout(() =>
+        RollUI.spell(now, castLevel, {
+          mm: mm?.roll,
+          types: selectedType ? types.join(' y ') : '',
+          placement: point,
+          boardCast,
+          castKinds: point ? null : kinds,
+        }),
       );
-      // Si el conjuro tiene ataque, salvación o dados, se abre su tirada.
-      if (point) Board.projectSpell(point, kinds);
-      if (!ritual && RollUI.rollable(sp))
-        setTimeout(() =>
-          RollUI.spell(now, castLevel, {
-            mm: mm?.roll,
-            types: selectedType ? types.join(' y ') : '',
-            placement: point,
-            castKinds: point ? null : kinds,
-          }),
-        );
-      else
-        toast(
-          ritual
-            ? 'Ritual iniciado. Controlá su tiempo en mesa.'
-            : 'Lanzamiento registrado' +
-                (mm?.notes.length ? ' con ' + mm.notes.join(', ') : '') +
-                '. Resolvé el efecto y las tiradas en mesa.',
-        );
-    },
-    ritual ? 'Iniciar ritual' : 'Registrar lanzamiento',
-  );
+    else
+      toast(
+        ritual
+          ? 'Ritual iniciado. Controlá su tiempo en mesa.'
+          : 'Lanzamiento registrado' +
+              (mm?.notes.length ? ' con ' + mm.notes.join(', ') : '') +
+              '. Resolvé el efecto y las tiradas en mesa.',
+      );
+  };
+  if (boardCastOptions) return register(boardCastOptions.form);
+  modal(ritual ? 'Lanzamiento ritual' : sp.name, html, register, ritual ? 'Iniciar ritual' : 'Registrar lanzamiento');
+  if (missileOptions.length) {
+    const form = document.getElementById('dialog-form');
+    const updateDarts = () => {
+      const chosen = form.elements.espacio?.value;
+      const level = chosen === 'pact' ? d.pact.level : Number(chosen) || grant?.castLevel || sp.level;
+      const count = BoardSpells.missileCount(level);
+      form.querySelectorAll('[data-dart]').forEach((row, i) => {
+        row.hidden = i >= count;
+        row.firstElementChild.querySelector('select').disabled = row.hidden;
+      });
+    };
+    updateDarts();
+    form.elements.espacio?.addEventListener('change', updateDarts);
+  }
 }
 function customSpell(id) {
   let source = id ? spellById(id) : null;
@@ -991,7 +1101,7 @@ const actions = {
   'spell-manage': () => PartyUI.manageSpells(),
   'spell-new': () => customSpell(),
   'spell-edit': e => customSpell(e.dataset.id),
-  cast: e => cast(e.dataset.id),
+  cast: e => (TableUI.link() && globalThis.BoardPlayer ? BoardPlayer.openCast(e.dataset.id) : cast(e.dataset.id)),
   ritual: e => cast(e.dataset.id, true),
   sources: sources,
   backup: () => {

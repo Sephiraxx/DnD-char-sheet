@@ -31,7 +31,7 @@
   function setup(preferred) {
     if (party?.encounter?.active) throw Error('Terminá el combate antes de cambiar la iniciativa.');
     const campaignId = current;
-    const entries = tracker().entries.filter(e => !(e.kind === 'monster' && e.status === 'derrotado'));
+    const entries = tracker().entries.filter(e => !e.boardOnly && !(e.kind === 'monster' && e.status === 'derrotado'));
     const sides = {
       party: entries.filter(e => e.kind === 'pc'),
       dm: entries.filter(e => e.kind === 'monster'),

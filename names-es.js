@@ -428,6 +428,8 @@
     'Mighty Summoner': 'Invocador poderoso',
     'Guardian Spirit': 'Espíritu guardián',
     'Faithful Summons': 'Invocación leal',
+    'Halo of Spores': 'Halo de esporas',
+    'Symbiotic Entity': 'Entidad simbiótica',
     'Fungal Infestation': 'Infestación fúngica',
     'Spreading Spores': 'Esporas que se extienden',
     'Fungal Body': 'Cuerpo fúngico',

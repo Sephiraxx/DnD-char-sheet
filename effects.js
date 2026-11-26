@@ -65,6 +65,10 @@
     (s.inventory || []).filter(x => x.qty > 0 && ['club', 'quarterstaff'].includes(x.equipmentId));
   function fromSpell(s, sp, opts = {}) {
     const rounds = roundsFrom(sp.duration);
+    if (sp.id === 'shield') {
+      add(s, { name: sp.name, rounds: 1, spell: sp.id });
+      return;
+    }
     if (rounds === 0 || rounds === 1) return;
     if (!sp.concentration && rounds === null) return;
     const weapon = sp.id === 'shillelagh' ? shillelaghTargets(s).find(x => x.id === opts.weaponId) : null;

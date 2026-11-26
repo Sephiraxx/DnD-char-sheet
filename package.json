@@ -6,6 +6,10 @@
     "serve": "npx --yes http-server -c-1 -p 8080 .",
     "format": "prettier --write . && node tools/stamp-sw.js",
     "stamp": "node tools/stamp-sw.js",
+    "ink:setup": "npm install --prefix tools/ink --no-package-lock --ignore-scripts",
+    "ink": "node tools/ink/node_modules/@shapeshift-labs/ink-studio/cli/ink-studio.js",
+    "ink:render": "node tools/ink/render.js",
+    "ink:spells": "node tools/ink/render-spells.js",
     "check": "prettier --check . && node --test",
     "browser": "node tools/browser-regressions.js",
     "vendor": "node -e \"require('fs').copyFileSync(require.resolve('@supabase/supabase-js/dist/umd/supabase.js'),'vendor/supabase.js')\""

@@ -21,7 +21,7 @@
         ...free(
           'Pinchos de la armadura',
           'bonus',
-          'En Rabia, con armadura de pinchos: un ataque con los pinchos como acción adicional; al apresar, el objetivo recibe 3 perforante.',
+          'En Furia, con armadura de pinchos: un ataque con los pinchos como acción adicional; al apresar, el objetivo recibe 3 perforante.',
           {
             roll: { dice: () => '1d4', flat: x => x.m.str, kind: 'damage', type: 'piercing' },
           },
@@ -32,19 +32,19 @@
         ...free(
           'Desenfreno temerario',
           'free',
-          'En Rabia, al atacar temerariamente ganás PG temporales iguales a tu CON (mínimo 1).',
+          'En Furia, al atacar temerariamente ganás PG temporales iguales a tu CON (mínimo 1).',
           {
             roll: { dice: () => '', flat: x => Math.max(1, x.m.con), kind: 'temp' },
           },
         ),
         when: x => !!x.s.raging,
       },
-      'Battlerager Charge': r('En Rabia, Correr es una acción adicional.'),
+      'Battlerager Charge': r('En Furia, Correr es una acción adicional.'),
       'Spiked Retribution': {
         ...free(
           'Represalia con pinchos',
           'free',
-          'En Rabia, quien te impacta cuerpo a cuerpo a 5 pies recibe 3 perforante.',
+          'En Furia, quien te impacta cuerpo a cuerpo a 5 pies recibe 3 perforante.',
           {
             roll: { dice: () => '', flat: () => 3, kind: 'damage', type: 'piercing' },
           },
@@ -54,7 +54,7 @@
     },
     'barbarian-path-of-the-ancestral-guardian': {
       'Ancestral Protectors': r(
-        'En Rabia, la primera criatura que impactás en tu turno tiene desventaja al atacar a otros, y los demás tienen resistencia a su daño, hasta tu próximo turno.',
+        'En Furia, la primera criatura que impactás en tu turno tiene desventaja al atacar a otros, y los demás tienen resistencia a su daño, hasta tu próximo turno.',
       ),
       'Vengeful Ancestors': r('Con Escudo espiritual, el atacante recibe de fuerza el daño que evitaste.'),
     },
@@ -65,11 +65,11 @@
           max: 1,
           reset: 'long',
           action: 'free',
-          text: 'Una vez por Rabia, repetís una salvación fallida (se recupera al entrar otra vez en Rabia).',
+          text: 'Una vez por Furia, repetís una salvación fallida (se recupera al entrar otra vez en Furia).',
         },
       },
       'Rage beyond Death': r(
-        'En Rabia, caer a 0 PG no te deja inconsciente; morís solo si al terminar la Rabia seguís en 0 PG.',
+        'En Furia, caer a 0 PG no te deja inconsciente; morís solo si al terminar la Furia seguís en 0 PG.',
       ),
     },
     'barbarian-path-of-the-beast': {
@@ -83,7 +83,7 @@
           },
         ),
         table:
-          'En Rabia elegís mordisco (1d8, cura), garras (1d6, un ataque extra) o cola (1d8, alcance 10 y reacción +1d8 a la CA).',
+          'En Furia elegís mordisco (1d8, cura), garras (1d6, un ataque extra) o cola (1d8, alcance 10 y reacción +1d8 a la CA).',
       },
       'Bestial Soul': r(
         'Tus armas naturales son mágicas; tras un descanso elegís nado y respirar bajo el agua, trepar o saltar más lejos.',
@@ -92,18 +92,18 @@
     'barbarian-path-of-wild-magic': {
       'Wild Surge': { covered: true, auto: 'Botón en la tarjeta del rasgo para tirar la tabla de magia salvaje (d8).' },
       'Unstable Backlash': r(
-        'Al recibir daño o fallar una salvación en Rabia, con tu reacción tirás de nuevo en la tabla de magia salvaje.',
+        'Al recibir daño o fallar una salvación en Furia, con tu reacción tirás de nuevo en la tabla de magia salvaje.',
       ),
       'Controlled Surge': r('Al tirar en la tabla, tirás dos veces y elegís; con dobles, elegís cualquier efecto.'),
     },
     'barbarian-path-of-the-giant': {
       "Giant's Havoc": r(
-        'En Rabia, +5 pies de alcance con armas cuerpo a cuerpo y sin armas; podés ser Grande si hay lugar. Las armas arrojadizas suman el daño de Rabia.',
+        'En Furia, +5 pies de alcance con armas cuerpo a cuerpo y sin armas; podés ser Grande si hay lugar. Las armas arrojadizas suman el daño de Furia.',
       ),
       'Mighty Impel': free(
         'Impulso poderoso',
         'bonus',
-        'En Rabia, lanzás a una criatura Mediana o menor a 5 pies hasta 30 pies (salva FUE si no es voluntaria).',
+        'En Furia, lanzás a una criatura Mediana o menor a 5 pies hasta 30 pies (salva FUE si no es voluntaria).',
       ),
       'Demiurgic Colossus': r(
         'El alcance de Estragos del gigante sube a 10 pies, podés ser Enorme y el Hendedor elemental hace 2d6.',

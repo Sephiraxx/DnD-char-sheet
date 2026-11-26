@@ -96,7 +96,7 @@
     if (root.Classes) {
       if (ritual ? !root.Classes.ritualAllowed(s, sp) : !root.Classes.usable(s).includes(sp.id))
         return 'Este conjuro no está preparado o disponible para este lanzamiento.';
-      if (s.raging) return 'No podés lanzar conjuros mientras estás en rabia.';
+      if (s.raging) return 'No podés lanzar conjuros mientras estás en furia.';
       if (s.wildShape && !(s.classId === 'druid' && s.level >= 18))
         return 'En forma salvaje no podés lanzar conjuros (salvo con Conjuros bestiales, nivel 18).';
     } else if (![...s.known, ...s.extras].includes(sp.id)) return 'Este conjuro no está en tu repertorio.';

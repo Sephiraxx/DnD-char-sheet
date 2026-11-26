@@ -306,7 +306,7 @@ const RollUI = (() => {
         // Todos al mismo objetivo: se suman; si los repartís, ajustá.
         const p = /^(\d+)d(\d+)(?:\+(\d+))?$/.exec(each);
         if (p) dice = `${p[1] * r.count}d${p[2]}${p[3] ? '+' + p[3] * r.count : ''}`;
-        notes.push(`${r.count} dardos de ${shown} (todos al mismo objetivo; si los repartís, ajustá el daño).`);
+        notes.push(`${r.count} dardos de ${shown} (asignables en el tablero).`);
       } else notes.push(`${r.count} ${D.multi.unit}s: cada uno es un ataque aparte de ${shown}.`);
     }
     if (sp.level === 0 && D.tiers && !D.blade)
@@ -325,6 +325,11 @@ const RollUI = (() => {
     };
   }
   function spellInfo(sp, slot) {
+    const noDamageSave = { bane: ['cha', 'Carisma'], hold: ['wis', 'Sabiduría'], entangle: ['str', 'Fuerza'] }[sp.id];
+    if (noDamageSave) {
+      const [save, saveName] = noDamageSave;
+      return { dice: '', notes: [], attack: false, save, saveName, types: '', heal: false };
+    }
     if (sp.id === 'heat-metal') {
       const info = catalogInfo(sp, slot || sp.level);
       return {
@@ -367,9 +372,7 @@ const RollUI = (() => {
       const darts = 3 + Math.max(0, slot - sp.level);
       count *= darts;
       flat *= darts;
-      notes.push(
-        `${darts} dardos de 1d${sides}${m[3] ? ' + ' + m[3] : ''} (todos al mismo objetivo; si los repartís, ajustá el daño).`,
-      );
+      notes.push(`${darts} dardos de 1d${sides}${m[3] ? ' + ' + m[3] : ''} (asignables en el tablero).`);
     }
     const up = hint.up;
     if (up && slot > sp.level && up[1] === sides) {
@@ -470,11 +473,19 @@ const RollUI = (() => {
               ? h.combatant === value.slice(4)
               : h.character === value.slice(3),
         ),
-      first = hits
-        ? t.monsters.find(m => matches((m.player ? 'pc:' : 'mon:') + m.id))?.id || ''
-        : TableUI.preferredTarget(t.monsters),
+      firstRay = spellSession?.placement?.rays?.[0],
+      first = firstRay
+        ? firstRay.combatant || firstRay.character || ''
+        : hits
+          ? t.monsters.find(m => matches((m.player ? 'pc:' : 'mon:') + m.id))?.id || ''
+          : TableUI.preferredTarget(t.monsters),
       who = (value, label, checked = false) =>
         `<label class="check"><input type="checkbox" name="who" value="${esc(value)}" ${(hits ? matches(value) : checked) ? 'checked' : ''}>${esc(label)}</label>`;
+    const missiles = spellSession?.placement?.missiles;
+    if (sp.id === 'magic-missile' && missiles?.length)
+      return (
+        '<p class="small">Dardos: ' + missiles.map((dart, i) => esc(i + 1 + '. ' + dart.name)).join(' · ') + '</p>'
+      );
     if (info.attack && t.monsters.length)
       return select(
         'Objetivo',
@@ -530,8 +541,8 @@ const RollUI = (() => {
     return 1;
   }
   // En combate, cada tirada del conjuro vale una vez por turno (el DM puede habilitar otra).
-  const spellKeys = () => {
-    const { sp, info, slot } = spellSession,
+  const spellKeys = (session = spellSession) => {
+    const { sp, info, slot } = session,
       n = beams(sp, slot);
     return { atk: ['spell:' + sp.id + ':atk', n], dmg: ['spell:' + sp.id + ':dmg', info.attack ? n : 1] };
   };
@@ -583,6 +594,8 @@ const RollUI = (() => {
       sp,
       info,
       placement: opts.placement,
+      boardCast: opts.boardCast,
+      spiritualStrike: opts.spiritualStrike,
       castKinds: opts.castKinds,
       crit: false,
       hitTarget: null,
@@ -606,11 +619,13 @@ const RollUI = (() => {
     modal(
       sp.name + (slot > sp.level ? ' · nivel ' + slot : ''),
       `${mmNotes.length ? `<p class="banner">${esc(mmNotes.join(' '))}</p>` : ''}${targetFields(info, sp)}${!info.dice && !info.attack && !info.save ? `<p class="small">${esc(sp.brief || '')}</p><div class="actions">${button('Aplicar efecto', 'spell-apply-effect', '')}</div>` : ''}${info.attack ? `<h3>Ataque de conjuro ${sign(st.attack)}</h3>${d20Fields(mods, '', { kind: 'attack' })}<div class="actions">${button('Tirar ataque', 'spell-roll-attack', '')}</div>` : ''}
-      ${info.save ? `<p class="banner">Cada objetivo tira una salvación de <b>${esc(info.saveName)}</b> contra tu CD <b>${st.dc}</b>.${halfOnSave(sp) ? ' Si la supera, suele recibir la mitad.' : ''}</p>` : ''}
+      ${info.save ? `<p class="banner">Cada objetivo tira una salvación de <b>${esc(info.saveName)}</b> contra tu CD <b>${st.dc}</b>.${info.dice && halfOnSave(sp) ? ' Si la supera, suele recibir la mitad.' : ''}</p>` : ''}
       ${
-        info.dice || info.attack || info.save
+        info.dice || info.attack
           ? `<h3 class="section-space">${info.heal ? 'Curación' : 'Daño'}${info.types ? ' · ' + esc(info.types) : ''}</h3><div class="form-grid">${field(info.fixed ? 'Curación fija (PG)' : 'Dados', 'spellDice', info.dice, 'text', 'maxlength="20" placeholder="2d8"')}<label class="check"><input type="checkbox" name="spellMod" ${info.addMod ? 'checked' : ''}>Sumar modificador de lanzamiento (${sign(mod)})</label></div>${empower}${fxFields(fx)}${info.notes.length ? `<p class="small">${esc(info.notes.join(' '))}</p>` : ''}<details class="physical-dice"><summary>Uso mis propios dados</summary>${field('Suma de mis dados', 'myDamage', '', 'number', 'min="0" max="999" inputmode="numeric"')}</details><div class="actions">${button(info.heal ? 'Tirar curación' : 'Tirar daño', 'spell-roll-damage', info.attack ? 'secondary' : '')}</div>`
-          : ''
+          : info.save
+            ? `<div class="actions">${button('Pedir salvaciones', 'spell-request-save', '')}</div>`
+            : ''
       }
       <div class="attack-log" id="attack-log" aria-live="polite"><p class="small muted">Revisá los dados: salen del texto del conjuro y podés corregirlos.</p></div>`,
       null,
@@ -636,7 +651,9 @@ const RollUI = (() => {
     el.insertAdjacentHTML('afterbegin', `<p class="${cls}">${html}</p>`);
   }
   function spellAttack() {
-    const { sp } = spellSession,
+    const session = spellSession;
+    const retry = session.seek;
+    const { sp, spiritualStrike } = session,
       st = withOverride(spellStats(sp), spellSession.override),
       fd = new FormData(document.getElementById('dialog-form')),
       r = readD20(fd),
@@ -652,7 +669,15 @@ const RollUI = (() => {
     const crit = r.kept === 20,
       miss = r.kept === 1;
     let line = `<b>Ataque:</b> ${diceText(r)} ${sign(st.attack)}${extra.text} = <b>${total}</b>${crit ? ' · <b>¡Crítico!</b> (el daño duplica dados)' : miss ? ' · Pifia: falla' : ''}`;
-    const target = fd.get('target') || '';
+    const target = retry ? session.lastAttackTarget || '' : fd.get('target') || '';
+    session.lastAttackTarget = target;
+    const rays = session.placement?.rays;
+    if (rays && !retry) {
+      session.rayIndex = (session.rayIndex || 0) + 1;
+      const ray = rays[session.rayIndex];
+      const field = document.querySelector('#dialog-form select[name=target]');
+      if (field && ray) field.value = ray.combatant || ray.character || '';
+    }
     spellSession.hitTarget = null;
     const verdict = target
       ? TableUI.resolveTarget(target, total, r.kept, 'Ataque con ' + sp.name, crit).catch(err => {
@@ -669,6 +694,15 @@ const RollUI = (() => {
       fumble: miss,
     });
     Promise.all([landedAttack, verdict]).then(([, out]) => {
+      const selected = spiritualStrike?.hits[0];
+      if (
+        spiritualStrike &&
+        !miss &&
+        out?.hit !== false &&
+        (!target || target === selected?.combatant || target === selected?.character)
+      )
+        globalThis.Board?.spiritualImpact(spiritualStrike.castId, spiritualStrike.token);
+      if (session !== spellSession) return;
       if (out) {
         line += out.hit ? ` → <b>impacta a ${esc(out.name)}</b>` : ` → <b>falla contra ${esc(out.name)}</b>`;
         spellSession.hitTarget = out.hit ? target : null;
@@ -698,6 +732,14 @@ const RollUI = (() => {
     checkTargets(fd);
     const st = withOverride(spellStats(sp), spellSession.override),
       mod = fd.has('spellMod') ? st.mods[Classes.casting(caster(sp)).ability] : 0;
+    const missiles = spellSession.placement?.missiles;
+    const splitMissiles = sp.id === 'magic-missile' && missiles?.some(dart => dart.id !== missiles[0].id);
+    if (
+      splitMissiles &&
+      (fd.get('myDamage') ||
+        String(fd.get('spellDice') || '').replace(/\s+/g, '') !== missiles.length + 'd4+' + missiles.length)
+    )
+      throw Error('Usá la tirada por dardo de la ficha para repartir el daño entre varios objetivos.');
     const own = fd.get('myDamage'),
       expr = String(fd.get('spellDice') || '').replace(/\s+/g, ''),
       // «3d6», «3d4+3» o varios grupos: «2d8+4d6» (Tormenta de hielo, Golpe flamígero…).
@@ -795,7 +837,7 @@ const RollUI = (() => {
       dice: each,
     });
     projectTargets(fd);
-    const applied = applySpellResult(fd, total).catch(err => {
+    const applied = applySpellResult(fd, total, each).catch(err => {
       toast(err.message);
       return '';
     });
@@ -828,16 +870,60 @@ const RollUI = (() => {
     if (id) ids.push(table.monsters.find(m => m.id === id)?.player ? { character: id } : { combatant: id });
     if (!ids.length) return;
     spellSession.castKinds = null;
-    Cloud.broadcastSpellTargets(link.campaignId, kinds, ids).catch(() =>
+    const { sp, slot } = spellSession;
+    const spell = {
+      id: sp.id,
+      name: sp.name,
+      school: sp.school,
+      level: slot,
+      caster: link.characterId,
+      concentration: sp.concentration,
+      rounds: Effects.roundsFrom(sp.duration),
+      castId: globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2),
+    };
+    Cloud.broadcastSpellTargets(link.campaignId, kinds, ids, spell).catch(() =>
       toast('No se pudo mostrar el efecto en el tablero.'),
     );
   }
   // Aplica el resultado del conjuro: curación a aliados, daño a la criatura impactada o salvaciones al DM.
-  async function applySpellResult(fd, total) {
-    const { sp, info } = spellSession,
-      st = withOverride(spellStats(sp), spellSession.override),
+  async function applySpellResult(fd, total, dice = [], session = spellSession) {
+    const { sp, info } = session,
+      st = withOverride(spellStats(sp), session.override),
       who = chosen(fd),
       t = TableUI.targets();
+    if (sp.id === 'magic-missile' && session.placement?.missiles?.length) {
+      const missiles = session.placement.missiles;
+      const assignments = new Map();
+      let allotted = 0;
+      missiles.forEach((dart, i) => {
+        const existing = assignments.get(dart.id) || { ...dart, amount: 0 };
+        const amount = (dice[i]?.v || 0) + 1;
+        existing.amount += amount;
+        allotted += amount;
+        assignments.set(dart.id, existing);
+      });
+      if (assignments.size === 1) assignments.values().next().value.amount = total;
+      else assignments.values().next().value.amount += total - allotted;
+      const notes = [];
+      for (const dart of assignments.values()) {
+        if (dart.combatant)
+          await TableUI.damageTarget(dart.combatant, dart.amount, 'Daño con ' + sp.name, {
+            type: 'force',
+            magical: true,
+          });
+        else if (dart.character)
+          await TableUI.sendTo(dart.character, 'damage', {
+            amount: dart.amount,
+            source: sp.name,
+            type: 'fuerza',
+            magicMissile: true,
+          });
+        notes.push(
+          esc(dart.name) + ': ' + dart.amount + (dart.combatant || dart.character ? '' : ' (resuelve la mesa)'),
+        );
+      }
+      return ' · ' + notes.join(' · ');
+    }
     if (info.heal && who.length) {
       const names = [];
       for (const w of who) {
@@ -855,12 +941,14 @@ const RollUI = (() => {
       return ` → curaste a ${esc(names.join(', '))}`;
     }
     const autoTarget = !info.attack && !info.save && !info.heal ? fd.get('target') : '';
-    if (spellSession.hitTarget || autoTarget) {
-      const out = await TableUI.damageTarget(spellSession.hitTarget || autoTarget, total, 'Daño con ' + sp.name, {
-        crit: Boolean(spellSession.crit),
-        type: R.damageTypes.includes(info.types) ? info.types : '',
+    if (session.hitTarget || autoTarget) {
+      const out = await TableUI.damageTarget(session.hitTarget || autoTarget, total, 'Daño con ' + sp.name, {
+        crit: Boolean(session.crit),
+        type: Defenses.normalize(info.types),
+        magical: true,
+        ...(session.attack ? { attack: session.attack } : {}),
       });
-      spellSession.hitTarget = null;
+      session.hitTarget = null;
       return ` → ${esc(out.name)}: <b>${esc(TableUI.damageLabel(out))}</b>`;
     }
     const foes = who
@@ -881,14 +969,16 @@ const RollUI = (() => {
         caster: state.name,
         spell:
           sp.name +
-          (spellSession.mm?.heightened ? ' (intensificado: un objetivo con desventaja)' : '') +
-          (spellSession.mm?.careful ? ` (cuidadoso: ${spellSession.mm.careful} la superan)` : ''),
+          (session.mm?.heightened ? ' (intensificado: un objetivo con desventaja)' : '') +
+          (session.mm?.careful ? ` (cuidadoso: ${session.mm.careful} la superan)` : ''),
         ability: info.save,
         abilityName: info.saveName,
         dc: st.dc,
         half: halfOnSave(sp),
         damage: total,
         types: info.types,
+        spellId: sp.id,
+        board: session.boardCast || null,
       };
       const notes = [];
       if (foes.length) {
@@ -910,7 +1000,8 @@ const RollUI = (() => {
       }
       // Vos dentro del área: tu propia salvación al cerrar el registro.
       if (who.includes('self')) {
-        setTimeout(() => TableUI.areaSave({ id: 0, payload: request }, true), 900);
+        if (session.selfSave) await session.selfSave(request);
+        else setTimeout(() => TableUI.areaSave({ id: 0, payload: request }, true), 900);
         notes.push('vos también salvás');
       }
       return ' → ' + esc(notes.join(' · '));
@@ -918,14 +1009,14 @@ const RollUI = (() => {
     return '';
   }
   // Conjuros sin dados (Bendición…): efecto con duración para cada objetivo elegido.
-  async function applyEffect() {
-    const { sp } = spellSession,
-      fd = new FormData(document.getElementById('dialog-form')),
+  async function applyEffect(session = spellSession, form) {
+    const { sp } = session,
+      fd = form || new FormData(document.getElementById('dialog-form')),
       who = chosen(fd),
       t = TableUI.targets(),
       rounds = Effects.roundsFrom(sp.duration);
     if (!who.length) throw Error('Elegí al menos un objetivo.');
-    projectTargets(fd);
+    if (!form) projectTargets(fd);
     const names = [],
       l = TableUI.link(),
       // Con concentración, el efecto de los aliados queda ligado a la tuya.
@@ -951,10 +1042,245 @@ const RollUI = (() => {
         });
         names.push(t.allies.find(a => a.characterId === id)?.name || 'aliado');
       }
+    if (form) return names;
     logLine(
       `<b>${esc(sp.name)}</b> aplicado a ${esc(names.join(', '))}${rounds ? ' · ' + esc(Effects.remaining({ rounds })) : ''}.`,
       'damage',
     );
+  }
+  function validateBoardRoll(sp, slot, form) {
+    const info = spellInfo(sp, slot),
+      own = form.get('myD20'),
+      damage = form.get('myDamage');
+    const keys = spellKeys({ sp, slot, info });
+    const zone = BoardSpells.zoneRule(sp.id);
+    if (
+      (info.attack && !Combat.rollsLeft(state, ...keys.atk)) ||
+      (info.dice && (!zone || zone.initial) && !Combat.rollsLeft(state, ...keys.dmg))
+    )
+      throw Error('Ya hiciste esa tirada este turno. El DM puede habilitar otra.');
+    if (own && (!/^\d{1,2}$/.test(own) || Number(own) < 1 || Number(own) > 20)) throw Error('Tu d20 va de 1 a 20.');
+    if (sp.id === 'magic-missile' && damage) {
+      const count = 2 + Math.max(1, slot);
+      if (damage.split(/\s*[, +]\s*/).length !== count || !/^[1-4](?:\s*[, +]\s*[1-4])*$/.test(damage))
+        throw Error('Anotá un d4 (1–4) por dardo, separado por comas.');
+    } else if (damage && (!/^\d{1,3}$/.test(damage) || Number(damage) > 999)) {
+      throw Error('Revisá la suma de tus dados.');
+    }
+    const expression = String(form.get('spellDice') || '').replace(/\s+/g, '');
+    if (expression && !validBoardFormula(expression, info.fixed)) throw Error('Escribí los dados como 2d8 o 3d4+3.');
+    if (
+      expression &&
+      [...expression.matchAll(/(\d+)d(\d+)/g)].reduce((n, m) => n + Number(m[1]), 0) > (info.attack ? 30 : 60)
+    )
+      throw Error('Revisá la cantidad de dados.');
+  }
+  const validBoardFormula = (formula, fixed) =>
+    (fixed && /^\d{1,3}$/.test(formula)) ||
+    (/^\d+d\d+(?:\+\d+d\d+)*(?:\+\d+)?$/.test(formula) &&
+      [...formula.matchAll(/\d+d(\d+)/g)].every(m => Number(m[1]) >= 2 && Number(m[1]) <= 1000));
+  async function resolveBoardCast(sp, slot, options) {
+    const { placement, boardCast, form } = options;
+    const info = { ...spellInfo(sp, slot) };
+    if (options.types) info.types = options.types;
+    const st = spellStats(sp);
+    const mod = info.addMod ? st.mods[Classes.casting(caster(sp)).ability] || 0 : 0;
+    const result = { name: sp.name, slot, castId: boardCast?.castId, rows: [], saves: {} };
+    const zoneRule = boardCast?.zone && BoardSpells.zoneRule(sp.id);
+    if (zoneRule && !zoneRule.initial) {
+      result.rows.push('Zona activa · el DM recibe los avisos para resolver sus efectos.');
+      return result;
+    }
+    const selected = TableUI.targets();
+    const formTargets = new FormData();
+    for (const target of placement?.hits || []) {
+      if (target.character === selected.selfId) formTargets.append('who', 'self');
+      else if (target.character) formTargets.append('who', 'pc:' + target.character);
+      else if (target.combatant) formTargets.append('who', 'mon:' + target.combatant);
+      if (info.save && (target.character || target.combatant) && target.character !== selected.selfId)
+        result.saves[target.token || target.id] = { name: target.name || target.token, pending: true };
+    }
+    const session = {
+      sp,
+      slot,
+      info,
+      placement,
+      boardCast,
+      selfSave(request) {
+        const save = TableUI.resolveAreaSave(request, { silent: true });
+        result.rows.push(
+          'Vos: salvación ' +
+            ({ str: 'FUE', dex: 'DES', con: 'CON', int: 'INT', wis: 'SAB', cha: 'CAR' }[request.ability] ||
+              request.ability) +
+            ' ' +
+            save.face +
+            ' ' +
+            sign(save.bonus) +
+            ' = ' +
+            save.total +
+            ' · ' +
+            (save.success ? 'supera' : 'falla') +
+            ' · ' +
+            save.damage +
+            ' de daño',
+        );
+        return save.done;
+      },
+    };
+    const keys = spellKeys(session);
+    const mode = options.mode || '';
+    const damage = crit => {
+      const override = String(form.get('spellDice') || '').trim();
+      const expression = (override || info.dice).replace(/\s+/g, '');
+      const physical = String(form.get('myDamage') || '').trim();
+      if (placement?.missiles && physical) {
+        const dice = physical.split(/\s*[, +]\s*/).map(Number);
+        if (dice.length !== placement.missiles.length || dice.some(v => !Number.isInteger(v) || v < 1 || v > 4))
+          throw Error('Anotá un d4 (1–4) por dardo, separado por comas.');
+        return { dice: dice.map(v => ({ die: 4, v })), total: dice.reduce((n, v) => n + v + 1, 0) };
+      }
+      return boardDamageDice(expression, mod, { crit, physical, fixed: info.fixed });
+    };
+    const consume = type => commit('Tirada: ' + sp.name, s => Combat.takeRoll(s, ...keys[type]));
+    if (sp.id === 'spiritual-weapon') {
+      result.rows.push('Arma invocada · elegí un objetivo para atacar desde el tablero.');
+    } else if (info.attack) {
+      const attacks = placement?.rays || placement?.hits?.slice(0, 1) || [];
+      for (const [i, target] of attacks.entries()) {
+        consume('atk');
+        const fd = new FormData();
+        fd.set('adv', mode);
+        const physical = form.get('myD20');
+        if (physical) fd.set('myD20', physical);
+        const r = readD20(fd);
+        const total = r.kept + st.attack;
+        const crit = r.kept === 20;
+        const id = target.combatant || target.character;
+        result.face = r.kept;
+        result.total = total;
+        result.formula = 'Ataque · d20 ' + r.kept;
+        let verdict = null;
+        if (id) verdict = await TableUI.resolveTarget(id, total, r.kept, 'Ataque con ' + sp.name, crit);
+        const hit = r.kept !== 1 && verdict?.hit !== false;
+        const row =
+          (target.name || 'Objetivo ' + (i + 1)) +
+          ': ' +
+          r.kept +
+          ' ' +
+          sign(st.attack) +
+          ' = ' +
+          total +
+          (verdict
+            ? (hit ? ' · impacta' : ' · falla') +
+              (TableUI.showEnemyAC() && Number.isFinite(verdict.ac) ? ' vs. CA ' + verdict.ac : '')
+            : hit
+              ? ' · CA por confirmar'
+              : ' · falla');
+        if (!hit || !info.dice) {
+          result.rows.push(row);
+          continue;
+        }
+        consume('dmg');
+        const rolled = damage(crit);
+        if (verdict?.hit) {
+          session.crit = crit;
+          session.hitTarget = id;
+          session.attack = { total, natural: r.kept };
+          await applySpellResult(formTargets, rolled.total, rolled.dice, session);
+        }
+        result.rows.push(row + ' · ' + rolled.total + ' ' + info.types);
+      }
+    } else if (info.dice || info.save) {
+      if (info.dice) consume('dmg');
+      const rolled = info.dice ? damage(false) : { total: 0, dice: [] };
+      result.total = info.dice ? rolled.total : null;
+      result.dice = rolled.dice;
+      result.die = rolled.dice[0]?.die;
+      result.formula = info.dice ? (info.heal ? 'Curación' : info.types) : 'Salvaciones';
+      if (placement?.missiles)
+        placement.missiles.forEach((dart, i) =>
+          result.rows.push('Dardo ' + (i + 1) + ' · ' + dart.name + ' · ' + (rolled.dice[i].v + 1)),
+        );
+      if (info.heal) {
+        for (const target of placement.hits)
+          result.rows.push((target.name || 'Objetivo') + ' · +' + rolled.total + ' PG');
+      }
+      await applySpellResult(formTargets, rolled.total, rolled.dice, session);
+      if (!info.dice && Object.keys(result.saves).length) result.rows.push('Salvaciones pedidas a la mesa');
+      if (info.dice)
+        TableUI.shareRoll({ label: sp.name, total: rolled.total, rolls: rolled.dice.map(d => d.v), bonus: mod });
+    } else if (isBuff(sp) && formTargets.getAll('who').length) {
+      const names = await applyEffect(session, formTargets);
+      for (const name of names)
+        result.rows.push(name + (sp.id === 'bless' ? ' · +1d4 a ataques y salvaciones' : ' · efecto aplicado'));
+    } else if (sp.id === 'counter' && options.reaction) {
+      const known = options.enemyLevel != null && options.enemyLevel !== '';
+      const enemy = Number(options.enemyLevel);
+      if (!known || !Number.isInteger(enemy) || enemy < 0 || enemy > 9)
+        result.rows.push('El DM confirma el nivel y resuelve la interrupción.');
+      else if (enemy <= slot) result.rows.push('Interrupción automática · nivel ' + enemy);
+      else {
+        const ability = Classes.casting(caster(sp)).ability,
+          bonus = st.mods[ability] || 0;
+        const rollForm = new FormData();
+        rollForm.set('adv', conditionMods(state, 'check', ability).mode);
+        const r = readD20(rollForm),
+          dc = 10 + enemy;
+        result.face = r.kept;
+        result.total = r.kept + bonus;
+        result.formula = 'Prueba · CD ' + dc;
+        result.rows.push(
+          'd20 ' +
+            r.kept +
+            ' ' +
+            sign(bonus) +
+            ' = ' +
+            result.total +
+            (result.total >= dc ? ' · interrumpe' : ' · falla'),
+        );
+      }
+    } else
+      result.rows.push(
+        sp.id === 'misty-step'
+          ? 'Destino confirmado'
+          : sp.id === 'shield'
+            ? '+5 CA hasta tu próximo turno'
+            : 'Efecto aplicado',
+      );
+    return result;
+  }
+  function zoneRoll(sp, slot, types, override) {
+    const rule = BoardSpells.zoneRule(sp.id);
+    if (!rule) return null;
+    const info = spellInfo(sp, slot);
+    return {
+      caster: state.name,
+      formula: rule.travel ? '2d4' : String(override || info.dice || '').replace(/\s+/g, ''),
+      types: types || info.types,
+      ability: info.save || '',
+      dc: spellStats(sp).dc,
+      half: halfOnSave(sp),
+    };
+  }
+  function boardDamageDice(expression, mod, { crit = false, physical = '', fixed = false } = {}) {
+    if (physical !== '') {
+      const n = Number(physical);
+      if (!Number.isInteger(n) || n < 0 || n > 999) throw Error('Revisá la suma de tus dados.');
+      return { total: Math.max(0, n + mod + Number(/\+(\d+)$/.exec(expression)?.[1] || 0)), dice: [] };
+    }
+    if (fixed && /^\d{1,3}$/.test(expression)) return { total: Number(expression) + mod, dice: [] };
+    if (!/^\d+d\d+(?:\+\d+d\d+)*(?:\+\d+)?$/.test(expression)) throw Error('Escribí los dados como 2d8 o 3d4+3.');
+    const groups = [...expression.matchAll(/(\d+)d(\d+)/g)].map(m => [Number(m[1]) * (crit ? 2 : 1), Number(m[2])]);
+    if (groups.reduce((n, g) => n + g[0], 0) > 60 || groups.some(g => g[1] < 2 || g[1] > 1000))
+      throw Error('Revisá la cantidad y el tamaño de los dados.');
+    const dice = groups.flatMap(([n, die]) => roll(die, n).map(v => ({ die, v })));
+    return {
+      dice,
+      total: Math.max(
+        0,
+        dice.reduce((n, d) => n + d.v, mod + Number(/\+(\d+)$/.exec(expression)?.[1] || 0)),
+      ),
+    };
   }
   function install() {
     // Al marcar uno más del límite, se desmarca el que estaba primero (con límite 1 funciona como elegir uno).
@@ -1060,6 +1386,19 @@ const RollUI = (() => {
         spellAttack();
       },
       'spell-roll-damage': spellDamage,
+      'spell-request-save': e => {
+        const fd = new FormData(e.closest('form'));
+        checkTargets(fd);
+        if (!chosen(fd).length) throw Error('Elegí al menos un objetivo.');
+        e.disabled = true;
+        projectTargets(fd);
+        applySpellResult(fd, 0)
+          .then(note => logLine('Salvaciones pedidas' + note, 'damage'))
+          .catch(err => {
+            e.disabled = false;
+            toast(err.message);
+          });
+      },
       'spell-apply-effect': () => applyEffect().catch(err => toast(err.message)),
     });
   }
@@ -1075,6 +1414,13 @@ const RollUI = (() => {
     diceText,
     spell,
     spellInfo,
+    targetLimit,
+    halfOnSave,
+    spellStats,
+    resolveBoardCast,
+    zoneRoll,
+    boardDamageDice,
+    validateBoardRoll,
     rollable,
     install,
   };
