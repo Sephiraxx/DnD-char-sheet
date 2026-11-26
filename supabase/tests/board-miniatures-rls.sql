@@ -10,6 +10,8 @@ insert into members (campaign_id, user_id, role) values
  ('89100000-0000-0000-0000-000000000010','89100000-0000-0000-0000-000000000002','player');
 insert into maps (id, campaign_id, name) values
  ('89100000-0000-0000-0000-000000000020','89100000-0000-0000-0000-000000000010','Tablero');
+insert into boards (campaign_id, map_id) values
+ ('89100000-0000-0000-0000-000000000010','89100000-0000-0000-0000-000000000020');
 insert into combatants (id, campaign_id, kind, name) values
  ('89100000-0000-0000-0000-000000000030','89100000-0000-0000-0000-000000000010','monster','Dragón rojo');
 insert into combatant_secrets (combatant_id, campaign_id, hp, max_hp) values

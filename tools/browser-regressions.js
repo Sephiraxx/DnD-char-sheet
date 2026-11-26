@@ -225,7 +225,8 @@ async function main() {
     await page.getByRole('button', { name: 'Crear miniatura' }).click();
     await page.getByLabel('Raza de la miniatura').selectOption('minotaur');
     await page.getByLabel('Género').selectOption('woman');
-    await page.getByLabel('Altura (cm)').fill('218');
+    const height = page.getByRole('slider', { name: 'Altura (cm)', exact: true });
+    await height.fill('218');
     await page.getByLabel('Mano principal').selectOption('hammer');
     await page.getByLabel('Mano secundaria').selectOption('shield');
     const miniSnapshot = () =>
@@ -264,7 +265,7 @@ async function main() {
       'Miniaturas: raza, género, altura y arma siguen en la ficha tras recargar',
       (await page.getByLabel('Raza de la miniatura').inputValue()) === 'minotaur' &&
         (await page.getByLabel('Género').inputValue()) === 'woman' &&
-        (await page.getByLabel('Altura (cm)').inputValue()) === '218' &&
+        (await height.inputValue()) === '218' &&
         (await page.getByLabel('Mano principal').inputValue()) === 'hammer' &&
         (await page.getByLabel('Mano secundaria').inputValue()) === 'shield',
     );
