@@ -42,6 +42,23 @@ test('todas las razas y armas se dibujan con geometría finita', () => {
     for (const gear of Object.keys(M.parts.gear)) M.draw(ctx, { race, gear, facing: 130 }, 128);
 });
 
+test('cada raza tiene su túnica base y conserva las variantes elegidas al guardarse', () => {
+  const presets = Object.keys(M.parts.race).map(raceId => M.initial({ raceId }));
+  assert.equal(new Set(presets.map(m => m.cloth)).size, presets.length);
+  for (const race of ['halfling', 'gnome', 'goblin', 'kobold', 'autognome', 'fairy', 'grung', 'kender', 'verdan'])
+    assert.equal(M.initial({ raceId: race }).size, 'small', race);
+  for (const race of ['harengon', 'owlin', 'hadozee']) {
+    assert.equal(M.clean({ race, size: 'small' }).size, 'small', race);
+    assert.equal(M.clean({ race, size: 'medium' }).size, 'medium', race);
+  }
+  assert.equal(M.initial({ raceId: 'dwarf' }).beard, 'braided');
+  assert.equal(M.clean({ race: 'goliath', hair: 'crop' }).hair, 'bald');
+  assert.equal(M.clean({ race: 'tabaxi', feature: 'spots' }).feature, 'spots');
+  assert.equal(M.clean({ race: 'warforged', feature: 'stone' }).feature, 'stone');
+  assert.equal(M.clean({ race: 'dragonborn', ancestry: 'silver' }).skin, '#a1a1a1');
+  assert.equal(M.clean({ race: 'elf', hair: 'bob', cloth: '#2a3b4c' }).cloth, '#2a3b4c');
+});
+
 function capture(draw, colors) {
   const polys = [];
   const ctx = {
@@ -163,10 +180,42 @@ test('modelos públicos del catálogo y nombres numerados, sin confundir otras c
       faces.some(face => face.some(([, y]) => y > 0.42)),
       key,
     );
-    for (const [x, y] of faces.flat()) {
-      assert.ok(Math.abs(x * 0.376) < 0.5 && 0.89 - y * 0.376 >= 0 && 0.89 - y * 0.376 <= 1, key);
-    }
+    const ctx = {
+      canvas: {},
+      miniBoard: true,
+      createImageData: (width, height) => ({ width, height, data: new Uint8ClampedArray(width * height * 4) }),
+      putImageData({ width, height, data }) {
+        for (let x = 0; x < width; x++)
+          assert.equal(data[(x + 1) * 4 - 1] + data[((height - 1) * width + x + 1) * 4 - 1], 0, key);
+        for (let y = 0; y < height; y++)
+          assert.equal(data[(y * width + 1) * 4 - 1] + data[(y + 1) * width * 4 - 1], 0, key);
+      },
+    };
+    const { size } = C.metadata(key);
+    C.draw(ctx, key, 64 * C.footprints[size]);
+    assert.ok(ctx.canvas.anchor.x > 0 && ctx.canvas.anchor.y > 0, key);
   }
+});
+
+test('la edad y las variantes cambian el tamaño del modelo y se infieren del nombre para colocarlo', () => {
+  const C = g.CreatureMiniatures;
+  for (const [name, size] of [
+    ['Cría de dragón de latón #2', 'medium'],
+    ['Dragón rojo', 'large'],
+    ['Adult Silver Dragon', 'huge'],
+    ['Dragón negro anciano', 'gargantuan'],
+    ['Oso negro', 'medium'],
+    ['Rata gigante', 'small'],
+    ['Araña', 'tiny'],
+    ['Murciélago gigante', 'large'],
+  ]) {
+    const form = C.resolve(name);
+    assert.equal(C.metadata(form.id, form).size, size, name);
+  }
+  assert.equal(C.metadata('dragon-red', { footprint: 4 }).age, 'ancient');
+  assert.equal(C.metadata('cyclops').size, 'huge');
+  assert.equal(C.metadata('bat').size, 'tiny');
+  assert.equal(C.metadata('skeleton').size, 'medium');
 });
 
 test('el catálogo de miniaturas y la migración admiten las mismas elecciones públicas', () => {
@@ -216,7 +265,7 @@ test('la mano secundaria empuña cada objeto al otro lado de la miniatura', () =
   const blank = capture(ctx => M.draw(ctx, { facing: 0 }, 128)).flat();
   const bounds = points => [Math.min(...points.map(p => p[0])), Math.max(...points.map(p => p[0]))];
   const [left, right] = bounds(blank.filter(p => p[1] > 0.4));
-  for (const item of Object.keys(M.parts.gear).filter(k => k !== 'none')) {
+  for (const item of Object.keys(M.parts.offhand).filter(k => k !== 'none')) {
     const points = model =>
       capture(ctx => M.draw(ctx, { ...model, facing: 0 }, 128))
         .flat()
@@ -227,6 +276,8 @@ test('la mano secundaria empuña cada objeto al otro lado de la miniatura', () =
     assert.ok(Math.abs(main[1] + off[0]) < 0.002, item);
   }
   assert.equal(M.clean({ offhand: 'invalid' }).offhand, 'none');
+  assert.equal(M.clean({ gear: 'greataxe' }).gear, 'greataxe');
+  assert.equal(M.clean({ offhand: 'greataxe' }).offhand, 'none');
 });
 
 test('el forjado conserva el color anterior del hierro y guarda la madera en la ficha pública', () => {
@@ -253,15 +304,106 @@ test('el forjado conserva el color anterior del hierro y guarda la madera en la 
   assert.notEqual(palette(miniature), palette({ ...miniature, skin: '#464c50' }));
   assert.equal(palette({ race: 'human' }), palette({ race: 'human', woodColor: '#ffffff' }));
 });
-test('la espada se mueve en ambas manos y posturas, las demás armas quedan quietas', () => {
-  function frame(model, value) {
-    return capture(ctx => M.draw(ctx, model, 96, null, false, value));
+test('todo hierro usa cables metálicos recoloreables y conserva el color de los ojos', () => {
+  const iron = { race: 'warforged', feature: 'iron', cableColor: '#99AABB', eyeColor: '#66EEFF' };
+  assert.equal(M.clean(iron).cableColor, '#99aabb');
+  assert.equal(M.clean(iron).eyeColor, '#66eeff');
+  const colors = model => {
+    const result = [];
+    capture(ctx => M.draw(ctx, model, 96), result);
+    return result.join();
+  };
+  assert.equal(colors(iron), colors({ ...iron, woodColor: '#ff00ff' }));
+  assert.notEqual(colors(iron), colors({ ...iron, cableColor: '#403c3c' }));
+  assert.notEqual(colors(iron), colors({ ...iron, eyeColor: '#ff7700' }));
+  assert.equal(M.boardAppearance({ race: 'goliath', height: 170, build: 'regular' }).build, 'powerful');
+  assert.equal(M.boardAppearance({ race: 'dwarf', height: 135 }).height, 137);
+  assert.equal(M.boardAppearance({ race: 'dwarf', height: 135, heightMode: 'custom' }).height, 135);
+  assert.equal(M.boardAppearance({ race: 'harengon', size: 'small' }).build, 'small');
+});
+test('la variante explícita gana al nombre y un modelo base puede volver a su huella original', () => {
+  const C = g.CreatureMiniatures;
+  assert.equal(C.selection('Rata gigante', null, '').size, 'tiny');
+  assert.equal(C.selection('Rata', null, 'giant').size, 'small');
+  assert.equal(C.selection('Dragón rojo joven', null, 'ancient').size, 'gargantuan');
+  assert.equal(C.selection('Serpiente venenosa', null, 'constrictor').size, 'large');
+  assert.equal(C.selection('Pudín negro', null, 'black-pudding').variant, 'black-pudding');
+});
+test('las variantes forjadas separan materiales y los rasgos faciales siguen la raza', () => {
+  const A = g.MiniatureAncestries;
+  const colors = [];
+  assert.equal(A.faceOptions('warforged').hair, false);
+  assert.equal(A.faceOptions('warforged').beard, false);
+  assert.ok(A.faceOptions('tiefling').horns.swept);
+  assert.equal(M.clean({ race: 'warforged', hair: 'braid', beard: 'braided' }).beard, 'none');
+  assert.equal(M.clean({ race: 'warforged', feature: 'stone', woodColor: '#4e5156' }).stoneColor, '#4e5156');
+  for (const [feature, key, color] of [
+    ['stone', 'stoneColor', '#927366'],
+    ['mithralBronze', 'bronzeColor', '#af762e'],
+    ['darkwood', 'darkwoodColor', '#49342a'],
+  ]) {
+    const model = M.clean({ race: 'warforged', feature, [key]: color, crest: 'blade' });
+    assert.equal(model[key], color);
+    assert.equal(model.feature, feature);
+    const palette = [];
+    capture(ctx => M.draw(ctx, model, 96), palette);
+    colors.push(palette.join());
   }
-  for (const pose of ['ready', 'rest'])
-    for (const hand of ['gear', 'offhand']) {
-      const m = { pose, [hand]: 'sword' };
-      assert.notDeepEqual(frame(m, -3), frame(m, 3));
-    }
-  assert.deepEqual(frame({ gear: 'axe' }, -3), frame({ gear: 'axe' }, 3));
-  assert.equal(M.swordFrame(0), M.swordFrame(3400));
+  assert.equal(new Set(colors).size, 3);
+  assert.equal(M.clean({ race: 'tiefling', hornStyle: 'short' }).hornStyle, 'short');
+});
+test('la altura queda dentro del rango de su raza y tamaño sin cambiar su huella', () => {
+  const A = g.MiniatureAncestries;
+  for (const [race, min, max] of [
+    ['halfling', 90, 110],
+    ['human', 150, 195],
+    ['goliath', 210, 245],
+  ]) {
+    assert.equal(A.heightRange(race).min, min);
+    assert.equal(A.heightRange(race).max, max);
+    assert.equal(M.boardAppearance({ race, height: 300 }).height, max);
+    assert.equal(M.clean({ race, height: 70, heightMode: 'custom' }).height, min);
+  }
+  const small = M.boardAppearance({ race: 'harengon', size: 'small', height: 166 });
+  assert.equal(small.height, 100);
+  assert.equal(small.size, 'small');
+  assert.equal(M.boardAppearance({ race: 'harengon', size: 'medium', height: 100 }).size, 'medium');
+});
+test('la vista de tablero reutiliza una sola imagen estática por modelo, con fondo transparente', () => {
+  const canvases = [];
+  g.document = {
+    createElement() {
+      const canvas = {
+        getContext() {
+          return {
+            canvas,
+            createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }),
+            putImageData: image => (canvas.pixels = image.data),
+          };
+        },
+      };
+      canvases.push(canvas);
+      return canvas;
+    },
+  };
+  const model = { race: 'warforged', gear: 'sword', offhand: 'shield', pose: 'ready' };
+  const sword = M.sprite(model);
+  assert.equal(sword, M.sprite({ ...model }));
+  const lowered = M.sprite({ ...model, pose: 'rest' });
+  assert.notDeepEqual(sword.pixels, lowered.pixels);
+  const dragon = M.creatureSprite('dragon-red');
+  assert.equal(dragon, M.creatureSprite('dragon-red'));
+  assert.equal(canvases.length, 3);
+  for (const { pixels } of canvases) {
+    assert.equal(pixels[3], 0);
+    assert.ok(pixels.some((alpha, i) => i % 4 === 3 && alpha === 255));
+  }
+  const board = M.sprite(model, 1);
+  assert.ok(board.anchor.x > 0 && board.anchor.x < board.width);
+  assert.ok(board.anchor.y > 0 && board.anchor.y < board.height);
+  const large = M.creatureSprite('dragon-red', 2);
+  assert.ok(large.width > M.boardCell * 2, 'las alas sobrepasan la huella de dos casillas');
+  assert.equal(g.CreatureMiniatures.metadata('dragon-red').size, 'large');
+  assert.equal(g.CreatureMiniatures.metadata('goblin').size, 'small');
+  assert.equal(M.appearanceKey(model), M.appearanceKey({ ...model, facing: 90 }));
 });

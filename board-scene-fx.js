@@ -67,7 +67,25 @@
       ctx.lineWidth *= 0.35;
       ctx.stroke();
     } else if (kind === 'trueno' || kind === 'psíquico') {
-      for (let i = 0; i < 3; i++) ring(ctx, 0.1 + ((t + i / 3) % 1) * 1.45);
+      for (let i = 0; i < 3; i++) {
+        const beat = Math.max(0, Math.min(1, (t - i * 0.13) / 0.72));
+        if (beat === 0 || beat === 1) continue;
+        ctx.globalAlpha = (1 - beat) * 0.85;
+        const distance = kind === 'psíquico' ? 1 - beat : 1 - (1 - beat) ** 2;
+        ring(ctx, 0.12 + distance * 1.55);
+      }
+    } else if (kind === 'cortante' || kind === 'perforante') {
+      // La estela sigue a la punta y se recoge al terminar el impacto.
+      const tip = Math.min(1, t * 2.8);
+      const tail = Math.min(tip, Math.max(0, (t - 0.18) * 1.8));
+      ctx.rotate(kind === 'cortante' ? -0.65 : -0.32);
+      ctx.lineCap = 'round';
+      for (const offset of kind === 'cortante' ? [-0.17, 0.17] : [0]) {
+        ctx.beginPath();
+        ctx.moveTo(tail * 2.6 - 1.3, offset + 0.24 * Math.sin(tail * Math.PI));
+        ctx.lineTo(tip * 2.6 - 1.3, offset + 0.24 * Math.sin(tip * Math.PI));
+        ctx.stroke();
+      }
     } else if (kind === 'heal') {
       ctx.strokeStyle = '#d7ffe9';
       for (let i = 0; i < 7; i++) {

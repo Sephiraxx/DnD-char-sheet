@@ -23,6 +23,11 @@
     stage: t.stage || null,
     elev: t.elev || 0,
     ...(t.creature_model ? { creature_model: t.creature_model } : {}),
+    ...(t.model_form != null ? { model_form: t.model_form } : {}),
+    ...(t.show_hp ? { show_hp: true } : {}),
+    ...(Number.isInteger(t.facing) && { facing: t.facing }),
+    ...(t.facing_manual === true && { facing_manual: true }),
+    ...(t.facing_mode && { facing_mode: t.facing_mode }),
   });
 
   function validate(archive) {
@@ -84,7 +89,7 @@
         !object(t) ||
         !ids.has(t.map_id) ||
         !['npc', 'object', 'monster'].includes(t.kind) ||
-        (t.kind === 'monster' && !t.stage?.startsWith?.('enc:')) ||
+        (t.kind === 'monster' && t.stage !== 'placed' && !t.stage?.startsWith?.('enc:')) ||
         !text(t.name, 100) ||
         !t.name.trim() ||
         !text(t.label, 8) ||
@@ -93,6 +98,11 @@
         typeof t.hidden !== 'boolean' ||
         (t.stage != null && !text(t.stage, 120)) ||
         (t.creature_model != null && !Object.hasOwn(root.CreatureMiniatures.options, t.creature_model)) ||
+        (t.model_form != null && (!['npc', 'monster'].includes(t.kind) || !text(t.model_form, 24))) ||
+        (t.show_hp != null && (t.kind !== 'monster' || typeof t.show_hp !== 'boolean')) ||
+        (t.facing != null && (!Number.isInteger(t.facing) || t.facing < 0 || t.facing > 7)) ||
+        (t.facing_manual != null && typeof t.facing_manual !== 'boolean') ||
+        (t.facing_mode != null && !['inherit', 'off', 'travel', 'enemy'].includes(t.facing_mode)) ||
         !Number.isInteger(t.elev)
       )
         invalid();
@@ -161,6 +171,7 @@
       tokens: b.tokens.flatMap(t => {
         if (t.stage?.startsWith('enc:'))
           return stages.has(t.stage) ? [{ ...tokenFields(t), kind: 'monster', hidden: true }] : [];
+        if (t.kind === 'monster' && t.stage === 'placed' && !t.combatant_id) return [tokenFields(t)];
         if (t.character_id) return [];
         return !t.combatant_id && ['npc', 'object'].includes(t.kind) ? [tokenFields(t)] : [];
       }),

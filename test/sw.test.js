@@ -16,6 +16,10 @@ test('el service worker guarda todos los scripts y estilos de las páginas', () 
       assert.ok(cached.has(ref), `${page}: falta ${ref} en FILES`);
   }
   for (const f of cached) if (f !== './') assert.ok(fs.existsSync(path.join(root, f)), `no existe ${f}`);
+  const css = fs.readFileSync(path.join(root, 'polish.css'), 'utf8');
+  for (const [, asset] of css.matchAll(/url\('(\.\/assets\/[^']+)'\)/g)) {
+    assert.ok(cached.has(asset), `polish.css: falta ${asset} en FILES`);
+  }
 });
 
 // Sin una versión nueva, los celulares seguirían abriendo la caché vieja para siempre.

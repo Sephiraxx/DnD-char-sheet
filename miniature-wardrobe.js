@@ -167,7 +167,7 @@
         ],
         m.accent,
       );
-    } else if (m.neck === 'pendant' || m.neck === 'skull') {
+    } else if (['pendant', 'skull', 'holy'].includes(m.neck)) {
       const z = Math.max(breast + 0.039, buckle + 0.046),
         y = chestY - 0.175;
       for (const side of [-1, 1])
@@ -185,6 +185,23 @@
         oval(0, y, z, 0.065, 0.058, 0.03, bone);
         oval(0, y - 0.044, z + 0.003, 0.043, 0.028, 0.022, bone);
         for (const side of [-1, 1]) oval(side * 0.025, y + 0.002, z + 0.028, 0.014, 0.016, 0.006, '#393242');
+      } else if (m.neck === 'holy') {
+        const gilt = root.MiniatureMesh.metal(m.accent);
+        oval(0, y - 0.032, z + 0.012, 0.103, 0.109, 0.033, gilt);
+        oval(0, y - 0.032, z + 0.042, 0.054, 0.057, 0.017, '#fff1ad');
+        for (let ray = 0; ray < 8; ray++) {
+          const th = ray * Math.PI * 0.25,
+            x = Math.cos(th),
+            a = Math.sin(th);
+          rod(
+            [x * 0.06, y - 0.032 + a * 0.06, z + 0.045],
+            [x * 0.133, y - 0.032 + a * 0.133, z + 0.039],
+            0.019,
+            0.007,
+            gilt,
+            5,
+          );
+        }
       } else {
         oval(0, y, z, 0.063, 0.078, 0.028, m.accent);
         oval(0, y, z + 0.026, 0.033, 0.045, 0.014, '#639c95');
@@ -305,6 +322,9 @@
         mesh.membrane(a, b, c, col, 0.009);
         mesh.membrane(b, d, c, col, 0.009);
       }
+    const crown = rings.at(-1);
+    const tip = [0, h + (deep ? 0.4 : 0.33), -0.083];
+    for (let j = 1; j < crown.length; j++) mesh.membrane(crown[j - 1], crown[j], tip, col);
     for (const index of [0, 18])
       seam(
         mesh,
@@ -424,17 +444,19 @@
           ],
           col,
         );
-        if (m.beard === 'braided')
-          for (let i = 0; i < 4; i++)
-            mesh.oval(
-              i % 2 ? 0.016 : -0.016,
-              h - 0.25 - i * 0.057,
-              0.17,
-              0.072 - i * 0.01,
-              0.067,
-              0.059,
-              i === 2 ? m.accent : col,
-            );
+        if (m.beard === 'braided') {
+          for (const side of [-1, 1])
+            for (let i = 0; i < 5; i++)
+              mesh.oval(
+                side * (0.11 - i * 0.008) + (i % 2 ? 0.014 : -0.014),
+                h - 0.222 - i * 0.056,
+                0.207 + i * 0.006,
+                0.064 - i * 0.007,
+                0.057,
+                0.049,
+                i === 4 ? m.accent : shade(col, i % 2 ? 1.17 : 1.0),
+              );
+        }
       }
     }
     // Scar paths follow the cheek toward the ear; the eyelid remains visible.

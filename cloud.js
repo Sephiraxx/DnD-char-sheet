@@ -343,6 +343,7 @@
           : ['PHB', ...sources],
       startLevel: Number.isInteger(level) && level >= 1 && level <= 20 ? level : 1,
       rules: typeof x?.rules === 'string' ? x.rules.slice(0, 2000) : '',
+      showEnemyAC: x?.showEnemyAC === true,
       abilities: cleanAbilityRules(x?.abilities),
       session: cleanSession(x?.session),
       log: Array.isArray(x?.log) ? x.log.map(cleanLog).filter(Boolean).slice(-200) : [],
@@ -977,6 +978,20 @@
         .single(),
     );
   }
+  async function spellZones(campaignId, mapId) {
+    const db = await api();
+    return check(
+      await db
+        .from('events')
+        .select('payload')
+        .eq('campaign_id', campaignId)
+        .eq('kind', 'spell-zone')
+        .eq('payload->>map', mapId)
+        .gte('created_at', new Date(Date.now() - 86400000).toISOString())
+        .order('id', { ascending: false })
+        .limit(300),
+    );
+  }
   // Órdenes del DM que esta ficha todavía no aplicó (por ejemplo, si estaba sin conexión).
   async function pendingCommands(characterId) {
     return check(
@@ -1081,9 +1096,23 @@
         .select()
         .single(),
     );
-    if (secret)
-      check(await c.from('combatant_secrets').insert({ combatant_id: added.id, campaign_id: campaignId, ...secret }));
+    if (secret) {
+      const { damage_traits, ...stats } = secret;
+      const row = { combatant_id: added.id, campaign_id: campaignId, ...stats };
+      const result = await c.from('combatant_secrets').insert(damage_traits ? { ...row, damage_traits } : row);
+      check(
+        damage_traits && /damage_traits/i.test(result.error?.message || '')
+          ? await c.from('combatant_secrets').insert(row)
+          : result,
+      );
+    }
     return added;
+  }
+  async function linkBoardMonster(id, profile) {
+    const result = await (await api()).rpc('link_board_monster', { p_token: id, p_profile: profile });
+    if (result.error?.code === 'PGRST202')
+      throw Error('Aplicá la migración 029_board_monster_combat.sql para vincular el bloque a la ficha.');
+    return check(result);
   }
   async function updateCombatant(id, patch) {
     check(await (await api()).from('combatants').update(patch).eq('id', id));
@@ -1142,6 +1171,10 @@
     const c = await api();
     const args = { p_target: target, p_amount: amount, p_label: label, p_attacker: attacker };
     if (details) {
+      const normalize = type => globalThis.Defenses?.normalize(type) || type || '';
+      details = { ...details, type: normalize(details.type) };
+      if (Array.isArray(details.parts))
+        details.parts = details.parts.map(part => ({ ...part, type: normalize(part.type) }));
       const r = await c.rpc('damage_combatant', { ...args, p_details: details });
       if (r.error?.code !== 'PGRST202') return check(r);
     }
@@ -1364,6 +1397,17 @@
   async function updateToken(id, patch) {
     return check(await (await api()).from('map_tokens').update(patch).eq('id', id).select());
   }
+  async function poseTokens(campaign, map, changes) {
+    return check(
+      await (
+        await api()
+      ).rpc('commit_board_token_poses', {
+        p_campaign: campaign,
+        p_map: map,
+        p_changes: changes,
+      }),
+    );
+  }
   async function removeToken(id) {
     check(await (await api()).from('map_tokens').delete().eq('id', id));
   }
@@ -1430,16 +1474,24 @@
   }
   // Cambios en vivo del tablero (aparte de subscribe: así una mesa sin la migración 008 sigue funcionando)
   // y un canal efímero para arrastres en curso y señales («ping»), que no se guardan.
-  async function broadcastSpellTargets(campaignId, kinds, targets) {
+  async function broadcastSpellTargets(campaignId, kinds, targets, spell = null) {
     const c = await api();
     const board = check(await c.from('boards').select('map_id').eq('campaign_id', campaignId).maybeSingle());
     if (!board?.map_id) return;
-    const result = await c
-      .channel('tablero-' + campaignId)
-      .httpSend('board', { t: 'spell-targets', map: board.map_id, kinds, targets });
+    return broadcastBoardSpell(campaignId, {
+      t: 'spell-targets',
+      map: board.map_id,
+      kinds,
+      targets,
+      ...(spell ? { spell } : {}),
+    });
+  }
+  async function broadcastBoardSpell(campaignId, payload) {
+    const c = await api();
+    const result = await c.channel('tablero-' + campaignId).httpSend('board', payload);
     if (!result.success) throw Error(result.error);
   }
-  async function subscribeBoard(campaignId, handler, onMessage) {
+  async function subscribeBoard(campaignId, handler, onMessage, onConnection) {
     const c = await api();
     await user();
     const filter = 'campaign_id=eq.' + campaignId;
@@ -1447,8 +1499,18 @@
     for (const table of ['maps', 'boards', 'map_tokens'])
       channel.on('postgres_changes', { event: '*', schema: 'public', table, filter }, p => handler(table, p));
     channel.on('broadcast', { event: 'board' }, p => onMessage?.(p.payload));
-    await new Promise(ok => channel.subscribe(s => (s === 'SUBSCRIBED' || s === 'CHANNEL_ERROR' ? ok() : null)));
+    let connected = false;
+    await new Promise(ok =>
+      channel.subscribe(status => {
+        connected = status === 'SUBSCRIBED';
+        onConnection?.(connected);
+        if (connected || ['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'].includes(status)) ok();
+      }),
+    );
     return {
+      get connected() {
+        return connected;
+      },
       send: payload => channel.send({ type: 'broadcast', event: 'board', payload }),
       close: () => c.removeChannel(channel),
     };
@@ -1567,6 +1629,7 @@
     setBoardMap,
     addTokens,
     updateToken,
+    poseTokens,
     removeToken,
     uploadMapImage,
     mapImageUrl,
@@ -1575,9 +1638,11 @@
     restoreCampaignArchive,
     subscribeBoard,
     broadcastSpellTargets,
+    broadcastBoardSpell,
     enabled,
     order,
     addCombatant,
+    linkBoardMonster,
     updateCombatant,
     updateSecret,
     removeCombatant,
@@ -1643,6 +1708,7 @@
     acceptRemote,
     party,
     events,
+    spellZones,
     post,
     pendingCommands,
     markApplied,

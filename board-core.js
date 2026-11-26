@@ -64,13 +64,18 @@
     return {
       cols: clampSide(g.cols ?? 30),
       rows: clampSide(g.rows ?? 20),
-      size: Math.max(8, Math.min(1000, Number(g.size) || 70)),
+      size: Math.max(8, Math.min(1000, Number(g.size) || 64)),
       ox: Number(g.ox) || 0,
       oy: Number(g.oy) || 0,
       feet: Math.max(1, Math.min(100, Number(g.feet) || 5)),
       show: g.show !== false,
       color: typeof g.color === 'string' && /^#[0-9a-f]{6}$/i.test(g.color) ? g.color : '#000000',
       opacity: Math.max(0, Math.min(1, g.opacity ?? 0.35)),
+      rotation: {
+        mode: ['off', 'travel', 'enemy'].includes(g.rotation?.mode) ? g.rotation.mode : 'travel',
+        marker: g.rotation?.marker === true,
+        playerMonsters: g.rotation?.playerMonsters === true,
+      },
       // Visión: los = los jugadores solo ven lo que sus personajes tienen a la vista; dark = mapa a oscuras
       // (se ve hasta la luz que lleva la party, o hasta la visión en la oscuridad de cada uno).
       vision: {
@@ -267,32 +272,93 @@
     return false;
   }
   const snap = (v, size = 1) => (size % 2 === 1 || size < 1 ? Math.round(v) : Math.round(v - 0.5) + 0.5);
+  const tokenSpan = k => (Number(k.size) === 0.5 ? 0.5 : Math.ceil(k.size || 1));
+  const snapToken = (v, size = 1) => (Number(size) === 0.5 ? Math.round(v * 2) / 2 : Math.round(v));
+  const headings = ['S', 'SO', 'O', 'NO', 'N', 'NE', 'E', 'SE'];
+  const heading = n => ((Math.round(Number(n) || 0) % 8) + 8) % 8;
+  const headingDelta = (a, b) => ((heading(b - a) + 4) % 8) - 4;
+  const headingTo = (dx, dy) => (dx || dy ? heading(Math.atan2(-dx, dy) / (Math.PI / 4)) : null);
+  function facingTo(from, to) {
+    const offset = (tokenSpan(to) - tokenSpan(from)) / 2;
+    return headingTo(to.x - from.x + offset, to.y - from.y + offset);
+  }
+  function footprintRect(token) {
+    const span = tokenSpan(token),
+      x = snapToken(token.x, span),
+      y = snapToken(token.y, span);
+    return { x, y, right: x + span, bottom: y + span, span };
+  }
+  function depthOrder(a, b) {
+    const fa = footprintRect(a),
+      fb = footprintRect(b);
+    return fa.bottom - fb.bottom || fa.right - fb.right || String(a.id).localeCompare(String(b.id));
+  }
+  function inFootprint(token, x, y) {
+    const f = footprintRect(token);
+    return x >= f.x && x < f.right && y >= f.y && y < f.bottom;
+  }
+  function overlaps(a, b) {
+    const m = tokenSpan(a),
+      n = tokenSpan(b);
+    return a.x < b.x + n && a.x + m > b.x && a.y < b.y + n && a.y + m > b.y;
+  }
+  function roomFor(g, terrain, token, tokens) {
+    const { x, y } = token,
+      endX = x + tokenSpan(token),
+      endY = y + tokenSpan(token);
+    if (x < 0 || y < 0 || endX > g.cols || endY > g.rows) return false;
+    if (tokens.some(other => overlaps(token, other))) return false;
+    for (let yy = Math.floor(y); yy < endY; yy++)
+      for (let xx = Math.floor(x); xx < endX; xx++) if (terrainType(at(g, terrain, xx, yy)).blocks) return false;
+    return true;
+  }
 
   // Casilla libre más cercana para una ficha nueva (espiral desde «near»).
-  function freeSpot(g, tokens, near = { x: 0, y: 0 }, terrain = '') {
-    const t = cells(g, terrain),
-      taken = new Set(tokens.map(k => Math.round(k.x) + ',' + Math.round(k.y)));
-    const ok = (x, y) => inside(g, x, y) && !taken.has(x + ',' + y) && !terrainType(at(g, t, x, y)).blocks;
-    const cx = Math.max(0, Math.min(g.cols - 1, Math.round(near.x))),
-      cy = Math.max(0, Math.min(g.rows - 1, Math.round(near.y)));
+  function freeSpot(g, tokens, near = { x: 0, y: 0 }, terrain = '', footprint = 1) {
+    const t = cells(g, terrain);
+    const span = tokenSpan({ size: footprint });
+    const sx = Math.max(0, Math.min(g.cols - span, snapToken(near.x, footprint))),
+      sy = Math.max(0, Math.min(g.rows - span, snapToken(near.y, footprint)));
+    const cx = Math.floor(sx),
+      cy = Math.floor(sy);
+    const corners =
+      span === 0.5
+        ? [
+            [0, 0],
+            [0.5, 0],
+            [0, 0.5],
+            [0.5, 0.5],
+          ]
+        : [[0, 0]];
+    if (span === 0.5)
+      corners.sort(
+        ([ax, ay], [bx, by]) => Math.hypot(cx + ax - sx, cy + ay - sy) - Math.hypot(cx + bx - sx, cy + by - sy),
+      );
+    if (span > Math.min(g.cols, g.rows)) return { x: cx, y: cy };
     for (let r = 0; r <= Math.max(g.cols, g.rows); r++)
-      for (let dy = -r; dy <= r; dy++)
-        for (let dx = -r; dx <= r; dx++) {
-          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
-          if (ok(cx + dx, cy + dy)) return { x: cx + dx, y: cy + dy };
+      for (let dy = -r; dy <= r; dy++) {
+        const edgeStep = Math.abs(dy) === r ? 1 : 2 * r;
+        for (let dx = -r; dx <= r; dx += edgeStep) {
+          for (const [ox, oy] of corners) {
+            const x = cx + dx + ox,
+              y = cy + dy + oy;
+            if (roomFor(g, t, { x, y, size: footprint }, tokens)) return { x, y };
+          }
         }
+      }
     return { x: cx, y: cy };
   }
 
   // ---------- Combate en el tablero: alcance, flanqueo y ataques de oportunidad ----------
   // Una ficha ocupa casillas enteras: (x, y) es su esquina superior izquierda y size su lado (mínimo 1).
   const side = k => Math.max(1, Math.round(k.size || 1));
+  const cellOrigin = (v, token) => (tokenSpan(token) < 1 ? Math.floor(v) : Math.round(v));
   // Casillas de separación entre dos fichas, de borde a borde (1 = adyacentes, también en diagonal).
   function gap(a, b) {
-    const ax = Math.round(a.x),
-      ay = Math.round(a.y),
-      bx = Math.round(b.x),
-      by = Math.round(b.y);
+    const ax = cellOrigin(a.x, a),
+      ay = cellOrigin(a.y, a),
+      bx = cellOrigin(b.x, b),
+      by = cellOrigin(b.y, b);
     const dx = Math.max(0, bx - (ax + side(a) - 1), ax - (bx + side(b) - 1)),
       dy = Math.max(0, by - (ay + side(a) - 1), ay - (by + side(b) - 1));
     return Math.max(dx, dy);
@@ -307,9 +373,9 @@
   // entre los centros de sus espacios entra y sale por lados (o esquinas) opuestos del espacio del objetivo.
   function flanks(attacker, ally, target) {
     if (gap(attacker, target) !== 1 || gap(ally, target) !== 1) return false;
-    const c = k => ({ x: Math.round(k.x) + side(k) / 2, y: Math.round(k.y) + side(k) / 2 });
-    const x0 = Math.round(target.x),
-      y0 = Math.round(target.y),
+    const c = k => ({ x: cellOrigin(k.x, k) + side(k) / 2, y: cellOrigin(k.y, k) + side(k) / 2 });
+    const x0 = cellOrigin(target.x, target),
+      y0 = cellOrigin(target.y, target),
       x1 = x0 + side(target),
       y1 = y0 + side(target);
     const p = c(attacker),
@@ -374,7 +440,9 @@
     return out;
   }
   // Recorrido casilla por casilla entre dos puntos (para completar arrastres rápidos).
-  function steps(a, b) {
+  function steps(a, b, step = 1) {
+    if (step === 0.5)
+      return steps({ x: a.x * 2, y: a.y * 2 }, { x: b.x * 2, y: b.y * 2 }).map(({ x, y }) => ({ x: x / 2, y: y / 2 }));
     const out = [{ x: Math.round(a.x), y: Math.round(a.y) }],
       n = Math.max(Math.abs(Math.round(b.x) - Math.round(a.x)), Math.abs(Math.round(b.y) - Math.round(a.y)));
     for (let i = 1; i <= n; i++)
@@ -382,20 +450,25 @@
     return out;
   }
   // Pies que cuesta un recorrido casilla por casilla: el terreno difícil cuesta el doble.
-  function pathCost(g, terrain, path) {
+  function pathCost(g, terrain, path, span = 1) {
     const t = cells(g, terrain || '');
     let ft = 0;
-    for (let i = 1; i < path.length; i++)
-      ft += g.feet * (terrainType(at(g, t, path[i].x, path[i].y)).difficult ? 2 : 1);
+    for (let i = 1; i < path.length; i++) {
+      const { x, y, right, bottom } = footprintRect({ ...path[i], size: span });
+      let difficult = false;
+      for (let yy = Math.floor(y); yy < bottom; yy++)
+        for (let xx = Math.floor(x); xx < right; xx++) difficult ||= terrainType(at(g, t, xx, yy)).difficult;
+      ft += g.feet * Math.min(1, span) * (difficult ? 2 : 1);
+    }
     return ft;
   }
   // Movimiento del turno: puntos donde la ficha se detuvo (con los pies gastados hasta ahí).
   // Volver a un punto anterior devuelve el movimiento (sirve para corregir un arrastre).
-  function moveTo(g, terrain, pts, to, budget) {
+  function moveTo(g, terrain, pts, to, budget, span = 1) {
     const back = pts.findIndex(p => p.x === to.x && p.y === to.y);
     if (back >= 0) return { ok: true, pts: pts.slice(0, back + 1), used: pts[back].ft, cost: 0 };
     const last = pts[pts.length - 1],
-      cost = pathCost(g, terrain, steps(last, to)),
+      cost = pathCost(g, terrain, steps(last, to, Math.min(1, span)), span),
       used = last.ft + cost;
     if (used > budget) return { ok: false, pts, used: last.ft, cost, left: budget - last.ft };
     return { ok: true, pts: [...pts, { x: to.x, y: to.y, ft: used }], used, cost };
@@ -504,6 +577,19 @@
     feet,
     difficultOnPath,
     snap,
+    snapToken,
+    headings,
+    heading,
+    headingDelta,
+    headingTo,
+    facingTo,
+    tokenSpan,
+    footprintRect,
+    depthOrder,
+    inFootprint,
+    cellOrigin,
+    overlaps,
+    roomFor,
     freeSpot,
     initials,
     colorFor,
@@ -580,9 +666,9 @@
   function templateHits(g, t, tokens) {
     const set = new Set(templateCells(g, t).map(([x, y]) => x + ',' + y));
     return tokens.filter(k => {
-      const n = Math.max(1, Math.round(k.size || 1));
-      for (let dy = 0; dy < n; dy++)
-        for (let dx = 0; dx < n; dx++) if (set.has(Math.round(k.x) + dx + ',' + (Math.round(k.y) + dy))) return true;
+      const f = footprintRect(k);
+      for (let y = Math.floor(f.y); y < f.bottom; y++)
+        for (let x = Math.floor(f.x); x < f.right; x++) if (set.has(x + ',' + y)) return true;
       return false;
     });
   }
@@ -604,7 +690,17 @@
   }
   // Casillas visibles desde los observadores [{ x, y (centro, en casillas), range (casillas; Infinity = sin límite) }].
   // Un muro se ve (su cara), pero no lo que hay detrás.
-  function visibleCells(g, terrain, walls, viewers) {
+  // A cloud can obscure both its contents and anything viewed through it.
+  function cloudBlocks(from, to, clouds) {
+    const dx = to.x - from.x,
+      dy = to.y - from.y,
+      length = dx * dx + dy * dy;
+    return clouds.some(({ x, y, r }) => {
+      const at = length ? Math.max(0, Math.min(1, ((x - from.x) * dx + (y - from.y) * dy) / length)) : 0;
+      return Math.hypot(from.x + dx * at - x, from.y + dy * at - y) < r;
+    });
+  }
+  function visibleCells(g, terrain, walls, viewers, clouds = []) {
     const vis = new Uint8Array(g.cols * g.rows),
       segs = sightBlockers(g, terrain, walls);
     for (const v of viewers) {
@@ -639,6 +735,7 @@
             : [[cx, cy]];
           let blocked = true;
           for (const [tx, ty] of targets) {
+            if (clouds.length && cloudBlocks(v, { x: tx, y: ty }, clouds)) continue;
             let hit = false;
             for (const s of near)
               if (crosses(v.x, v.y, tx, ty, s[0], s[1], s[2], s[3])) {
@@ -671,8 +768,8 @@
   }
   // Lo que se ve en un mapa a oscuras: lo que cada observador tiene a su alcance, más lo que alguna luz
   // ilumina y el observador tiene a la vista (por lejos que esté). viewers y lights: [{ x, y, range }] en casillas.
-  function sight(g, terrain, walls, viewers, lights) {
-    const near = visibleCells(g, terrain, walls, viewers);
+  function sight(g, terrain, walls, viewers, lights, clouds = []) {
+    const near = visibleCells(g, terrain, walls, viewers, clouds);
     if (!lights.length || !viewers.length) return near;
     const lit = visibleCells(g, terrain, walls, lights),
       far = visibleCells(
@@ -680,6 +777,7 @@
         terrain,
         walls,
         viewers.map(v => ({ ...v, range: Infinity })),
+        clouds,
       );
     for (let i = 0; i < near.length; i++) if (!near[i] && lit[i] && far[i]) near[i] = 1;
     return near;

@@ -4,6 +4,57 @@ const B = require('../board-core.js');
 
 const g = B.normGrid({ cols: 6, rows: 4 });
 
+test('los ocho rumbos giran alrededor del centro de cada huella', () => {
+  assert.deepEqual(
+    [
+      [0, 1],
+      [-1, 1],
+      [-1, 0],
+      [-1, -1],
+      [0, -1],
+      [1, -1],
+      [1, 0],
+      [1, 1],
+    ].map(([x, y]) => B.headingTo(x, y)),
+    [0, 1, 2, 3, 4, 5, 6, 7],
+  );
+  assert.equal(B.headingDelta(7, 0), 1);
+  assert.equal(B.headingDelta(0, 7), -1);
+  assert.equal(B.facingTo({ x: 0, y: 0, size: 4 }, { x: 4, y: 1.5, size: 1 }), 6);
+  assert.equal(B.normGrid().size, 64);
+  assert.deepEqual(B.normGrid({ rotation: { mode: 'enemy', marker: true, playerMonsters: true } }).rotation, {
+    mode: 'enemy',
+    marker: true,
+    playerMonsters: true,
+  });
+});
+
+test('cuatro fichas diminutas encajan en la misma casilla sin superponerse', () => {
+  const grid = B.normGrid({ cols: 1, rows: 1 });
+  const tokens = [];
+  for (let i = 0; i < 4; i++) {
+    const spot = B.freeSpot(grid, tokens, { x: 0, y: 0 }, '.', 0.5);
+    const next = { ...spot, size: 0.5 };
+    assert.ok(B.roomFor(grid, '.', next, tokens));
+    tokens.push(next);
+  }
+  assert.ok(!B.roomFor(grid, '.', { x: 0, y: 0, size: 0.5 }, tokens));
+  assert.equal(B.gap({ x: 0.5, y: 0.5, size: 0.5 }, { x: 0, y: 1, size: 1 }), 1);
+});
+
+test('se selecciona y ordena por la huella aunque el centro de la figura quede más arriba', () => {
+  const huge = { id: 'huge', x: 1, y: 0, size: 3 };
+  const medium = { id: 'medium', x: 4, y: 1.9, size: 1 };
+  const tiny = { id: 'tiny', x: 0.5, y: 1.5, size: 0.5 };
+  assert.deepEqual(B.footprintRect(huge), { x: 1, y: 0, right: 4, bottom: 3, span: 3 });
+  assert.ok(B.depthOrder(huge, { ...medium, y: 1.49 }) > 0);
+  assert.ok(B.inFootprint(huge, 3.99, 2.99));
+  assert.ok(!B.inFootprint(huge, 4, 2.99));
+  assert.ok(B.inFootprint(tiny, 0.5, 1.5));
+  assert.ok(!B.inFootprint(tiny, 0.49, 1.5));
+  assert.equal(B.moveTo(g, '', [{ x: 0.5, y: 0, ft: 0 }], { x: 1, y: 0.5 }, 5, 0.5).cost, 2.5);
+});
+
 test('cuadrícula normalizada con límites', () => {
   const x = B.normGrid({ cols: 999, rows: 0, size: 2, opacity: 4 });
   assert.equal(x.cols, B.MAX_SIDE);
@@ -345,4 +396,19 @@ test('sonido de ambiente: se guarda en la cuadrícula si es un nombre simple', (
   assert.equal(B.normGrid({ ambient: 'tavern' }).ambient, 'tavern');
   assert.equal(B.normGrid({ ambient: '<b>' }).ambient, '');
   assert.equal(B.normGrid().ambient, '');
+});
+
+test('heavily obscured clouds block sight inside and across them, even with lighting beyond', () => {
+  const grid = B.normGrid({ cols: 16, rows: 9 });
+  const viewer = { x: 2.5, y: 4.5, range: Infinity };
+  const clouds = [{ x: 7, y: 4.5, r: 2 }];
+  const direct = B.sight(grid, '', [], [viewer], [], clouds);
+  const cell = (bits, x, y) => bits[y * grid.cols + x];
+  assert.equal(cell(direct, 4, 4), 1);
+  assert.equal(cell(direct, 7, 4), 0);
+  assert.equal(cell(direct, 11, 4), 0);
+  assert.equal(cell(B.sight(grid, '', [], [viewer], []), 11, 4), 1);
+  const lit = B.sight(grid, '', [], [{ ...viewer, range: 1 }], [{ x: 11.5, y: 4.5, range: 5 }], clouds);
+  assert.equal(cell(lit, 11, 4), 0);
+  assert.equal(cell(B.sight(grid, '', [], [viewer, { x: 13.5, y: 4.5, range: Infinity }], [], clouds), 11, 4), 1);
 });

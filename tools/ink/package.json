@@ -1,0 +1,7 @@
+{
+  "name": "dnd-animation-authoring",
+  "private": true,
+  "dependencies": {
+    "@shapeshift-labs/ink-studio": "https://codeload.github.com/siliconjungle/shapeshift-labs-ink-studio/tar.gz/de64555febac6a412134dc2400cc081d4e1134ca"
+  }
+}

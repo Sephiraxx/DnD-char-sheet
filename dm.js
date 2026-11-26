@@ -101,13 +101,14 @@ function settingsFields(st = Cloud.cleanSettings({})) {
     )
     .join(
       '',
-    )}</div><div class="form-grid">${field('Valores fijos para repartir', 'abilityArray', st.abilities.array.join(', '), 'text', 'maxlength="40" placeholder="15, 14, 13, 12, 10, 8"')}${field('Puntos para comprar', 'abilityPoints', st.abilities.points, 'number', 'min="1" max="60" required')}${field('Mínimo por puntuación al tirar (0 = sin mínimo)', 'abilityRollMin', st.abilities.rollMin, 'number', 'min="0" max="18" required')}</div><p class="small">Si una tirada queda por debajo del mínimo, cuenta como el mínimo. Sin ningún método marcado se permiten todos.</p></fieldset><div class="form-grid">${field('Nivel inicial de los personajes', 'startLevel', st.startLevel, 'number', 'min="1" max="20" required')}</div><label class="field">Reglas de la casa (opcional)<textarea name="rules" maxlength="2000" placeholder="Puntos de golpe máximos en nivel 1, sin dotes, compra de puntos…">${esc(st.rules)}</textarea></label>`;
+    )}</div><div class="form-grid">${field('Valores fijos para repartir', 'abilityArray', st.abilities.array.join(', '), 'text', 'maxlength="40" placeholder="15, 14, 13, 12, 10, 8"')}${field('Puntos para comprar', 'abilityPoints', st.abilities.points, 'number', 'min="1" max="60" required')}${field('Mínimo por puntuación al tirar (0 = sin mínimo)', 'abilityRollMin', st.abilities.rollMin, 'number', 'min="0" max="18" required')}</div><p class="small">Si una tirada queda por debajo del mínimo, cuenta como el mínimo. Sin ningún método marcado se permiten todos.</p></fieldset><div class="form-grid">${field('Nivel inicial de los personajes', 'startLevel', st.startLevel, 'number', 'min="1" max="20" required')}</div><label class="field">Reglas de la casa (opcional)<textarea name="rules" maxlength="2000" placeholder="Puntos de golpe máximos en nivel 1, sin dotes, compra de puntos…">${esc(st.rules)}</textarea></label><label class="check"><input type="checkbox" name="showEnemyAC" ${st.showEnemyAC ? 'checked' : ''}>Mostrar la CA enemiga en los resultados de ataque</label>`;
 }
 const readSettings = fd => ({
   sources: ['PHB', ...fd.getAll('source')],
   startLevel: Number(fd.get('startLevel')),
   rules: String(fd.get('rules') || '').trim(),
   abilities: readAbilityRules(fd),
+  showEnemyAC: fd.has('showEnemyAC'),
 });
 function readAbilityRules(fd) {
   const array = String(fd.get('abilityArray') || '')
@@ -148,6 +149,8 @@ function tracker() {
       max: x.max_hp ?? null,
       ac: x.ac ?? null,
       saves: x.saves || {},
+      damageTraits: x.damage_traits,
+      boardOnly: c.board_only === true,
       hidden: c.hidden,
       status: c.status,
       conditions: c.conditions || [],
@@ -392,11 +395,30 @@ function pendingSaves() {
     .map(e => ({ ev: e, targets: (e.payload.targets || []).filter(t => !done.has(e.id + ':' + t.id)) }))
     .filter(x => x.targets.length && tracker().entries.some(c => x.targets.some(t => t.id === c.id)));
 }
+function pendingZoneTriggers() {
+  const done = new Set(feed.filter(e => e.kind === 'spell-zone-resolved').map(e => e.payload.key));
+  return feed.filter(e => e.kind === 'spell-zone-trigger' && !done.has(e.payload.key));
+}
 function savesCard() {
-  const list = pendingSaves();
-  if (!list.length) return '';
+  const list = pendingSaves(),
+    zones = pendingZoneTriggers();
+  if (!list.length && !zones.length) return '';
   const ABIL = { str: 'FUE', dex: 'DES', con: 'CON', int: 'INT', wis: 'SAB', cha: 'CAR' };
-  return `<section class="card saves-card"><div class="card-header"><h2>Salvaciones pendientes</h2></div>${list
+  const timing = {
+    start: 'inicio del turno',
+    end: 'fin del turno',
+    enter: 'entró en la zona',
+    travel: 'se movió por la zona',
+  };
+  return `<section class="card saves-card"><div class="card-header"><h2>${zones.length ? 'Salvaciones y zonas pendientes' : 'Salvaciones pendientes'}</h2></div>${zones
+    .map(ev => {
+      const p = ev.payload,
+        target = p.targets?.[0];
+      if (!target) return '';
+      const save = p.ability ? ` · ${ABIL[p.ability] || esc(p.ability)} CD ${esc(p.dc)}` : '';
+      return `<div class="feature"><div class="list-row"><span><b>${esc(p.spell)} · ${esc(target.name)}</b><br><small>${timing[p.phase] || 'zona'}${p.formula ? ' · ' + esc(p.formula + ' ' + p.types) : ''}${save}</small></span>${button('Resolver', 'zone-resolve', 'secondary', `data-req="${ev.id}"`)}</div></div>`;
+    })
+    .join('')}${list
     .map(
       ({ ev, targets }) =>
         `<div class="feature"><p><b>${esc(ev.payload.caster)}</b> lanzó <b>${esc(ev.payload.spell)}</b>: ${ABIL[ev.payload.ability] || esc(ev.payload.ability)} CD ${esc(ev.payload.dc)} · ${esc(ev.payload.damage)} de daño${ev.payload.half ? ' (mitad si salva)' : ''}</p><div class="party-list">${targets
@@ -409,6 +431,59 @@ function savesCard() {
           )}</div>${targets.length > 1 ? `<div class="actions">${button('Tirar todas', 'save-all', '', `data-req="${ev.id}"`)}</div>` : ''}</div>`,
     )
     .join('')}</section>`;
+}
+const resolvingZones = new Set();
+async function resolveZoneTrigger(ev, ownDamage, ownSave) {
+  const p = ev.payload,
+    target = p.targets?.[0];
+  if (!target || resolvingZones.has(ev.id) || !pendingZoneTriggers().some(z => z.id === ev.id)) return;
+  resolvingZones.add(ev.id);
+  try {
+    let damage = ownDamage;
+    if (damage == null) {
+      const expression = String(p.formula || '');
+      const dice = expression.match(/\d+d\d+/g) || [];
+      if (expression && !/^(?:\d{1,3}|\d+d\d+(?:\+\d+d\d+)*(?:\+\d{1,3})?)$/.test(expression))
+        throw Error('La fórmula requiere un resultado manual.');
+      const counts = dice.map(term => term.split('d').map(Number));
+      if (counts.reduce((n, [count]) => n + count, 0) > 500 || counts.some(([, sides]) => sides < 2 || sides > 1000))
+        throw Error('La fórmula requiere un resultado manual.');
+      const bonus = Number(expression.split('+').at(-1)) || 0;
+      damage = dice.reduce((sum, term) => sum + MonsterUI.rollDice(term).total, bonus);
+    }
+    let result;
+    const request = { ...p, damage, source: p.spell, characterId: target.character, zoneTrigger: p.key };
+    if (p.ability && target.id && !target.character) {
+      result = await resolveSave({ ...ev, payload: request }, target.id, ownSave);
+      damage = result.damage;
+    } else if (p.ability && target.character) {
+      await send('area-save', request, target.character);
+    } else if (target.character && damage) {
+      await send('damage', { ...request, amount: damage, type: Defenses.normalize(p.types) }, target.character);
+    } else if (target.id && damage) {
+      const applied = await Cloud.damageCombatant(target.id, damage, p.spell, p.caster, {
+        type: Defenses.normalize(p.types),
+        magical: true,
+      });
+      damage = applied.amount ?? damage;
+    } else if (!target.id && !target.character) {
+      throw Error('La ficha necesita un bloque de estadísticas.');
+    }
+    await send('spell-zone-resolved', { key: p.key }, null, 'dm');
+    await refresh();
+    RollFX.show({
+      label: target.name + ' · ' + p.spell,
+      total: result?.total ?? damage,
+      face: result?.natural,
+      detail: result
+        ? (result.success ? 'supera' : 'falla') + ' · ' + damage + ' de daño'
+        : p.ability && target.character
+          ? 'Salvación enviada · ' + damage + ' de daño antes de salvar'
+          : damage + ' de daño',
+    });
+  } finally {
+    resolvingZones.delete(ev.id);
+  }
 }
 async function resolveSave(req, targetId, own = null) {
   const p = req.payload,
@@ -423,8 +498,17 @@ async function resolveSave(req, targetId, own = null) {
       ['str', 'dex'].includes(p.ability) &&
       ['Paralizado', 'Aturdido', 'Inconsciente', 'Petrificado'].some(x => (c.conditions || []).includes(x)),
     success = !out && natural !== 1 && (natural === 20 || total >= Number(p.dc)),
-    dmg = Number(p.damage) || 0,
-    damage = success ? (p.half ? Math.floor(dmg / 2) : 0) : dmg,
+    damage = Defenses.monsterDamage(
+      c.damageTraits,
+      Defenses.partsAfterSave(
+        Defenses.partsOf({ ...p, amount: p.damage }).map(part => ({
+          ...part,
+          magical: p.magical === true || !!p.spellId,
+        })),
+        success,
+        p.half,
+      ),
+    ),
     hp = Math.max(0, (c.hp ?? 0) - damage);
   if (damage) await Cloud.updateSecret(c.id, { hp });
   const max = c.max || 1,
@@ -449,6 +533,16 @@ async function resolveSave(req, targetId, own = null) {
     damage,
     status,
   });
+  if (p.board)
+    globalThis.Board?.resolveSpellSave(
+      current,
+      p,
+      { combatant: targetId },
+      {
+        saved: success,
+        destroyed: damage > 0 && Number(c.hp) > 0 && hp === 0,
+      },
+    ).catch(err => toast(err.message));
   return { name: t.name, natural, total, success, damage };
 }
 
@@ -460,7 +554,8 @@ const STATUS_LABEL = {
   derrotado: 'Derrotado',
 };
 function initiativeCard(t) {
-  const items = t.entries
+  const participants = t.entries.filter(e => !e.boardOnly);
+  const items = participants
     .map((e, i) => {
       const pc = e.characterId ? characterById(e.characterId) : null,
         s = pc ? PV.summarize(pc.data) : null,
@@ -469,7 +564,7 @@ function initiativeCard(t) {
         ? `${x.hp ?? '—'}/${x.maxHP} PG · CA ${x.ac}${x.conditions.length ? ' · ' + esc(x.conditions.join(', ')) : ''}`
         : `CA ${e.ac ?? '—'} · ${STATUS_LABEL[e.status] || e.status}${e.hidden ? ' · oculta' : ''}${e.conditions.length ? ' · ' + esc(e.conditions.join(', ')) : ''}${e.max ? `<span class="monster-hpbar" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Math.round(((e.hp ?? e.max) / e.max) * 100)))}%"></i></span>` : ''}`;
       const down = x ? x.hp === 0 : e.hp === 0;
-      return `<li class="${i === t.turn ? 'current' : ''} ${down ? 'down' : ''} ${e.kind === 'pc' ? 'pc' : ''} ${e.hidden ? 'hidden-combatant' : ''}"><span class="init">${t.mode === 'individual' ? (e.init ?? '—') : i + 1}</span><span class="who"><b>${e.monsterId ? `<button type="button" class="text-btn monster-name" data-action="monster-open" data-entry="${e.id}">${esc(e.name)}</button>` : esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
+      return `<li class="${e.id === t.entries[t.turn]?.id ? 'current' : ''} ${down ? 'down' : ''} ${e.kind === 'pc' ? 'pc' : ''} ${e.hidden ? 'hidden-combatant' : ''}"><span class="init">${t.mode === 'individual' ? (e.init ?? '-') : i + 1}</span><span class="who"><b>${e.monsterId ? `<button type="button" class="text-btn monster-name" data-action="monster-open" data-entry="${e.id}">${esc(e.name)}</button>` : esc(e.name)}</b><small>${sub}</small></span><span class="monster-hp">${
         e.kind === 'pc'
           ? `<span class="init-actions">${FriendlyNPC.ownedByDM(pc || {}, party.campaign) ? button('Controlar', 'npc-control', 'text-btn', `data-id="${e.characterId}"`) : ''}${button('Init', 'init-set', 'text-btn', `data-entry="${e.id}"`)}`
           : e.characterId
@@ -479,9 +574,9 @@ function initiativeCard(t) {
     })
     .join('');
   return `<section class="card"><div class="card-header"><h2>Iniciativa${t.round ? ' · ronda ' + t.round : ''}</h2><span class="small muted">${DmInitiative.labels[t.mode]}</span></div>
-  <div class="initiative-tools">${button('Agregar party', 'init-party')}${t.mode === 'individual' ? button('Pedir iniciativa', 'init-request') : ''}${party.encounter?.active ? '' : button('Modo de iniciativa', 'init-mode')}${button('Monstruo del SRD', 'init-monster-srd')}${button('Criatura propia', 'init-monster')}${t.entries.some(e => e.hidden) ? button('Revelar ocultas', 'init-reveal') : ''}</div>
-  ${typeof MonsterUI !== 'undefined' ? MonsterUI.difficultyLine(t) : ''}${items ? `<ol class="initiative-list section-space">${items}</ol>` : '<p class="muted section-space">Agregá a la party y a las criaturas. Las tiradas de iniciativa de los jugadores se completan solas.</p>'}
-  ${t.entries.length ? `<div class="actions section-space">${button(t.turn < 0 ? 'Empezar combate' : 'Siguiente turno', 'init-next', '')}${t.turn >= 0 ? button('Terminar combate', 'init-end') : ''}${button('Vaciar', 'init-clear')}</div><p class="small muted">Cuando un jugador toca «Terminar turno», la iniciativa avanza sola. Los turnos de criaturas los pasás vos.</p>` : ''}</section>`;
+  <div class="initiative-tools">${button('Agregar party', 'init-party')}${t.mode === 'individual' ? button('Pedir iniciativa', 'init-request') : ''}${party.encounter?.active ? '' : button('Modo de iniciativa', 'init-mode')}${button('Monstruo del SRD', 'init-monster-srd')}${button('Criatura propia', 'init-monster')}${participants.some(e => e.hidden) ? button('Revelar ocultas', 'init-reveal') : ''}</div>
+  ${typeof MonsterUI !== 'undefined' ? MonsterUI.difficultyLine({ ...t, entries: participants }) : ''}${items ? `<ol class="initiative-list section-space">${items}</ol>` : '<p class="muted section-space">Agregá a la party y a las criaturas. Las tiradas de iniciativa de los jugadores se completan solas.</p>'}
+  ${participants.length ? `<div class="actions section-space">${button(t.turn < 0 ? 'Empezar combate' : 'Siguiente turno', 'init-next', '')}${t.turn >= 0 ? button('Terminar combate', 'init-end') : ''}${button('Vaciar', 'init-clear')}</div><p class="small muted">Cuando un jugador toca «Terminar turno», la iniciativa avanza sola. Los turnos de criaturas los pasás vos.</p>` : ''}</section>`;
 }
 
 function feedCard() {
@@ -810,6 +905,23 @@ const actions = {
       },
       'Tirar',
     ),
+  'zone-resolve': e => {
+    const ev = pendingZoneTriggers().find(x => x.id === Number(e.dataset.req));
+    if (!ev) return;
+    const p = ev.payload,
+      target = p.targets[0];
+    modal(
+      target.name + ' · ' + p.spell,
+      `<p>${esc(p.formula)} ${esc(p.types)}${p.ability ? ' · CD ' + esc(p.dc) : ''}</p>${field('Daño de la mesa (opcional)', 'ownDamage', '', 'number', 'min="0" max="9999" inputmode="numeric"')}${p.ability && !target.character ? field('d20 de la criatura (opcional)', 'ownSave', '', 'number', 'min="1" max="20" inputmode="numeric"') : ''}`,
+      fd =>
+        resolveZoneTrigger(
+          ev,
+          fd.get('ownDamage') ? int(fd, 'ownDamage', 0, 9999) : null,
+          fd.get('ownSave') ? int(fd, 'ownSave', 1, 20) : null,
+        ),
+      'Resolver',
+    );
+  },
   'save-resolve': e => {
     const req = feed.find(x => x.id === Number(e.dataset.req)),
       t = req?.payload.targets.find(x => x.id === e.dataset.target),
@@ -897,7 +1009,13 @@ const actions = {
     modal(
       'Iniciativa de ' + entry.name,
       field('Resultado', 'init', entry.init ?? '', 'number', 'min="-10" max="50" required autofocus'),
-      fd => encounterChange(() => Cloud.updateCombatant(entry.id, { init: int(fd, 'init', -10, 50) })),
+      fd =>
+        encounterChange(() =>
+          Cloud.updateCombatant(entry.id, {
+            init: int(fd, 'init', -10, 50),
+            ...(entry.boardOnly ? { board_only: false } : {}),
+          }),
+        ),
       'Guardar',
     );
   },
@@ -924,7 +1042,7 @@ const actions = {
     if (!confirm('¿Vaciar la iniciativa? Se quitan todas las criaturas y personajes del encuentro.')) return;
     return encounterChange(async () => {
       if (party?.encounter?.active) await Cloud.endCombat(current);
-      for (const e of tracker().entries) await Cloud.removeCombatant(e.id);
+      for (const e of tracker().entries) if (!e.boardOnly) await Cloud.removeCombatant(e.id);
       if (party?.encounter?.initiative_mode && party.encounter.initiative_mode !== 'individual')
         await Cloud.setInitiativeOrder(current, 'individual', []);
     });

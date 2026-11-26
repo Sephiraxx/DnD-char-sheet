@@ -550,6 +550,11 @@ const PartyUI = (() => {
         }),
     );
   }
+  function spellGrantBadge(s, id, grants = C.granted(s)) {
+    const g = grants.details[id];
+    if (!g) return '';
+    return `<span class="tag spell-grant-badge" title="${esc(g.origin || '')}">${g.mode === 'prepared' ? 'Siempre preparado' : 'Concedido'}</span>`;
+  }
   function automaticSpellNote(s, id, grants = C.granted(s)) {
     const g = grants.details[id];
     if (!g) return '';
@@ -647,6 +652,9 @@ const PartyUI = (() => {
       ids = [
         ...new Set([
           ...state.known,
+          ...C.views(state)
+            .slice(1)
+            .flatMap(v => v.known),
           ...state.extras,
           ...C.granted(state).prepared,
           ...C.granted(state).known,
@@ -686,7 +694,7 @@ const PartyUI = (() => {
         .map(([v, l]) => `<option value="${v}" ${filter === v ? 'selected' : ''}>${l}</option>`)
         .join(
           '',
-        )}</select></div><div class="spell-grid">${list.map(sp => `<div>${automaticSpellNote(state, sp.id, grants)}${!usable.includes(sp.id) ? '<p class="tag warn">No preparado</p>' : ''}${Object.values(state.arcanum || {}).includes(sp.id) ? '<p class="tag">Arcanum · 1 uso por descanso largo</p>' : ''}${spellCard(sp)}</div>`).join('') || '<p class="empty">Todavía no agregaste conjuros. Abrí el catálogo para elegirlos.</p>'}</div>`
+        )}</select></div><div class="spell-grid">${list.map(sp => `<div>${spellGrantBadge(state, sp.id, grants)}${!usable.includes(sp.id) ? '<p class="tag warn">No preparado</p>' : ''}${Object.values(state.arcanum || {}).includes(sp.id) ? '<p class="tag">Arcanum · 1 uso por descanso largo</p>' : ''}${spellCard(sp)}</div>`).join('') || '<p class="empty">Todavía no agregaste conjuros. Abrí el catálogo para elegirlos.</p>'}</div>`
     );
   }
   // ---------- Conjuros: pantalla completa con tarjetas, contadores y filtros ----------
@@ -960,7 +968,7 @@ const PartyUI = (() => {
       C.resources(state)
         .map(r => {
           const used = C.spent(state, r);
-          return `<div class="pool-row"><div class="pool-head"><b>${esc(r.name)}</b><span>${used === null ? '—' : r.max === 999 ? '∞' : Math.max(0, r.max - used) + ' / ' + r.max}</span></div><p class="small">${esc(r.text)}</p><div class="actions">${r.id === 'cannon' ? button('Crear cañón', 'cannon-create', '') : button('Usar', 'class-resource', '', `data-id="${r.id}"`)}${button('Ajustar', 'class-resource-edit', 'secondary', `data-id="${r.id}"`)}</div><p class="small">Recuperación: descanso ${r.reset === 'short' ? 'corto o largo' : 'largo'}.</p>${r.id === 'rage' && state.raging ? button('Terminar rabia', 'class-rage-end') : ''}</div>`;
+          return `<div class="pool-row"><div class="pool-head"><b>${esc(r.name)}</b><span>${used === null ? '—' : r.max === 999 ? '∞' : Math.max(0, r.max - used) + ' / ' + r.max}</span></div><p class="small">${esc(r.text)}</p><div class="actions">${r.id === 'cannon' ? button('Crear cañón', 'cannon-create', '') : button('Usar', 'class-resource', '', `data-id="${r.id}"`)}${button('Ajustar', 'class-resource-edit', 'secondary', `data-id="${r.id}"`)}</div><p class="small">Recuperación: descanso ${r.reset === 'short' ? 'corto o largo' : 'largo'}.</p>${r.id === 'rage' && state.raging ? button('Terminar furia', 'class-rage-end') : ''}</div>`;
         })
         .join('') +
       (typeof SubclassUI !== 'undefined' ? SubclassUI.statesCard() + SubclassUI.panel() : '') +
@@ -1005,7 +1013,8 @@ const PartyUI = (() => {
         ],
         r.action,
       )}${id === 'second-wind' ? field('Resultado de tu d10 (se suma tu nivel)', 'roll', '', 'number', 'min="1" max="10" required') : ''}<label class="check"><input type="checkbox" required>Se cumple el desencadenante y el coste del rasgo elegido.</label>`,
-      fd =>
+      fd => {
+        const startedRage = id === 'rage' && !state.raging;
         commit('Usado: ' + r.name, s => {
           const k = fd.get('action'),
             cost = number(fd, 'cost', 1, avail);
@@ -1030,7 +1039,9 @@ const PartyUI = (() => {
             if (s.hp === null) throw Error('Confirmá tus PG actuales.');
             Companions.heal(s, number(fd, 'roll', 1, 10) + s.level);
           }
-        }),
+        });
+        if (startedRage && state.raging) globalThis.BoardPlayer?.projectAbility('barbarian-rage', 'Furia');
+      },
       'Registrar uso',
     );
   }
@@ -1356,7 +1367,7 @@ const PartyUI = (() => {
       'resolve-task': e => resolveTask(e.dataset.id),
       'class-resource': e => useResource(e.dataset.id),
       'class-resource-edit': e => useResource(e.dataset.id, true),
-      'class-rage-end': () => commit('Rabia terminada', s => (s.raging = false)),
+      'class-rage-end': () => commit('Furia terminada', s => (s.raging = false)),
       'defenses-edit': defensesEdit,
       'class-notes-save': () => flushNotes(),
       stats: statsEdit,
@@ -1391,6 +1402,7 @@ const PartyUI = (() => {
     manageSpells,
     validateRepertoire,
     automaticSpellNote,
+    spellGrantBadge,
     resourceCards,
     combatAbilities,
     shortRest,

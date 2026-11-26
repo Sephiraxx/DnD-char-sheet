@@ -115,7 +115,7 @@ function combatChoice(o) {
 function combatSpell(sp) {
   const reason = Combat.spellBlock(state, sp),
     headline = R.spellHeadline(state, sp);
-  return `<article class="battle-choice spell-choice"><div><span class="eyebrow">${sp.level ? 'Nivel ' + sp.level : 'Nivel 0 · Truco'}${sp.concentration ? ' · Concentración' : ''}</span><h3>${esc(sp.name)} <button type="button" class="fav-star ${favoriteIds().includes(sp.id) ? 'on' : ''}" data-action="spell-fav" data-id="${esc(sp.id)}" aria-pressed="${favoriteIds().includes(sp.id)}" aria-label="Favorito" title="Favorito para la vista compacta">${favoriteIds().includes(sp.id) ? '★' : '☆'}</button></h3>${spellHeadlineHtml(headline)}${PartyUI.automaticSpellNote(state, sp.id)}${sp.brief && headline !== sp.brief ? `<p>${esc(sp.brief)}</p>` : ''}<div class="small">${esc(sp.range)} · ${esc(sp.components)}${state.extras.includes(sp.id) ? ' · Extra DM' : ''}</div></div><div class="choice-bottom">${reason ? `<p class="choice-reason">${esc(reason)}</p>` : ''}<div class="actions">${button('Ver detalles', 'combat-spell-info', 'secondary', `data-id="${esc(sp.id)}"`)}${RollUI.rollable(sp) ? button('Solo tirar', 'spell-roll', 'secondary', `data-id="${esc(sp.id)}"`) : ''}${button(sp.level ? 'Lanzar' : 'Usar truco', 'cast', '', `data-id="${esc(sp.id)}" ${reason ? 'disabled' : ''}`)}</div></div></article>`;
+  return `<article class="battle-choice spell-choice"><div><span class="eyebrow">${sp.level ? 'Nivel ' + sp.level : 'Nivel 0 · Truco'}${sp.concentration ? ' · Concentración' : ''}</span><h3>${esc(sp.name)} <button type="button" class="fav-star ${favoriteIds().includes(sp.id) ? 'on' : ''}" data-action="spell-fav" data-id="${esc(sp.id)}" aria-pressed="${favoriteIds().includes(sp.id)}" aria-label="Favorito" title="Favorito para la vista compacta">${favoriteIds().includes(sp.id) ? '★' : '☆'}</button></h3>${spellHeadlineHtml(headline)} ${PartyUI.spellGrantBadge(state, sp.id)}${sp.brief && headline !== sp.brief ? `<p>${esc(sp.brief)}</p>` : ''}<div class="small">${esc(sp.range)} · ${esc(sp.components)}${state.extras.includes(sp.id) ? ' · Extra DM' : ''}</div></div><div class="choice-bottom">${reason ? `<p class="choice-reason">${esc(reason)}</p>` : ''}<div class="actions">${button('Ver detalles', 'combat-spell-info', 'secondary', `data-id="${esc(sp.id)}"`)}${RollUI.rollable(sp) ? button('Solo tirar', 'spell-roll', 'secondary', `data-id="${esc(sp.id)}"`) : ''}${button(sp.level ? 'Lanzar' : 'Usar truco', 'cast', '', `data-id="${esc(sp.id)}" ${reason ? 'disabled' : ''}`)}</div></div></article>`;
 }
 function ongoingSpellActions() {
   const info = Effects.repeatInfo(state);
@@ -488,7 +488,13 @@ function combatOption(id) {
           kind: 'any',
           skills: [],
           reason: 'Inspiración bárdica de ' + state.name,
-        }).catch(err => toast(err.message));
+        })
+          .then(() =>
+            globalThis.BoardPlayer?.projectAbility('bardic-inspiration', 'Inspiración bárdica', {
+              character: ally.characterId,
+            }),
+          )
+          .catch(err => toast(err.message));
       toast('Registrado: ' + o.name + (ally ? '. ' + ally.name + ' recibió el d' + d.inspirationDie + '.' : ''));
     },
     'Registrar uso',
@@ -557,7 +563,7 @@ function installCombatActions() {
     'combat-help': e => combatHelp(e.dataset.topic),
     'combat-spell-info': e => {
       const sp = spellById(e.dataset.id);
-      modal(sp.name, Campaign.spellHelp(sp) + button('Lanzar', 'cast', '', `data-id="${esc(sp.id)}"`));
+      modal(sp.name, spellDetailHTML(sp) + button('Lanzar', 'cast', '', `data-id="${esc(sp.id)}"`));
     },
     turn: () => {
       const start = () => {

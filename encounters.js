@@ -262,6 +262,7 @@ const Encounters = (() => {
   async function launch(id, askInitiative = true) {
     const enc = get(id);
     if (!enc?.monsters.length) throw Error('Agregá criaturas al encuentro primero.');
+    if (enc.monsters.some(m => m.monsterId)) await MonsterUI.load();
     const npcs = new Map(enc.monsters.filter(m => m.npcId).map(m => [m.npcId, DmFriendlyUI.rowFor(m.npcId)]));
     const active = party.encounter?.active;
     const custom = party.encounter?.initiative_mode && party.encounter.initiative_mode !== 'individual';
@@ -290,10 +291,13 @@ const Encounters = (() => {
         const names = await MonsterUI.claimNames(name, ms.length);
         for (let i = 0; i < ms.length; i++) {
           const m = ms[i];
+          const block = m.monsterId && MonsterUI.byId(m.monsterId);
           const added = await Cloud.addCombatant(
             current,
             { kind: 'monster', name: names[i], init: d20() + (m.initMod || 0), tiebreak: m.initMod || 0 },
-            { hp: m.hp, max_hp: m.hp, ac: m.ac, saves: m.saves || {}, monster_id: m.monsterId || null },
+            block
+              ? MonsterUI.profile(block, m.hp)
+              : { hp: m.hp, max_hp: m.hp, ac: m.ac, saves: m.saves || {}, monster_id: m.monsterId || null },
           );
           links.push({
             stage: 'enc:' + enc.id + ':' + m.uid,

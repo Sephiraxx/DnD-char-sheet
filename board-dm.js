@@ -28,7 +28,7 @@
   let savesSeen = 0;
   function saves() {
     const html = typeof savesCard === 'function' ? savesCard() : '',
-      n = typeof pendingSaves === 'function' ? pendingSaves().reduce((a, x) => a + x.targets.length, 0) : 0;
+      n = pendingSaves().reduce((a, x) => a + x.targets.length, pendingZoneTriggers().length);
     if (n > savesSeen) setTimeout(() => Board.expand(), 0);
     savesSeen = n;
     return html;
@@ -40,7 +40,7 @@
   function dockBody(c) {
     const t = tracker(),
       turn = t.turn >= 0 ? t.entries[t.turn] : null,
-      next = t.entries.length
+      next = t.entries.some(e => !e.boardOnly)
         ? `<div class="actions">${button(t.turn < 0 ? 'Empezar combate' : 'Siguiente turno', 'init-next', '')}</div>`
         : '';
     const head = turn ? `<p class="small muted">Ronda ${t.round} · turno de <b>${esc(turn.name)}</b></p>` : '';
@@ -54,7 +54,7 @@
       return `${head}<p class="small muted">Tocá una criatura del mapa para ver sus acciones. Después tocá a un personaje para elegirlo como objetivo: la ventana de ataque ya lo trae elegido, con ventaja si lo flanquean.</p><p class="small muted">Al mover una ficha en combate, quien sale del alcance de un enemigo provoca un ataque de oportunidad (Mayúsculas al soltar: movimiento libre).</p>${next}`;
     }
     const m = monsterOf(entry);
-    const stats = `<div class="dm-dock-stats"><span><b>${esc(entry.name)}</b></span><span>PG ${entry.hp ?? '—'}/${entry.max ?? '—'}</span>${entry.ac ? `<span>CA ${entry.ac}</span>` : ''}${m ? `<span>${esc(m.speed)}</span>` : ''}${entry.conditions.length ? `<span>${esc(entry.conditions.join(', '))}</span>` : ''}</div>`;
+    const stats = `<div class="dm-dock-stats"><span><b>${esc(entry.name)}</b></span><span>PG ${entry.hp ?? '-'}/${entry.max ?? '-'}</span>${entry.ac ? `<span>CA ${entry.ac}</span>` : ''}${m ? `<span>${esc(m.speed)}</span>` : ''}${entry.conditions.length ? `<span>${esc(entry.conditions.join(', '))}</span>` : ''}</div>${entry.boardOnly ? button('Añadir a iniciativa', 'init-set', 'secondary', `data-entry="${entry.id}"`) : ''}`;
     if (entry.characterId)
       return `${head}${stats}<div class="actions section-space">${button('Controlar', 'npc-control', '', `data-id="${entry.characterId}"`)}</div>${next}`;
     if (!m)

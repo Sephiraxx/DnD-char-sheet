@@ -47,6 +47,7 @@
     <script src="./grant-data.js" defer></script>
     <script src="./grants.js" defer></script>
     <script src="./defenses.js" defer></script>
+    <script src="./monsters-ui.js" defer></script>
     <script src="./config.js" defer></script>
     <script src="./chronicle.js" defer></script>
     <script src="./cloud.js" defer></script>
@@ -56,6 +57,9 @@
     <script src="./sound.js" defer></script>
     <script src="./board-art.js" defer></script>
     <script src="./board-scene-fx.js" defer></script>
+    <script src="./board-spells.js" defer></script>
+    <script src="./board-ink.js" defer></script>
+    <script src="./board-spell-fx.js" defer></script>
     <script src="./board-props.js" defer></script>
     <script src="./board-gen.js" defer></script>
     <script src="./sigils.js" defer></script>
@@ -66,7 +70,7 @@
     <div class="board-shell">
       <header class="board-top" id="board-top"></header>
       <div class="board-main">
-        <div class="board-stage" id="stage">
+        <div class="board-stage board-table" id="stage">
           <canvas id="board" aria-label="Mapa del tablero"></canvas>
           <p id="screen-map-empty" hidden>Esperando un mapa de la mesa…</p>
           <div id="player-screen-party" hidden>

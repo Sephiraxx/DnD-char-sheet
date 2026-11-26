@@ -450,10 +450,10 @@
     if (c === 'barbarian')
       add(
         'rage',
-        'Rabia',
+        'Furia',
         l === 20 ? 999 : l >= 17 ? 6 : l >= 12 ? 5 : l >= 6 ? 4 : l >= 3 ? 3 : 2,
         'long',
-        'Acción adicional para entrar en rabia. Duración 1 minuto; revisá mantenimiento y beneficios del rasgo. No podés lanzar ni concentrar conjuros mientras dura. Nivel 20: usos ilimitados.',
+        'Acción adicional para entrar en furia. Duración 1 minuto; revisá mantenimiento y beneficios del rasgo. No podés lanzar ni concentrar conjuros mientras dura. Nivel 20: usos ilimitados.',
         'bonus',
       );
     if (c === 'fighter') {

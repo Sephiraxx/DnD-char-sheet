@@ -220,7 +220,7 @@ const AttackUI = (() => {
       if (out) {
         entry.html += out.hit ? ` → <b>impacta a ${esc(out.name)}</b>` : ` → <b>falla contra ${esc(out.name)}</b>`;
         entry.cls = out.hit ? entry.cls || 'hit' : 'fumble';
-        session.last = out.hit ? { crit: r.crit, profile: p } : null;
+        session.last = out.hit ? { crit: r.crit, profile: p, attack: { total: r.total, natural: r.kept } } : null;
         session.target = out.hit ? target : null;
       } else {
         // Sin respuesta del servidor: se resuelve en la mesa como un ataque sin objetivo.
@@ -294,7 +294,12 @@ const AttackUI = (() => {
     };
     const target = session.target;
     const applied = target
-      ? TableUI.damageTarget(target, dmg.total, 'Daño con ' + item.name, { crit, type: p.type }).catch(err => {
+      ? TableUI.damageTarget(target, dmg.total, 'Daño con ' + item.name, {
+          crit,
+          type: p.type,
+          magical: p.magical,
+          attack: session.last.attack,
+        }).catch(err => {
           toast(err.message);
           return null;
         })

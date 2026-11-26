@@ -324,23 +324,23 @@
           options: {
             bear: {
               name: 'Oso',
-              text: 'En Rabia, resistencia a todo salvo psíquico.',
+              text: 'En Furia, resistencia a todo salvo psíquico.',
               fx: { when: raging, resist: TYPES.filter(t => t !== 'psychic') },
             },
             eagle: {
               name: 'Águila',
-              text: 'En Rabia, los ataques de oportunidad contra vos tienen desventaja y Correr es acción adicional.',
+              text: 'En Furia, los ataques de oportunidad contra vos tienen desventaja y Correr es acción adicional.',
             },
-            wolf: { name: 'Lobo', text: 'En Rabia, tus aliados tienen ventaja contra enemigos a 5 pies de vos.' },
+            wolf: { name: 'Lobo', text: 'En Furia, tus aliados tienen ventaja contra enemigos a 5 pies de vos.' },
             elk: {
               name: 'Alce',
-              text: 'En Rabia y sin armadura pesada, +15 pies.',
+              text: 'En Furia y sin armadura pesada, +15 pies.',
               fx: { when: x => x.s.raging && !x.heavy, speed: 15 },
             },
-            tiger: { name: 'Tigre', text: 'En Rabia, +10 pies al salto largo y +3 al alto.' },
+            tiger: { name: 'Tigre', text: 'En Furia, +10 pies al salto largo y +3 al alto.' },
           },
         },
-        auto: 'Elegí tu tótem: el Oso suma sus resistencias y el Alce su velocidad mientras dura la Rabia.',
+        auto: 'Elegí tu tótem: el Oso suma sus resistencias y el Alce su velocidad mientras dura la Furia.',
       },
       'Aspect of the Beast': {
         choice: {
@@ -367,20 +367,20 @@
         choice: {
           label: 'Sintonía totémica',
           options: {
-            bear: { name: 'Oso', text: 'En Rabia, los enemigos a 5 pies tienen desventaja al atacar a otros.' },
+            bear: { name: 'Oso', text: 'En Furia, los enemigos a 5 pies tienen desventaja al atacar a otros.' },
             eagle: {
               name: 'Águila',
-              text: 'En Rabia, vuelo igual a tu velocidad (caés al final del turno).',
-              fx: { when: raging, fly: 'walk', flyNote: 'en Rabia, caés al final del turno' },
+              text: 'En Furia, vuelo igual a tu velocidad (caés al final del turno).',
+              fx: { when: raging, fly: 'walk', flyNote: 'en Furia, caés al final del turno' },
             },
-            wolf: { name: 'Lobo', text: 'En Rabia, al impactar cuerpo a cuerpo, acción adicional para derribar.' },
+            wolf: { name: 'Lobo', text: 'En Furia, al impactar cuerpo a cuerpo, acción adicional para derribar.' },
             elk: {
               name: 'Alce',
-              text: 'En Rabia, acción adicional para atravesar a una criatura: salva FUE o cae y recibe 1d12 + FUE.',
+              text: 'En Furia, acción adicional para atravesar a una criatura: salva FUE o cae y recibe 1d12 + FUE.',
             },
             tiger: {
               name: 'Tigre',
-              text: 'En Rabia, tras moverte 20 pies en línea recta, un ataque cuerpo a cuerpo como acción adicional.',
+              text: 'En Furia, tras moverte 20 pies en línea recta, un ataque cuerpo a cuerpo como acción adicional.',
             },
           },
         },
@@ -436,7 +436,7 @@
             },
           },
         },
-        auto: 'Elegí el entorno: el aura aparece como botón (acción adicional en Rabia) con su daño, CD o PG temporales.',
+        auto: 'Elegí el entorno: el aura aparece como botón (acción adicional en Furia) con su daño, CD o PG temporales.',
       },
       'Storm Soul': {
         resist: x => ({ desert: ['fire'], sea: ['lightning'], tundra: ['cold'] })[storm(x)] || [],
@@ -1180,7 +1180,7 @@
           name: 'Hendedor elemental',
           free: true,
           action: 'bonus',
-          text: 'Al entrar en Rabia, tu arma hace ácido, frío, fuego, trueno o relámpago y suma daño; podés lanzarla y vuelve.',
+          text: 'Al entrar en Furia, tu arma hace ácido, frío, fuego, trueno o relámpago y suma daño; podés lanzarla y vuelve.',
         },
         state: {
           dur: 'rage',
@@ -1195,9 +1195,9 @@
         state: {
           dur: 'rage',
           name: 'Frenesí',
-          text: 'Un ataque cuerpo a cuerpo como acción adicional en cada turno; al terminar la Rabia, un nivel de agotamiento.',
+          text: 'Un ataque cuerpo a cuerpo como acción adicional en cada turno; al terminar la Furia, un nivel de agotamiento.',
         },
-        auto: 'Botón «Activar» en Rabia: recuerda el ataque adicional y el agotamiento al terminar.',
+        auto: 'Botón «Activar» en Furia: recuerda el ataque adicional y el agotamiento al terminar.',
         when: raging,
       },
       'Intimidating Presence': {

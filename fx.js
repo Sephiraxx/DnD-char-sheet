@@ -106,7 +106,14 @@ const RollFX = (() => {
         }
         out.textContent = Math.max(0, Math.round(final + (Math.random() - 0.5) * spread));
         if (dieOut && Number.isInteger(faceNum)) dieOut.textContent = 1 + Math.floor(Math.random() * sides);
-        miniOut.forEach((b, k) => (b.textContent = 1 + Math.floor(Math.random() * each[k].die)));
+        miniOut.forEach((b, k) => {
+          // Los dados individuales se detienen de izquierda a derecha antes de mostrar el total.
+          const stop = 5 + Math.round((4 * k) / Math.max(1, miniOut.length - 1));
+          if (i === stop) {
+            b.textContent = each[k].v;
+            b.parentElement.classList.add('landed');
+          } else if (i < stop) b.textContent = 1 + Math.floor(Math.random() * each[k].die);
+        });
         sfx?.tick();
         ticker = setTimeout(tick, steps[i++]);
       };
@@ -115,7 +122,11 @@ const RollFX = (() => {
     timer = setTimeout(() => hide(box), 4000);
     return landed;
   }
-  return { show, dieOf, shapeOf };
+  function faceHTML(die, value, className = 'roll-icon') {
+    const shape = shapeOf(die);
+    return `<span class="${className}" data-die="${shape}" aria-hidden="true">${SHAPES[shape]}<b>${esc(value)}</b></span>`;
+  }
+  return { show, dieOf, shapeOf, faceHTML };
 })();
 
 /* Aviso de combate a pantalla completa: golpe, suspenso y retirada en tres tiempos. */
@@ -563,7 +574,7 @@ const EncounterFX = (() => {
       validTheme
         ? `<div class="enc-theme theme-${theme} v-${element}" aria-hidden="true">${THEMES[theme](element, id)}</div>`
         : ''
-    }<div class="enc-text"><svg class="enc-mark" viewBox="0 0 100 100" aria-hidden="true"><path d="M14 4 29 10 74 68 66 75 19 18ZM3 66 9 60 39 86 33 93ZM16 75 25 82 10 99 2 92ZM86 4 71 10 26 68 34 75 81 18ZM97 66 91 60 61 86 67 93ZM84 75 75 82 90 99 98 92Z"/></svg><div class="enc-heading">${echo}${split}<strong>${title}</strong></div>${count ? `<small>${esc(count)} ${count === 1 ? 'enemigo' : 'enemigos'}</small>` : ''}</div>`;
+    }<div class="enc-text"><span class="enc-mark" aria-hidden="true"></span><div class="enc-heading">${echo}${split}<strong>${title}</strong></div>${count ? `<small>${esc(count)} ${count === 1 ? 'enemigo' : 'enemigos'}</small>` : ''}</div>`;
     box.addEventListener('click', clear);
     (document.querySelector('dialog[open]') || document.body).append(box);
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {

@@ -564,8 +564,24 @@
     font-size: 0.72rem;
     color: var(--muted);
   }
-  .roll-card.rolling .roll-mini b {
+  .roll-card.rolling .roll-mini:not(.landed) b {
     color: #0c181c99;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .roll-mini.landed {
+      animation: roll-mini-land 180ms ease-out;
+    }
+    @keyframes roll-mini-land {
+      from {
+        transform: translateY(-4px) rotate(-9deg);
+      }
+      65% {
+        transform: translateY(1px) rotate(2deg);
+      }
+      to {
+        transform: none;
+      }
+    }
   }
   .roll-mini[data-die='4'] b {
     padding: 22% 17% 0 0;
