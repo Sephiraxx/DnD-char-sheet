@@ -759,7 +759,7 @@ const MonsterUI = (() => {
     );
   }
 
-  Object.assign(actions, {
+  const dmActions = {
     'init-monster-srd': () => picker(),
     'monster-view': e => view(e.dataset.id),
     'bes-type': e => {
@@ -804,7 +804,8 @@ const MonsterUI = (() => {
     'monster-roll-damage': rollDamage,
     'monster-apply': apply,
     'monster-save': e => askSave(e.dataset.entry, e.dataset.kind, e.dataset.name),
-  });
+  };
+  if (typeof actions !== 'undefined') Object.assign(actions, dmActions);
   document.addEventListener('input', e => {
     if (e.target.id === 'monster-amount') {
       const btn = document.getElementById('monster-apply');
