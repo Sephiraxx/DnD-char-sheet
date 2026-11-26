@@ -435,35 +435,38 @@ async function main() {
           ],
         }),
         subscribeBoard: async () => ({ send: m => castMessages.push(m), close() {} }),
+        spellZones: async () => [],
         post: async (c, kind, payload) => castEvents.push({ kind, payload }),
       });
-      cast('shatter');
+      return BoardPlayer.openCast('shatter');
     });
-    await page.getByRole('button', { name: 'Apuntar en el tablero' }).click();
     await page.waitForFunction(() => Board._state().mapId === 'mapa' && Board._state().channel);
-    await page.getByRole('button', { name: 'Plegar opciones', exact: true }).click();
-    // El centro de un mapa de 11×11 está en la casilla (5,5).
-    await page.locator('#board').click();
-    await page.getByRole('button', { name: 'Registrar lanzamiento' }).click();
-    await page.waitForSelector('#dialog-form [name=spellDice]');
+    await page.locator('#board-casting .bc-aim').waitFor();
+    const formula = await page.locator('#board-casting .bc-notes').innerText();
+    const aim = await page.evaluate(() => {
+      const rect = document.querySelector('#board').getBoundingClientRect();
+      const { x, y, s } = Board._state().view;
+      return { x: rect.left + x + 6 * Miniatures.boardCell * s, y: rect.top + y + 5 * Miniatures.boardCell * s };
+    });
+    await page.mouse.click(aim.x, aim.y);
+    await page.locator('#board-casting [data-bc=confirm]').click();
+    await page.locator('#board-casting .bc-result').waitFor();
     check(
       'Hacer añicos: un espacio, una onda de trueno y solo criaturas visibles dentro del radio',
-      await page.evaluate(
-        () =>
-          state.slotsSpent[1] === 1 &&
-          castMessages.length === 1 &&
-          castMessages[0].t === 'spell-fx' &&
-          castMessages[0].cast.id === 'shatter' &&
-          castMessages[0].cast.element === 'trueno' &&
-          castMessages[0].cast.area.feet === 10 &&
-          document.querySelector('[name=spellDice]').value === '3d8' &&
-          [...document.querySelectorAll('[name=who]:checked')]
-            .map(n => n.value)
-            .sort()
-            .join(',') === 'mon:edge,mon:inside',
-      ),
+      /3d8/.test(formula) &&
+        (await page.evaluate(() => {
+          const cast = castMessages[0]?.cast;
+          return (
+            state.slotsSpent[1] === 1 &&
+            castMessages.length === 1 &&
+            castMessages[0].t === 'spell-fx' &&
+            cast.id === 'shatter' &&
+            cast.element === 'trueno' &&
+            cast.area.feet === 10 &&
+            [...cast.targets].sort().join(',') === 'f-edge,f-inside'
+          );
+        })),
     );
-    await page.getByRole('button', { name: 'Tirar daño', exact: true }).click();
     await page.waitForFunction(() => castEvents.some(e => e.kind === 'creature-save'));
     check(
       'Hacer añicos: la mesa recibe una misma tirada para ambas salvaciones de Constitución',
@@ -1126,10 +1129,10 @@ async function main() {
     };
     await display.evaluate(
       ({ character, map }) => {
-        const sprite = Miniatures.sprite;
-        Miniatures.sprite = model => {
+        const pack = Miniatures.boardPack;
+        Miniatures.boardPack = model => {
           window.seenMini = model;
-          return sprite(model);
+          return pack(model);
         };
         window.boardChanged('map_tokens', {
           eventType: 'INSERT',
@@ -1171,11 +1174,12 @@ async function main() {
       ),
     );
     await display.evaluate(map => {
-      const sprite = Miniatures.creatureSprite;
+      const selection = CreatureMiniatures.selection;
       window.seenCreatures = new Set();
-      Miniatures.creatureSprite = key => {
-        window.seenCreatures.add(key);
-        return sprite(key);
+      CreatureMiniatures.selection = (...args) => {
+        const model = selection(...args);
+        if (model) window.seenCreatures.add(model.id);
+        return model;
       };
       const tokens = [
         ['Lobo terrible 2', null, false],
