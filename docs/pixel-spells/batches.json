@@ -1,0 +1,3743 @@
+[
+  {
+    "batch": "03",
+    "spells": [
+      {
+        "id": "shocking-grasp",
+        "name": "Agarre electrizante",
+        "level": 0,
+        "kind": "touch",
+        "area": "—"
+      },
+      {
+        "id": "friends",
+        "name": "Amistad",
+        "level": 0,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "mockery",
+        "name": "Burla dañina",
+        "level": 0,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "control-flames",
+        "name": "Controlar llamas",
+        "level": 0,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "create-bonfire",
+        "name": "Crear hoguera",
+        "level": 0,
+        "kind": "cube",
+        "area": "cube 5 ft"
+      },
+      {
+        "id": "toll-the-dead",
+        "name": "Doblar por los muertos",
+        "level": 0,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "druidcraft",
+        "name": "Druidismo",
+        "level": 0,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "encode-thoughts",
+        "name": "Encode Thoughts",
+        "level": 0,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "mind-sliver",
+        "name": "Esquirla mental",
+        "level": 0,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "spare-the-dying",
+        "name": "Estabilizar",
+        "level": 0,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "sword-burst",
+        "name": "Estallido de espadas",
+        "level": 0,
+        "kind": "aura-instant",
+        "area": "circle 5 ft (from caster)"
+      },
+      {
+        "id": "thunderclap",
+        "name": "Estruendo",
+        "level": 0,
+        "kind": "aura-instant",
+        "area": "circle 5 ft (from caster)"
+      },
+      {
+        "id": "shillelagh",
+        "name": "Garrote",
+        "level": 0,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "blade-ward",
+        "name": "Guardia de cuchillas",
+        "level": 0,
+        "kind": "buff",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "04",
+    "spells": [
+      {
+        "id": "guidance",
+        "name": "Guía",
+        "level": 0,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "booming-blade",
+        "name": "Hoja atronadora",
+        "level": 0,
+        "kind": "touch",
+        "area": "—"
+      },
+      {
+        "id": "green-flame-blade",
+        "name": "Hoja de llama verde",
+        "level": 0,
+        "kind": "touch",
+        "area": "—"
+      },
+      {
+        "id": "illusion",
+        "name": "Ilusión menor",
+        "level": 0,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "true-strike",
+        "name": "Impacto certero",
+        "level": 0,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "infestation",
+        "name": "Infestación",
+        "level": 0,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "lightning-lure",
+        "name": "Látigo relampagueante",
+        "level": 0,
+        "kind": "beam",
+        "area": "—"
+      },
+      {
+        "id": "sacred-flame",
+        "name": "Llama sagrada",
+        "level": 0,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "dancing-lights",
+        "name": "Luces danzantes",
+        "level": 0,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "light",
+        "name": "Luz",
+        "level": 0,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "magehand",
+        "name": "Mano de mago",
+        "level": 0,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "message",
+        "name": "Mensaje",
+        "level": 0,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "shape-water",
+        "name": "Moldear agua",
+        "level": 0,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "mold-earth",
+        "name": "Moldear tierra",
+        "level": 0,
+        "kind": "cube",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "05",
+    "spells": [
+      {
+        "id": "frostbite",
+        "name": "Mordisco helado",
+        "level": 0,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "word-of-radiance",
+        "name": "Palabra de resplandor",
+        "level": 0,
+        "kind": "aura-instant",
+        "area": "circle 5 ft (from caster)"
+      },
+      {
+        "id": "sapping-sting",
+        "name": "Picadura debilitante",
+        "level": 0,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "magic-stone",
+        "name": "Piedra mágica",
+        "level": 0,
+        "kind": "projectile",
+        "area": "—"
+      },
+      {
+        "id": "prestidigitation",
+        "name": "Prestidigitación",
+        "level": 0,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "produce-flame",
+        "name": "Producir llama",
+        "level": 0,
+        "kind": "projectile",
+        "area": "—"
+      },
+      {
+        "id": "gust",
+        "name": "Ráfaga",
+        "level": 0,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "ray-of-frost",
+        "name": "Rayo de escarcha",
+        "level": 0,
+        "kind": "projectile",
+        "area": "—"
+      },
+      {
+        "id": "mending",
+        "name": "Reparar",
+        "level": 0,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "resistance",
+        "name": "Resistencia",
+        "level": 0,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "poison-spray",
+        "name": "Rociada venenosa",
+        "level": 0,
+        "kind": "projectile",
+        "area": "—"
+      },
+      {
+        "id": "acid-splash",
+        "name": "Salpicadura ácida",
+        "level": 0,
+        "kind": "projectile",
+        "area": "—"
+      },
+      {
+        "id": "primal-savagery",
+        "name": "Salvajismo primigenio",
+        "level": 0,
+        "kind": "touch",
+        "area": "—"
+      },
+      {
+        "id": "thaumaturgy",
+        "name": "Taumaturgia",
+        "level": 0,
+        "kind": "utility",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "06",
+    "spells": [
+      {
+        "id": "chill-touch",
+        "name": "Toque helado",
+        "level": 0,
+        "kind": "projectile",
+        "area": "—"
+      },
+      {
+        "id": "absorb-elements",
+        "name": "Absorber elementos",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "alarm",
+        "name": "Alarma",
+        "level": 1,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "animal-friendship",
+        "name": "Amistad con los animales",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "magnify-gravity",
+        "name": "Amplificar gravedad",
+        "level": 1,
+        "kind": "sphere",
+        "area": "circle 10 ft"
+      },
+      {
+        "id": "armor-of-agathys",
+        "name": "Armadura de Agathys",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "mage-armor",
+        "name": "Armadura de mago",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "bless",
+        "name": "Bendecir",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "arms-of-hadar",
+        "name": "Brazos de Hadar",
+        "level": 1,
+        "kind": "aura-instant",
+        "area": "circle 10 ft (from caster)"
+      },
+      {
+        "id": "tashas-caustic-brew",
+        "name": "Brebaje cáustico de Tasha",
+        "level": 1,
+        "kind": "line",
+        "area": "line 30 ft (from caster)"
+      },
+      {
+        "id": "goodberry",
+        "name": "Buenas bayas",
+        "level": 1,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "feather",
+        "name": "Caída de pluma",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "searing-smite",
+        "name": "Castigo abrasador",
+        "level": 1,
+        "kind": "on-hit",
+        "area": "—"
+      },
+      {
+        "id": "thunderous-smite",
+        "name": "Castigo atronador",
+        "level": 1,
+        "kind": "on-hit",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "07",
+    "spells": [
+      {
+        "id": "wrathful-smite",
+        "name": "Castigo furioso",
+        "level": 1,
+        "kind": "on-hit",
+        "area": "—"
+      },
+      {
+        "id": "catapult",
+        "name": "Catapulta",
+        "level": 1,
+        "kind": "projectile",
+        "area": "—"
+      },
+      {
+        "id": "cause-fear",
+        "name": "Causar miedo",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "ceremony",
+        "name": "Ceremonia",
+        "level": 1,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "comprehend-languages",
+        "name": "Comprender idiomas",
+        "level": 1,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "create-or-destroy-water",
+        "name": "Crear o destruir agua",
+        "level": 1,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "ice-knife",
+        "name": "Cuchillo de hielo",
+        "level": 1,
+        "kind": "sphere",
+        "area": "circle 5 ft"
+      },
+      {
+        "id": "cure",
+        "name": "Curar heridas",
+        "level": 1,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "frost-fingers",
+        "name": "Dedos de escarcha",
+        "level": 1,
+        "kind": "cone",
+        "area": "cone 15 ft (from caster)"
+      },
+      {
+        "id": "chaos-bolt",
+        "name": "Descarga caótica",
+        "level": 1,
+        "kind": "projectile",
+        "area": "—"
+      },
+      {
+        "id": "detect-evil-and-good",
+        "name": "Detectar el bien y el mal",
+        "level": 1,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "detectmagic",
+        "name": "Detectar magia",
+        "level": 1,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "detect-poison-and-disease",
+        "name": "Detectar venenos y enfermedades",
+        "level": 1,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "tensers-floating-disk",
+        "name": "Disco flotante de Tenser",
+        "level": 1,
+        "kind": "utility",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "08",
+    "spells": [
+      {
+        "id": "disguise-self",
+        "name": "Disfrazarse",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "distort-value",
+        "name": "Distort Value",
+        "level": 1,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "gift-of-alacrity",
+        "name": "Don de celeridad",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "sleep",
+        "name": "Dormir",
+        "level": 1,
+        "kind": "sphere",
+        "area": "circle 20 ft"
+      },
+      {
+        "id": "compelled-duel",
+        "name": "Duelo obligado",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "find-familiar",
+        "name": "Encontrar familiar",
+        "level": 1,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "illusory-script",
+        "name": "Escritura ilusoria",
+        "level": 1,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "shield",
+        "name": "Escudo",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "shield-of-faith",
+        "name": "Escudo de fe",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "false-life",
+        "name": "Falsa vida",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "divine-favor",
+        "name": "Favor divino",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "faeriefire",
+        "name": "Fuego feérico",
+        "level": 1,
+        "kind": "cube",
+        "area": "cube 20 ft"
+      },
+      {
+        "id": "ensnaring-strike",
+        "name": "Golpe apresador",
+        "level": 1,
+        "kind": "on-hit",
+        "area": "—"
+      },
+      {
+        "id": "zephyr-strike",
+        "name": "Golpe de céfiro",
+        "level": 1,
+        "kind": "on-hit",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "09",
+    "spells": [
+      {
+        "id": "grease",
+        "name": "Grasa",
+        "level": 1,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "speak-with-animals",
+        "name": "Hablar con los animales",
+        "level": 1,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "charm-person",
+        "name": "Hechizar persona",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "heroism",
+        "name": "Heroísmo",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "identify",
+        "name": "Identificar",
+        "level": 1,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "silent-image",
+        "name": "Imagen silenciosa",
+        "level": 1,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "inflict-wounds",
+        "name": "Infligir heridas",
+        "level": 1,
+        "kind": "touch",
+        "area": "—"
+      },
+      {
+        "id": "jims-magic-missile",
+        "name": "Jim's Magic Missile",
+        "level": 1,
+        "kind": "multi",
+        "area": "—"
+      },
+      {
+        "id": "hail-of-thorns",
+        "name": "Lluvia de espinas",
+        "level": 1,
+        "kind": "on-hit",
+        "area": "—"
+      },
+      {
+        "id": "hex",
+        "name": "Maleficio",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "burning-hands",
+        "name": "Manos ardientes",
+        "level": 1,
+        "kind": "cone",
+        "area": "cone 15 ft (from caster)"
+      },
+      {
+        "id": "hunters-mark",
+        "name": "Marca del cazador",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "thunderwave",
+        "name": "Onda atronadora",
+        "level": 1,
+        "kind": "cube",
+        "area": "cube 15 ft (from caster)"
+      },
+      {
+        "id": "chromatic-orb",
+        "name": "Orbe cromático",
+        "level": 1,
+        "kind": "projectile",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "10",
+    "spells": [
+      {
+        "id": "command",
+        "name": "Orden imperiosa",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "healingword",
+        "name": "Palabra de curación",
+        "level": 1,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "bane",
+        "name": "Perdición",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "protection-from-evil-and-good",
+        "name": "Protección contra el bien y el mal",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "guiding-bolt",
+        "name": "Proyectil guiado",
+        "level": 1,
+        "kind": "projectile",
+        "area": "—"
+      },
+      {
+        "id": "purify-food-and-drink",
+        "name": "Purificar comida y bebida",
+        "level": 1,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "witch-bolt",
+        "name": "Rayo de bruja",
+        "level": 1,
+        "kind": "beam",
+        "area": "—"
+      },
+      {
+        "id": "ray-of-sickness",
+        "name": "Rayo nauseabundo",
+        "level": 1,
+        "kind": "projectile",
+        "area": "—"
+      },
+      {
+        "id": "hellish-rebuke",
+        "name": "Reprensión infernal",
+        "level": 1,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "expeditious-retreat",
+        "name": "Retirada expeditiva",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "laughter",
+        "name": "Risa horrible de Tasha",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "color-spray",
+        "name": "Rociada de color",
+        "level": 1,
+        "kind": "cone",
+        "area": "cone 15 ft (from caster)"
+      },
+      {
+        "id": "jump",
+        "name": "Salto",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "sanctuary",
+        "name": "Santuario",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "11",
+    "spells": [
+      {
+        "id": "silvery",
+        "name": "Silvery Barbs · Púas plateadas",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "unseen-servant",
+        "name": "Sirviente invisible",
+        "level": 1,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "dissonant-whispers",
+        "name": "Susurros disonantes",
+        "level": 1,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "earth-tremor",
+        "name": "Temblor de tierra",
+        "level": 1,
+        "kind": "aura-instant",
+        "area": "circle 10 ft (from caster)"
+      },
+      {
+        "id": "snare",
+        "name": "Trampa de lazo",
+        "level": 1,
+        "kind": "sphere",
+        "area": "—"
+      },
+      {
+        "id": "beast-bond",
+        "name": "Vínculo con una bestia",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "longstrider",
+        "name": "Zancada prodigiosa",
+        "level": 1,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "aganazzars-scorcher",
+        "name": "Abrasador de Aganazzar",
+        "level": 2,
+        "kind": "line",
+        "area": "line 30 ft (from caster)"
+      },
+      {
+        "id": "enlarge-reduce",
+        "name": "Agrandar / reducir",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "air-bubble",
+        "name": "Air Bubble",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "dragons-breath",
+        "name": "Aliento de dragón",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "alter-self",
+        "name": "Alterar el propio aspecto",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "knock",
+        "name": "Apertura",
+        "level": 2,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "magic-weapon",
+        "name": "Arma mágica",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "12",
+    "spells": [
+      {
+        "id": "earthbind",
+        "name": "Atadura terrestre",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "augury",
+        "name": "Augurio",
+        "level": 2,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "nystuls-magic-aura",
+        "name": "Aura mágica de Nystul",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "aid",
+        "name": "Ayuda",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "magic-mouth",
+        "name": "Boca mágica",
+        "level": 2,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "wristpocket",
+        "name": "Bolsillo de muñeca",
+        "level": 2,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "heat-metal",
+        "name": "Calentar metal",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "calm-emotions",
+        "name": "Calmar emociones",
+        "level": 2,
+        "kind": "sphere",
+        "area": "circle 20 ft"
+      },
+      {
+        "id": "branding-smite",
+        "name": "Castigo marcador",
+        "level": 2,
+        "kind": "on-hit",
+        "area": "—"
+      },
+      {
+        "id": "enthrall",
+        "name": "Cautivar",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "blindness-deafness",
+        "name": "Ceguera / sordera",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "arcane-lock",
+        "name": "Cerradura arcana",
+        "level": 2,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "borrowed-knowledge",
+        "name": "Conocimiento prestado",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "blur",
+        "name": "Contorno borroso",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "13",
+    "spells": [
+      {
+        "id": "cordon-of-arrows",
+        "name": "Cordón de flechas",
+        "level": 2,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "crown-of-madness",
+        "name": "Corona de locura",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "spike-growth",
+        "name": "Crecimiento espinoso",
+        "level": 2,
+        "kind": "sphere",
+        "area": "circle 20 ft"
+      },
+      {
+        "id": "detect-thoughts",
+        "name": "Detectar pensamientos",
+        "level": 2,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "dust-devil",
+        "name": "Diablo de polvo",
+        "level": 2,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "find-steed",
+        "name": "Encontrar corcel",
+        "level": 2,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "find-traps",
+        "name": "Encontrar trampas",
+        "level": 2,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "snillocs-snowball-swarm",
+        "name": "Enjambre de bolas de nieve de Snilloc",
+        "level": 2,
+        "kind": "sphere",
+        "area": "circle 5 ft"
+      },
+      {
+        "id": "skywrite",
+        "name": "Escritura celeste",
+        "level": 2,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "flaming-sphere",
+        "name": "Esfera flamígera",
+        "level": 2,
+        "kind": "sphere",
+        "area": "circle 2.5 ft"
+      },
+      {
+        "id": "healing-spirit",
+        "name": "Espíritu sanador",
+        "level": 2,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "fortunes-favor",
+        "name": "Favor de la fortuna",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "melfs-acid-arrow",
+        "name": "Flecha ácida de Melf",
+        "level": 2,
+        "kind": "projectile",
+        "area": "—"
+      },
+      {
+        "id": "flock-of-familiars",
+        "name": "Flock of Familiars",
+        "level": 2,
+        "kind": "summon",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "14",
+    "spells": [
+      {
+        "id": "freedom-of-the-winds",
+        "name": "Freedom of the Winds",
+        "level": 2,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "phantasmal-force",
+        "name": "Fuerza fantasmal",
+        "level": 2,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "gift-of-gab",
+        "name": "Gift of Gab",
+        "level": 2,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "shatter",
+        "name": "Hacer añicos",
+        "level": 2,
+        "kind": "sphere",
+        "area": "circle 10 ft"
+      },
+      {
+        "id": "rimes-binding-ice",
+        "name": "Hielo vinculante de Rime",
+        "level": 2,
+        "kind": "cone",
+        "area": "cone 30 ft (from caster)"
+      },
+      {
+        "id": "flame-blade",
+        "name": "Hoja de fuego",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "shadow-blade",
+        "name": "Hoja sombría",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "mirror-image",
+        "name": "Imagen múltiple",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "hold",
+        "name": "Inmovilizar persona",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "invisibility",
+        "name": "Invisibilidad",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "summon-beast",
+        "name": "Invocar bestia",
+        "level": 2,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "jims-glowing-coin",
+        "name": "Jim's Glowing Coin",
+        "level": 2,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "tashas-mind-whip",
+        "name": "Látigo mental de Tasha",
+        "level": 2,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "levitate",
+        "name": "Levitar",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "15",
+    "spells": [
+      {
+        "id": "continual-flame",
+        "name": "Llama continua",
+        "level": 2,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "locate-animals-or-plants",
+        "name": "Localizar animales o plantas",
+        "level": 2,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "locate-object",
+        "name": "Localizar objeto",
+        "level": 2,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "wither-and-bloom",
+        "name": "Marchitar y florecer",
+        "level": 2,
+        "kind": "sphere",
+        "area": "—"
+      },
+      {
+        "id": "animal-messenger",
+        "name": "Mensajero animal",
+        "level": 2,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "cloud-of-daggers",
+        "name": "Nube de dagas",
+        "level": 2,
+        "kind": "cube",
+        "area": "cube 5 ft"
+      },
+      {
+        "id": "immovable-object",
+        "name": "Objeto inmóvil",
+        "level": 2,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "pass-without-trace",
+        "name": "Pasar sin rastro",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "kinetic-jaunt",
+        "name": "Paso cinético",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "barkskin",
+        "name": "Piel robliza",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "pyrotechnics",
+        "name": "Pirotecnia",
+        "level": 2,
+        "kind": "sphere",
+        "area": "—"
+      },
+      {
+        "id": "prayer-of-healing",
+        "name": "Plegaria de curación",
+        "level": 2,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "enhance-ability",
+        "name": "Potenciar característica",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "maximillians-earthen-grasp",
+        "name": "Presa terrenal de Maximilian",
+        "level": 2,
+        "kind": "cube",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "16",
+    "spells": [
+      {
+        "id": "protection-from-poison",
+        "name": "Protección contra el veneno",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "mind-spike",
+        "name": "Púa mental",
+        "level": 2,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "gust-of-wind",
+        "name": "Ráfaga de viento",
+        "level": 2,
+        "kind": "line",
+        "area": "line 60 ft (from caster)"
+      },
+      {
+        "id": "scorching-ray",
+        "name": "Rayo abrasador",
+        "level": 2,
+        "kind": "beam",
+        "area": "—"
+      },
+      {
+        "id": "ray-of-enfeeblement",
+        "name": "Rayo debilitador",
+        "level": 2,
+        "kind": "beam",
+        "area": "—"
+      },
+      {
+        "id": "gentle-repose",
+        "name": "Reposo apacible",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "lesser-restoration",
+        "name": "Restablecimiento menor",
+        "level": 2,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "beast-sense",
+        "name": "Sentidos de bestia",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "spray-of-cards",
+        "name": "Spray of Cards",
+        "level": 2,
+        "kind": "cone",
+        "area": "cone 15 ft (from caster)"
+      },
+      {
+        "id": "suggestion",
+        "name": "Sugestión",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "web",
+        "name": "Telaraña",
+        "level": 2,
+        "kind": "cube",
+        "area": "cube 20 ft"
+      },
+      {
+        "id": "nathairs-mischief",
+        "name": "Travesuras de Nathair",
+        "level": 2,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "spider-climb",
+        "name": "Trepar cual arácnido",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "rope-trick",
+        "name": "Truco de la cuerda",
+        "level": 2,
+        "kind": "utility",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "17",
+    "spells": [
+      {
+        "id": "see-invisibility",
+        "name": "Ver invisibilidad",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "warding-wind",
+        "name": "Viento protector",
+        "level": 2,
+        "kind": "aura-persistent",
+        "area": "circle 10 ft (from caster)"
+      },
+      {
+        "id": "warding-bond",
+        "name": "Vínculo protector",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "darkvision",
+        "name": "Visión en la oscuridad",
+        "level": 2,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "vortex-warp",
+        "name": "Vórtice de traslado",
+        "level": 2,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "warp-sense",
+        "name": "Warp Sense",
+        "level": 2,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "zone-of-truth",
+        "name": "Zona de verdad",
+        "level": 2,
+        "kind": "sphere",
+        "area": "circle 15 ft"
+      },
+      {
+        "id": "haste",
+        "name": "Acelerar",
+        "level": 3,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "animate-dead",
+        "name": "Animar a los muertos",
+        "level": 3,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "antagonize",
+        "name": "Antagonize",
+        "level": 3,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "elemental-weapon",
+        "name": "Arma elemental",
+        "level": 3,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "aura-of-vitality",
+        "name": "Aura de vitalidad",
+        "level": 3,
+        "kind": "aura-persistent",
+        "area": "circle 30 ft (from caster)"
+      },
+      {
+        "id": "water-walk",
+        "name": "Caminar sobre el agua",
+        "level": 3,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "blinding-smite",
+        "name": "Castigo cegador",
+        "level": 3,
+        "kind": "on-hit",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "18",
+    "spells": [
+      {
+        "id": "magic-circle",
+        "name": "Círculo mágico",
+        "level": 3,
+        "kind": "column",
+        "area": "cylinder 10 ft"
+      },
+      {
+        "id": "clairvoyance",
+        "name": "Clarividencia",
+        "level": 3,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "conjure-animals",
+        "name": "Conjurar animales",
+        "level": 3,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "conjure-barrage",
+        "name": "Conjurar descarga",
+        "level": 3,
+        "kind": "cone",
+        "area": "cone 60 ft (from caster)"
+      },
+      {
+        "id": "phantom-steed",
+        "name": "Corcel fantasma",
+        "level": 3,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "create-food-and-water",
+        "name": "Crear comida y agua",
+        "level": 3,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "plant-growth",
+        "name": "Crecimiento vegetal",
+        "level": 3,
+        "kind": "sphere",
+        "area": "—"
+      },
+      {
+        "id": "dispel",
+        "name": "Disipar magia",
+        "level": 3,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "enemies-abound",
+        "name": "Enemigos por doquier",
+        "level": 3,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "beacon-of-hope",
+        "name": "Faro de esperanza",
+        "level": 3,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "fast-friends",
+        "name": "Fast Friends",
+        "level": 3,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "feign-death",
+        "name": "Fingir muerte",
+        "level": 3,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "lightning-arrow",
+        "name": "Flecha relampagueante",
+        "level": 3,
+        "kind": "on-hit",
+        "area": "—"
+      },
+      {
+        "id": "flame-arrows",
+        "name": "Flechas ígneas",
+        "level": 3,
+        "kind": "buff",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "19",
+    "spells": [
+      {
+        "id": "gaseous-form",
+        "name": "Forma gaseosa",
+        "level": 3,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "intellect-fortress",
+        "name": "Fortaleza mental",
+        "level": 3,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "freedom-of-the-waves",
+        "name": "Freedom of the Waves",
+        "level": 3,
+        "kind": "column",
+        "area": "cylinder 15 ft"
+      },
+      {
+        "id": "meld-into-stone",
+        "name": "Fundirse con la piedra",
+        "level": 3,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "galders-tower",
+        "name": "Galder's Tower",
+        "level": 3,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "glyph-of-warding",
+        "name": "Glifo custodio",
+        "level": 3,
+        "kind": "sphere",
+        "area": "—"
+      },
+      {
+        "id": "speak-with-plants",
+        "name": "Hablar con las plantas",
+        "level": 3,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "speak-with-dead",
+        "name": "Hablar con los muertos",
+        "level": 3,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "major-image",
+        "name": "Imagen mayor",
+        "level": 3,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "incite-greed",
+        "name": "Incite Greed",
+        "level": 3,
+        "kind": "buff",
+        "area": "circle 30 ft"
+      },
+      {
+        "id": "nondetection",
+        "name": "Indetectable",
+        "level": 3,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "blink",
+        "name": "Intermitencia",
+        "level": 3,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "summon-shadowspawn",
+        "name": "Invocar engendro sombrío",
+        "level": 3,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "summon-fey",
+        "name": "Invocar feérico",
+        "level": 3,
+        "kind": "summon",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "20",
+    "spells": [
+      {
+        "id": "summon-undead",
+        "name": "Invocar no muerto",
+        "level": 3,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "bestow-curse",
+        "name": "Lanzar maldición",
+        "level": 3,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "tongues",
+        "name": "Lenguas",
+        "level": 3,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "call-lightning",
+        "name": "Llamar al relámpago",
+        "level": 3,
+        "kind": "column",
+        "area": "cylinder 5 ft"
+      },
+      {
+        "id": "daylight",
+        "name": "Luz del día",
+        "level": 3,
+        "kind": "sphere",
+        "area": "circle 60 ft"
+      },
+      {
+        "id": "crusaders-mantle",
+        "name": "Manto del cruzado",
+        "level": 3,
+        "kind": "aura-persistent",
+        "area": "circle 30 ft (from caster)"
+      },
+      {
+        "id": "melfs-minute-meteors",
+        "name": "Meteoritos diminutos de Melf",
+        "level": 3,
+        "kind": "multi",
+        "area": "—"
+      },
+      {
+        "id": "fear",
+        "name": "Miedo",
+        "level": 3,
+        "kind": "cone",
+        "area": "cone 30 ft (from caster)"
+      },
+      {
+        "id": "spirit-shroud",
+        "name": "Mortaja espiritual",
+        "level": 3,
+        "kind": "aura-persistent",
+        "area": "—"
+      },
+      {
+        "id": "motivational-speech",
+        "name": "Motivational Speech",
+        "level": 3,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "wall-of-water",
+        "name": "Muro de agua",
+        "level": 3,
+        "kind": "wall",
+        "area": "wall 30 ft"
+      },
+      {
+        "id": "wall-of-sand",
+        "name": "Muro de arena",
+        "level": 3,
+        "kind": "wall",
+        "area": "wall 30 ft"
+      },
+      {
+        "id": "wind-wall",
+        "name": "Muro de viento",
+        "level": 3,
+        "kind": "wall",
+        "area": "wall 50 ft"
+      },
+      {
+        "id": "tidal-wave",
+        "name": "Ola de marea",
+        "level": 3,
+        "kind": "line",
+        "area": "line 30 ft"
+      }
+    ]
+  },
+  {
+    "batch": "21",
+    "spells": [
+      {
+        "id": "pulse-wave",
+        "name": "Onda pulsante",
+        "level": 3,
+        "kind": "cone",
+        "area": "cone 30 ft (from caster)"
+      },
+      {
+        "id": "mass-healing-word",
+        "name": "Palabra de curación en masa",
+        "level": 3,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "thunder-step",
+        "name": "Paso atronador",
+        "level": 3,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "hypnotic",
+        "name": "Patrón hipnótico",
+        "level": 3,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "leomunds-tiny-hut",
+        "name": "Pequeña choza de Leomund",
+        "level": 3,
+        "kind": "sphere",
+        "area": "—"
+      },
+      {
+        "id": "protection-from-energy",
+        "name": "Protección contra la energía",
+        "level": 3,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "remove-curse",
+        "name": "Quitar maldición",
+        "level": 3,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "slow",
+        "name": "Ralentizar",
+        "level": 3,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "sending",
+        "name": "Recado",
+        "level": 3,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "lightning-bolt",
+        "name": "Relámpago",
+        "level": 3,
+        "kind": "line",
+        "area": "line 100 ft (from caster)"
+      },
+      {
+        "id": "water-breathing",
+        "name": "Respirar bajo el agua",
+        "level": 3,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "revivify",
+        "name": "Revivir",
+        "level": 3,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "catnap",
+        "name": "Siesta",
+        "level": 3,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "tiny-servant",
+        "name": "Sirviente diminuto",
+        "level": 3,
+        "kind": "summon",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "22",
+    "spells": [
+      {
+        "id": "summon-lesser-demons",
+        "name": "Summon Lesser Demons",
+        "level": 3,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "erupting-earth",
+        "name": "Tierra en erupción",
+        "level": 3,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "vampiric-touch",
+        "name": "Toque vampírico",
+        "level": 3,
+        "kind": "touch",
+        "area": "—"
+      },
+      {
+        "id": "sleet-storm",
+        "name": "Tormenta de aguanieve",
+        "level": 3,
+        "kind": "column",
+        "area": "cylinder 40 ft"
+      },
+      {
+        "id": "life-transference",
+        "name": "Transferencia de vida",
+        "level": 3,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "fly",
+        "name": "Volar",
+        "level": 3,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "ashardalons-stride",
+        "name": "Zancada de Ashardalon",
+        "level": 3,
+        "kind": "aura-persistent",
+        "area": "circle 5 ft (from caster)"
+      },
+      {
+        "id": "divination",
+        "name": "Adivinación",
+        "level": 4,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "phantasmal-killer",
+        "name": "Asesino fantasmal",
+        "level": 4,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "aura-of-purity",
+        "name": "Aura de pureza",
+        "level": 4,
+        "kind": "aura-persistent",
+        "area": "circle 30 ft (from caster)"
+      },
+      {
+        "id": "aura-of-life",
+        "name": "Aura de vida",
+        "level": 4,
+        "kind": "aura-persistent",
+        "area": "circle 30 ft (from caster)"
+      },
+      {
+        "id": "staggering-smite",
+        "name": "Castigo aturdidor",
+        "level": 4,
+        "kind": "on-hit",
+        "area": "—"
+      },
+      {
+        "id": "leomunds-secret-chest",
+        "name": "Cofre secreto de Leomund",
+        "level": 4,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "compulsion",
+        "name": "Compulsión",
+        "level": 4,
+        "kind": "buff",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "23",
+    "spells": [
+      {
+        "id": "confusion",
+        "name": "Confusión",
+        "level": 4,
+        "kind": "sphere",
+        "area": "circle 10 ft"
+      },
+      {
+        "id": "conjure-minor-elementals",
+        "name": "Conjurar elementales menores",
+        "level": 4,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "conjure-woodland-beings",
+        "name": "Conjurar seres del bosque",
+        "level": 4,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "control-water",
+        "name": "Controlar agua",
+        "level": 4,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "death-ward",
+        "name": "Custodia contra la muerte",
+        "level": 4,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "banishment",
+        "name": "Destierro",
+        "level": 4,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "dominate-beast",
+        "name": "Dominar bestia",
+        "level": 4,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "find-greater-steed",
+        "name": "Encontrar corcel mayor",
+        "level": 4,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "grasping-vine",
+        "name": "Enredadera apresadora",
+        "level": 4,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "fire-shield",
+        "name": "Escudo de fuego",
+        "level": 4,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "watery-sphere",
+        "name": "Esfera acuosa",
+        "level": 4,
+        "kind": "sphere",
+        "area": "circle 5 ft"
+      },
+      {
+        "id": "otilukes-resilient-sphere",
+        "name": "Esfera elástica de Otiluke",
+        "level": 4,
+        "kind": "sphere",
+        "area": "—"
+      },
+      {
+        "id": "storm-sphere",
+        "name": "Esfera tormentosa",
+        "level": 4,
+        "kind": "sphere",
+        "area": "circle 20 ft"
+      },
+      {
+        "id": "vitriolic-sphere",
+        "name": "Esfera vitriólica",
+        "level": 4,
+        "kind": "sphere",
+        "area": "circle 20 ft"
+      }
+    ]
+  },
+  {
+    "batch": "24",
+    "spells": [
+      {
+        "id": "fabricate",
+        "name": "Fabricar",
+        "level": 4,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "galders-speedy-courier",
+        "name": "Galder's Speedy Courier",
+        "level": 4,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "gate-seal",
+        "name": "Gate Seal",
+        "level": 4,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "guardian-of-faith",
+        "name": "Guardián de la fe",
+        "level": 4,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "guardian-of-nature",
+        "name": "Guardián de la naturaleza",
+        "level": 4,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "charm-monster",
+        "name": "Hechizar monstruo",
+        "level": 4,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "giant-insect",
+        "name": "Insecto gigante",
+        "level": 4,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "greaterinvis",
+        "name": "Invisibilidad mayor",
+        "level": 4,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "summon-aberration",
+        "name": "Invocar aberración",
+        "level": 4,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "summon-construct",
+        "name": "Invocar constructo",
+        "level": 4,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "summon-greater-demon",
+        "name": "Invocar demonio mayor",
+        "level": 4,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "summon-elemental",
+        "name": "Invocar elemental",
+        "level": 4,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "raulothims-psychic-lance",
+        "name": "Lanza psíquica de Raulothim",
+        "level": 4,
+        "kind": "projectile",
+        "area": "—"
+      },
+      {
+        "id": "freedom-of-movement",
+        "name": "Libertad de movimiento",
+        "level": 4,
+        "kind": "buff",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "25",
+    "spells": [
+      {
+        "id": "locate-creature",
+        "name": "Localizar criatura",
+        "level": 4,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "blight",
+        "name": "Marchitar",
+        "level": 4,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "stone-shape",
+        "name": "Moldear la piedra",
+        "level": 4,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "arcane-eye",
+        "name": "Ojo arcano",
+        "level": 4,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "elemental-bane",
+        "name": "Perdición elemental",
+        "level": 4,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "stoneskin",
+        "name": "Piel pétrea",
+        "level": 4,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "polymorph",
+        "name": "Polimorfar",
+        "level": 4,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "dimension",
+        "name": "Puerta dimensional",
+        "level": 4,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "sickening-radiance",
+        "name": "Resplandor enfermizo",
+        "level": 4,
+        "kind": "sphere",
+        "area": "circle 30 ft"
+      },
+      {
+        "id": "mordenkainens-faithful-hound",
+        "name": "Sabueso fiel de Mordenkainen",
+        "level": 4,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "mordenkainens-private-sanctum",
+        "name": "Santuario privado de Mordenkainen",
+        "level": 4,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "shadow-of-moil",
+        "name": "Sombra de tormento",
+        "level": 4,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "spirit-of-death",
+        "name": "Spirit of Death",
+        "level": 4,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "gravity-sinkhole",
+        "name": "Sumidero gravitatorio",
+        "level": 4,
+        "kind": "sphere",
+        "area": "circle 20 ft"
+      }
+    ]
+  },
+  {
+    "batch": "26",
+    "spells": [
+      {
+        "id": "evards-black-tentacles",
+        "name": "Tentáculos negros de Evard",
+        "level": 4,
+        "kind": "cube",
+        "area": "cube 20 ft"
+      },
+      {
+        "id": "hallucinatory-terrain",
+        "name": "Terreno alucinatorio",
+        "level": 4,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "ice-storm",
+        "name": "Tormenta de hielo",
+        "level": 4,
+        "kind": "column",
+        "area": "cylinder 20 ft"
+      },
+      {
+        "id": "raise-dead",
+        "name": "Alzar a los muertos",
+        "level": 5,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "dawn",
+        "name": "Amanecer",
+        "level": 5,
+        "kind": "column",
+        "area": "cylinder 30 ft"
+      },
+      {
+        "id": "animate-objects",
+        "name": "Animar objetos",
+        "level": 5,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "seeming",
+        "name": "Apariencia",
+        "level": 5,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "holy-weapon",
+        "name": "Arma sagrada",
+        "level": 5,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "planar-binding",
+        "name": "Atadura planar",
+        "level": 5,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "antilife-shell",
+        "name": "Caparazón antivida",
+        "level": 5,
+        "kind": "aura-persistent",
+        "area": "circle 10 ft (from caster)"
+      },
+      {
+        "id": "swift-quiver",
+        "name": "Carcaj veloz",
+        "level": 5,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "banishing-smite",
+        "name": "Castigo desterrador",
+        "level": 5,
+        "kind": "on-hit",
+        "area": "—"
+      },
+      {
+        "id": "circle-of-power",
+        "name": "Círculo de poder",
+        "level": 5,
+        "kind": "aura-persistent",
+        "area": "circle 30 ft (from caster)"
+      },
+      {
+        "id": "teleportation-circle",
+        "name": "Círculo de teletransportación",
+        "level": 5,
+        "kind": "teleport",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "27",
+    "spells": [
+      {
+        "id": "commune",
+        "name": "Comunión",
+        "level": 5,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "commune-with-nature",
+        "name": "Comunión con la naturaleza",
+        "level": 5,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "conjure-volley",
+        "name": "Conjurar andanada",
+        "level": 5,
+        "kind": "column",
+        "area": "—"
+      },
+      {
+        "id": "conjure-elemental",
+        "name": "Conjurar elemental",
+        "level": 5,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "cone-of-cold",
+        "name": "Cono de frío",
+        "level": 5,
+        "kind": "cone",
+        "area": "cone 60 ft (from caster)"
+      },
+      {
+        "id": "legend-lore",
+        "name": "Conocimiento de leyendas",
+        "level": 5,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "hallow",
+        "name": "Consagrar",
+        "level": 5,
+        "kind": "sphere",
+        "area": "—"
+      },
+      {
+        "id": "contact-other-plane",
+        "name": "Contactar con otro plano",
+        "level": 5,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "contagion",
+        "name": "Contagio",
+        "level": 5,
+        "kind": "touch",
+        "area": "—"
+      },
+      {
+        "id": "control-winds",
+        "name": "Controlar los vientos",
+        "level": 5,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "creation",
+        "name": "Creación",
+        "level": 5,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "create-spelljamming-helm",
+        "name": "Create Spelljamming Helm",
+        "level": 5,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "mass-cure-wounds",
+        "name": "Curar heridas en masa",
+        "level": 5,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "danse-macabre",
+        "name": "Danza macabra",
+        "level": 5,
+        "kind": "summon",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "28",
+    "spells": [
+      {
+        "id": "awaken",
+        "name": "Despertar",
+        "level": 5,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "mislead",
+        "name": "Despistar",
+        "level": 5,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "temporal-shunt",
+        "name": "Desvío temporal",
+        "level": 5,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "dispel-evil-and-good",
+        "name": "Disipar el bien y el mal",
+        "level": 5,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "dominate-person",
+        "name": "Dominar persona",
+        "level": 5,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "enervation",
+        "name": "Enervación",
+        "level": 5,
+        "kind": "beam",
+        "area": "—"
+      },
+      {
+        "id": "scrying",
+        "name": "Escudriñar",
+        "level": 5,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "synaptic-static",
+        "name": "Estática sináptica",
+        "level": 5,
+        "kind": "sphere",
+        "area": "circle 20 ft"
+      },
+      {
+        "id": "geas",
+        "name": "Geas",
+        "level": 5,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "steel-wind-strike",
+        "name": "Golpe de viento de acero",
+        "level": 5,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "flame-strike",
+        "name": "Golpe flamígero",
+        "level": 5,
+        "kind": "column",
+        "area": "cylinder 10 ft"
+      },
+      {
+        "id": "immolation",
+        "name": "Inmolación",
+        "level": 5,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "hold-monster",
+        "name": "Inmovilizar monstruo",
+        "level": 5,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "summon-celestial",
+        "name": "Invocar celestial",
+        "level": 5,
+        "kind": "summon",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "29",
+    "spells": [
+      {
+        "id": "summon-draconic-spirit",
+        "name": "Invocar espíritu dracónico",
+        "level": 5,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "wrath-of-nature",
+        "name": "Ira de la naturaleza",
+        "level": 5,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "infernal-calling",
+        "name": "Llamada infernal",
+        "level": 5,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "bigbys-hand",
+        "name": "Mano de Bigby",
+        "level": 5,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "modify-memory",
+        "name": "Modificar recuerdo",
+        "level": 5,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "wall-of-force",
+        "name": "Muro de fuerza",
+        "level": 5,
+        "kind": "wall",
+        "area": "—"
+      },
+      {
+        "id": "wall-of-light",
+        "name": "Muro de luz",
+        "level": 5,
+        "kind": "wall",
+        "area": "wall 60 ft"
+      },
+      {
+        "id": "wall-of-stone",
+        "name": "Muro de piedra",
+        "level": 5,
+        "kind": "wall",
+        "area": "—"
+      },
+      {
+        "id": "negative-energy-flood",
+        "name": "Oleada de energía negativa",
+        "level": 5,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "destructive-wave",
+        "name": "Onda destructiva",
+        "level": 5,
+        "kind": "sphere",
+        "area": "circle 30 ft (from caster)"
+      },
+      {
+        "id": "passwall",
+        "name": "Pasamuros",
+        "level": 5,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "far-step",
+        "name": "Paso lejano",
+        "level": 5,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "insect-plague",
+        "name": "Plaga de insectos",
+        "level": 5,
+        "kind": "sphere",
+        "area": "circle 20 ft"
+      },
+      {
+        "id": "skill-empowerment",
+        "name": "Potenciar habilidad",
+        "level": 5,
+        "kind": "buff",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "30",
+    "spells": [
+      {
+        "id": "reincarnate",
+        "name": "Reencarnar",
+        "level": 5,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "greater-restoration",
+        "name": "Restablecimiento mayor",
+        "level": 5,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "dream",
+        "name": "Sueño",
+        "level": 5,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "telekinesis",
+        "name": "Telequinesis",
+        "level": 5,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "transmute-rock",
+        "name": "Transmutar roca",
+        "level": 5,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "rarys-telepathic-bond",
+        "name": "Vínculo telepático de Rary",
+        "level": 5,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "maelstrom",
+        "name": "Vorágine",
+        "level": 5,
+        "kind": "column",
+        "area": "—"
+      },
+      {
+        "id": "tree-stride",
+        "name": "Zancada arbórea",
+        "level": 5,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "planar-ally",
+        "name": "Aliado planar",
+        "level": 6,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "tashas-otherworldly-guise",
+        "name": "Apariencia sobrenatural de Tasha",
+        "level": 6,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "druid-grove",
+        "name": "Arboleda druídica",
+        "level": 6,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "blade-barrier",
+        "name": "Barrera de cuchillas",
+        "level": 6,
+        "kind": "wall",
+        "area": "wall 100 ft"
+      },
+      {
+        "id": "wind-walk",
+        "name": "Caminar con el viento",
+        "level": 6,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "circle-of-death",
+        "name": "Círculo de muerte",
+        "level": 6,
+        "kind": "sphere",
+        "area": "circle 60 ft"
+      }
+    ]
+  },
+  {
+    "batch": "31",
+    "spells": [
+      {
+        "id": "conjure-fey",
+        "name": "Conjurar feérico",
+        "level": 6,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "contingency",
+        "name": "Contingencia",
+        "level": 6,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "create-homunculus",
+        "name": "Crear homúnculo",
+        "level": 6,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "create-undead",
+        "name": "Crear no muertos",
+        "level": 6,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "primordial-ward",
+        "name": "Custodia primordial",
+        "level": 6,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "harm",
+        "name": "Dañar",
+        "level": 6,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "ottos-irresistible-dance",
+        "name": "Danza irresistible de Otto",
+        "level": 6,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "flesh-to-stone",
+        "name": "De la carne a la piedra",
+        "level": 6,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "disintegrate",
+        "name": "Desintegrar",
+        "level": 6,
+        "kind": "beam",
+        "area": "—"
+      },
+      {
+        "id": "scatter",
+        "name": "Dispersar",
+        "level": 6,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "find-the-path",
+        "name": "Encontrar el camino",
+        "level": 6,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "fizbans-platinum-shield",
+        "name": "Escudo de platino de Fizban",
+        "level": 6,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "otilukes-freezing-sphere",
+        "name": "Esfera congelante de Otiluke",
+        "level": 6,
+        "kind": "sphere",
+        "area": "—"
+      },
+      {
+        "id": "heroes-feast",
+        "name": "Festín de los héroes",
+        "level": 6,
+        "kind": "buff",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "32",
+    "spells": [
+      {
+        "id": "gravity-fissure",
+        "name": "Fisura gravitatoria",
+        "level": 6,
+        "kind": "line",
+        "area": "line 100 ft (from caster)"
+      },
+      {
+        "id": "globe-of-invulnerability",
+        "name": "Globo de invulnerabilidad",
+        "level": 6,
+        "kind": "aura-persistent",
+        "area": "circle 10 ft (from caster)"
+      },
+      {
+        "id": "guards-and-wards",
+        "name": "Guardas y guardias",
+        "level": 6,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "bones-of-the-earth",
+        "name": "Huesos de la tierra",
+        "level": 6,
+        "kind": "column",
+        "area": "—"
+      },
+      {
+        "id": "programmed-illusion",
+        "name": "Ilusión programada",
+        "level": 6,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "investiture-of-ice",
+        "name": "Investidura de hielo",
+        "level": 6,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "investiture-of-flame",
+        "name": "Investidura de llamas",
+        "level": 6,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "investiture-of-stone",
+        "name": "Investidura de piedra",
+        "level": 6,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "investiture-of-wind",
+        "name": "Investidura de viento",
+        "level": 6,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "drawmijs-instant-summons",
+        "name": "Invocaciones instantáneas de Drawmij",
+        "level": 6,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "summon-fiend",
+        "name": "Invocar infernal",
+        "level": 6,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "soul-cage",
+        "name": "Jaula del alma",
+        "level": 6,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "eyebite",
+        "name": "Mal de ojo",
+        "level": 6,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "move-earth",
+        "name": "Mover la tierra",
+        "level": 6,
+        "kind": "cube",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "33",
+    "spells": [
+      {
+        "id": "wall-of-thorns",
+        "name": "Muro de espinas",
+        "level": 6,
+        "kind": "wall",
+        "area": "—"
+      },
+      {
+        "id": "wall-of-ice",
+        "name": "Muro de hielo",
+        "level": 6,
+        "kind": "wall",
+        "area": "—"
+      },
+      {
+        "id": "word-of-recall",
+        "name": "Palabra de regreso",
+        "level": 6,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "arcane-gate",
+        "name": "Portal arcano",
+        "level": 6,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "mental-prison",
+        "name": "Prisión mental",
+        "level": 6,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "forbiddance",
+        "name": "Prohibición",
+        "level": 6,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "sunbeam",
+        "name": "Rayo solar",
+        "level": 6,
+        "kind": "line",
+        "area": "line 60 ft (from caster)"
+      },
+      {
+        "id": "magic-jar",
+        "name": "Recipiente mágico",
+        "level": 6,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "chain-lightning",
+        "name": "Relámpago en cadena",
+        "level": 6,
+        "kind": "multi",
+        "area": "—"
+      },
+      {
+        "id": "heal",
+        "name": "Sanar",
+        "level": 6,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "mass-suggestion",
+        "name": "Sugestión en masa",
+        "level": 6,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "tensers-transformation",
+        "name": "Transformación de Tenser",
+        "level": 6,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "transport-via-plants",
+        "name": "Transporte mediante plantas",
+        "level": 6,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "true-seeing",
+        "name": "Visión veraz",
+        "level": 6,
+        "kind": "buff",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "34",
+    "spells": [
+      {
+        "id": "delayed-blast-fireball",
+        "name": "Bola de fuego de explosión retardada",
+        "level": 7,
+        "kind": "sphere",
+        "area": "circle 20 ft"
+      },
+      {
+        "id": "conjure-celestial",
+        "name": "Conjurar celestial",
+        "level": 7,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "crown-of-stars",
+        "name": "Corona de estrellas",
+        "level": 7,
+        "kind": "multi",
+        "area": "—"
+      },
+      {
+        "id": "create-magen",
+        "name": "Crear magen",
+        "level": 7,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "finger-of-death",
+        "name": "Dedo de la muerte",
+        "level": 7,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "plane-shift",
+        "name": "Desplazamiento entre planos",
+        "level": 7,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "mordenkainens-sword",
+        "name": "Espada de Mordenkainen",
+        "level": 7,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "mirage-arcane",
+        "name": "Espejismo arcano",
+        "level": 7,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "etherealness",
+        "name": "Etereidad",
+        "level": 7,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "reverse-gravity",
+        "name": "Invertir la gravedad",
+        "level": 7,
+        "kind": "column",
+        "area": "cylinder 50 ft"
+      },
+      {
+        "id": "forcecage",
+        "name": "Jaula de fuerza",
+        "level": 7,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "mordenkainens-magnificent-mansion",
+        "name": "Mansión magnífica de Mordenkainen",
+        "level": 7,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "power-word-pain",
+        "name": "Palabra de poder: dolor",
+        "level": 7,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "divine-word",
+        "name": "Palabra divina",
+        "level": 7,
+        "kind": "buff",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "35",
+    "spells": [
+      {
+        "id": "project-image",
+        "name": "Proyectar imagen",
+        "level": 7,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "regenerate",
+        "name": "Regenerar",
+        "level": 7,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "resurrection",
+        "name": "Resurrección",
+        "level": 7,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "prismatic-spray",
+        "name": "Rociada prismática",
+        "level": 7,
+        "kind": "cone",
+        "area": "cone 60 ft (from caster)"
+      },
+      {
+        "id": "sequester",
+        "name": "Secuestrar",
+        "level": 7,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "symbol",
+        "name": "Símbolo",
+        "level": 7,
+        "kind": "sphere",
+        "area": "—"
+      },
+      {
+        "id": "simulacrum",
+        "name": "Simulacro",
+        "level": 7,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "dream-of-the-blue-veil",
+        "name": "Sueño del velo azul",
+        "level": 7,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "teleport",
+        "name": "Teletransportar",
+        "level": 7,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "temple-of-the-gods",
+        "name": "Templo de los dioses",
+        "level": 7,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "whirlwind",
+        "name": "Torbellino",
+        "level": 7,
+        "kind": "column",
+        "area": "cylinder 10 ft"
+      },
+      {
+        "id": "fire-storm",
+        "name": "Tormenta de fuego",
+        "level": 7,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "draconic-transformation",
+        "name": "Transformación dracónica",
+        "level": 7,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "tether-essence",
+        "name": "Vincular esencias",
+        "level": 7,
+        "kind": "buff",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "36",
+    "spells": [
+      {
+        "id": "antipathy-sympathy",
+        "name": "Antipatía / simpatía",
+        "level": 8,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "holy-aura",
+        "name": "Aura sagrada",
+        "level": 8,
+        "kind": "aura-persistent",
+        "area": "circle 30 ft (from caster)"
+      },
+      {
+        "id": "antimagic-field",
+        "name": "Campo antimagia",
+        "level": 8,
+        "kind": "aura-persistent",
+        "area": "circle 10 ft (from caster)"
+      },
+      {
+        "id": "clone",
+        "name": "Clon",
+        "level": 8,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "control-weather",
+        "name": "Controlar el clima",
+        "level": 8,
+        "kind": "sphere",
+        "area": "—"
+      },
+      {
+        "id": "dominate-monster",
+        "name": "Dominar monstruo",
+        "level": 8,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "illusory-dragon",
+        "name": "Dragón ilusorio",
+        "level": 8,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "dark-star",
+        "name": "Estrella oscura",
+        "level": 8,
+        "kind": "sphere",
+        "area": "circle 40 ft"
+      },
+      {
+        "id": "sunburst",
+        "name": "Explosión solar",
+        "level": 8,
+        "kind": "sphere",
+        "area": "circle 60 ft"
+      },
+      {
+        "id": "animal-shapes",
+        "name": "Formas animales",
+        "level": 8,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "mighty-fortress",
+        "name": "Fortaleza poderosa",
+        "level": 8,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "abi-dalzims-horrid-wilting",
+        "name": "Horrible marchitamiento de Abi-Dalzim",
+        "level": 8,
+        "kind": "cube",
+        "area": "—"
+      },
+      {
+        "id": "maze",
+        "name": "Laberinto",
+        "level": 8,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "glibness",
+        "name": "Labia",
+        "level": 8,
+        "kind": "buff",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "37",
+    "spells": [
+      {
+        "id": "feeblemind",
+        "name": "Mente débil",
+        "level": 8,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "mind-blank",
+        "name": "Mente en blanco",
+        "level": 8,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "incendiary-cloud",
+        "name": "Nube incendiaria",
+        "level": 8,
+        "kind": "sphere",
+        "area": "circle 20 ft"
+      },
+      {
+        "id": "maddening-darkness",
+        "name": "Oscuridad enloquecedora",
+        "level": 8,
+        "kind": "sphere",
+        "area": "circle 60 ft"
+      },
+      {
+        "id": "power-word-stun",
+        "name": "Palabra de poder: aturdir",
+        "level": 8,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "reality-break",
+        "name": "Ruptura de realidad",
+        "level": 8,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "demiplane",
+        "name": "Semiplano",
+        "level": 8,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "telepathy",
+        "name": "Telepatía",
+        "level": 8,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "earthquake",
+        "name": "Terremoto",
+        "level": 8,
+        "kind": "sphere",
+        "area": "—"
+      },
+      {
+        "id": "tsunami",
+        "name": "Tsunami",
+        "level": 8,
+        "kind": "wall",
+        "area": "—"
+      },
+      {
+        "id": "shapechange",
+        "name": "Cambio de forma",
+        "level": 9,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "imprisonment",
+        "name": "Cautiverio",
+        "level": 9,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "wish",
+        "name": "Deseo",
+        "level": 9,
+        "kind": "utility",
+        "area": "—"
+      },
+      {
+        "id": "time-stop",
+        "name": "Detener el tiempo",
+        "level": 9,
+        "kind": "buff",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "38",
+    "spells": [
+      {
+        "id": "weird",
+        "name": "Enemigo fantasmal",
+        "level": 9,
+        "kind": "sphere",
+        "area": "circle 30 ft"
+      },
+      {
+        "id": "time-ravage",
+        "name": "Estrago temporal",
+        "level": 9,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "psychic-scream",
+        "name": "Grito psíquico",
+        "level": 9,
+        "kind": "strike",
+        "area": "—"
+      },
+      {
+        "id": "blade-of-disaster",
+        "name": "Hoja del desastre",
+        "level": 9,
+        "kind": "summon",
+        "area": "—"
+      },
+      {
+        "id": "invulnerability",
+        "name": "Invulnerabilidad",
+        "level": 9,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "meteor-swarm",
+        "name": "Lluvia de meteoritos",
+        "level": 9,
+        "kind": "sphere",
+        "area": "—"
+      },
+      {
+        "id": "prismatic-wall",
+        "name": "Muro prismático",
+        "level": 9,
+        "kind": "wall",
+        "area": "—"
+      },
+      {
+        "id": "power-word-kill",
+        "name": "Palabra de poder: matar",
+        "level": 9,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "power-word-heal",
+        "name": "Palabra de poder: sanar",
+        "level": 9,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "true-polymorph",
+        "name": "Polimorfar verdadero",
+        "level": 9,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "mass-polymorph",
+        "name": "Polimorfia en masa",
+        "level": 9,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "gate",
+        "name": "Portal",
+        "level": 9,
+        "kind": "teleport",
+        "area": "—"
+      },
+      {
+        "id": "foresight",
+        "name": "Presciencia",
+        "level": 9,
+        "kind": "buff",
+        "area": "—"
+      },
+      {
+        "id": "astral-projection",
+        "name": "Proyección astral",
+        "level": 9,
+        "kind": "teleport",
+        "area": "—"
+      }
+    ]
+  },
+  {
+    "batch": "39",
+    "spells": [
+      {
+        "id": "true-resurrection",
+        "name": "Resurrección verdadera",
+        "level": 9,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "mass-heal",
+        "name": "Sanar en masa",
+        "level": 9,
+        "kind": "heal",
+        "area": "—"
+      },
+      {
+        "id": "storm-of-vengeance",
+        "name": "Tormenta de venganza",
+        "level": 9,
+        "kind": "column",
+        "area": "—"
+      },
+      {
+        "id": "ravenous-void",
+        "name": "Vacío voraz",
+        "level": 9,
+        "kind": "sphere",
+        "area": "—"
+      }
+    ]
+  }
+]

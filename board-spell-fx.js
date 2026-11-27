@@ -942,9 +942,12 @@
   }
   function drawGround(ctx, event, pose, now, reduced, grid, budget) {
     if (pixel(event)) {
-      if (!phase(event, now, reduced).done || event.id === 'fireball')
+      const done = phase(event, now, reduced).done;
+      const loops = root.BoardPixelFX.lingers(event);
+      if (!done || event.id === 'fireball' || (loops && pose.linger))
         root.BoardPixelFX.drawGround(ctx, event, pose, now, grid);
-      return;
+      // Zones and walls without a pixel loop keep today's lingering look.
+      if (!(done && pose.linger && !loops)) return;
     }
     const p = phase(event, now, reduced),
       colors = colorFor(event.id, event.element, event.school);

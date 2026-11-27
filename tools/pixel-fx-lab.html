@@ -150,6 +150,7 @@
     <script src="./board-ink.js"></script>
     <script src="./board-pixel-fx.js"></script>
     <script src="./board-spell-fx.js"></script>
+    <script src="./board-pixel-spells-00.js"></script>
     <script src="./board-figure-motion.js"></script>
   </head>
   <body>
@@ -419,26 +420,45 @@
         }
         // ---------------------------------------------------------------- events
         let castCount = 0;
+        // Builds a board-like cast for any spell id: archetype, area template and default targets.
+        function areaOf(spell) {
+          if (spell.id === 'fireball') return { kind: 'circle', feet: 20, x: 9.6, y: 4.9, origin: { x: 9.6, y: 4.9 } };
+          const shape = BoardSpells.areaFor({ id: spell.id, level: spell.level || 1 }, spell.level || 1);
+          if (!shape) return null;
+          const caster = cast[0];
+          const at = shape.self ? { x: caster.x, y: caster.y } : { x: 9.6, y: 4.9 };
+          const dir = Math.atan2(4.6 - caster.y, 10.3 - caster.x);
+          return { ...shape, ...at, dir, origin: at };
+        }
         function fire(spell) {
           current = spell;
           castCount++;
+          const kind = spell.kind || BoardSpells.kindFor(spell.id);
+          const friendly = ['heal', 'buff'].includes(kind);
+          const area = spell.area === undefined ? areaOf(spell) : spell.area;
+          const targets =
+            spell.targets ||
+            (spell.darts || spell.rays ? [...new Set(spell.darts || spell.rays)] : null) ||
+            (friendly ? ['orc'] : area ? ['goblin', 'bugbear', 'orc'] : ['bugbear']);
           for (const board of boards) {
-            const center = { x: 9.6, y: 4.9 };
             const event = {
+              level: 1,
+              element: 'magic',
               ...spell,
+              kind,
               castId: 'lab' + castCount,
               caster: 'caster',
               started: vnow,
               seed: castCount * 7,
-              slot: Math.max(1, spell.level),
-              targets: spell.targets || [...new Set(spell.darts || spell.rays || [])],
+              slot: Math.max(1, spell.level || 1),
+              targets,
               darts: spell.darts || [],
               rays: spell.rays || [],
               beats: spell.beats || 1,
               saved: new Map(),
               saveTargets: new Set(),
-              area: spell.id === 'fireball' ? { kind: 'circle', feet: 20, ...center, origin: center } : null,
-              point: spell.id === 'fireball' ? center : null,
+              area,
+              point: area ? { x: area.x, y: area.y } : null,
             };
             BoardInk.prepare(event.id, event.kind);
             board.events = [event];

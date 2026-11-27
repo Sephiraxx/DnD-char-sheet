@@ -30,6 +30,29 @@
   const VINE = ['#0f1c0b', '#28501a', '#4d8a26', '#8cc84a', '#d2f08a', '#fffbe0'];
   const THORN = ['#2b1a0e', '#c9b98a', '#f4ead0'];
   const DUST = ['#3b2c20', '#8a7154', '#d8c49a'];
+  // Element ramps: [outline, deep, mid, bright, pale, white]. Board events carry the element keys below.
+  const ELEMENTS = {
+    fire: FIRE,
+    frost: ['#0b1a2e', '#1d4f8a', '#3e8fd6', '#8fd4ff', '#e3f8ff', '#ffffff'],
+    lightning: ['#0d1030', '#2b3fb0', '#4f8dff', '#a8e4ff', '#f4fdff', '#ffffff'],
+    trueno: ['#141a26', '#3a4f6e', '#6f8fb5', '#b6d0ea', '#eef6ff', '#ffffff'],
+    ácido: ['#101a06', '#3b6114', '#79ad1f', '#c5ef45', '#f3ffb5', '#ffffff'],
+    veneno: ['#0e1a0d', '#2f5a2b', '#5f9a3f', '#a5d66a', '#e2ffc4', '#ffffff'],
+    necrótico: ['#0c0612', '#33173f', '#5d2f7a', '#9a64c2', '#dcc3f0', '#ffffff'],
+    radiante: ['#2a1a06', '#8a5a12', '#e0a02a', '#ffd76a', '#fff6cf', '#ffffff'],
+    psíquico: ['#1c0618', '#6a1a5e', '#b23a91', '#ff88ce', '#ffe2f7', '#ffffff'],
+    fuerza: FORCE,
+    heal: ['#0b1f14', '#1f6b46', '#43bf86', '#a6f3a9', '#f6ffd6', '#ffffff'],
+    contundente: ['#1a1410', '#5a4030', '#936648', '#d1a776', '#f5dfb9', '#ffffff'],
+    cortante: ['#121518', '#3b4652', '#7995aa', '#c7e2ee', '#fffbeb', '#ffffff'],
+    perforante: ['#121518', '#3b4652', '#638eab', '#bad7f3', '#f6fcff', '#ffffff'],
+    nature: VINE,
+    magic: ['#120d24', '#3b2a7a', '#765ace', '#c6b5fa', '#f4eaff', '#ffffff'],
+  };
+  function paletteFor(event) {
+    if (event.kind === 'heal') return ELEMENTS.heal;
+    return ELEMENTS[event.element] || ELEMENTS.magic;
+  }
   const WHITE = '#ffffff';
 
   // ---------------------------------------------------------------- deterministic noise
@@ -175,45 +198,35 @@
   }
 
   // ---------------------------------------------------------------- timing, hitstop and the per-spell plan
-  const ids = new Set(['fireball', 'magic-missile', 'eldritch-blast', 'thorn-whip']);
+  /* Spell definitions. A definition is looked up by spell id, then by archetype ('kind:<kind>').
+     See docs/pixel-spells/BRIEF.md for the contract. */
+  const registry = new Map();
+  function register(key, def) {
+    registry.set(key, def);
+  }
+  const defFor = event => (event ? registry.get(event.id) || registry.get('kind:' + event.kind) || null : null);
   const missiles = level => root.BoardSpells?.missileCount?.(level) ?? 2 + Math.max(1, Math.min(9, level || 1));
   function targetList(event, list) {
     return Array.isArray(list) && list.length ? list : event.targets || [];
   }
+  const value = (v, event, fallback) => (typeof v === 'function' ? v(event) : (v ?? fallback));
   /* Design-time beats (ms from cast start, before any hitstop) and the stop each one earns. */
   function plan(event) {
     if (event._px) return event._px;
-    const hits = [];
-    const add = (at, stop, id, kind, power) => hits.push({ at, stop, id, kind, power });
-    let end = 0,
-      travel = 0;
-    if (event.id === 'fireball') {
-      travel = 420;
-      const stop = Math.min(230, 150 + Math.max(0, (event.level || 3) - 3) * 12);
-      const at = CAST + travel;
-      for (const id of event.targets || []) add(at, stop, id, 'blast', 0.09);
-      if (!hits.length) add(at, stop, null, 'blast', 0);
-      end = at + FIREBALL_FRAMES * FIREBALL_MS;
-    } else if (event.id === 'magic-missile') {
-      travel = 520;
-      const count = missiles(event.level);
-      const list = event.darts?.length ? event.darts : event.targets || [];
-      for (let i = 0; i < count; i++)
-        add(CAST + travel + i * 90, 55, list.length ? list[i % list.length] : null, 'dart', 0.04);
-      end = CAST + travel + (count - 1) * 90 + 360;
-    } else if (event.id === 'eldritch-blast') {
-      travel = 40;
-      const beats = Math.max(1, event.beats || 1);
-      const list = targetList(event, event.rays);
-      for (let i = 0; i < beats; i++)
-        add(CAST + travel + i * 170, 85, list.length ? list[i % list.length] : null, 'beam', 0.07);
-      end = CAST + travel + (beats - 1) * 170 + 340;
-    } else if (event.id === 'thorn-whip') {
-      travel = 150;
-      const id = (event.targets || [])[0] ?? null;
-      add(CAST + travel, 90, id, 'whip', 0.06);
-      end = CAST + 650;
-    }
+    const def = defFor(event) || {};
+    const travel = value(def.travel, event, 0);
+    let hits = def.beats
+      ? def.beats(event, kit, travel)
+      : (event.targets?.length ? event.targets : [null]).map(id => ({
+          at: CAST + travel,
+          stop: 70,
+          target: id,
+          kind: 'hit',
+          power: 0.05,
+        }));
+    hits = hits.map(h => ({ ...h, id: h.target ?? h.id ?? null, stop: Math.max(0, Math.min(260, h.stop ?? 70)) }));
+    const last = hits.reduce((m, h) => Math.max(m, h.at), CAST + travel);
+    const end = def.end ? def.end(event, travel) : last + 420;
     // One freeze per distinct beat; simultaneous hits (a fireball's whole blast) share it.
     const freezes = [];
     for (const hit of hits) {
@@ -228,7 +241,7 @@
       acc += f.stop;
     }
     for (const hit of hits) hit.freeze = freezes.find(f => f.at === hit.at);
-    event._px = { hits, freezes, end, travel, total: end + acc, dirs: new Map() };
+    event._px = { def, hits, freezes, end, travel, total: end + acc, dirs: new Map() };
     return event._px;
   }
   /* The spell's own clock: real time minus every hitstop already reached. */
@@ -248,17 +261,11 @@
     return {
       travel: p.travel,
       impact: Math.max(1, p.total - CAST - p.travel),
-      decal: event.id === 'fireball' ? 3600 : 0,
+      decal: value(p.def.decal, event, 0),
     };
   }
 
   // ---------------------------------------------------------------- cast: snap-in circle and hand charge
-  const tint = {
-    fireball: FIRE,
-    'magic-missile': FORCE,
-    'eldritch-blast': ELDRITCH,
-    'thorn-whip': VINE,
-  };
   function castCircle(base, t, ramp) {
     // Full size and full brightness on the very first frame (no fade-in); pops outward on release.
     if (!base || t >= CAST + 160) return;
@@ -315,15 +322,20 @@
   // ---------------------------------------------------------------- hit marks (cached 8-frame stars)
   const HIT_FRAMES = 8,
     HIT_MS = 42;
-  function hitMark(kind, f) {
-    const cfg = {
-      force: { S: 30, ramp: FORCE, spikes: 4, minor: 4, jag: 0.15 },
-      eldritch: { S: 46, ramp: ELDRITCH, spikes: 7, minor: 0, jag: 0.45, void: true },
-      thorn: { S: 36, ramp: VINE, spikes: 5, minor: 0, jag: 0.35 },
-    }[kind];
+  const HIT_STYLES = {
+    force: { key: 'force', S: 30, ramp: FORCE, spikes: 4, minor: 4, jag: 0.15 },
+    eldritch: { key: 'eldritch', S: 46, ramp: ELDRITCH, spikes: 7, minor: 0, jag: 0.45, void: true },
+    thorn: { key: 'thorn', S: 36, ramp: VINE, spikes: 5, minor: 0, jag: 0.35 },
+  };
+  /* A hit-mark style from any ramp: size S (art px), spikes, minor spikes, jag 0..0.5, void core. */
+  function hitStyle(key, ramp, opts = {}) {
+    return { key, S: 32, spikes: 6, minor: 0, jag: 0.3, ...opts, ramp };
+  }
+  function hitMark(style, f) {
+    const cfg = typeof style === 'string' ? HIT_STYLES[style] : style;
     const { S, ramp, spikes, minor, jag } = cfg;
     const pal = [ramp[0], ramp[1], ramp[2], ramp[3], ramp[4], WHITE];
-    return sprite(`hit:${kind}:${f}`, S, S, pal, set => {
+    return sprite(`hit:${cfg.key}:${S}:${f}`, S, S, pal, set => {
       const c = S / 2;
       const rays = [];
       for (let j = 0; j < spikes; j++)
@@ -359,11 +371,12 @@
         }
     });
   }
-  function drawHit(kind, at, e) {
+  /* e = ms since the hit (real time, so it keeps moving through the hitstop). */
+  function drawHit(style, at, e) {
     if (e < 0) return;
     const f = Math.floor(e / HIT_MS);
     if (f >= HIT_FRAMES) return;
-    const img = hitMark(kind, f);
+    const img = hitMark(style, f);
     blit(img, at.x - img.width / 2, at.y - img.height / 2);
   }
   /* Where a hit lands: on the body, nudged toward the source (where the hitboxes overlap). */
@@ -693,7 +706,7 @@
   }
 
   // ---------------------------------------------------------------- eldritch blast
-  function beam(H, T, e, seed) {
+  function beam(H, T, e, seed, ramp = ELDRITCH) {
     // e: ms since release. Fires in ~1 frame, holds, then breaks into dashes.
     const dx = T.x - H.x,
       dy = T.y - H.y,
@@ -712,9 +725,9 @@
       return (noise(s / 9, tick, seed) - 0.5) * 6 * env;
     };
     const passes = [
-      [ELDRITCH[0], width + 2],
-      [ELDRITCH[2], width],
-      [ELDRITCH[3], Math.max(1, width - 2)],
+      [ramp[0], width + 2],
+      [ramp[2], width],
+      [ramp[3], Math.max(1, width - 2)],
       [WHITE, Math.max(1, width - 4)],
     ];
     for (const [color, w] of passes)
@@ -731,8 +744,8 @@
         const cx = H.x + ux * s + nx * o,
           cy = H.y + uy * s + ny * o;
         for (const [color, w] of [
-          [ELDRITCH[0], 3],
-          [ELDRITCH[4], 1],
+          [ramp[0], 3],
+          [ramp[4], 1],
         ])
           for (let i = 0; i < 16; i++) {
             const a = (i / 16) * tau;
@@ -861,11 +874,86 @@
       }
   }
 
+  // ---------------------------------------------------------------- the four reference spells
+  register('fireball', {
+    palette: FIRE,
+    travel: 420,
+    decal: 3600,
+    beats(event, k, travel) {
+      const stop = Math.min(230, 150 + Math.max(0, (event.level || 3) - 3) * 12);
+      const ids = event.targets?.length ? event.targets : [null];
+      return ids.map(target => ({ at: CAST + travel, stop, target, kind: 'blast', power: target ? 0.09 : 0 }));
+    },
+    end: (event, travel) => CAST + travel + FIREBALL_FRAMES * FIREBALL_MS,
+    flash: (event, e) =>
+      e < 35 ? { color: '#fff3d6', alpha: 0.3 } : e < 75 ? { color: '#1a0705', alpha: 0.26 } : null,
+    reach: (event, grid) => {
+      const r = (event.area?.feet || 20) / (grid.feet || 5);
+      return { r: r * 1.3 + 0.5, up: r * 1.6 };
+    },
+    ground: s => fireballGround(s.event, s.pose, s.c, s.grid),
+    air: s => fireballAir(s.event, s.pose, s.c, s.grid),
+  });
+  register('magic-missile', {
+    palette: FORCE,
+    travel: 520,
+    beats(event, k, travel) {
+      const count = missiles(event.level);
+      const list = event.darts?.length ? event.darts : event.targets || [];
+      return Array.from({ length: count }, (_, i) => ({
+        at: CAST + travel + i * 90,
+        stop: 55,
+        target: list.length ? list[i % list.length] : null,
+        kind: 'dart',
+        power: 0.04,
+      }));
+    },
+    end: (event, travel) => CAST + travel + (missiles(event.level) - 1) * 90 + 360,
+    air: s => missileAir(s.event, s.pose, s.c, s.targets),
+  });
+  register('eldritch-blast', {
+    palette: ELDRITCH,
+    travel: 40,
+    beats(event, k, travel) {
+      const list = targetList(event, event.rays);
+      return Array.from({ length: Math.max(1, event.beats || 1) }, (_, i) => ({
+        at: CAST + travel + i * 170,
+        stop: 85,
+        target: list.length ? list[i % list.length] : null,
+        kind: 'beam',
+        power: 0.07,
+      }));
+    },
+    end: (event, travel) => CAST + travel + (Math.max(1, event.beats || 1) - 1) * 170 + 340,
+    flash: (event, e) => (e < 30 ? { color: '#f0d0ff', alpha: 0.12 } : null),
+    air: s => eldritchAir(s.event, s.pose, s.c, s.targets),
+  });
+  register('thorn-whip', {
+    palette: VINE,
+    travel: 150,
+    beats: (event, k, travel) => [
+      { at: CAST + travel, stop: 90, target: (event.targets || [])[0] ?? null, kind: 'whip', power: 0.06 },
+    ],
+    end: () => CAST + 650,
+    air: s => thornAir(s.event, s.pose, s.c, s.targets),
+  });
+
   // ---------------------------------------------------------------- reactions, shake, flash
+  // Per beat kind: knockback in cells (negative pulls toward the caster) and screen shake
+  // [ms, px, x weight, y weight]. Small hits shake vertically only.
+  const BEAT = {
+    blast: { push: 0.3, shake: [340, 5, 1, 0.8] },
+    beam: { push: 0.2, shake: [130, 2.6, 1, 0.3] },
+    hit: { push: 0.1, shake: [90, 1.8, 0.4, 1] },
+    dart: { push: 0.07, shake: [70, 1.6, 0, 1] },
+    whip: { push: 0, shake: [100, 1.8, 0.2, 1] },
+    pull: { push: -0.45, shake: [90, 1.6, 0.3, 1] },
+    soft: { push: 0, shake: null },
+  };
   /* Offset (grid cells) for a token caught by one of these spells: hitstop vibration, then knockback
-     (or the thorn whip's yank toward the caster). */
+     (or a yank toward the caster). */
   function reaction(event, id, now, reduced = false) {
-    if (!ids.has(event.id)) return { x: 0, y: 0 };
+    if (!api.handles(event)) return { x: 0, y: 0 };
     const p = plan(event);
     const dir = p.dirs.get(id);
     let x = 0,
@@ -875,8 +963,8 @@
       const e = now - event.started - hit.freeze.raw;
       if (e < 0) continue;
       if (e < hit.stop) {
-        if (reduced) continue;
-        const amp = hit.power * (1 - e / hit.stop);
+        if (reduced || hit.kind === 'soft') continue;
+        const amp = (hit.power ?? 0.05) * (1 - e / hit.stop);
         x += (Math.floor(e / 30) % 2 ? 1 : -1) * amp; // ground hit: horizontal shake, big → small
         continue;
       }
@@ -887,7 +975,7 @@
         const t = k - 40; // the vine goes taut, then yanks
         push = t < 0 ? 0 : t < 180 ? -0.6 * back(t / 180) : -0.6 * Math.max(0, 1 - (t - 180) / 360);
       } else {
-        const size = { blast: 0.3, beam: 0.2, dart: 0.07 }[hit.kind] || 0.1;
+        const size = hit.push ?? BEAT[hit.kind]?.push ?? 0.1;
         push = k < 80 ? size * ease(k / 80) : size * Math.max(0, 1 - (k - 80) / 300);
       }
       x += dir.x * push;
@@ -896,20 +984,17 @@
     return { x, y };
   }
   function shake(event, now) {
-    if (!ids.has(event.id)) return null;
+    if (!api.handles(event)) return null;
     const p = plan(event);
     let x = 0,
       y = 0;
     const raw = now - event.started;
     for (const f of p.freezes) {
       const e = raw - f.raw;
-      const kind = p.hits.find(h => h.freeze === f)?.kind;
-      const spec = {
-        blast: [340, 5 + Math.max(0, (event.level || 3) - 3), 1, 0.8],
-        beam: [130, 2.6, 1, 0.3],
-        dart: [70, 1.6, 0, 1],
-        whip: [100, 1.8, 0.2, 1],
-      }[kind];
+      const hit = p.hits.find(h => h.freeze === f);
+      let spec = hit?.shake ?? BEAT[hit?.kind]?.shake;
+      if (hit?.kind === 'blast' && spec)
+        spec = [spec[0], spec[1] + Math.max(0, (event.level || 3) - 3), spec[2], spec[3]];
       if (!spec || e < 0 || e >= spec[0]) continue;
       const [dur, amp, ax, ay] = spec;
       const decay = (1 - e / dur) ** 2;
@@ -920,16 +1005,15 @@
     return { x, y };
   }
   function flash(event, now) {
-    if (!ids.has(event.id)) return null;
+    if (!api.handles(event)) return null;
     const p = plan(event);
+    if (!p.def.flash) return null;
     const raw = now - event.started;
     for (const f of p.freezes) {
       const e = raw - f.raw;
       if (e < 0) continue;
-      if (event.id === 'fireball') {
-        if (e < 35) return { color: '#fff3d6', alpha: 0.3 };
-        if (e < 75) return { color: '#1a0705', alpha: 0.26 };
-      } else if (event.id === 'eldritch-blast' && e < 30) return { color: '#f0d0ff', alpha: 0.12 };
+      const out = p.def.flash(event, e);
+      if (out) return out;
     }
     return null;
   }
@@ -939,7 +1023,8 @@
     const p = plan(event);
     for (const t of pose.targets || []) {
       if (p.dirs.has(t.id)) continue;
-      const from = event.id === 'fireball' && pose.area ? pose.area : pose.hand;
+      const from =
+        p.def.pushFrom === 'area' || (event.id === 'fireball' && pose.area) ? pose.area || pose.hand : pose.hand;
       if (!from) continue;
       const dx = (t.baseX ?? t.x) - from.x,
         dy = (t.baseY ?? t.y) - from.y,
@@ -948,37 +1033,102 @@
     }
   }
   function frame(event, pose, now, grid, layer) {
+    const p = plan(event);
+    const def = p.def;
     const c = clock(event, now);
     c.now = now;
-    const ramp = tint[event.id];
+    const ramp = value(def.palette, event, null) || paletteFor(event);
     const targets = pose.targets?.length ? pose.targets : pose.target ? [{ ...pose.target, span: 1, id: null }] : [];
-    const R = event.id === 'fireball' && pose.area ? pose.area.feet / (grid.feet || 5) : 0;
+    const area = pose.area;
+    const reach = def.reach
+      ? def.reach(event, grid)
+      : area
+        ? { r: (area.feet || 5) / (grid.feet || 5) + 0.8, up: (area.feet || 5) / (grid.feet || 5) }
+        : null;
     const box = boxOf([
       pose.hand && { ...pose.hand, r: 1.4 },
       pose.base && { ...pose.base, r: (pose.base.span || 1) * 0.8 },
       ...targets.map(t => ({ x: t.x, y: t.y, r: Math.max(1.4, t.span || 1) })),
-      pose.area && { x: pose.area.x, y: pose.area.y, r: R * 1.3 + 0.5, up: R * 1.6 },
+      area && reach && { x: area.x, y: area.y, r: reach.r, up: reach.up },
+      pose.target && { ...pose.target, r: 1.4 },
     ]);
     if (!Number.isFinite(box[0])) return false;
     begin(box);
-    if (layer === 'ground') {
-      castCircle(pose.base, c.t, ramp);
-      if (event.id === 'fireball') fireballGround(event, pose, c, grid);
-    } else {
-      remember(event, pose);
-      handCharge(pose.hand, c.t, ramp, event.seed || 0);
-      if (event.id === 'fireball') fireballAir(event, pose, c, grid);
-      else if (event.id === 'magic-missile') missileAir(event, pose, c, targets);
-      else if (event.id === 'eldritch-blast') eldritchAir(event, pose, c, targets);
-      else if (event.id === 'thorn-whip') thornAir(event, pose, c, targets);
+    const scene = {
+      event,
+      pose,
+      c,
+      grid,
+      targets,
+      ramp,
+      area,
+      plan: p,
+      hits: p.hits,
+      real: hit => c.raw - hit.freeze.raw,
+    };
+    try {
+      if (layer === 'ground') {
+        if (def.cast !== false) castCircle(pose.base, c.t, ramp);
+        if (c.t < p.end) def.ground?.(scene, kit);
+        // Concentration zones and walls: a loop while the effect lasts (linger 1 → 0 as it ends).
+        if (def.linger && pose.linger > 0 && c.t >= CAST + p.travel) def.linger({ ...scene, linger: pose.linger }, kit);
+      } else {
+        remember(event, pose);
+        if (def.cast !== false) handCharge(pose.hand, c.t, ramp, event.seed || 0);
+        def.air?.(scene, kit);
+      }
+    } catch (error) {
+      // A broken definition must never take the board down with it.
+      if (!api.failed.has(event.id)) console.warn('BoardPixelFX', event.id, error);
+      api.failed.add(event.id);
     }
     return true;
   }
+  /* Everything a definition may draw with. Coordinates are art pixels inside the current buffer;
+     convert grid points with P(point). */
+  const kit = {
+    PX,
+    CAST,
+    tau,
+    WHITE,
+    clamp,
+    mix,
+    ease,
+    back,
+    hash,
+    noise,
+    dith,
+    band,
+    P,
+    dot,
+    disc,
+    ellipse,
+    blit,
+    blitRotated,
+    sprite,
+    drawHit,
+    hitStyle,
+    contact,
+    shards,
+    beam,
+    palettes: { FIRE, SMOKE, FORCE, ELDRITCH, VINE, THORN, DUST, ...ELEMENTS },
+    paletteFor,
+    missiles,
+    targetList,
+    // Area template corners in grid units (circle, cone, line, cube, wall), as the board draws them.
+    outline: (area, grid) => root.BoardSpells?.outline?.(grid, area) || [],
+  };
   const api = {
     enabled: true,
     PX,
-    handles: event => api.enabled && !!event && ids.has(event.id),
-    ids: [...ids],
+    failed: new Set(),
+    register,
+    kit,
+    handles: event => api.enabled && !!defFor(event) && !api.failed.has(event?.id),
+    lingers: event => !!defFor(event)?.linger,
+    get ids() {
+      return [...registry.keys()];
+    },
     timing,
     clock,
     reaction,
