@@ -48,6 +48,10 @@ const navs = [
   ['table', '⚑', 'Mesa'],
 ];
 if (new URLSearchParams(location.search).has('aliado')) document.body.classList.add('dm-ally-sheet');
+// Este navegador ya usa la app: la portada (index.html) lo manda directo al inicio.
+try {
+  localStorage.setItem('dnd-entered-v1', '1');
+} catch {}
 function hideToast() {
   clearTimeout(toastTimer);
   const el = $('#toast');
@@ -404,7 +408,7 @@ addEventListener('reference-texts', () => {
 function copyFooter() {
   const el = $('#copy-footer');
   if (!el) return;
-  if (state && typeof AccountUI !== 'undefined') el.innerHTML = AccountUI.copyTag(KEY);
+  if (state && view !== 'home' && typeof AccountUI !== 'undefined') el.innerHTML = AccountUI.copyTag(KEY);
   else el.textContent = 'Tus fichas se guardan en este dispositivo.';
 }
 addEventListener('cloud-backup', () => {
@@ -414,8 +418,10 @@ addEventListener('cloud-backup', () => {
 });
 function setClassTheme() {
   let id = '';
+  // El inicio usa los colores de la app, no los de la clase del último personaje.
+  const sheet = view === 'home' ? null : state;
   try {
-    const v = state && Classes.views(state)[0];
+    const v = sheet && Classes.views(sheet)[0];
     id = v?.cls?.id || v?.classId || '';
   } catch {
     id = '';
@@ -423,22 +429,19 @@ function setClassTheme() {
   if (id) document.documentElement.dataset.cls = id;
   else delete document.documentElement.dataset.cls;
   // Color elegido por el jugador: pisa al de la clase (el emblema no cambia).
-  const color = state && /^#[0-9a-f]{6}$/i.test(state.sheetColor || '') ? state.sheetColor : '';
+  const color = sheet && /^#[0-9a-f]{6}$/i.test(sheet.sheetColor || '') ? sheet.sheetColor : '';
   if (color) document.documentElement.style.setProperty('--accent', color);
   else document.documentElement.style.removeProperty('--accent');
 }
 function render() {
   const y = scrollY;
-  document.body.classList.toggle('no-character', !state);
+  const atHome = !state || view === 'home';
+  document.body.classList.toggle('no-character', atHome);
   // Color y emblema de la pantalla según la clase principal (theme.css).
   setClassTheme();
   copyFooter();
-  if (!state) {
-    PartyUI.welcome();
-    if (Cloud.enabled) {
-      $('#path-join').outerHTML = TableUI.welcomeCard();
-      $('#main').insertAdjacentHTML('beforeend', AccountUI.card('restore'));
-    } else $('#path-join')?.remove();
+  if (atHome) {
+    PartyUI.home();
     return;
   }
   // Los conjuros fijos de tu raza entran solos a la ficha (antes había que tocar «Agregar»).
@@ -506,11 +509,17 @@ function render() {
   }
   globalThis.Board?.refresh();
 }
+// Sin sección en la dirección (app.html a secas), el inicio; con una (#combat, #journal…), esa parte de la ficha.
+// La ficha de un PNJ que abre el DM (?aliado=) nunca muestra el inicio.
+function homeOrView() {
+  const want = location.hash.slice(1);
+  if (!want && !new URLSearchParams(location.search).has('aliado')) return 'home';
+  return navs.some(x => x[0] === want) ? want : 'combat';
+}
 function go() {
   hideToast();
   flushNotes();
-  view = location.hash.slice(1);
-  if (!navs.some(x => x[0] === view)) view = 'combat';
+  view = homeOrView();
   if (state && ['spells', 'gear', 'character', 'traits', 'class'].includes(view))
     globalThis.OfficialContent?.ready().catch(() => {});
   query = '';

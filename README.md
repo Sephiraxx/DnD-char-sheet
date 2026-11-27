@@ -11,9 +11,17 @@ Las nuevas mesas habilitan por defecto las fuentes reconocidas de la colección 
 `book-content-data.js` contiene datos de juego y metadatos compartidos; `book-content.js` incorpora las opciones verificadas antes de cargar las fichas. `node tools/build-shared-content.js "paquete-personal.json"` regenera los datos públicos a partir de la extracción validada; `--check` comprueba que coinciden. El archivo público no contiene páginas, PDFs ni prosa completa de los libros. Los nuevos archivos están incluidos en la caché del service worker para que todos reciban el mismo catálogo al actualizar la aplicación.
 
 
+## Portada e inicio de la app
+
+- **Portada (`index.html`, la dirección principal):** quien llega por primera vez ve qué hace la app, con un video de muestra (creador, mesa en vivo, conjuros y luz dinámica) y los botones **Probar gratis**, **Crear cuenta** y **Entrar**. Es liviana: no carga la ficha. El video se pausa con su botón, salta por capítulos y no arranca solo si el dispositivo pide reducir el movimiento o ahorrar datos. Sin servidor configurado, no ofrece cuentas.
+- **Quien ya usa la app** en ese navegador (tiene una cuenta, fichas, mesas de DM o entró alguna vez) va directo al inicio de la app. `?portada` muestra la portada igual (lo usa el enlace de la propia portada).
+- **Enlaces directos** a una sección de la ficha (`#combat`, `#journal`…), `?abrir`, `?aliado=…` o el regreso de la cuenta pasan de largo hasta la ficha (`app.html`), sin portada ni inicio. Las direcciones viejas (`index.html#journal`) siguen funcionando.
+- **Inicio de la app (`app.html`):** **Mis personajes** (seguir con el último, abrir otro, crear, importar), **Dirigí la partida** (tus mesas de DM, con su código, para abrirlas, y **Crear mesa**), **Unite a una mesa** con código y tu nombre, y tu cuenta. El logo de la ficha vuelve al inicio.
+- El video se regenera desde la app real: `node tools/showcase/record-all.js && python3 tools/showcase/compose.py` (necesita Playwright y ffmpeg). Escribe `assets/showcase.webm`, `assets/showcase.mp4`, el cuadro de portada y las imágenes de las funciones; si cambian los tiempos, actualizá `data-chapters` en `index.html` con lo que imprime.
+
 ## Crear y cambiar de personaje
 
-En la primera visita, elegí **Crear personaje** o **Importar una ficha JSON**. Si ya tenés una abierta, usá **Personajes → Crear personaje**. El creador ocupa toda la pantalla y va paso a paso, una decisión por pantalla: **Clase → Trasfondo → Raza → Características → Habilidades → Conjuros → Equipo → Detalles → Revisar**. Podés empezar en cualquier nivel del 1 al 20.
+En el inicio, elegí **Crear personaje** o **Importar ficha**. Desde una ficha abierta, usá **Personajes → Crear personaje**. El creador ocupa toda la pantalla y va paso a paso, una decisión por pantalla: **Clase → Trasfondo → Raza → Características → Habilidades → Conjuros → Equipo → Detalles → Revisar**. Podés empezar en cualquier nivel del 1 al 20.
 
 - Clases, trasfondos, razas y conjuros se eligen con tarjetas, buscador y filtros (por ejemplo «Pega fuerte», «Cura y apoya», «Para empezar»). Las razas se agrupan por familia: elegís «Tiefling» y después su variante.
 - Características: repartir valores fijos (la matriz estándar o los que defina el DM), compra de puntos, tirar 4d6 (digital o con tus dados físicos) o escribirlas. Los aumentos de raza se suman solos, incluidos los flexibles +2/+1 o +1/+1/+1, y se pueden reubicar con la opción de Tasha. Se resaltan las características clave de la clase.
@@ -22,7 +30,7 @@ En la primera visita, elegí **Crear personaje** o **Importar una ficha JSON**. 
 - El borrador se guarda en el dispositivo: «Salir» (o Esc) lo conserva y al volver se retoma. La aplicación no elige por vos; lo que quede pendiente aparece en la ficha.
 - Hay 13 clases: artificiero, bárbaro, bardo, clérigo, druida, guerrero, monje, paladín, explorador, pícaro, hechicero, brujo y mago.
 - Cada ficha tiene guardado, respaldo, historial de la sesión y borrador de subida independientes. Crear otra nunca reemplaza a las demás.
-- La primera visita muestra únicamente Crear personaje e Importar ficha. No crea un personaje de ejemplo. Si ya tenés una ficha guardada, abre la última seleccionada. Las fichas de la primera versión (sin clase) se convierten solas en fichas de bardo.
+- La primera visita no crea un personaje de ejemplo. El inicio ofrece seguir con la última ficha abierta. Las fichas de la primera versión (sin clase) se convierten solas en fichas de bardo.
 - Elegí si empezás con recursos completos o si necesitás confirmar los actuales. Los objetos escritos en el inventario no modifican la CA automáticamente.
 - **Personaje → Características y armadura** permite ajustar velocidad, fórmula de CA y característica de lanzamiento.
 - **Personaje → Habilidades** sigue el orden alfabético de la hoja, con la característica de cada una, y arriba las casillas de **Percepción, Investigación y Perspicacia pasivas** (10 + bono, +5 de Observador). La percepción pasiva también aparece en Combate, en la vista compacta y en la hoja impresa.
@@ -220,7 +228,7 @@ El texto SRD está sujeto a esa licencia. La licencia de los datos estructurados
 
 ## Inicio sin personaje (v5.1)
 
-La pantalla inicial es genérica. Cancelar el creador o abrir un enlace directo a Combate o Conjuros no carga una ficha de ejemplo. El selector solo lista fichas realmente guardadas; las entradas vacías de versiones anteriores se ignoran. Si hay una ficha ilegible, se conserva y se ofrece descargar sus datos. Verificado el inicio nuevo, creación, importación, conversión de fichas antiguas y uso sin conexión.
+El inicio es genérico. Cancelar el creador o abrir un enlace directo a Combate o Conjuros sin fichas guardadas lleva al inicio, sin cargar una ficha de ejemplo. El selector solo lista fichas realmente guardadas; las entradas vacías de versiones anteriores se ignoran. Si hay una ficha ilegible, se conserva y se ofrece descargar sus datos. Verificado el inicio nuevo, creación, importación, conversión de fichas antiguas y uso sin conexión.
 
 ## Desarrollo
 

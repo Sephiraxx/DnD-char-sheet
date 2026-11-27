@@ -1,4 +1,4 @@
-// Carga los scripts del navegador en un contexto de Node, en el mismo orden que index.html.
+// Carga los scripts del navegador en un contexto de Node, en el mismo orden que app.html.
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');

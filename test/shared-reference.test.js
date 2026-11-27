@@ -145,7 +145,7 @@ test('equivalent source IDs share filters while adventures stay out of selectors
     assert.ok(g.Campaign.enabled({ campaignSources: [canonical] }, { sourceKey: alias }));
   }
   for (const id of g.OfficialContent.adventureSources) assert.ok(!available.has(id));
-  for (const file of ['index.html', 'dm.html', 'board.html', 'compendium.html']) {
+  for (const file of ['app.html', 'dm.html', 'board.html', 'compendium.html']) {
     const html = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
     assert.ok(html.indexOf('shared-reference-data.js') < html.indexOf('official-content.js'), file);
     assert.ok(html.indexOf('content-index.js') > html.indexOf('official-content.js'), file);

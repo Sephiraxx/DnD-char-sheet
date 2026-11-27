@@ -114,7 +114,7 @@ const DmFriendlyUI = (() => {
     if (frame.dataset.ally !== id) {
       if (frame.contentWindow?.Cloud) await frame.contentWindow.Cloud.flush();
       frame.dataset.ally = id;
-      frame.src = './index.html?aliado=' + encodeURIComponent(localId) + '#combat';
+      frame.src = './app.html?aliado=' + encodeURIComponent(localId) + '#combat';
       refreshEnemyDamage();
     }
     panel.querySelector('h2').textContent = row.name;

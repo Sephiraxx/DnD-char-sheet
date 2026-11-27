@@ -244,6 +244,6 @@ test('generator is a DM tool and all required assets are cached for offline use'
   for (const file of ['encounter-generator.js', 'encounter-generator-ui.js', 'encounter-tables-data.js']) {
     assert.ok((file.endsWith('-data.js') ? ui : dm).includes('./' + file));
     assert.ok(sw.includes('./' + file));
-    assert.ok(!fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8').includes('./' + file));
+    assert.ok(!fs.readFileSync(path.join(__dirname, '../app.html'), 'utf8').includes('./' + file));
   }
 });

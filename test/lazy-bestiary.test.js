@@ -10,8 +10,7 @@ const ROOT = path.join(__dirname, '..');
 const html = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 
 test('la ficha, el DM y el tablero no descargan las criaturas al abrir; el catálogo sí', () => {
-  for (const f of ['index.html', 'dm.html', 'board.html'])
-    assert.doesNotMatch(html(f), /official-monsters-data\.js/, f);
+  for (const f of ['app.html', 'dm.html', 'board.html']) assert.doesNotMatch(html(f), /official-monsters-data\.js/, f);
   const c = html('compendium.html');
   assert.ok(c.indexOf('official-monsters-data.js') > c.indexOf('official-content-data.js'));
   assert.ok(c.indexOf('official-monsters-data.js') < c.indexOf('official-content.js'));
@@ -56,13 +55,13 @@ test('los textos de los libros llegan después y quedan igual que cargados al in
   );
   assert.equal(lazy.BookContentData.official.rules, eager.BookContentData.official.rules);
   assert.equal(lazy.BookContentData.official.itemDescriptions, eager.BookContentData.official.itemDescriptions);
-  for (const f of ['index.html', 'dm.html', 'board.html']) assert.doesNotMatch(html(f), /shared-reference-text\.js/, f);
+  for (const f of ['app.html', 'dm.html', 'board.html']) assert.doesNotMatch(html(f), /shared-reference-text\.js/, f);
   assert.match(html('compendium.html'), /shared-reference-text\.js/);
   assert.match(html('sw.js'), /'\.\/shared-reference-text\.js'/);
 });
 
 test('la ficha, el DM y el tablero abren sin los textos de reglas y conjuros; el catálogo los trae', () => {
-  for (const f of ['index.html', 'dm.html', 'board.html']) assert.doesNotMatch(html(f), /official-text-data\.js/, f);
+  for (const f of ['app.html', 'dm.html', 'board.html']) assert.doesNotMatch(html(f), /official-text-data\.js/, f);
   const c = html('compendium.html');
   assert.ok(c.indexOf('official-text-data.js') > c.indexOf('official-content-data.js'));
   assert.ok(c.indexOf('official-text-data.js') < c.indexOf('official-content.js'));

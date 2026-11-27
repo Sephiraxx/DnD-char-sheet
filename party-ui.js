@@ -88,11 +88,30 @@ const PartyUI = (() => {
       return x.name;
     }
   }
-  function welcome() {
-    document.title = 'Cuaderno de aventura · D&D 5e 2014';
+  // ---------- Inicio de la app ----------
+  // Lo que se ve al abrir la app sin ir a una sección de la ficha: tus personajes (seguir con el último, crear,
+  // importar), tus mesas de DM, unirse a una mesa con código y tu cuenta.
+  function savedSheet(x) {
+    try {
+      return JSON.parse(localStorage.getItem(x.key) || 'null');
+    } catch {
+      return null;
+    }
+  }
+  function sheetLabel(sheet) {
+    try {
+      return sheet ? MulticlassUI.label(sheet) : '';
+    } catch {
+      return '';
+    }
+  }
+  function home() {
+    document.title = 'Inicio · Cuaderno de aventura';
     document.getElementById('active-character-name').textContent = 'CUADERNO DE AVENTURA';
-    document.getElementById('breadcrumb').textContent = 'Empezá tu ficha';
-    document.getElementById('save-status').textContent = 'Sin personaje abierto';
+    document.getElementById('breadcrumb').textContent = 'Inicio';
+    document.getElementById('save-status').textContent = state
+      ? 'Guardado en este dispositivo'
+      : 'Sin personaje abierto';
     document.getElementById('nav').innerHTML = '';
     const pic = document.querySelector('.portrait');
     if (pic) pic.hidden = true;
@@ -102,16 +121,76 @@ const PartyUI = (() => {
     } catch (e) {
       storageIssue = e.message;
     }
-    // Portada: tres caminos (crear ficha, unirse a una mesa, dirigir) y las fichas guardadas.
+    const cloud = typeof Cloud !== 'undefined' && Cloud.enabled;
+    const active = state && items.find(x => x.key === KEY);
+    const others = items.filter(x => x !== active);
+    const row = x => {
+      const sheet = savedSheet(x),
+        name = sheet?.name || savedName(x),
+        label = sheetLabel(sheet);
+      return `<div class="list-row home-character"><div class="party-person">${Portrait.savedThumb(x.key, name)}<div><b>${esc(name)}</b>${label ? `<p class="small muted">${esc(label)}</p>` : ''}${copyTag(x.key)}</div></div>${button('Abrir', 'party-open', 'secondary', `data-id="${esc(x.id)}"`)}</div>`;
+    };
+    const tables = cloud ? Cloud.dmTables() : [];
+    const continueCard = active
+      ? `<section class="card home-continue"><div class="party-person">${Portrait.savedThumb(KEY, state.name)}<div><p class="eyebrow">SEGUIR DONDE QUEDASTE</p><h2>${esc(state.name)}</h2><p class="small muted">${esc(sheetLabel(state))}</p>${copyTag(KEY)}</div></div><a class="button" href="#combat" data-home-continue>Continuar</a></section>`
+      : '';
     document.getElementById('main').innerHTML =
-      `<section class="welcome-hero"><p class="eyebrow">D&D 5E · REGLAS 2014 · PARA JUGAR EN LA MESA</p><h1>Tu cuaderno de aventura.</h1><p>Fichas completas, tiradas con dados digitales o físicos, y una mesa compartida para que el DM y la party jueguen en vivo.</p>${accountReady() ? `<p class="welcome-account"><button type="button" class="text-btn" data-action="account">¿Ya tenés una cuenta? Entrá</button></p>` : ''}</section>
-      <div class="paths">
-        <section class="card path-card"><span class="path-icon" aria-hidden="true">✦</span><h2>Creá tu personaje</h2><p>Clase, raza, trasfondo, conjuros y equipo, paso a paso. Se guarda en este dispositivo${accountReady() ? ' y, con una cuenta, en la nube' : ''}.</p><div class="actions">${button('Crear personaje', 'party-create', '')}${button('Importar ficha', 'party-import')}${button('De D&D Beyond', 'interop-import')}</div></section>
-        <div id="path-join" class="path-slot"></div>
-        <section class="card path-card"><span class="path-icon" aria-hidden="true">⚑</span><h2>Dirigí la partida</h2><p>Creá una mesa, compartí el código y seguí a la party: PG, iniciativa, monstruos, botín y pedidos de tirada.</p><div class="actions"><a class="button secondary" href="./dm.html">Soy el DM</a></div></section>
+      `<section class="home-head"><div><p class="eyebrow">D&D 5E · REGLAS 2014</p><h1>${items.length ? 'Tu mesa te espera.' : 'Empezá tu aventura.'}</h1><p>${items.length ? 'Seguí con tu personaje, creá otro, dirigí tu mesa o sumate a la de tu DM.' : 'Creá tu primer personaje, sumate a la mesa de tu DM o armá la tuya.'}</p></div>${accountReady() ? '<div class="home-account"><button type="button" class="button secondary" data-action="account">Tu cuenta</button></div>' : ''}</section>
+      ${continueCard}
+      <section class="card home-characters" id="home-characters"><div class="card-header"><h2>Mis personajes</h2><div class="actions">${button('Crear personaje', 'party-create', '')}${button('Importar ficha', 'party-import')}${button('De D&D Beyond', 'interop-import')}</div></div>${
+        items.length
+          ? others.length
+            ? `<div class="party-list saved-list">${others.map(row).join('')}</div>`
+            : '<p class="small muted">Es tu único personaje en este dispositivo.</p>'
+          : `<p class="muted">Todavía no tenés personajes en este dispositivo. Clase, raza, trasfondo, conjuros y equipo, paso a paso${accountReady() ? '; con una cuenta se guardan también en la nube' : ''}.</p>`
+      }</section>
+      <div class="paths home-paths">
+        <section class="card path-card" id="home-dm"><span class="path-icon" aria-hidden="true">⚑</span><h2>Dirigí la partida</h2>${
+          tables.length
+            ? `<div class="party-list home-tables">${tables
+                .map(
+                  t =>
+                    `<div class="list-row"><div><b>${esc(t.name)}</b><p class="small muted">Código <b class="table-code">${esc(t.code)}</b></p></div><a class="button secondary" href="./dm.html#${encodeURIComponent(t.id)}">Abrir</a></div>`,
+                )
+                .join('')}</div>`
+            : '<p>Creá una mesa, compartí el código y seguí a la party: PG, iniciativa, monstruos, botín y pedidos de tirada.</p>'
+        }<div class="actions"><a class="button ${tables.length ? 'secondary' : ''}" href="./dm.html#nueva">Crear mesa</a>${tables.length ? '<a class="button secondary" href="./dm.html">Pantalla del DM</a>' : ''}</div></section>
+        ${cloud ? TableUI.welcomeCard() : ''}
       </div>
-      ${items.length ? `<section class="card section-space"><h2>Tus fichas</h2><div class="party-list saved-list">${items.map(x => `<div class="list-row"><div class="party-person">${Portrait.savedThumb(x.key, savedName(x))}<div><b>${esc(savedName(x))}</b>${copyTag(x.key)}</div></div>${button('Abrir', 'party-open', 'secondary', `data-id="${esc(x.id)}"`)}</div>`).join('')}</div></section>` : ''}
+      ${cloud ? AccountUI.card('restore') : ''}
       ${storageIssue ? `<div class="banner"><p>${esc(storageIssue)}</p>${rawBroken ? button('Descargar datos guardados', 'raw-backup') : ''}</div>` : ''}`;
+    // Las mesas de DM de tu cuenta (de otros dispositivos) se suman al llegar.
+    if (cloud && !home.merging) {
+      home.merging = true;
+      Cloud.myDmTables()
+        .then(rows => {
+          if (rows.some(r => !tables.some(t => t.id === r.id)) && document.getElementById('home-dm')) home();
+        })
+        .catch(() => {});
+    }
+    accountIntent();
+  }
+  // Desde la portada: «?cuenta=entrar» o «?cuenta=crear» abre el formulario de la cuenta.
+  function accountIntent() {
+    const want = new URLSearchParams(location.search).get('cuenta');
+    if (!['entrar', 'crear'].includes(want)) return;
+    window.history.replaceState(null, '', location.pathname + location.hash);
+    const started = performance.now();
+    (function wait() {
+      const card = document.getElementById('account-restore'),
+        form = card?.querySelector(
+          want === 'crear' ? 'form[data-account="create"], form[data-account="link"]' : 'form[data-account="login"]',
+        );
+      if (!form) {
+        if (card && performance.now() - started < 4000) requestAnimationFrame(wait);
+        else card?.scrollIntoView({ block: 'start' });
+        return;
+      }
+      const fold = form.closest('details');
+      if (fold) fold.open = true;
+      card.scrollIntoView({ block: 'start' });
+      form.querySelector('input[name=email]')?.focus({ preventScroll: true });
+    })();
   }
   function creationSummary(d, nextStep = false) {
     const p = CreationSkills.plan(d);
@@ -1385,7 +1464,7 @@ const PartyUI = (() => {
   }
   return {
     decorate,
-    welcome,
+    home,
     list,
     account,
     accountReady,

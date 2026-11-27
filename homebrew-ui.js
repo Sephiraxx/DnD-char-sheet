@@ -56,7 +56,7 @@ const HomebrewUI = (() => {
       return;
     }
     if (!signedIn()) {
-      box.innerHTML = `<h2>Homebrew</h2><p>Creá clases, subclases, conjuros y criaturas propias. Se guardan en tu cuenta y las podés compartir con una mesa.</p><p class="small">Para empezar, entrá o creá tu cuenta en <a href="./">Crear / abrir ficha</a> → «¿Ya tenés una cuenta?» y volvé a esta página.</p>`;
+      box.innerHTML = `<h2>Homebrew</h2><p>Creá clases, subclases, conjuros y criaturas propias. Se guardan en tu cuenta y las podés compartir con una mesa.</p><p class="small">Para empezar, entrá o creá tu cuenta en <a href="./app.html">Crear / abrir ficha</a> → «¿Ya tenés una cuenta?» y volvé a esta página.</p>`;
       return;
     }
     const anon = session()?.account === 'browser';
@@ -76,7 +76,7 @@ const HomebrewUI = (() => {
     const tables = H.state.tables;
     box.innerHTML = `<div class="card-header"><h2>Homebrew</h2><div class="actions">${['class', 'subclass', 'spell', 'feat', 'creature'].map(k => `<button type="button" class="button${k === 'class' ? '' : ' secondary'}" data-hb="new" data-kind="${k}" ${books.length ? '' : 'disabled'}>${k === 'spell' ? 'Nuevo' : 'Nueva'} ${H.LABEL[k].toLowerCase()}</button>`).join('')}</div></div>
       <p class="small muted">Lo que crees se guarda en tu cuenta. Compartí una colección con una mesa para que sus jugadores vean las clases, subclases y conjuros; las criaturas quedan solo para vos. En el catálogo, elegí «Homebrew» en Libro / fuente para ver solo lo tuyo.</p>
-      ${anon ? '<p class="small"><b>Tu acceso es solo de este navegador.</b> Creá una cuenta con email en <a href="./">Personajes → Tu cuenta</a> para no perder tu homebrew si se borran los datos del navegador.</p>' : ''}
+      ${anon ? '<p class="small"><b>Tu acceso es solo de este navegador.</b> Creá una cuenta con email en <a href="./app.html">Personajes → Tu cuenta</a> para no perder tu homebrew si se borran los datos del navegador.</p>' : ''}
       ${H.state.error ? `<p class="small hb-error">${esc(H.state.error)}</p>` : ''}
       ${
         !H.state.loaded

@@ -113,7 +113,7 @@ test('every app entry point and the offline cache load supplied spell references
   const before = g.OfficialContent.spellTexts.size;
   g.OfficialContent.apply();
   assert.equal(g.OfficialContent.spellTexts.size, before);
-  for (const file of ['index.html', 'dm.html', 'board.html', 'compendium.html']) {
+  for (const file of ['app.html', 'dm.html', 'board.html', 'compendium.html']) {
     const html = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
     assert.ok(html.indexOf('./shared-spell-data.js') > -1, file);
     assert.ok(html.indexOf('./shared-spell-data.js') < html.indexOf('./official-content.js'), file);

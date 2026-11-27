@@ -48,6 +48,6 @@ test('la cuenta se ofrece fuera de Mesa y sin hablar de «ficha en una mesa»', 
   const party = fs.readFileSync(path.join(ROOT, 'party-ui.js'), 'utf8');
   assert.match(party, /data-action="account"/);
   assert.doesNotMatch(party, /Las demás quedan en este navegador/);
-  const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const html = fs.readFileSync(path.join(ROOT, 'app.html'), 'utf8');
   assert.match(html, /id="copy-footer"/);
 });
