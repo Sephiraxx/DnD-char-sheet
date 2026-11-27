@@ -81,6 +81,7 @@
       vision: {
         los: g.vision?.los === true,
         own: g.vision?.own === true,
+        memory: g.vision?.memory === true,
         dark: g.vision?.dark === true,
         light: Math.max(0, Math.min(600, Math.round(Number(g.vision?.light ?? 40)) || 0)),
       },
@@ -679,10 +680,16 @@
     for (const line of [...(d.line_of_sight || []), ...(d.objects_line_of_sight || [])]) add(line || []);
     for (const portal of d.portals || [])
       if (portal.bounds?.length >= 2) add(portal.bounds, portal.closed === false ? WALL.open : WALL.door);
+    // Luces del archivo: posición y radio en casillas (5 pies cada una).
+    const lights = (Array.isArray(d.lights) ? d.lights : [])
+      .map(l => [...pt(l?.position || {}), Math.round((Number(l?.range) || 0) * 5)])
+      .filter(([x, y, ft]) => Number.isFinite(x) && Number.isFinite(y) && ft > 0);
+    const grid = normGrid({ cols: r.map_size.x, rows: r.map_size.y, size: r.pixels_per_grid, ox: 0, oy: 0 });
     return {
-      grid: normGrid({ cols: r.map_size.x, rows: r.map_size.y, size: r.pixels_per_grid, ox: 0, oy: 0 }),
+      grid,
       image: 'data:image/png;base64,' + String(d.image).replace(/^data:[^,]*,/, ''),
       walls: walls.slice(0, 4000),
+      lights: normLights(grid, lights),
     };
   }
   const round2 = n => Math.round(n * 100) / 100;
@@ -1064,24 +1071,67 @@
     const m = /^light:(\d{1,3})$/.exec(String(stage || ''));
     return m ? Math.max(0, Math.min(300, Number(m[1]))) : 0;
   }
+  // Luces fijas del mapa (invisibles: lámparas del dibujo, luces importadas): [[x, y, pies], …].
+  const MAX_FIXED_LIGHTS = 200;
+  function normLights(g, raw) {
+    if (!Array.isArray(raw)) return [];
+    const out = [];
+    for (const l of raw) {
+      if (!Array.isArray(l)) continue;
+      const [x, y, ft] = l.map(Number);
+      if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > g.cols || y > g.rows) continue;
+      const feet = Math.max(5, Math.min(300, Math.round((Number.isFinite(ft) ? ft : 0) / 5) * 5));
+      out.push([round2(x), round2(y), feet]);
+      if (out.length >= MAX_FIXED_LIGHTS) break;
+    }
+    return out;
+  }
+  // Luz de los monstruos (la lleva el mapa, porque las fichas de criaturas usan su propio campo): { idDeFicha: pies }.
+  function normTokenLights(raw) {
+    const out = {};
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+    for (const [id, ft] of Object.entries(raw).slice(0, 500)) {
+      const feet = Math.round(Number(ft));
+      if (/^[\w-]{1,64}$/.test(id) && feet > 0 && feet <= 300) out[id] = feet;
+    }
+    return out;
+  }
+  // Zonas de luz pintadas, una letra por casilla: «b» bien iluminada, «d» penumbra, «n» oscura, «.» como el mapa.
+  const AMBIENT = [
+    ['b', 'Iluminada', 2],
+    ['d', 'Penumbra', 1],
+    ['n', 'Oscura', 0],
+  ];
+  const ambientCells = (g, s) => cells(g, String(s || '').replace(/[^.bdn]/g, '.'));
+  // ¿La zona pintada cambia algo? En un mapa iluminado, solo la penumbra y la oscuridad; a oscuras, cualquier zona.
+  const ambientMatters = (s, dark) => (dark ? /[bdn]/ : /[dn]/).test(s || '');
+  function ambientLevels(g, s, dark) {
+    const t = ambientCells(g, s),
+      base = dark ? 0 : 2,
+      out = new Uint8Array(g.cols * g.rows);
+    for (let i = 0; i < out.length; i++) out[i] = t[i] === 'b' ? 2 : t[i] === 'd' ? 1 : t[i] === 'n' ? 0 : base;
+    return out;
+  }
   // Luz en un mapa a oscuras, casilla por casilla: 0 no se ve, 1 penumbra, 2 bien iluminada.
   // viewers: [{ x, y, range }] con range = visión en la oscuridad (casillas); lights: [{ x, y, bright, dim }].
   // Se ve lo que alguna luz alumbra y el observador tiene a la vista (por lejos que esté), y lo que está
   // al alcance de su visión en la oscuridad: la oscuridad como penumbra y la penumbra como luz brillante.
-  function sightLevels(g, terrain, walls, viewers, lights, clouds = []) {
+  // ambient (opcional): la luz que ya tiene cada casilla (zonas pintadas), 0 a 2.
+  function sightLevels(g, terrain, walls, viewers, lights, clouds = [], ambient = null) {
     const n = g.cols * g.rows,
       out = new Uint8Array(n);
     if (!viewers.length) return out;
     const dark = visibleCells(g, terrain, walls, viewers, clouds),
-      far = lights.length
-        ? visibleCells(
-            g,
-            terrain,
-            walls,
-            viewers.map(v => ({ ...v, range: Infinity })),
-            clouds,
-          )
-        : null,
+      far =
+        lights.length || ambient?.some(Boolean)
+          ? visibleCells(
+              g,
+              terrain,
+              walls,
+              viewers.map(v => ({ ...v, range: Infinity })),
+              clouds,
+            )
+          : null,
       dim = lights.length
         ? visibleCells(
             g,
@@ -1099,7 +1149,7 @@
           )
         : null;
     for (let i = 0; i < n; i++) {
-      const lit = dim?.[i] ? (bright?.[i] ? 2 : 1) : 0;
+      const lit = Math.max(dim?.[i] ? (bright?.[i] ? 2 : 1) : 0, ambient?.[i] || 0);
       let level = far?.[i] ? lit : 0;
       if (dark[i]) level = Math.max(level, lit ? 2 : 1);
       out[i] = level;
@@ -1127,6 +1177,13 @@
   Object.assign(api, {
     LIGHTS,
     lightFeet,
+    MAX_FIXED_LIGHTS,
+    normLights,
+    normTokenLights,
+    AMBIENT,
+    ambientCells,
+    ambientMatters,
+    ambientLevels,
     sight,
     sightLevels,
     visibilityPolygon,

@@ -611,3 +611,41 @@ test('niveles de luz: brillante cerca de la antorcha, penumbra después; la visi
   assert.equal(at(B.sightLevels(grid, '', [], [{ x: 2.5, y: 1.5, range: 6 }], []), 4), 1);
   assert.equal(B.sightLevels(grid, '', [], [], torch).some(Boolean), false);
 });
+
+test('zonas de luz: pintadas sobre un mapa a oscuras o iluminado', () => {
+  const grid = B.normGrid({ cols: 4, rows: 1 });
+  assert.equal(B.ambientCells(grid, 'bx'), 'b...');
+  assert.deepEqual(Array.from(B.ambientLevels(grid, 'bdn.', true)), [2, 1, 0, 0]);
+  assert.deepEqual(Array.from(B.ambientLevels(grid, 'bdn.', false)), [2, 1, 0, 2]);
+  assert.ok(B.ambientMatters('..b.', true) && !B.ambientMatters('..b.', false) && B.ambientMatters('n', false));
+  // Una zona iluminada lejos se ve si está a la vista, aunque no haya ninguna luz.
+  const row = B.normGrid({ cols: 20, rows: 1 });
+  const lit = B.ambientLevels(row, '.'.repeat(15) + 'bbbbd', true);
+  const levels = B.sightLevels(row, '', [], [{ x: 0.5, y: 0.5, range: 0 }], [], [], lit);
+  assert.deepEqual(Array.from(levels.slice(10)), [0, 0, 0, 0, 0, 2, 2, 2, 2, 1]);
+  const walled = B.sightLevels(row, '', [[12, 0, 12, 1, 0]], [{ x: 0.5, y: 0.5, range: 0 }], [], [], lit);
+  assert.equal(walled[16], 0, 'detrás de una pared no');
+});
+
+test('luces fijas y luz de los monstruos: se descartan las inválidas', () => {
+  const grid = B.normGrid({ cols: 10, rows: 10 });
+  assert.deepEqual(B.normLights(grid, [[1, 2, 40], [11, 2, 40], [1.234, 2, 33], 'x', [3, 3, 9999]]), [
+    [1, 2, 40],
+    [1.23, 2, 35],
+    [3, 3, 300],
+  ]);
+  assert.deepEqual(B.normTokenLights({ abc: 40, 'a b': 40, def: 0, ghi: 999 }), { abc: 40 });
+  assert.deepEqual(B.normTokenLights([1]), {});
+});
+
+test('importa Universal VTT: las luces del archivo quedan como luces fijas', () => {
+  const m = B.parseUVTT({
+    resolution: { map_origin: { x: 1, y: 0 }, map_size: { x: 8, y: 8 }, pixels_per_grid: 70 },
+    lights: [
+      { position: { x: 3, y: 4 }, range: 6 },
+      { position: { x: 2, y: 2 }, range: 0 },
+    ],
+    image: 'iVBORw0KGgo=',
+  });
+  assert.deepEqual(m.lights, [[2, 4, 30]]);
+});

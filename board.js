@@ -69,6 +69,12 @@
     wallHover: -1, // tramo bajo el puntero (cambiar tipo o borrar)
     wallDraw: null, // tramo que se está arrastrando
     wallUndo: [],
+    // Luz del mapa: zonas pintadas (una letra por casilla), luces fijas invisibles y la luz de cada monstruo.
+    ambient: '',
+    fixedLights: [], // [[x, y, pies], …]
+    tokenLights: {}, // { idDeFicha: pies } (monstruos)
+    lightMode: 'b', // b / d / n / '.' pintan zonas; 'place' y 'remove' ponen o quitan luces fijas
+    lightFeet: 40,
     sel: null,
     selected: new Set(),
     multiSelect: false,
@@ -316,6 +322,9 @@
     S.grid = BC.normGrid(m?.grid || {});
     S.terrain = BC.cells(S.grid, m?.terrain?.cells || '');
     S.walls = BC.normWalls(m?.terrain?.walls);
+    S.ambient = BC.ambientCells(S.grid, m?.terrain?.ambient);
+    S.fixedLights = BC.normLights(S.grid, m?.terrain?.lights);
+    S.tokenLights = BC.normTokenLights(m?.terrain?.tokenLights);
     S.links = BC.links(S.grid, S.terrain, m?.terrain?.links);
     S.props = BP ? BP.norm(S.grid, m?.terrain?.props) : [];
     if (typeof Sound !== 'undefined') Sound.ambient(shown || STANDALONE ? S.grid.ambient : '');
@@ -390,7 +399,18 @@
   }
   const fogPatch = () => ({ fog: { on: S.fogOn, revealed: BC.fogEncode(S.fog) } });
   const terrainPatch = () => ({
-    terrain: { cells: S.terrain, walls: S.walls, links: BC.links(S.grid, S.terrain, S.links), props: S.props },
+    terrain: {
+      cells: S.terrain,
+      walls: S.walls,
+      links: BC.links(S.grid, S.terrain, S.links),
+      props: S.props,
+      ambient: /[bdn]/.test(S.ambient) ? S.ambient : '',
+      lights: S.fixedLights,
+      // Solo la luz de monstruos que siguen en este mapa.
+      tokenLights: Object.fromEntries(
+        Object.entries(S.tokenLights).filter(([id]) => mapTokens().some(t => t.id === id && t.kind === 'monster')),
+      ),
+    },
   });
 
   // ---------- Fichas automáticas (DM): la party y las criaturas del combate ----------
@@ -653,6 +673,7 @@
     if (m.t === 'refresh' && !S.isDM) reload();
     if (m.t === 'door' && m.map === S.mapId) onDoorAsk(m);
     if (m.t === 'wall-door' && m.map === S.mapId) onWallDoorAsk(m);
+    if (m.t === 'explored-reset' && typeof m.map === 'string') forgetExplored(m.map);
     if (m.t === 'door-locked' && m.map === S.mapId && m.to === S.me?.id) toast('Esa puerta está trabada.');
     if (m.t === 'view' && S.follow && m.map === S.mapId) fitRect(m.x, m.y, m.w, m.h);
     S.dirty = true;
@@ -2520,6 +2541,7 @@
       ctx.stroke();
     }
     drawWalls();
+    drawLightMarks();
     // Muebles y objetos de escena
     const furniture = propsArt();
     if (furniture) ctx.drawImage(furniture, 0, 0, furniture.width, furniture.height, o.x, o.y, g.cols * c, g.rows * c);
@@ -4023,6 +4045,13 @@
         paintBrush(cell);
       } else S.drag = { rect: { a: cell, b: cell }, paint: true };
     } else if (tool === 'walls' && dmView()) S.drag = { wall: { down: w, from: drawingWalls() ? wallPoint(w) : null } };
+    else if (tool === 'light' && dmView()) {
+      if (['place', 'remove'].includes(S.lightMode)) S.drag = { lightTap: w };
+      else {
+        S.drag = { brush: true };
+        ambientBrush(cell);
+      }
+    }
     S.dirty = true;
   });
   onCanvas('pointermove', e => {
@@ -4107,7 +4136,7 @@
     } else if (d.rect) d.rect.b = cell;
     else if (d.prop) propDrag(d.prop, cell);
     else if (d.propErase) propErase(cell);
-    else if (d.brush) S.tool === 'fog' ? fogBrush(cell) : paintBrush(cell);
+    else if (d.brush) S.tool === 'fog' ? fogBrush(cell) : S.tool === 'light' ? ambientBrush(cell) : paintBrush(cell);
     else if (d.wall && press?.moved) {
       if (d.wall.from) S.wallDraw = { from: d.wall.from, to: wallPoint(w) };
       else if (S.wallMode === 'erase') wallEraseAt(w);
@@ -4162,7 +4191,9 @@
       )
         tapToken(d.tap);
     } else if (d?.prop) propUp(d.prop);
-    else if (d?.wall) {
+    else if (d?.lightTap) {
+      if (!press?.moved && e.type !== 'pointercancel') lightTap(d.lightTap);
+    } else if (d?.wall) {
       const drawn = S.wallDraw;
       S.wallDraw = null;
       if (e.type === 'pointercancel') S.dirty = true;
@@ -4436,16 +4467,19 @@
   }
   // Fichas que dan luz en este mapa: [{ x, y (centro, en casillas), range (casillas), feet }].
   // La mitad del radio es luz brillante y el resto penumbra (antorcha: 20 + 20 pies).
+  // Pies de luz que lleva una ficha: los personajes, PNJ y objetos la guardan en la ficha; los monstruos, en el mapa.
+  const tokenLight = t => BC.lightFeet(t.stage) || (t.kind === 'monster' ? S.tokenLights[t.id] || 0 : 0);
   function lightSources() {
     return mapTokens()
-      .filter(t => !t.hidden && BC.lightFeet(t.stage))
+      .filter(t => !t.hidden && tokenLight(t))
       .map(t => ({
         x: t.x + (t.size || 1) / 2,
         y: t.y + (t.size || 1) / 2,
-        feet: BC.lightFeet(t.stage),
-        range: BC.lightFeet(t.stage) / S.grid.feet,
+        feet: tokenLight(t),
+        range: tokenLight(t) / S.grid.feet,
       }))
-      .concat(BP ? BP.lights(S.props).map(l => ({ ...l, range: l.feet / S.grid.feet })) : []);
+      .concat(BP ? BP.lights(S.props).map(l => ({ ...l, range: l.feet / S.grid.feet })) : [])
+      .concat(S.fixedLights.map(([x, y, feet]) => ({ x, y, feet, range: feet / S.grid.feet })));
   }
   // Luces de un mapa a oscuras: las de fichas y muebles, más la que lleva cada personaje («Luz que lleva la party»),
   // salvo que su propia luz sea mayor.
@@ -4454,7 +4488,7 @@
       own = lightSources(),
       carried = v.light
         ? mapTokens()
-            .filter(t => t.kind === 'pc' && !t.hidden && BC.lightFeet(t.stage) < v.light)
+            .filter(t => t.kind === 'pc' && !t.hidden && tokenLight(t) < v.light)
             .map(t => ({
               x: t.x + (t.size || 1) / 2,
               y: t.y + (t.size || 1) / 2,
@@ -4480,7 +4514,8 @@
     const v = S.grid.vision || {};
     const clouds = ignoreClouds ? [] : spellClouds;
     if (!v.los && !clouds.length) return null;
-    const dark = !!(v.los && v.dark),
+    // Hay que calcular la luz si el mapa está a oscuras o si tiene zonas pintadas en penumbra u oscuras.
+    const dark = !!(v.los && (v.dark || BC.ambientMatters(S.ambient, false))),
       lights = dark ? sceneLights() : [],
       viewers = viewerTokens().map(t => ({
         x: t.x + (t.size || 1) / 2,
@@ -4502,14 +4537,22 @@
       '|' +
       clouds.map(p => [p.x, p.y, p.r].join(',')).join(';');
     const sight = sightCache[Number(ignoreClouds)];
-    if (sight.key !== key || sight.terrain !== S.terrain || sight.walls !== S.walls) {
+    if (
+      sight.key !== key ||
+      sight.terrain !== S.terrain ||
+      sight.walls !== S.walls ||
+      sight.ambientCells !== S.ambient
+    ) {
       const terrain = v.los ? S.terrain : '',
         walls = v.los ? S.walls : [],
-        levels = dark ? BC.sightLevels(S.grid, terrain, walls, viewers, lights, clouds) : null;
+        ambient = dark && BC.ambientMatters(S.ambient, !!v.dark) ? BC.ambientLevels(S.grid, S.ambient, !!v.dark) : null,
+        levels = dark ? BC.sightLevels(S.grid, terrain, walls, viewers, lights, clouds, ambient) : null;
       Object.assign(sight, {
         key,
         terrain: S.terrain,
         walls: S.walls,
+        ambientCells: S.ambient,
+        ambient,
         los: !!v.los,
         dark,
         viewers,
@@ -4518,8 +4561,63 @@
         bits: levels ? levels.map(l => (l ? 1 : 0)) : BC.visibleCells(S.grid, terrain, walls, viewers, clouds),
         mask: null,
       });
+      if (!ignoreClouds || !clouds.length) remember(sight.bits);
     }
     return sight;
+  }
+  // ---------- Lo explorado: cada pantalla de jugador recuerda lo que la party ya vio ----------
+  // Se guarda en el dispositivo (un bit por casilla). Se ve en penumbra y sin fichas.
+  const explored = { tag: '', bits: null, timer: 0 };
+  const exploredStore = () => `dnd-board-explored-${S.id}-${S.mapId}`;
+  function exploredBits() {
+    if (!S.grid.vision?.memory || !playerView() || !S.mapId) return null;
+    const g = S.grid,
+      size = `${g.cols}x${g.rows}`,
+      tag = `${S.id}|${S.mapId}|${size}`;
+    if (explored.tag !== tag) {
+      clearTimeout(explored.timer);
+      Object.assign(explored, { tag, bits: new Uint8Array(g.cols * g.rows) });
+      try {
+        const raw = localStorage.getItem(exploredStore()) || '';
+        if (raw.startsWith(size + ':')) {
+          const packed = BC.fogBits(g, raw.slice(size.length + 1));
+          for (let i = 0; i < explored.bits.length; i++) explored.bits[i] = (packed[i >> 3] >> (i & 7)) & 1;
+        }
+      } catch {}
+    }
+    return explored.bits;
+  }
+  function remember(bits) {
+    const e = exploredBits();
+    if (!e || !bits) return;
+    let changed = false;
+    for (let i = 0; i < e.length; i++)
+      if (bits[i] && !e[i]) {
+        e[i] = 1;
+        changed = true;
+      }
+    if (!changed) return;
+    clearTimeout(explored.timer);
+    const key = exploredStore(),
+      size = `${S.grid.cols}x${S.grid.rows}`;
+    explored.timer = setTimeout(() => {
+      const packed = new Uint8Array(Math.ceil(e.length / 8));
+      for (let i = 0; i < e.length; i++) if (e[i]) packed[i >> 3] |= 1 << (i & 7);
+      try {
+        localStorage.setItem(key, size + ':' + BC.fogEncode(packed));
+      } catch {}
+    }, 1200);
+  }
+  function forgetExplored(mapId) {
+    try {
+      localStorage.removeItem(`dnd-board-explored-${S.id}-${mapId}`);
+    } catch {}
+    if (mapId === S.mapId) {
+      clearTimeout(explored.timer);
+      explored.tag = '';
+      for (const c of sightCache) c.key = '';
+      S.dirty = true;
+    }
   }
   // ---------- Máscara de visión: bordes suaves siguiendo las paredes ----------
   // Se arma en coordenadas del mapa (unos píxeles por casilla) y solo cuando cambia lo que se ve.
@@ -4579,6 +4677,31 @@
       } else cx.fillStyle = '#000';
       cx.fill();
     };
+    // Casillas que cumplen `keep`, pintadas por tramos de fila.
+    const cellRuns = (cx, keep) => {
+      cx.fillStyle = '#000';
+      for (let y = 0; y < g.rows; y++) {
+        let start = -1;
+        for (let x = 0; x <= g.cols; x++) {
+          const on = x < g.cols && keep(y * g.cols + x);
+          if (on && start < 0) start = x;
+          if (!on && start >= 0) {
+            cx.fillRect(start * res, y * res, (x - start) * res, res);
+            start = -1;
+          }
+        }
+      }
+    };
+    // Lo mismo, con el borde difuminado: se arma en una capa aparte y se pasa entera, sin costuras entre filas.
+    const softCells = (cx, keep, alpha = 1) => {
+      const layer = maskLayer('cells', W, H);
+      cellRuns(layer, keep);
+      cx.save();
+      cx.globalAlpha = alpha;
+      if ('filter' in cx) cx.filter = `blur(${Math.max(1, res * 0.35)}px)`;
+      cx.drawImage(layer.canvas, 0, 0);
+      cx.restore();
+    };
     // Las casillas de muro o roca que se ven (su cara) se muestran enteras.
     const solidCells = (cx, min) => {
       cx.fillStyle = '#000';
@@ -4600,6 +4723,13 @@
     dark.globalAlpha = 1;
     dark.fillStyle = '#05090b';
     dark.fillRect(0, 0, W, H);
+    // Lo ya explorado se ve en penumbra (sin fichas, que dependen de lo que se ve ahora).
+    const memory = exploredBits();
+    if (memory) {
+      dark.globalCompositeOperation = 'destination-out';
+      softCells(dark, i => memory[i], 0.3);
+      dark.globalCompositeOperation = 'source-over';
+    }
     const los = maskLayer('los', W, H);
     for (const v of state.viewers) fill(los, sightPolygon(v, Infinity));
     let grey = null;
@@ -4616,6 +4746,11 @@
         const poly = sightPolygon(l, l.dim);
         fill(dim, poly, l, l.dim);
         fill(bright, poly, l, l.bright);
+      }
+      // Zonas pintadas: ya tienen su luz, sin depender de ninguna fuente.
+      if (state.ambient) {
+        softCells(dim, i => state.ambient[i] >= 1);
+        softCells(bright, i => state.ambient[i] >= 2);
       }
       for (const v of state.viewers) fill(dv, sightPolygon(v, Infinity), v, v.range);
       // Visión en la oscuridad sin ninguna luz: en gris.
@@ -4815,6 +4950,82 @@
   function paintBrush(cell) {
     S.terrain = BC.paint(S.grid, S.terrain, BC.brush(cell.x, cell.y, S.radius), S.paintCode);
     saveSoon(terrainPatch());
+  }
+
+  // ---------- Luz del mapa: zonas pintadas y luces fijas ----------
+  function lightHint() {
+    if (S.lightMode === 'place') return 'Tocá donde hay una lámpara, una vela o un brasero en el dibujo.';
+    if (S.lightMode === 'remove') return 'Tocá una luz fija para quitarla.';
+    return 'Pintá las zonas con luz propia: un patio de día, una sala con antorchas, una cueva oscura.';
+  }
+  function ambientBrush(cell) {
+    S.ambient = BC.paint(S.grid, S.ambient, BC.brush(cell.x, cell.y, S.radius), S.lightMode);
+    saveSoon(terrainPatch());
+  }
+  function lightTap(w) {
+    const f = toCellF(w);
+    if (S.lightMode === 'place') {
+      if (S.fixedLights.length >= BC.MAX_FIXED_LIGHTS)
+        return toast(`Este mapa ya tiene el máximo de ${BC.MAX_FIXED_LIGHTS} luces fijas.`);
+      const x = Math.round(f.x * 2) / 2,
+        y = Math.round(f.y * 2) / 2;
+      S.fixedLights = BC.normLights(S.grid, [...S.fixedLights, [x, y, S.lightFeet]]);
+    } else {
+      let best = -1,
+        dist = Math.max(0.5, touchReach(20));
+      S.fixedLights.forEach(([x, y], i) => {
+        const d = Math.hypot(x - f.x, y - f.y);
+        if (d <= dist) [best, dist] = [i, d];
+      });
+      if (best < 0) return;
+      S.fixedLights = S.fixedLights.filter((_, i) => i !== best);
+    }
+    saveSoon(terrainPatch());
+    panel();
+    S.dirty = true;
+  }
+  // Para el DM: las zonas pintadas (con la herramienta) y las luces fijas, que los jugadores no ven.
+  const AMBIENT_TINT = { b: 'rgba(255,220,120,0.24)', d: 'rgba(255,150,60,0.18)', n: 'rgba(20,30,80,0.42)' };
+  function drawLightMarks() {
+    if (!dmView()) return;
+    const c = cellPx(),
+      o = origin(),
+      k = 1 / S.view.s,
+      g = S.grid,
+      tool = S.tool === 'light';
+    if (tool)
+      for (const code of 'bdn') {
+        ctx.fillStyle = AMBIENT_TINT[code];
+        ctx.beginPath();
+        for (let i = 0; i < S.ambient.length; i++)
+          if (S.ambient[i] === code) ctx.rect(o.x + (i % g.cols) * c, o.y + Math.floor(i / g.cols) * c, c, c);
+        ctx.fill();
+      }
+    if (!tool && !S.showWalls) return;
+    ctx.save();
+    for (const [x, y, feet] of S.fixedLights) {
+      const px = o.x + x * c,
+        py = o.y + y * c;
+      if (tool) {
+        ctx.strokeStyle = 'rgba(255,214,130,0.6)';
+        ctx.lineWidth = 2 * k;
+        ctx.setLineDash([6 * k, 5 * k]);
+        ctx.beginPath();
+        ctx.arc(px, py, (feet / g.feet) * c, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.fillStyle = 'rgba(20,12,6,0.85)';
+      ctx.beginPath();
+      ctx.arc(px, py, 9 * k, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffd27a';
+      ctx.font = `700 ${12 * k}px Inter, system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✦', px, py + 0.5 * k);
+    }
+    ctx.restore();
   }
 
   // ---------- Paredes dibujadas a mano (sobre todo para mapas de imagen) ----------
@@ -5431,6 +5642,7 @@
         ? t('fog', '🌫', 'Niebla') +
           t('paint', '🧱', 'Terreno') +
           t('walls', '🚪', 'Paredes') +
+          t('light', '💡', 'Luz') +
           (BP ? t('props', '🪑', 'Muebles') : '') +
           t('tokens', '♟', 'Fichas') +
           t('enc', '⚔', 'Encuentros')
@@ -5457,6 +5669,7 @@
         fog: 'Pintá para revelar u ocultar. «Sala» revela un cuarto entero hasta sus muros.',
         paint: 'Elegí un terreno y pintá. «Sala» traza muros alrededor y rellena el piso.',
         walls: wallHint(),
+        light: lightHint(),
         props: 'Elegí una pieza y tocá el mapa para colocarla. Con «Mover», arrastrala; un toque la gira.',
         tokens: 'Tocá una ficha para editarla.',
         enc: S.group
@@ -5517,6 +5730,28 @@
         .join(
           '',
         )}</div>${S.paintMode === 'brush' ? `<div class="chips"><span class="small muted">Pincel</span>${sizes}</div>` : ''}`;
+    } else if (S.tool === 'light' && dmView()) {
+      const v = S.grid.vision || {},
+        zones = (S.ambient.match(/[bdn]/g) || []).length,
+        feet = [...new Set(BC.LIGHTS.map(l => l[2]))];
+      html = `<div class="chips">${[
+        ['b', '☀ Iluminada'],
+        ['d', '◐ Penumbra'],
+        ['n', '● Oscura'],
+        ['.', '🧽 Como el mapa'],
+        ['place', '✦ Luz fija'],
+        ['remove', '✕ Quitar luz'],
+      ]
+        .map(([m, l]) => chip('light-mode', m, l, S.lightMode === m))
+        .join('')}</div>${
+        S.lightMode === 'place'
+          ? `<div class="chips"><span class="small muted">Radio</span>${feet
+              .map(f => chip('light-feet', f, f + ' pies', S.lightFeet === f))
+              .join('')}</div>`
+          : ['place', 'remove'].includes(S.lightMode)
+            ? ''
+            : `<div class="chips"><span class="small muted">Pincel</span>${sizes}</div>`
+      }<div class="actions">${zones ? button('Quitar todas las zonas', 'light-zones-clear', 'text-btn danger-text') : ''}${S.fixedLights.length ? button('Quitar las luces fijas', 'light-fixed-clear', 'text-btn danger-text') : ''}</div><p class="small muted">${zones} ${zones === 1 ? 'casilla pintada' : 'casillas pintadas'} · ${S.fixedLights.length} ${S.fixedLights.length === 1 ? 'luz fija' : 'luces fijas'}. ${v.dark ? 'El mapa está a oscuras: lo que no pintes queda oscuro.' : 'El mapa está iluminado: pintá en penumbra u oscuro lo que no tenga luz (una cueva, un sótano).'} Las luces fijas son invisibles (lámparas del dibujo); las importadas de Dungeondraft aparecen acá.${v.los ? '' : ' <b>Para que cuente, activá la línea de visión en Mapas → Ajustes.</b>'}</p>`;
     } else if (S.tool === 'walls' && dmView()) {
       const doors = S.walls.filter(BC.isWallDoor).length;
       html = `<div class="chips">${[
@@ -5612,14 +5847,14 @@
     const d = info(t),
       dm = dmView();
     const attrs = `data-id="${esc(t.id)}"`;
-    const light = BC.lightFeet(t.stage);
+    const light = tokenLight(t);
     const selectionCount = rotationGroup().length;
     const actions = [
       H.compactCast && mine(t) && button('Lanzar', 'cast-picker'),
       canMove(t) &&
         t.kind !== 'object' &&
         button('Altura', 'token-elev', 'secondary', `${attrs} title="Altura: ${Number(t.elev) || 0} pies"`),
-      ((dm && t.kind !== 'monster') || (t.kind === 'pc' && canMove(t))) &&
+      (dm || (t.kind === 'pc' && canMove(t))) &&
         button('Luz', 'token-light', 'secondary', `${attrs} title="Luz: ${light || 0} pies"`),
       dm && button(t.hidden ? 'Mostrar' : 'Ocultar', 'token-hide', 'secondary', attrs),
       dm && button('Editar', 'token-edit', 'secondary', attrs),
@@ -5812,6 +6047,18 @@
         S.wallMode = el.dataset.v;
         Object.assign(S, { wallChain: null, wallDraw: null, wallHover: -1 });
         hint(wallHint());
+      } else if (a === 'light-mode') {
+        S.lightMode = el.dataset.v;
+        hint(lightHint());
+      } else if (a === 'light-feet') S.lightFeet = Number(el.dataset.v) || 40;
+      else if (a === 'light-zones-clear') {
+        if (!confirm('¿Quitar todas las zonas de luz pintadas en este mapa?')) return;
+        S.ambient = BC.ambientCells(S.grid, '');
+        saveSoon(terrainPatch());
+      } else if (a === 'light-fixed-clear') {
+        if (!confirm(`¿Quitar las ${S.fixedLights.length} luces fijas de este mapa?`)) return;
+        S.fixedLights = [];
+        saveSoon(terrainPatch());
       } else if (a === 'wall-end') endWallChain();
       else if (a === 'wall-undo') undoWalls();
       else if (a === 'wall-clear') {
@@ -6344,12 +6591,14 @@
           hintModal('Procesando el mapa…');
           let source = file,
             grid,
-            walls = [];
+            walls = [],
+            lights = [];
           if (kind === 'uvtt' || /\.(dd2vtt|uvtt|json)$/i.test(file.name)) {
             const m = BC.parseUVTT(await file.text());
             source = m.image;
             grid = m.grid;
             walls = m.walls;
+            lights = m.lights;
           }
           const img = await shrink(source);
           if (grid) grid = BC.normGrid({ ...grid, size: grid.size * img.scale });
@@ -6358,7 +6607,7 @@
             grid = BC.gridForImage(img.width, img.height, img.width / across);
           }
           const path = await Cloud.uploadMapImage(S.id, img.blob, img.ext);
-          row = { ...row, image_path: path, grid, terrain: { cells: '', walls } };
+          row = { ...row, image_path: path, grid, terrain: { cells: '', walls, lights } };
         }
         row.fog = { on: false };
         const made = await Cloud.saveMap(S.id, row);
@@ -6411,7 +6660,7 @@
         m.image_path
           ? `<p class="small">Hacé coincidir la cuadrícula con la del dibujo: primero el tamaño de la casilla, después el desfase. Se ve en vivo detrás de esta ventana.</p><div class="form-grid">${field('Tamaño de casilla (px)', 'size', +g.size.toFixed(2), 'number', 'min="8" max="1000" step="0.1" data-live')}${field('Desfase X (px)', 'ox', +g.ox.toFixed(1), 'number', 'step="0.5" data-live')}${field('Desfase Y (px)', 'oy', +g.oy.toFixed(1), 'number', 'step="0.5" data-live')}</div><div class="form-grid">${field('Columnas', 'cols', g.cols, 'number', 'min="1" max="200" data-live')}${field('Filas', 'rows', g.rows, 'number', 'min="1" max="200" data-live')}</div><div class="actions">${button('Calcular columnas y filas', 'grid-auto')}</div>`
           : `<div class="form-grid">${field('Columnas', 'cols', g.cols, 'number', 'min="1" max="200"')}${field('Filas', 'rows', g.rows, 'number', 'min="1" max="200"')}</div>`
-      }<div class="form-grid">${field('Pies por casilla', 'feet', g.feet, 'number', 'min="1" max="100"')}<label class="field">Color de la cuadrícula<input type="color" name="color" value="${esc(g.color)}" data-live></label>${field('Opacidad', 'opacity', g.opacity, 'range', 'min="0" max="1" step="0.05" data-live')}</div><label class="check"><input type="checkbox" name="show" ${g.show ? 'checked' : ''} data-live>Mostrar cuadrícula</label>${typeof Sound !== 'undefined' ? `<label class="field">Sonido de ambiente (lo oye toda la mesa)<select name="ambient">${Sound.AMBIENTS.map(([id, n]) => `<option value="${id}" ${id === g.ambient ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>` : ''}<fieldset class="skill-choice"><legend>Visión de los jugadores</legend><input type="hidden" name="visionForm" value="1"><label class="check"><input type="checkbox" name="los" ${g.vision.los ? 'checked' : ''}>Solo ven lo que sus personajes tienen a la vista (tapan los muros, rocas y puertas pintados y las paredes de la herramienta «Paredes»)</label><label class="check"><input type="checkbox" name="own" ${g.vision.own ? 'checked' : ''}>Cada jugador ve solo lo que ve su personaje (si no, toda la party comparte lo que ve)</label><label class="check"><input type="checkbox" name="dark" ${g.vision.dark ? 'checked' : ''}>Mapa a oscuras: se ve lo que alumbran las luces (la mitad del radio con luz brillante y el resto en penumbra) y, con visión en la oscuridad, la oscuridad cercana en gris</label>${field('Luz que lleva cada personaje (pies; 40 = antorcha)', 'light', g.vision.light, 'number', 'min="0" max="600" step="5"')}<p class="small muted">Se combina con la niebla manual. Como la niebla, se dibuja en el dispositivo de cada jugador.</p></fieldset>`,
+      }<div class="form-grid">${field('Pies por casilla', 'feet', g.feet, 'number', 'min="1" max="100"')}<label class="field">Color de la cuadrícula<input type="color" name="color" value="${esc(g.color)}" data-live></label>${field('Opacidad', 'opacity', g.opacity, 'range', 'min="0" max="1" step="0.05" data-live')}</div><label class="check"><input type="checkbox" name="show" ${g.show ? 'checked' : ''} data-live>Mostrar cuadrícula</label>${typeof Sound !== 'undefined' ? `<label class="field">Sonido de ambiente (lo oye toda la mesa)<select name="ambient">${Sound.AMBIENTS.map(([id, n]) => `<option value="${id}" ${id === g.ambient ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>` : ''}<fieldset class="skill-choice"><legend>Visión de los jugadores</legend><input type="hidden" name="visionForm" value="1"><label class="check"><input type="checkbox" name="los" ${g.vision.los ? 'checked' : ''}>Solo ven lo que sus personajes tienen a la vista (tapan los muros, rocas y puertas pintados y las paredes de la herramienta «Paredes»)</label><label class="check"><input type="checkbox" name="own" ${g.vision.own ? 'checked' : ''}>Cada jugador ve solo lo que ve su personaje (si no, toda la party comparte lo que ve)</label><label class="check"><input type="checkbox" name="dark" ${g.vision.dark ? 'checked' : ''}>Mapa a oscuras: se ve lo que alumbran las luces (la mitad del radio con luz brillante y el resto en penumbra) y, con visión en la oscuridad, la oscuridad cercana en gris</label>${field('Luz que lleva cada personaje (pies; 40 = antorcha)', 'light', g.vision.light, 'number', 'min="0" max="600" step="5"')}<label class="check"><input type="checkbox" name="memory" ${g.vision.memory ? 'checked' : ''}>Recordar lo explorado: lo que ya vieron queda a la vista en penumbra, sin fichas</label><div class="actions"><button type="button" class="button secondary" data-forget-explored>Olvidar lo explorado en todas las pantallas</button></div><p class="small muted">Se combina con la niebla manual. Como la niebla, se dibuja en el dispositivo de cada jugador.</p></fieldset>`,
       async fd => {
         const grid = readGrid(fd, g);
         // Cambiar columnas o filas reacomoda terreno y niebla.
@@ -6422,6 +6671,9 @@
             : BC.normWalls(m.terrain?.walls),
           links: m.terrain?.links || {},
           props: BP ? BP.norm(grid, m.terrain?.props) : [],
+          ambient: resizeAmbient(m, g, grid),
+          lights: regridLights(m, g, grid),
+          tokenLights: BC.normTokenLights(m.terrain?.tokenLights),
         };
         const fog = { on: !!m.fog?.on, revealed: resizeFog(m, g, grid) };
         const row = await Cloud.saveMap(
@@ -6447,6 +6699,11 @@
       S.dirty = true;
     };
     form.addEventListener('input', live);
+    form.querySelector('[data-forget-explored]')?.addEventListener('click', () => {
+      S.channel?.send({ t: 'explored-reset', map: m.id });
+      forgetExplored(m.id);
+      toast('Lo explorado se olvidó en las pantallas conectadas.');
+    });
     form.querySelector('[data-action=bd-grid-auto]')?.addEventListener('click', () => {
       const fd = new FormData(form),
         size = Number(fd.get('size')) || g.size;
@@ -6471,7 +6728,13 @@
       opacity: Number(fd.get('opacity') ?? g.opacity),
       show: fd.has('show'),
       vision: fd.has('visionForm')
-        ? { los: fd.has('los'), own: fd.has('own'), dark: fd.has('dark'), light: fd.get('light') }
+        ? {
+            los: fd.has('los'),
+            own: fd.has('own'),
+            dark: fd.has('dark'),
+            light: fd.get('light'),
+            memory: fd.has('memory'),
+          }
         : g.vision,
       ambient: fd.has('ambient') ? String(fd.get('ambient')) : g.ambient,
     });
@@ -6481,6 +6744,27 @@
     let out = '';
     for (let y = 0; y < to.rows; y++) for (let x = 0; x < to.cols; x++) out += BC.at(from, src, x, y);
     return out;
+  }
+  function resizeAmbient(m, from, to) {
+    const src = BC.ambientCells(from, m.terrain?.ambient);
+    if (!/[bdn]/.test(src)) return '';
+    let out = '';
+    for (let y = 0; y < to.rows; y++) for (let x = 0; x < to.cols; x++) out += BC.at(from, src, x, y);
+    return out;
+  }
+  // Las luces fijas de una imagen siguen al dibujo, como las paredes.
+  function regridLights(m, from, to) {
+    const lights = BC.normLights(from, m.terrain?.lights);
+    if (!m.image_path) return BC.normLights(to, lights);
+    const moved = BC.regridWalls(
+      lights.map(([x, y]) => [x, y, x + 1, y, 0]),
+      from,
+      to,
+    );
+    return BC.normLights(
+      to,
+      moved.map((w, i) => [w[0], w[1], lights[i][2]]),
+    );
   }
   function resizeFog(m, from, to) {
     const src = BC.fogBits(from, m.fog?.revealed || ''),
@@ -6533,7 +6817,7 @@
   // Cualquier ficha puede llevar una luz (la antorcha del guerrero, el conjuro del mago).
   function lightDialog(t) {
     if (!t) return;
-    const cur = BC.lightFeet(t.stage);
+    const cur = tokenLight(t);
     modal(
       'Luz de ' + t.name,
       `<label class="field">Qué lleva<select name="feet"><option value="0">Sin luz</option>${BC.LIGHTS.map(
@@ -6543,6 +6827,15 @@
       )}</select></label>${field('O un radio a medida (pies)', 'custom', BC.LIGHTS.some(l => l[2] === cur) ? '' : cur || '', 'number', 'min="5" max="300" step="5"')}<p class="small">En un mapa a oscuras, los jugadores ven lo que esta luz alumbra si lo tienen a la vista. El radio cuenta la luz brillante más la penumbra: la mitad es luz brillante (antorcha: 20 + 20 pies).</p>`,
       async fd => {
         const feet = Math.max(0, Math.min(300, Math.round(Number(fd.get('custom')) || Number(fd.get('feet')) || 0)));
+        // Los monstruos la llevan en el mapa: su campo de etapa ya marca encuentros y criaturas colocadas.
+        if (t.kind === 'monster') {
+          S.tokenLights = { ...S.tokenLights };
+          if (feet) S.tokenLights[t.id] = feet;
+          else delete S.tokenLights[t.id];
+          saveSoon(terrainPatch());
+          ui();
+          return;
+        }
         const want = feet ? 'light:' + feet : null;
         await patchToken(t, { stage: want });
         // Sin la actualización 017, la base ignora el cambio de un jugador.

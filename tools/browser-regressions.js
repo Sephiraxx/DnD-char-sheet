@@ -209,6 +209,28 @@ async function wallsAndDoors(browser, base, errors) {
     darkness[0] < 20 && darkness[1] > 60 && darkness[1] < 160 && darkness[2] > 240,
     darkness.join(),
   );
+  // Luz del mapa: el DM pinta una zona oscura y pone una luz fija; queda guardado en el mapa.
+  await dm.locator('[data-action=bd-tool][data-tool=light]').click();
+  await dm.locator('[data-action=bd-light-mode][data-v=n]').click();
+  await tap(dm, 10.5, 6.5);
+  await dm.locator('[data-action=bd-light-mode][data-v=place]').click();
+  await tap(dm, 3, 6);
+  await dm.waitForFunction(() => !Object.keys(Board._state().pending).length);
+  const terrain = store.maps[0].terrain;
+  check(
+    'Luz: el DM pinta una zona oscura y pone una luz fija, y el mapa las guarda',
+    terrain.ambient[6 * 12 + 10] === 'n' && JSON.stringify(terrain.lights) === '[[3,6,40]]',
+    JSON.stringify({ ambient: terrain.ambient, lights: terrain.lights }),
+  );
+  // Lo explorado: con la opción, la pantalla del jugador recuerda lo que vio.
+  await player.evaluate(() => {
+    Board._state().grid.vision = { los: true, memory: true };
+    Board._vision();
+  });
+  await player.waitForFunction(() =>
+    Object.keys(localStorage).some(k => k.startsWith('dnd-board-explored-cripta-map')),
+  );
+  check('Lo explorado: la pantalla del jugador lo guarda en el dispositivo', true);
   await context.close();
 }
 
