@@ -1,7 +1,7 @@
 /* Tablero de la mesa: mapa con cuadrícula, fichas que se mueven en vivo, niebla de guerra y terreno.
    El DM prepara mapas (imagen, Dungeondraft/Universal VTT o terreno pintado) y elige cuál ve la mesa.
    Cada jugador mueve solo su ficha. Con ?tv=1 es una pantalla para la tele: vista de jugador, sin herramientas.
-   También se abre dentro de la ficha (index.html) y de la pantalla del DM (dm.html): Board.open(mesa, ganchos).
+   También se abre dentro de la ficha (app.html) y de la pantalla del DM (dm.html): Board.open(mesa, ganchos).
    Ahí suma el combate: objetivo tocando fichas, flanqueo, alcance y ataques de oportunidad. */
 (function () {
   'use strict';
@@ -195,7 +195,7 @@
     }
     if (!S.id) {
       message(
-        `<h1>Abrí el tablero desde tu mesa</h1><p>El DM lo abre desde su pantalla y los jugadores desde <b>Mesa</b> en su ficha.</p><div class="actions"><a class="button" href="./">Ir a mi ficha</a><a class="button secondary" href="./dm.html">Pantalla del DM</a></div>`,
+        `<h1>Abrí el tablero desde tu mesa</h1><p>El DM lo abre desde su pantalla y los jugadores desde <b>Mesa</b> en su ficha.</p><div class="actions"><a class="button" href="./app.html">Ir a mi ficha</a><a class="button secondary" href="./dm.html">Pantalla del DM</a></div>`,
       );
       return;
     }
@@ -5930,24 +5930,30 @@
   }
   // Puertas dibujadas cerca de la ficha elegida, en píxeles del lienzo: la tarjeta no las tapa, así se pueden tocar.
   function cardDoorBoxes(t) {
-    if (!S.walls.length) return [];
     const c = cellPx(),
       o = origin(),
       { s, x, y } = S.view,
       half = BC.tokenSpan(t) / 2,
-      pad = 14;
-    return S.walls
-      .filter(w => BC.isWallDoor(w) && BC.wallDistance(w, t.x + half, t.y + half) < half + 3)
-      .map(w => {
-        const px = v => (o.x + v * c) * s + x,
-          py = v => (o.y + v * c) * s + y;
-        return {
-          left: Math.min(px(w[0]), px(w[2])) - pad,
-          right: Math.max(px(w[0]), px(w[2])) + pad,
-          top: Math.min(py(w[1]), py(w[3])) - pad,
-          bottom: Math.max(py(w[1]), py(w[3])) + pad,
-        };
+      cx = t.x + half,
+      cy = t.y + half,
+      pad = 14,
+      px = v => (o.x + v * c) * s + x,
+      py = v => (o.y + v * c) * s + y,
+      box = (x0, y0, x1, y1) => ({
+        left: Math.min(px(x0), px(x1)) - pad,
+        right: Math.max(px(x0), px(x1)) + pad,
+        top: Math.min(py(y0), py(y1)) - pad,
+        bottom: Math.max(py(y0), py(y1)) + pad,
       });
+    const out = S.walls
+      .filter(w => BC.isWallDoor(w) && BC.wallDistance(w, cx, cy) < half + 3)
+      .map(w => box(w[0], w[1], w[2], w[3]));
+    // Puertas pintadas en el terreno (una casilla cada una).
+    for (let yy = Math.floor(cy - half - 3); yy <= Math.ceil(cy + half + 3); yy++)
+      for (let xx = Math.floor(cx - half - 3); xx <= Math.ceil(cx + half + 3); xx++)
+        if (BC.inside(S.grid, xx, yy) && BC.isDoor(BC.at(S.grid, S.terrain, xx, yy)))
+          out.push(box(xx, yy, xx + 1, yy + 1));
+    return out;
   }
   function positionCard(pieces) {
     const el = $('#board-card');

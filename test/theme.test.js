@@ -14,7 +14,7 @@ test('identidad visual: cada clase tiene color y emblema, y el tema se carga úl
     assert.match(css, new RegExp(`--i-${id}:`), id);
   }
   assert.match(css, /\[data-cls='dm'\]/);
-  for (const f of ['index.html', 'dm.html', 'board.html', 'compendium.html']) {
+  for (const f of ['app.html', 'dm.html', 'board.html', 'compendium.html']) {
     const sheets = [...read(f).matchAll(/rel="stylesheet" href="\.\/([a-z-]+\.css)"/g)].map(m => m[1]);
     assert.equal(sheets.at(-1), 'theme.css', f);
   }

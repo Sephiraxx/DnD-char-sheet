@@ -97,7 +97,7 @@ test('new magic items can be added and saved through the existing inventory rule
 });
 
 test('all public play screens load shared rules, and the requested heading is gone', () => {
-  for (const file of ['index.html', 'dm.html', 'board.html', 'compendium.html']) {
+  for (const file of ['app.html', 'dm.html', 'board.html', 'compendium.html']) {
     const html = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
     assert.ok(html.includes('./official-content-data.js'), file);
     assert.ok(html.includes('./official-content.js'), file);

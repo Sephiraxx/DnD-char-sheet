@@ -77,6 +77,6 @@ test('el arte del tablero se carga en las tres pantallas con mapa y queda dispon
     assert.ok(h.indexOf('board-art.js') > h.indexOf('board-core.js'), f);
     assert.ok(h.indexOf('board-art.js') < h.indexOf('./board.js'), f);
   }
-  assert.doesNotMatch(read('index.html'), /board-(?:art|core)\.js/);
+  assert.doesNotMatch(read('app.html'), /board-(?:art|core)\.js/);
   assert.match(read('sw.js'), /'\.\/board-art\.js'/);
 });

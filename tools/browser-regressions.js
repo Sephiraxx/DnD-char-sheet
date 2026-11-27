@@ -236,6 +236,118 @@ async function wallsAndDoors(browser, base, errors) {
   await context.close();
 }
 
+// Portada, inicio de la app y enlaces directos (index.html → app.html).
+async function entryPages(browser, base, errors) {
+  const fresh = async (opts = {}) => {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: 'block' });
+    const page = await context.newPage();
+    page.on('pageerror', e => errors.push('Portada: ' + e.message));
+    if (opts.noCloud)
+      await page.route('**/config.js', r =>
+        r.fulfill({ contentType: 'application/javascript', body: 'window.CLOUD_CONFIG = {};' }),
+      );
+    if (opts.cloud)
+      await page.route('**/cloud.js', r =>
+        r.fulfill({
+          contentType: 'application/javascript',
+          body:
+            fs.readFileSync(path.join(ROOT, 'cloud.js'), 'utf8') +
+            `
+          for (const k of Object.keys(Cloud)) if (Cloud[k]?.constructor?.name === 'AsyncFunction') Cloud[k] = async () => null;
+          Object.assign(Cloud, { enabled: true, currentUser: async () => null, backups: async () => [], myDmTables: async () => [] });`,
+        }),
+      );
+    return { context, page };
+  };
+  // Primera visita: la portada, liviana (sin los scripts de la ficha), con su video y sus botones.
+  let { context, page } = await fresh();
+  await page.goto(base);
+  await page.locator('#hero-title').waitFor();
+  check(
+    'Portada: quien llega por primera vez ve la portada con el video y los botones, sin cargar la app',
+    new URL(page.url()).pathname === '/' &&
+      (await page.locator('#showcase source').count()) === 2 &&
+      (await page.getByRole('link', { name: 'Probar gratis' }).count()) >= 1 &&
+      (await page.getByRole('link', { name: 'Crear cuenta' }).count()) >= 1 &&
+      (await page.getByRole('link', { name: 'Entrar' }).count()) >= 1 &&
+      (await page.evaluate(
+        () => typeof window.Rules === 'undefined' && typeof window.CharacterStorage === 'undefined',
+      )),
+  );
+  // Un enlace a una sección de la ficha no pasa por la portada ni por el inicio.
+  await page.goto(base + 'index.html#journal');
+  await page.waitForURL(/app\.html#journal$/);
+  await page.goto(base + 'index.html?abrir#combat');
+  await page.waitForURL(/app\.html\?abrir#combat$/);
+  check('Portada: los enlaces directos a la ficha siguen de largo hasta la app', true);
+  // «Probar gratis»: el inicio de la app, sin personajes, con crear, mesas de DM y unirse con código.
+  await page.goto(base + '?portada');
+  await page.getByRole('link', { name: 'Probar gratis' }).first().click();
+  await page.locator('#home-characters').waitFor();
+  check(
+    'Inicio: «Probar gratis» abre el inicio con personajes, mesas de DM y unirse con código',
+    new URL(page.url()).pathname === '/app.html' &&
+      (await page.locator('#home-characters [data-action=party-create]').count()) === 1 &&
+      (await page.locator('#home-dm a[href="./dm.html#nueva"]').count()) === 1 &&
+      (await page.locator('#table-prejoin-form [name=code]').count()) === 1 &&
+      (await page.locator('#table-prejoin-form [name=display]').count()) === 1,
+  );
+  // Quien ya usa la app vuelve al inicio desde la portada; «?portada» la muestra igual.
+  await page.goto(base);
+  await page.waitForURL(/app\.html$/);
+  await page.locator('#home-characters').waitFor();
+  await page.goto(base + '?portada');
+  await page.locator('#hero-title').waitFor();
+  check('Portada: quien ya usa la app va directo al inicio (y «?portada» muestra la portada)', true);
+  // Con personajes: seguir con el último, abrir otro y volver al inicio desde el logo.
+  await page.goto(base + 'app.html');
+  await page.evaluate(s => {
+    const a = CharacterStorage.add(Rules.validate(s));
+    CharacterStorage.add(Rules.validate({ ...s, name: 'Bram Piedrafría' }));
+    localStorage.setItem('dnd-party-active-v1', a);
+  }, fixture);
+  await page.reload();
+  await page.locator('.home-continue').waitFor();
+  const continueName = await page.locator('.home-continue h2').innerText();
+  await page.locator('[data-home-continue]').click();
+  await page.waitForFunction(() => location.hash === '#combat' && !document.body.classList.contains('no-character'));
+  check(
+    'Inicio: «Continuar» abre la ficha del último personaje',
+    continueName === fixture.name && (await page.locator('#active-character-name').innerText()) === fixture.name,
+  );
+  await page.locator('.brand').click();
+  await page.locator('#home-characters').waitFor();
+  await page.locator('#home-characters [data-action=party-open]').click();
+  await page.waitForFunction(() => location.hash === '#combat' && document.title.startsWith('Bram'));
+  check('Inicio: abrir otro personaje lo deja abierto en su ficha', true);
+  await context.close();
+  // Sin servidor configurado no se ofrecen cuentas en la portada.
+  ({ context, page } = await fresh({ noCloud: true }));
+  await page.goto(base);
+  await page.locator('#hero-title').waitFor();
+  await page.waitForFunction(() => !document.querySelector('[data-account]'));
+  check('Portada: sin servidor configurado, no ofrece crear cuenta ni entrar', true);
+  await context.close();
+  // «Crear cuenta» desde la portada abre el formulario de la cuenta en el inicio.
+  ({ context, page } = await fresh({ cloud: true }));
+  await page.goto(base + '?cuenta=crear');
+  await page.waitForURL(/app\.html/);
+  await page.waitForFunction(() => document.activeElement?.closest('form[data-account="create"]'));
+  check(
+    'Inicio: «Crear cuenta» de la portada abre el formulario y limpia la dirección',
+    (await page.locator('form[data-account="create"]').isVisible()) && !new URL(page.url()).search,
+  );
+  // «Crear mesa» del inicio abre la pantalla del DM en el formulario, aunque haya una mesa abierta antes.
+  await page.evaluate(() => localStorage.setItem('dnd-dm-last', 'mesa-vieja'));
+  await page.goto(base + 'dm.html#nueva');
+  await page.waitForFunction(() => document.activeElement?.closest('#create-form'));
+  check(
+    'Pantalla del DM: «#nueva» muestra el formulario para crear una mesa',
+    await page.evaluate(() => !location.hash && !!document.getElementById('create-form')),
+  );
+  await context.close();
+}
+
 async function main() {
   let chromium;
   try {
@@ -251,7 +363,7 @@ async function main() {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
-    await page.goto(base + 'index.html');
+    await page.goto(base + 'app.html');
     check('Inicio: el tablero no se carga junto con la ficha', await page.evaluate(() => !window.Board));
     await page.waitForFunction(() => !!navigator.serviceWorker.controller);
     const offline = () =>
@@ -270,13 +382,13 @@ async function main() {
       localStorage.setItem('dnd-party-active-v1', id);
     }, fixture);
     // Otra dirección (con «?abrir») para que cargue de cero con la ficha activa.
-    await page.goto(base + 'index.html?abrir#journal');
+    await page.goto(base + 'app.html?abrir#journal');
     await page.waitForSelector('#journal-notes');
 
     // 1. Notas: lo escrito sobrevive a cambiar de sección sin tocar nada.
     await page.fill('#journal-notes', 'El posadero se llama Bram y debe 30 po.');
-    await page.goto(base + 'index.html?abrir#combat');
-    await page.goto(base + 'index.html?abrir#journal');
+    await page.goto(base + 'app.html?abrir#combat');
+    await page.goto(base + 'app.html?abrir#journal');
     await page.waitForSelector('#journal-notes');
     check(
       'Diario: las notas siguen después de cambiar de sección',
@@ -292,12 +404,12 @@ async function main() {
       (await page.inputValue('#journal-notes')).includes('llave roja'),
     );
     await page.waitForTimeout(1800);
-    await page.goto(base + 'index.html?abrir#combat');
+    await page.goto(base + 'app.html?abrir#combat');
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem(CharacterStorage.activeKey())).notes);
     check('Diario: las notas quedan guardadas en la ficha', saved.includes('llave roja'), saved);
 
     // 3. Crear personaje: el teclado queda dentro del asistente y vuelve al botón al salir.
-    await page.goto(base + 'index.html?abrir#combat');
+    await page.goto(base + 'app.html?abrir#combat');
     await page.evaluate(() => Creator.start());
     await page.waitForSelector('#creator:not([hidden])');
     const inside = () => page.evaluate(() => document.getElementById('creator').contains(document.activeElement));
@@ -332,11 +444,11 @@ async function main() {
     );
 
     // 5. Notas de clase: mismo guardado automático.
-    await page.goto(base + 'index.html?abrir#class');
+    await page.goto(base + 'app.html?abrir#class');
     await page.waitForSelector('#class-notes');
     await page.fill('#class-notes', 'Enemigo predilecto: no muertos.');
-    await page.goto(base + 'index.html?abrir#combat');
-    await page.goto(base + 'index.html?abrir#class');
+    await page.goto(base + 'app.html?abrir#combat');
+    await page.goto(base + 'app.html?abrir#class');
     await page.waitForSelector('#class-notes');
     check(
       'Notas de clase: siguen después de cambiar de sección',
@@ -344,14 +456,14 @@ async function main() {
     );
     // 6. Ninguna sección de la ficha se desborda de costado en un teléfono.
     for (const route of ['combat', 'spells', 'gear', 'character', 'traits', 'class', 'journal', 'table']) {
-      await page.goto(base + 'index.html?abrir#' + route);
+      await page.goto(base + 'app.html?abrir#' + route);
       await page.waitForFunction(() => document.getElementById('main')?.children.length > 0);
       await page.waitForTimeout(150);
       const width = await page.evaluate(() => document.documentElement.scrollWidth);
       check(`Teléfono: «${route}» entra en 390 px`, width <= 391, 'mide ' + width);
     }
 
-    await page.goto(base + 'index.html?abrir#gear');
+    await page.goto(base + 'app.html?abrir#gear');
     await page.getByRole('button', { name: 'Añadir del catálogo' }).click();
     const sermon = page.locator('#dialog-form [name=equipmentId] option[value=sermon]');
     const itemSearch = page.getByRole('searchbox', { name: 'Buscar objeto' });
@@ -397,7 +509,7 @@ async function main() {
     check('Sermon: al quitarlo se vuelve a tirar normalmente', (await page.evaluate(() => characterD20(1))) === 1);
 
     // 7. Identidad visual: la clase tiñe la ficha y el jugador puede elegir otro color.
-    await page.goto(base + 'index.html?abrir#character');
+    await page.goto(base + 'app.html?abrir#character');
     await page.waitForSelector('#persona-card');
     check(
       'Tema: la ficha lleva el color de su clase',
@@ -764,7 +876,7 @@ async function main() {
     );
 
     // Círculo de las Esporas: la tarjeta aparece en combate y la Entidad simbiótica se activa.
-    await page.goto(base + 'index.html?abrir#combat');
+    await page.goto(base + 'app.html?abrir#combat');
     await page.waitForFunction(() => typeof Spores !== 'undefined' && typeof commit === 'function');
     const spores = await page.evaluate(() => {
       const d = Rules.validate({
@@ -1439,6 +1551,7 @@ async function main() {
     await device.close();
     await dm.close();
     await wallsAndDoors(browser, base, errors);
+    await entryPages(browser, base, errors);
     check('Sin errores de JavaScript', !errors.length, errors.join(' | '));
   } finally {
     await browser.close();

@@ -84,10 +84,12 @@
     const entries = list();
     if (!entries.some(x => x.id === id)) throw Error('Personaje no encontrado.');
     if (controlledId() !== null) {
-      location.replace('./index.html?aliado=' + encodeURIComponent(id) + '#combat');
+      location.replace('./app.html?aliado=' + encodeURIComponent(id) + '#combat');
       return;
     }
     localStorage.setItem(ACTIVE, id);
+    // Desde el inicio (sin sección en la dirección), se abre la ficha.
+    if (!location.hash) root.history?.replaceState(null, '', location.pathname + location.search + '#combat');
     location.reload();
   }
   function remove(id) {

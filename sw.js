@@ -1,10 +1,19 @@
 const PREFIX = 'darien:' + self.registration.scope + ':';
 // BUILD es un resumen del contenido de FILES: lo escribe `npm run stamp` y los tests fallan si quedó viejo.
-const BUILD = '5fb8df695353';
+const BUILD = 'da7a1050dad6';
 const CACHE = PREFIX + BUILD;
 const FILES = [
   './',
   './index.html',
+  './entry.js',
+  './landing.css',
+  './landing.js',
+  './assets/showcase-poster.webp',
+  './assets/landing-creator.webp',
+  './assets/landing-table.webp',
+  './assets/landing-spells.webp',
+  './assets/landing-lighting.webp',
+  './app.html',
   './recover.html',
   './recover.js',
   './style.css',
@@ -256,12 +265,14 @@ self.addEventListener('activate', event => {
 
 const offline = request =>
   request.mode === 'navigate'
-    ? caches.open(CACHE).then(c => c.match(new URL('./index.html', self.registration.scope)))
+    ? caches.open(CACHE).then(c => c.match(new URL('./app.html', self.registration.scope)))
     : Response.error();
 
 self.addEventListener('fetch', event => {
   const { request } = event;
   if (request.method !== 'GET' || !request.url.startsWith(self.registration.scope)) return;
+  // El video de la portada va directo a la red: pesa y se pide por partes, que la caché no guarda.
+  if (request.destination === 'video' || /\.(webm|mp4)$/.test(new URL(request.url).pathname)) return;
   if (DEV) {
     const fresh =
       request.mode === 'navigate'

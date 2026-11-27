@@ -371,6 +371,7 @@ function drawHome() {
   ${typeof EncounterGeneratorUI !== 'undefined' ? EncounterGeneratorUI.card() : ''}
   <section class="card section-space dm-new"><h2>Nueva mesa</h2><form id="create-form" class="stack"><div class="form-grid">${field('Nombre de la campaña', 'name', '', 'text', 'required maxlength="100" placeholder="La maldición de Strahd"')}${field('Tu nombre', 'display', 'DM', 'text', 'maxlength="100"')}</div><details class="battle-rule"><summary>Libros, nivel inicial y reglas de la casa (opcional)</summary><div class="section-space">${settingsFields()}</div></details><div class="actions"><button class="button" type="submit">Crear mesa</button>${button('Restaurar copia de campaña', 'import-campaign')}</div><p class="form-error" id="create-error" role="alert">${esc(error)}</p></form></section>
   <p class="small muted section-space">Tu acceso de DM queda guardado en este navegador. Guardalo con tu email para usarlo desde otro dispositivo.</p>${AccountUI.card('account')}`;
+  focusNewTable();
   if (!merged) {
     merged = true;
     Cloud.myDmTables()
@@ -1154,9 +1155,26 @@ document.addEventListener('submit', e => {
     })
     .catch(err => (out.textContent = err.message));
 });
+// «dm.html#nueva» (desde el inicio de la app): la lista de mesas con el formulario para crear una. Durante la carga
+// la pantalla se vuelve a dibujar varias veces (llegan otros módulos): cada vez que se dibuja, el foco vuelve ahí.
+let newTableUntil = 0;
+function newTable() {
+  newTableUntil = performance.now() + 3000;
+  actions.home();
+}
+function focusNewTable() {
+  if (performance.now() > newTableUntil) return;
+  const form = document.getElementById('create-form'),
+    name = form?.querySelector('input[name=name]');
+  // Solo si nada tiene el foco: no se le quita a quien ya está escribiendo en otro lado.
+  if (!name || (document.activeElement && document.activeElement !== document.body)) return;
+  form.scrollIntoView({ block: 'center' });
+  name.focus({ preventScroll: true });
+}
 window.addEventListener('hashchange', () => {
   const id = location.hash.includes('=') ? '' : location.hash.slice(1);
-  if (id && id !== current) open(id);
+  if (id === 'nueva') newTable();
+  else if (id && id !== current) open(id);
 });
 Cloud.onStatus(() => {});
 TableExtras.install({ refresh: () => refresh(), campaignId: () => current, characterId: () => null });
@@ -1169,8 +1187,9 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('online', syncPrepared);
 const hashId = location.hash.includes('=') ? '' : location.hash.slice(1);
-const start = hashId || localStorage.getItem('dnd-dm-last');
-if (Cloud.enabled && start) open(start);
+const start = hashId === 'nueva' ? '' : hashId || localStorage.getItem('dnd-dm-last');
+if (hashId === 'nueva') newTable();
+else if (Cloud.enabled && start) open(start);
 else draw();
 // Si la mesa cargó antes que encuentros y sesiones (scripts posteriores), se redibuja con sus tarjetas.
 document.addEventListener('DOMContentLoaded', () => {

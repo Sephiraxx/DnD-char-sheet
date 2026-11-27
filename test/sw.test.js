@@ -9,11 +9,12 @@ const root = path.join(__dirname, '..');
 // La app abre desde la caché del service worker: lo que no esté en FILES no funciona sin red.
 test('el service worker guarda todos los scripts y estilos de las páginas', () => {
   const cached = new Set(stamp.files());
-  for (const page of ['index.html', 'dm.html', 'board.html', 'compendium.html', 'recover.html']) {
+  for (const page of ['index.html', 'app.html', 'dm.html', 'board.html', 'compendium.html', 'recover.html']) {
     assert.ok(cached.has('./' + page), page);
     const html = fs.readFileSync(path.join(root, page), 'utf8');
     for (const [, ref] of html.matchAll(/(?:src|href)="(\.\/[^"#?]+)"/g))
-      assert.ok(cached.has(ref), `${page}: falta ${ref} en FILES`);
+      // El video de la portada no se guarda sin conexión (pesa; se ve el cuadro de portada).
+      if (!/\.(webm|mp4)$/.test(ref)) assert.ok(cached.has(ref), `${page}: falta ${ref} en FILES`);
   }
   for (const f of cached) if (f !== './') assert.ok(fs.existsSync(path.join(root, f)), `no existe ${f}`);
   const css = fs.readFileSync(path.join(root, 'polish.css'), 'utf8');
