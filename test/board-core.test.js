@@ -412,3 +412,149 @@ test('heavily obscured clouds block sight inside and across them, even with ligh
   assert.equal(cell(lit, 11, 4), 0);
   assert.equal(cell(B.sight(grid, '', [], [viewer, { x: 13.5, y: 4.5, range: Infinity }], [], clouds), 11, 4), 1);
 });
+
+test('paredes dibujadas: la puerta abierta y la ventana dejan ver; la cerrada y la trabada, no', () => {
+  const grid = B.normGrid({ cols: 10, rows: 3 });
+  const eye = [{ x: 1.5, y: 1.5, range: Infinity }];
+  const behind = kind => B.visibleCells(grid, '', [[5, 0, 5, 3, kind]], eye)[1 * 10 + 7];
+  assert.equal(behind(B.WALL.wall), 0);
+  assert.equal(behind(B.WALL.door), 0);
+  assert.equal(behind(B.WALL.locked), 0);
+  assert.equal(behind(B.WALL.open), 1);
+  assert.equal(behind(B.WALL.window), 1);
+  // «Revelar sala» pasa por la puerta abierta, no por la ventana.
+  assert.ok(B.room(grid, '', [[5, 0, 5, 3, B.WALL.open]], 1, 1).some(([x]) => x === 7));
+  assert.ok(!B.room(grid, '', [[5, 0, 5, 3, B.WALL.window]], 1, 1).some(([x]) => x === 7));
+});
+
+test('importa Universal VTT: las puertas abiertas quedan abiertas', () => {
+  const m = B.parseUVTT({
+    resolution: { map_origin: { x: 0, y: 0 }, map_size: { x: 4, y: 4 }, pixels_per_grid: 70 },
+    portals: [
+      {
+        bounds: [
+          { x: 1, y: 0 },
+          { x: 2, y: 0 },
+        ],
+        closed: false,
+      },
+    ],
+    image: 'iVBORw0KGgo=',
+  });
+  assert.equal(m.walls[0][4], B.WALL.open);
+  assert.equal(B.blocksSight(m.walls[0]), false);
+  assert.equal(B.blocksMove(m.walls[0]), false);
+});
+
+test('paredes guardadas: se descartan las rotas y se respeta el tipo', () => {
+  assert.deepEqual(
+    B.normWalls([[0, 0, 2, 0], [1, 1, 1, 1, 0], ['a', 0, 1, 1], [0, 0, 1.23456, 3, 9], [0, 0, 0, 2, 4], 'x']),
+    [
+      [0, 0, 2, 0, 0],
+      [0, 0, 1.23, 3, 0],
+      [0, 0, 0, 2, 4],
+    ],
+  );
+  assert.deepEqual(B.normWalls(null), []);
+});
+
+test('puertas dibujadas: abrir, cerrar, trabar y encontrarlas tocando cerca', () => {
+  const walls = [
+    [0, 0, 4, 0, B.WALL.wall],
+    [4, 0, 5, 0, B.WALL.door],
+    [5, 0, 6, 0, B.WALL.locked],
+  ];
+  const open = B.toggleWallDoor(walls, 1);
+  assert.equal(open[1][4], B.WALL.open);
+  assert.equal(B.toggleWallDoor(open, 1)[1][4], B.WALL.door);
+  assert.equal(B.toggleWallDoor(walls, 2), null, 'la trabada no se mueve');
+  assert.equal(B.toggleWallDoor(walls, 0), null, 'una pared no es una puerta');
+  assert.equal(walls[1][4], B.WALL.door, 'no cambia la lista original');
+  assert.equal(B.nearestWall(walls, 4.5, 0.2, 0.4, B.isWallDoor), 1);
+  assert.equal(B.nearestWall(walls, 2, 0.2, 0.4, B.isWallDoor), -1);
+  assert.equal(B.nearestWall(walls, 2, 0.2), 0);
+  assert.equal(B.setWallKind(walls, 2, B.WALL.door)[2][4], B.WALL.door);
+  assert.ok(Math.abs(B.wallDistance(walls[0], 2, 1) - 1) < 1e-9);
+});
+
+test('dibujar una puerta encima de una pared la corta', () => {
+  let walls = B.addWall([], [0, 2, 6, 2, B.WALL.wall]);
+  walls = B.addWall(walls, [2, 2, 3, 2, B.WALL.door]);
+  assert.deepEqual(walls, [
+    [0, 2, 2, 2, 0],
+    [3, 2, 6, 2, 0],
+    [2, 2, 3, 2, 1],
+  ]);
+  // Una ventana en la punta deja un solo tramo de pared; una que no está sobre la recta no corta nada.
+  assert.deepEqual(B.addWall([[0, 0, 4, 0, 0]], [3, 0, 4, 0, B.WALL.window]).slice(0, 1), [[0, 0, 3, 0, 0]]);
+  assert.equal(B.addWall([[0, 0, 4, 0, 0]], [1, 1, 2, 1, B.WALL.door]).length, 2);
+  // Una pared nueva no corta otra pared, y un punto no es un tramo.
+  assert.equal(B.addWall([[0, 0, 4, 0, 0]], [1, 0, 2, 0, B.WALL.wall]).length, 2);
+  assert.equal(B.addWall([], [1, 1, 1, 1, 0]).length, 0);
+  // La puerta corta las dos paredes que tapa, aunque cruce su unión.
+  assert.deepEqual(
+    B.addWall(
+      [
+        [0, 0, 2, 0, 0],
+        [2, 0, 4, 0, 0],
+      ],
+      [1, 0, 3, 0, B.WALL.door],
+    ).map(w => w.slice(0, 4)),
+    [
+      [0, 0, 1, 0],
+      [3, 0, 4, 0],
+      [1, 0, 3, 0],
+    ],
+  );
+});
+
+test('apoyar puntos: primero en el extremo de una pared cercana, después en la esquina de casilla', () => {
+  const walls = [[1.37, 2.41, 5, 2.41, 0]];
+  assert.deepEqual(B.snapWallPoint(walls, { x: 1.5, y: 2.5 }), { x: 1.37, y: 2.41 });
+  assert.deepEqual(B.snapWallPoint(walls, { x: 3.4, y: 0.6 }), { x: 3, y: 1 });
+  assert.deepEqual(B.snapWallPoint(walls, { x: 3.456, y: 0.6 }, false), { x: 3.46, y: 0.6 });
+});
+
+test('las paredes siguen al dibujo al cambiar el tamaño o el desfase de la cuadrícula', () => {
+  const from = B.normGrid({ size: 70, ox: 0, oy: 0 }),
+    to = B.normGrid({ size: 35, ox: 35, oy: -35 });
+  // La esquina en (2,1) casillas está en el píxel (140,70) de la imagen: con la cuadrícula nueva, (3,3).
+  assert.deepEqual(B.regridWalls([[2, 1, 4, 1, 1]], from, to), [[3, 3, 7, 3, 1]]);
+  const same = [[1, 1, 2, 1, 0]];
+  assert.equal(B.regridWalls(same, from, from), same);
+});
+
+test('movimiento: una pared o una puerta cerrada cortan el camino; una abierta, no', () => {
+  const wall = kind => [[3, 0, 3, 5, kind]];
+  const path = [
+    { x: 1, y: 2 },
+    { x: 2, y: 2 },
+    { x: 3, y: 2 },
+    { x: 4, y: 2 },
+  ];
+  assert.ok(B.wallOnPath(wall(B.WALL.wall), path));
+  assert.ok(B.wallOnPath(wall(B.WALL.door), path));
+  assert.ok(B.wallOnPath(wall(B.WALL.window), path), 'por una ventana no se pasa');
+  assert.equal(B.wallOnPath(wall(B.WALL.open), path), null);
+  assert.equal(B.wallOnPath(wall(B.WALL.wall), path.slice(0, 2)), null, 'llegar hasta la pared sí');
+  // Por la abertura entre dos tramos se pasa; rozando en diagonal la punta de una pared, no.
+  const gap = [
+    [3, 0, 3, 2, 0],
+    [3, 3, 3, 5, 0],
+  ];
+  assert.equal(B.wallOnPath(gap, path), null);
+  assert.ok(
+    B.wallOnPath(gap, [
+      { x: 2, y: 0 },
+      { x: 3, y: 1 },
+    ]),
+  );
+  // Se mide desde el centro del espacio de la ficha: una grande pasa junto a la punta que a una mediana la frena.
+  const stub = [[0, 2, 1.8, 2, 0]],
+    down = [
+      { x: 1, y: 0 },
+      { x: 1, y: 2 },
+    ];
+  assert.ok(B.wallOnPath(stub, down, 1));
+  assert.equal(B.wallOnPath(stub, down, 2), null);
+});

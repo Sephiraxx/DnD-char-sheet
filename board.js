@@ -61,6 +61,14 @@
     paintMode: 'brush',
     radius: 0,
     showWalls: true,
+    // Herramienta «Paredes»: qué se traza, si se apoya en las esquinas, el trazo en curso y lo que se puede deshacer.
+    wallMode: 'wall',
+    wallSnap: true,
+    wallChain: null, // último punto del trazo en curso (en casillas)
+    wallAim: null, // dónde caería el próximo punto
+    wallHover: -1, // tramo bajo el puntero (cambiar tipo o borrar)
+    wallDraw: null, // tramo que se está arrastrando
+    wallUndo: [],
     sel: null,
     selected: new Set(),
     multiSelect: false,
@@ -255,6 +263,7 @@
   }
 
   async function openMap(id) {
+    if (id !== S.mapId) Object.assign(S, { wallChain: null, wallDraw: null, wallHover: -1, wallUndo: [] });
     S.mapId = id;
     S.templates = [];
     S.casts = [];
@@ -306,7 +315,7 @@
     if (m && S.pending[m.id]) m = { ...m, ...S.pending[m.id].patch };
     S.grid = BC.normGrid(m?.grid || {});
     S.terrain = BC.cells(S.grid, m?.terrain?.cells || '');
-    S.walls = Array.isArray(m?.terrain?.walls) ? m.terrain.walls : [];
+    S.walls = BC.normWalls(m?.terrain?.walls);
     S.links = BC.links(S.grid, S.terrain, m?.terrain?.links);
     S.props = BP ? BP.norm(S.grid, m?.terrain?.props) : [];
     if (typeof Sound !== 'undefined') Sound.ambient(shown || STANDALONE ? S.grid.ambient : '');
@@ -643,6 +652,7 @@
       S.templates = S.templates.filter(t => (m.all ? false : t.by !== m.by));
     if (m.t === 'refresh' && !S.isDM) reload();
     if (m.t === 'door' && m.map === S.mapId) onDoorAsk(m);
+    if (m.t === 'wall-door' && m.map === S.mapId) onWallDoorAsk(m);
     if (m.t === 'door-locked' && m.map === S.mapId && m.to === S.me?.id) toast('Esa puerta está trabada.');
     if (m.t === 'view' && S.follow && m.map === S.mapId) fitRect(m.x, m.y, m.w, m.h);
     S.dirty = true;
@@ -2509,17 +2519,7 @@
       }
       ctx.stroke();
     }
-    // Paredes importadas (solo el DM)
-    if (!playerView() && S.showWalls && S.walls.length) {
-      ctx.lineWidth = 3 / S.view.s;
-      for (const [ax, ay, bx, by, door] of S.walls) {
-        ctx.strokeStyle = door ? 'rgba(255,170,60,0.9)' : 'rgba(80,200,255,0.7)';
-        ctx.beginPath();
-        ctx.moveTo(o.x + ax * c, o.y + ay * c);
-        ctx.lineTo(o.x + bx * c, o.y + by * c);
-        ctx.stroke();
-      }
-    }
+    drawWalls();
     // Muebles y objetos de escena
     const furniture = propsArt();
     if (furniture) ctx.drawImage(furniture, 0, 0, furniture.width, furniture.height, o.x, o.y, g.cols * c, g.rows * c);
@@ -2599,9 +2599,11 @@
         ctx.fillRect(o.x + g.cols * c, 0, w * 2, h);
       }
     }
+    drawPlayerDoors();
     drawTarget();
     // Herramientas en curso
-    if (S.drag?.token) drawRuler(S.drag.from, S.drag.token, info(S.drag.token).speed, S.drag.risk, S.drag.plan);
+    if (S.drag?.token)
+      drawRuler(S.drag.from, S.drag.token, info(S.drag.token).speed, S.drag.risk, S.drag.plan, S.drag.wall);
     if (S.drag?.ruler) drawRuler(S.drag.ruler.a, S.drag.ruler.b);
     if (S.drag?.rect) {
       const r = S.drag.rect;
@@ -2722,6 +2724,113 @@
       x = Math.max(0, Math.min(S.grid.cols - nw, it[0] + Math.floor((w - nw) / 2))),
       y = Math.max(0, Math.min(S.grid.rows - nh, it[1] + Math.floor((h - nh) / 2)));
     saveProps(S.props.map((p, k) => (k === d.i ? [x, y, p[2], rot] : p)));
+  }
+  // Paredes, puertas y ventanas. El DM las ve todas (con la herramienta «Paredes» o «Ver paredes»);
+  // los jugadores solo ven las puertas, para poder abrirlas. La visión y la niebla tapan las que no ven.
+  const WALL_STYLE = {
+    0: { color: 'rgba(80,200,255,0.8)', width: 3 },
+    1: { color: '#f0a040', width: 6 },
+    2: { color: '#f0a040', width: 3, dash: [6, 5] },
+    3: { color: '#e0524a', width: 6 },
+    4: { color: '#bfefff', width: 3, dash: [2, 5] },
+  };
+  // Las puertas que ven los jugadores van encima de la oscuridad: una puerta está justo en el borde entre lo que
+  // se ve y lo que no. Se dibuja si alguna de las dos casillas que separa está a la vista (y sin niebla).
+  function drawPlayerDoors() {
+    if (!playerView() || !S.walls.length) return;
+    const c = cellPx(),
+      o = origin(),
+      k = 1 / S.view.s,
+      bits = seen();
+    const visible = ([x, y]) =>
+      isSeen(bits, x, y) && (!S.fogOn || BC.isRevealed(S.grid, S.fog, x, y)) && BC.inside(S.grid, x, y);
+    ctx.save();
+    ctx.lineCap = 'round';
+    for (const w of S.walls) {
+      if (!BC.isWallDoor(w)) continue;
+      const mx = (w[0] + w[2]) / 2,
+        my = (w[1] + w[3]) / 2,
+        len = Math.hypot(w[2] - w[0], w[3] - w[1]) || 1,
+        nx = (-(w[3] - w[1]) / len) * 0.35,
+        ny = ((w[2] - w[0]) / len) * 0.35;
+      const sides = [
+        [Math.floor(mx + nx), Math.floor(my + ny)],
+        [Math.floor(mx - nx), Math.floor(my - ny)],
+      ];
+      if (!sides.some(visible)) continue;
+      // Una trabada se ve igual que una cerrada: eso lo descubren al intentar abrirla.
+      const open = BC.wallKind(w) === BC.WALL.open;
+      for (const [color, width, dash] of [
+        ['rgba(20,12,6,0.85)', open ? 5 : 9, null],
+        [open ? '#d9a35b' : '#b57636', open ? 3 : 6, open ? [6, 5] : null],
+      ]) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width * k;
+        ctx.setLineDash(dash ? dash.map(d => d * k) : []);
+        ctx.beginPath();
+        ctx.moveTo(o.x + w[0] * c, o.y + w[1] * c);
+        ctx.lineTo(o.x + w[2] * c, o.y + w[3] * c);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+  function drawWalls() {
+    const c = cellPx(),
+      o = origin(),
+      k = 1 / S.view.s,
+      editing = S.tool === 'walls' && dmView(),
+      all = !playerView() && (S.showWalls || editing);
+    if ((!S.walls.length || !all) && !editing) return;
+    const line = (w, style, width = style.width) => {
+      ctx.strokeStyle = style.color;
+      ctx.lineWidth = width * k;
+      ctx.setLineDash(style.dash ? style.dash.map(d => d * k) : []);
+      ctx.beginPath();
+      ctx.moveTo(o.x + w[0] * c, o.y + w[1] * c);
+      ctx.lineTo(o.x + w[2] * c, o.y + w[3] * c);
+      ctx.stroke();
+    };
+    ctx.save();
+    ctx.lineCap = 'round';
+    for (let i = 0; i < S.walls.length; i++) {
+      const w = S.walls[i],
+        kind = BC.wallKind(w);
+      if (all) {
+        if (editing && i === S.wallHover) line(w, { color: 'rgba(255,255,255,0.9)' }, WALL_STYLE[kind].width + 5);
+        line(w, WALL_STYLE[kind]);
+      }
+    }
+    ctx.setLineDash([]);
+    if (editing) {
+      // Extremos, para apoyar tramos nuevos, y el tramo que se está trazando.
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.beginPath();
+      for (const w of S.walls)
+        for (const [x, y] of [
+          [w[0], w[1]],
+          [w[2], w[3]],
+        ]) {
+          ctx.moveTo(o.x + x * c + 3.5 * k, o.y + y * c);
+          ctx.arc(o.x + x * c, o.y + y * c, 3.5 * k, 0, Math.PI * 2);
+        }
+      ctx.fill();
+      const from = S.wallDraw?.from || S.wallChain,
+        to = S.wallDraw?.to || S.wallAim;
+      if (from && to && ['wall', 'door', 'window'].includes(S.wallMode)) {
+        const kind = { wall: 0, door: 1, window: 4 }[S.wallMode];
+        line([from.x, from.y, to.x, to.y], { ...WALL_STYLE[kind], color: 'rgba(255,255,255,0.95)' }, 2);
+        line([from.x, from.y, to.x, to.y], WALL_STYLE[kind]);
+        ctx.setLineDash([]);
+      }
+      for (const p of [from, to].filter(Boolean)) {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(o.x + p.x * c, o.y + p.y * c, 5 * k, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
   }
   function drawCell(code, px, py, c, x, y) {
     const t = BC.terrainType(code);
@@ -3427,7 +3536,7 @@
     }
     ctx.restore();
   }
-  function drawRuler(a, b, speed, risk = [], plan = null) {
+  function drawRuler(a, b, speed, risk = [], plan = null, wall = false) {
     const c = cellPx(),
       o = origin(),
       size = b.size || 1;
@@ -3438,7 +3547,7 @@
     const ft = plan ? plan.cost : Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y)) * S.grid.feet,
       diff = BC.difficultOnPath(S.grid, S.terrain, a, b),
       over = plan ? !plan.ok : speed && ft > speed;
-    ctx.strokeStyle = over || risk?.length ? '#eb5757' : '#e0be80';
+    ctx.strokeStyle = over || wall || risk?.length ? '#eb5757' : '#e0be80';
     ctx.lineWidth = 3 / S.view.s;
     ctx.setLineDash([10 / S.view.s, 6 / S.view.s]);
     ctx.beginPath();
@@ -3459,12 +3568,13 @@
         : over
           ? ' · más que tu velocidad'
           : '') +
-      (risk?.length ? ' · ⚠ ataque de oportunidad: ' + risk.map(k => k.name).join(', ') : '');
+      (risk?.length ? ' · ⚠ ataque de oportunidad: ' + risk.map(k => k.name).join(', ') : '') +
+      (wall ? ' · una pared corta el camino' : '');
     ctx.font = `700 ${16 / S.view.s}px Inter, system-ui, sans-serif`;
     const tw = ctx.measureText(text).width;
     ctx.fillStyle = 'rgba(7,16,20,0.85)';
     ctx.fillRect(bx + 14 / S.view.s, by - 30 / S.view.s, tw + 14 / S.view.s, 24 / S.view.s);
-    ctx.fillStyle = over || risk?.length ? '#eb5757' : '#e0be80';
+    ctx.fillStyle = over || wall || risk?.length ? '#eb5757' : '#e0be80';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, bx + 21 / S.view.s, by - 18 / S.view.s);
@@ -3837,7 +3947,11 @@
         S.drag = { pan: { x: S.view.x, y: S.view.y, p } };
         return;
       }
-      const t = hitToken(w);
+      // Justo sobre una puerta dibujada, el toque es para la puerta aunque haya una ficha al lado.
+      const f = toCellF(w),
+        onDoor =
+          tool === 'move' && S.walls.length && BC.nearestWall(S.walls, f.x, f.y, touchReach(10), BC.isWallDoor) >= 0;
+      const t = onDoor ? null : hitToken(w);
       if (S.aimFacing || S.multiSelect || e.shiftKey || e.ctrlKey || e.metaKey) {
         S.drag = { rotationTap: true, tap: t?.id };
         return;
@@ -3886,7 +4000,7 @@
         S.drag = { brush: true };
         paintBrush(cell);
       } else S.drag = { rect: { a: cell, b: cell }, paint: true };
-    }
+    } else if (tool === 'walls' && dmView()) S.drag = { wall: { down: w, from: drawingWalls() ? wallPoint(w) : null } };
     S.dirty = true;
   });
   onCanvas('pointermove', e => {
@@ -3972,6 +4086,10 @@
     else if (d.prop) propDrag(d.prop, cell);
     else if (d.propErase) propErase(cell);
     else if (d.brush) S.tool === 'fog' ? fogBrush(cell) : paintBrush(cell);
+    else if (d.wall && press?.moved) {
+      if (d.wall.from) S.wallDraw = { from: d.wall.from, to: wallPoint(w) };
+      else if (S.wallMode === 'erase') wallEraseAt(w);
+    }
     S.dirty = true;
   });
   function endPointer(e) {
@@ -4015,9 +4133,24 @@
     } else if (d?.pan && !press?.moved && !TV) {
       // Tocar una puerta o una escalera sin ficha encima: se abre, se cierra o se sube.
       if (S.tool === 'props') S.propHover = null;
-      else if (d.tap || S.tool !== 'move' || !tapCell(toCell(toWorld(press.p.x, press.p.y)))) tapToken(d.tap);
+      else if (
+        d.tap ||
+        S.tool !== 'move' ||
+        !tapCell(toCell(toWorld(press.p.x, press.p.y)), toCellF(toWorld(press.p.x, press.p.y)))
+      )
+        tapToken(d.tap);
     } else if (d?.prop) propUp(d.prop);
-    else if (d?.area) placeTemplate(d.area);
+    else if (d?.wall) {
+      const drawn = S.wallDraw;
+      S.wallDraw = null;
+      if (e.type === 'pointercancel') S.dirty = true;
+      else if (drawn) {
+        if (commitWall(drawn.from, drawn.to)) S.wallChain = drawn.to;
+        hint(wallHint());
+        panel();
+      } else if (!press?.moved) wallTap(d.wall.down);
+      else panel();
+    } else if (d?.area) placeTemplate(d.area);
     else if (d?.rect && d.fog) {
       const cells = BC.rect(d.rect.a.x, d.rect.a.y, d.rect.b.x, d.rect.b.y);
       S.fog = BC.setFog(S.grid, S.fog, cells, S.fogMode === 'rect');
@@ -4068,6 +4201,15 @@
     if (S.tool === 'scene' && H.cast && !TV) {
       const p = local(e);
       setSpellAim(toWorld(p.x, p.y));
+      return;
+    }
+    if (S.tool === 'walls' && dmView()) {
+      const w = toWorld(local(e).x, local(e).y),
+        f = toCellF(w);
+      S.wallAim = drawingWalls() ? wallPoint(w) : null;
+      S.wallHover = drawingWalls() ? -1 : BC.nearestWall(S.walls, f.x, f.y, touchReach());
+      canvas.style.cursor = drawingWalls() ? 'crosshair' : S.wallHover >= 0 ? 'pointer' : 'default';
+      S.dirty = true;
       return;
     }
     if (S.tool === 'props' && !TV) {
@@ -4124,6 +4266,13 @@
     }
     if (!d.free && !BC.roomFor(S.grid, S.terrain, { ...t, x, y }, [])) {
       toast('La ficha no cabe en ese terreno.');
+      return pick();
+    }
+    if (!d.free && wallInWay(d.path, d.start, { x, y }, size)) {
+      toast(
+        'Una pared o una puerta cerrada corta el camino. Arrastrá la ficha por una abertura' +
+          (dmView() ? ' o soltala con Mayúsculas para moverla libre.' : '.'),
+      );
       return pick();
     }
     const before = S.tokens.find(k => k.id === t.id);
@@ -4377,8 +4526,10 @@
   }
   // ---------- Puertas y escaleras ----------
   // Devuelve true si el toque cayó en una puerta o una escalera y ya se resolvió.
-  function tapCell(cell) {
-    if (TV || !S.mapId || !BC.inside(S.grid, cell.x, cell.y)) return false;
+  function tapCell(cell, f = null) {
+    if (TV || !S.mapId) return false;
+    if (f && S.walls.length && tapWallDoor(f)) return true;
+    if (!BC.inside(S.grid, cell.x, cell.y)) return false;
     const code = BC.at(S.grid, S.terrain, cell.x, cell.y);
     if (code === 'S') {
       if (dmView()) stairsDialog(cell);
@@ -4477,6 +4628,160 @@
   function paintBrush(cell) {
     S.terrain = BC.paint(S.grid, S.terrain, BC.brush(cell.x, cell.y, S.radius), S.paintCode);
     saveSoon(terrainPatch());
+  }
+
+  // ---------- Paredes dibujadas a mano (sobre todo para mapas de imagen) ----------
+  const drawingWalls = () => ['wall', 'door', 'window'].includes(S.wallMode);
+  function wallHint() {
+    if (S.wallMode === 'edit')
+      return 'Tocá un tramo para cambiarlo: pared, puerta (abierta, cerrada o trabada) o ventana.';
+    if (S.wallMode === 'erase') return 'Tocá un tramo para borrarlo, o arrastrá por encima de varios.';
+    return S.wallChain
+      ? 'Tocá el próximo punto. Tocá otra vez el último (o Esc) para terminar el trazo.'
+      : 'Tocá donde empieza y después cada esquina, o arrastrá un tramo suelto. Seguí las paredes del dibujo.';
+  }
+  // Distancia de toque en casillas: unos 16 píxeles de pantalla, al zoom que haya.
+  const touchReach = (px = 16) => Math.max(0.15, px / (cellPx() * S.view.s));
+  const wallPoint = w => BC.snapWallPoint(S.walls, toCellF(w), S.wallSnap, touchReach(12));
+  const samePoint = (a, b) => !!a && !!b && Math.hypot(a.x - b.x, a.y - b.y) < 0.05;
+  function changeWalls(next) {
+    if (next === S.walls) return;
+    S.wallUndo = [...S.wallUndo.filter(u => u.map === S.mapId).slice(-49), { map: S.mapId, walls: S.walls }];
+    S.walls = next;
+    S.wallHover = -1;
+    saveSoon(terrainPatch());
+    S.dirty = true;
+  }
+  function undoWalls() {
+    const i = S.wallUndo.findLastIndex(u => u.map === S.mapId);
+    if (i < 0) return false;
+    S.walls = S.wallUndo[i].walls;
+    S.wallUndo = S.wallUndo.filter((_, j) => j !== i);
+    Object.assign(S, { wallChain: null, wallHover: -1 });
+    saveSoon(terrainPatch());
+    S.dirty = true;
+    return true;
+  }
+  function commitWall(from, to) {
+    if (samePoint(from, to)) return false;
+    if (S.walls.length >= BC.MAX_WALLS) {
+      toast(`Este mapa ya tiene el máximo de ${BC.MAX_WALLS} tramos.`);
+      return false;
+    }
+    const kind = { wall: BC.WALL.wall, door: BC.WALL.door, window: BC.WALL.window }[S.wallMode];
+    changeWalls(BC.addWall(S.walls, [from.x, from.y, to.x, to.y, kind]));
+    return true;
+  }
+  function endWallChain() {
+    S.wallChain = null;
+    S.wallDraw = null;
+    hint(wallHint());
+    panel();
+    S.dirty = true;
+  }
+  // Toque con la herramienta: un punto del trazo, o elegir un tramo para cambiarlo o borrarlo.
+  function wallTap(w) {
+    if (drawingWalls()) {
+      const p = wallPoint(w);
+      if (!S.wallChain) S.wallChain = p;
+      else if (samePoint(S.wallChain, p)) return endWallChain();
+      else if (commitWall(S.wallChain, p)) S.wallChain = p;
+      hint(wallHint());
+      panel();
+      return;
+    }
+    const f = toCellF(w),
+      i = BC.nearestWall(S.walls, f.x, f.y, touchReach());
+    if (i < 0) return;
+    if (S.wallMode === 'erase') {
+      changeWalls(S.walls.filter((_, j) => j !== i));
+      panel();
+    } else wallEditDialog(i);
+  }
+  function wallEraseAt(w) {
+    const f = toCellF(w),
+      i = BC.nearestWall(S.walls, f.x, f.y, touchReach());
+    if (i >= 0) changeWalls(S.walls.filter((_, j) => j !== i));
+  }
+  function wallEditDialog(i) {
+    const w = S.walls[i];
+    if (!w) return;
+    const cur = BC.wallKind(w),
+      len = Math.hypot(w[2] - w[0], w[3] - w[1]) * S.grid.feet;
+    modal(
+      'Tramo de pared',
+      `<label class="field">Qué es<select name="kind">${BC.WALL_KINDS.map(
+        ([k, name]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${esc(name)}</option>`,
+      ).join(
+        '',
+      )}<option value="remove">Quitar el tramo</option></select></label><p class="small">Mide ${Math.round(len)} pies. Las puertas trabadas no las abren los jugadores; el DM las destraba tocándolas.</p>`,
+      async fd => {
+        const v = String(fd.get('kind'));
+        changeWalls(v === 'remove' ? S.walls.filter((_, j) => j !== i) : BC.setWallKind(S.walls, i, Number(v)));
+        ui();
+      },
+    );
+  }
+  // Puertas dibujadas: el DM las abre y cierra con un toque; un jugador, si su personaje está al lado.
+  function tapWallDoor(f) {
+    const i = BC.nearestWall(S.walls, f.x, f.y, touchReach(18), BC.isWallDoor);
+    if (i < 0) return false;
+    const w = S.walls[i],
+      kind = BC.wallKind(w);
+    if (dmView()) {
+      if (kind === BC.WALL.locked) lockedWallDialog(i);
+      else setWallDoor(i);
+      return true;
+    }
+    const me = mapTokens().find(t => myCharacters().includes(t.character_id));
+    if (!me) return false;
+    const half = BC.tokenSpan(me) / 2;
+    if (BC.wallDistance(w, me.x + half, me.y + half) > half + 1.05)
+      toast('Acercate a la puerta para abrirla o cerrarla.');
+    else if (kind === BC.WALL.locked) toast('Esa puerta está trabada.');
+    else
+      S.channel?.send({
+        t: 'wall-door',
+        map: S.mapId,
+        i,
+        w: w.slice(0, 4),
+        to: kind === BC.WALL.open ? BC.WALL.door : BC.WALL.open,
+        by: S.me?.id,
+      });
+    return true;
+  }
+  function setWallDoor(i, to = null) {
+    const w = S.walls[i];
+    if (!w || (to !== null && BC.wallKind(w) === to)) return;
+    const next = BC.toggleWallDoor(S.walls, i);
+    if (!next) return;
+    S.walls = next;
+    saveSoon(terrainPatch());
+    S.dirty = true;
+  }
+  function lockedWallDialog(i) {
+    modal(
+      'Puerta trabada',
+      '<p>Los jugadores no pueden abrirla. Para volver a trabarla, usá «Paredes» → «Cambiar tipo».</p>',
+      async () => {
+        S.walls = BC.setWallKind(S.walls, i, BC.WALL.door);
+        saveSoon(terrainPatch());
+        S.dirty = true;
+      },
+      'Destrabar',
+    );
+  }
+  // Pedido de un jugador: lo atiende la pantalla del DM. El índice se confirma con las puntas del tramo,
+  // por si las paredes cambiaron mientras tanto.
+  function onWallDoorAsk(m) {
+    if (!S.isDM || TV || !Array.isArray(m.w) || m.w.length !== 4) return;
+    const match = w => !!w && m.w.every((v, j) => Math.abs(Number(v) - w[j]) < 0.011);
+    const i = match(S.walls[m.i]) ? m.i : S.walls.findIndex(match);
+    const kind = BC.wallKind(S.walls[i]);
+    if (i < 0 || !BC.isWallDoor(S.walls[i])) return;
+    if (kind === BC.WALL.locked) S.channel?.send({ t: 'door-locked', map: S.mapId, to: m.by });
+    else if ((m.to === BC.WALL.open && kind === BC.WALL.door) || (m.to === BC.WALL.door && kind === BC.WALL.open))
+      setWallDoor(i, m.to);
   }
 
   // ---------- Combate: objetivo, flanqueo, alcance y ataques de oportunidad ----------
@@ -4678,6 +4983,7 @@
       { x, y, span } = BC.footprintRect(d.token);
     if (x === last.x && y === last.y) return;
     d.path.push(...BC.steps(last, { x, y }, Math.min(1, span)).slice(1));
+    d.wall = !d.group?.length && !!wallInWay(d.path, d.start, { x, y }, span);
     // Solo cuenta dónde empieza y dónde termina: tantear el recorrido arrastrando no provoca nada.
     const t = tokenById(d.token.id);
     d.risk = inCombat() && !d.group?.length && t && !isFree(d, t) ? threats({ ...t, x, y }, [d.start, { x, y }]) : [];
@@ -4689,6 +4995,13 @@
         : null;
   }
   const isFree = (d, t) => d.free || !!H.disengaged?.(t) || (!!t.combatant_id && S.disengaged.has(t.combatant_id));
+  // Pared que corta el paso: tanto el recorrido arrastrado como la línea recta tienen que chocar con alguna,
+  // así se puede tantear arrastrando, o dar la vuelta por una puerta abierta.
+  function wallInWay(path, from, to, span) {
+    if (!S.walls.length) return null;
+    const dragged = BC.wallOnPath(S.walls, [...path, to], span);
+    return dragged && BC.wallOnPath(S.walls, BC.steps(from, to, Math.min(1, span)), span);
+  }
 
   // ---------- Movimiento por turno (jugadores en combate) ----------
   // Cada jugador tiene su velocidad por turno (el doble si usó Correr). Se guarda en este dispositivo
@@ -4930,6 +5243,7 @@
       (S.isDM && S.mapId && !S.asPlayer
         ? t('fog', '🌫', 'Niebla') +
           t('paint', '🧱', 'Terreno') +
+          t('walls', '🚪', 'Paredes') +
           (BP ? t('props', '🪑', 'Muebles') : '') +
           t('tokens', '♟', 'Fichas') +
           t('enc', '⚔', 'Encuentros')
@@ -4955,6 +5269,7 @@
         area: 'Elegí forma y tamaño. Tocá para una esfera; arrastrá desde el origen para apuntar un cono, línea o cubo.',
         fog: 'Pintá para revelar u ocultar. «Sala» revela un cuarto entero hasta sus muros.',
         paint: 'Elegí un terreno y pintá. «Sala» traza muros alrededor y rellena el piso.',
+        walls: wallHint(),
         props: 'Elegí una pieza y tocá el mapa para colocarla. Con «Mover», arrastrala; un toque la gira.',
         tokens: 'Tocá una ficha para editarla.',
         enc: S.group
@@ -5014,7 +5329,20 @@
         .map(([v, l]) => chip('paint-mode', v, l, S.paintMode === v))
         .join(
           '',
-        )}</div>${S.paintMode === 'brush' ? `<div class="chips"><span class="small muted">Pincel</span>${sizes}</div>` : ''}${S.walls.length ? `<label class="check"><input type="checkbox" data-action="bd-walls" ${S.showWalls ? 'checked' : ''}>Ver paredes importadas (${S.walls.length})</label>` : ''}`;
+        )}</div>${S.paintMode === 'brush' ? `<div class="chips"><span class="small muted">Pincel</span>${sizes}</div>` : ''}`;
+    } else if (S.tool === 'walls' && dmView()) {
+      const doors = S.walls.filter(BC.isWallDoor).length;
+      html = `<div class="chips">${[
+        ['wall', '━ Pared'],
+        ['door', '🚪 Puerta'],
+        ['window', '▭ Ventana'],
+        ['edit', '✎ Cambiar tipo'],
+        ['erase', '🧽 Borrar'],
+      ]
+        .map(([v, l]) => chip('wall-mode', v, l, S.wallMode === v))
+        .join(
+          '',
+        )}</div><div class="board-row"><label class="check"><input type="checkbox" data-action="bd-wall-snap" ${S.wallSnap ? 'checked' : ''}>Apoyar en las esquinas de la cuadrícula</label><label class="check"><input type="checkbox" data-action="bd-walls" ${S.showWalls ? 'checked' : ''}>Verlas también con las otras herramientas</label></div><div class="actions">${S.wallChain ? button('Terminar trazo', 'wall-end') : ''}${S.wallUndo.some(u => u.map === S.mapId) ? button('Deshacer', 'wall-undo', 'secondary') : ''}${S.walls.length ? button('Borrar todas', 'wall-clear', 'text-btn danger-text') : ''}</div><p class="small muted">${S.walls.length} ${S.walls.length === 1 ? 'tramo' : 'tramos'}${doors ? ` · ${doors} ${doors === 1 ? 'puerta' : 'puertas'}` : ''}. Las paredes y las puertas cerradas tapan la vista y el paso; las ventanas dejan ver pero no pasar. Una puerta o ventana dibujada encima de una pared la corta. Los jugadores solo ven las puertas, y las abren tocándolas desde al lado.</p>`;
     } else if (S.tool === 'props' && S.isDM && BP) {
       const pick = (v, label, extra = '') =>
         `<button type="button" class="chip ${S.propId === v ? 'selected' : ''}" data-action="bd-prop" data-v="${esc(v)}" aria-pressed="${S.propId === v}" ${extra}>${label}</button>`;
@@ -5116,6 +5444,27 @@
     el.hidden = false;
     el.innerHTML = `<div class="board-card-head"><i style="background:${esc(t.color || '#888')}">${esc(t.label)}</i><div><b>${esc(d.name || displayTokenName(t, creatureFor(t, d)))}</b><p class="small muted">${t.stage?.startsWith('enc:') && !t.combatant_id ? 'Preparada · ' + esc(prepared().find(e => t.stage.startsWith('enc:' + e.id + ':'))?.name || 'encuentro') + ' · ' : ''}${{ pc: 'Personaje', monster: 'Criatura', npc: 'PNJ', object: 'Objeto' }[t.kind]}${d.status ? ' · ' + esc(d.status) : ''}${selectionCount > 1 ? ` · ${selectionCount} seleccionadas` : ''}${d.conditions.length ? ' · ' + esc(d.conditions.join(', ')) : ''}</p>${t.id === S.target ? `<p class="small board-target-line">🎯 ${targetLine(combatContext())}</p>` : ''}</div><button type="button" class="icon-btn" data-action="bd-deselect" aria-label="Cerrar">×</button></div>${actions ? `<div class="board-card-actions">${actions}</div>` : ''}`;
   }
+  // Puertas dibujadas cerca de la ficha elegida, en píxeles del lienzo: la tarjeta no las tapa, así se pueden tocar.
+  function cardDoorBoxes(t) {
+    if (!S.walls.length) return [];
+    const c = cellPx(),
+      o = origin(),
+      { s, x, y } = S.view,
+      half = BC.tokenSpan(t) / 2,
+      pad = 14;
+    return S.walls
+      .filter(w => BC.isWallDoor(w) && BC.wallDistance(w, t.x + half, t.y + half) < half + 3)
+      .map(w => {
+        const px = v => (o.x + v * c) * s + x,
+          py = v => (o.y + v * c) * s + y;
+        return {
+          left: Math.min(px(w[0]), px(w[2])) - pad,
+          right: Math.max(px(w[0]), px(w[2])) + pad,
+          top: Math.min(py(w[1]), py(w[3])) - pad,
+          bottom: Math.max(py(w[1]), py(w[3])) + pad,
+        };
+      });
+  }
   function positionCard(pieces) {
     const el = $('#board-card');
     if (el.hidden) return;
@@ -5166,6 +5515,7 @@
           cy = foot.y * s + y;
         return { left: cx - r, right: cx + r, top: cy - r, bottom: cy + r };
       });
+    const doors = cardDoorBoxes(selected.t);
     const overlap = (left, top, box) =>
       Math.max(0, Math.min(left + w, box.right) - Math.max(left, box.left)) *
       Math.max(0, Math.min(top + h, box.bottom) - Math.max(top, box.top));
@@ -5174,7 +5524,10 @@
       top = Math.round(Math.max(margin, Math.min(height - h - margin, top)));
       const crowding = blockers.reduce((area, box) => area + overlap(left, top, box), 0);
       const occupied = neighbors.reduce((area, box) => area + overlap(left, top, box), 0);
-      const score = room - (overlap(left, top, sprite) * 3000 + crowding * 2800 + occupied * 700) / Math.max(1, w * h);
+      const covered = doors.reduce((area, box) => area + overlap(left, top, box), 0);
+      const score =
+        room -
+        (overlap(left, top, sprite) * 3000 + crowding * 2800 + occupied * 700 + covered * 6000) / Math.max(1, w * h);
       return { side, left, top, score };
     });
     const { side, left, top } = ranked.sort((a, b) => b.score - a.score)[0];
@@ -5222,6 +5575,8 @@
           S.disengaged.has(t.combatant_id) ? S.disengaged.delete(t.combatant_id) : S.disengaged.add(t.combatant_id);
       } else if (a === 'tool') {
         S.tool = el.dataset.tool;
+        Object.assign(S, { wallChain: null, wallDraw: null, wallHover: -1, wallAim: null });
+        if (canvas) canvas.style.cursor = 'default';
         if (S.tool !== 'tokens') S.sel = S.sel && S.tool === 'move' ? S.sel : null;
         if (S.tool === 'enc') await refreshPrepared();
       } else if (a === 'fit') fit();
@@ -5266,6 +5621,15 @@
         if (!confirm('¿Quitar todos los muebles de este mapa?')) return;
         S.props = [];
         saveSoon(terrainPatch());
+      } else if (a === 'wall-mode') {
+        S.wallMode = el.dataset.v;
+        Object.assign(S, { wallChain: null, wallDraw: null, wallHover: -1 });
+        hint(wallHint());
+      } else if (a === 'wall-end') endWallChain();
+      else if (a === 'wall-undo') undoWalls();
+      else if (a === 'wall-clear') {
+        if (!confirm(`¿Borrar las ${S.walls.length} paredes, puertas y ventanas de este mapa?`)) return;
+        changeWalls([]);
       } else if (a === 'paint-code') S.paintCode = el.dataset.v;
       else if (a === 'paint-mode') S.paintMode = el.dataset.v;
       else if (a === 'select') tapToken(el.dataset.id);
@@ -5302,8 +5666,11 @@
       else if (a === 'map-gen') {
         await refreshPrepared();
         return genDialog();
-      } else if (a === 'map-edit') return mapEditDialog(S.maps.find(m => m.id === el.dataset.id));
-      else if (a === 'map-delete') {
+      } else if (a === 'map-edit') {
+        // Lo recién pintado o dibujado se guarda antes, para que los ajustes no lo pisen.
+        await flushSave();
+        return mapEditDialog(S.maps.find(m => m.id === el.dataset.id));
+      } else if (a === 'map-delete') {
         const m = S.maps.find(x => x.id === el.dataset.id);
         if (!confirm(`¿Eliminar el mapa «${m.name}»? Se borran su imagen, su niebla y sus fichas.`)) return;
         await Cloud.deleteMap(m.id, m.image_path);
@@ -5352,7 +5719,7 @@
     } else if (a === 'bd-walls') {
       S.showWalls = e.target.checked;
       S.dirty = true;
-    }
+    } else if (a === 'bd-wall-snap') S.wallSnap = e.target.checked;
   });
   async function patchToken(t, patch) {
     const rows = await Cloud.updateToken(t.id, patch);
@@ -5584,7 +5951,7 @@
     const moved = all.map(k => ({ ...k, x: BC.snapToken(k.x + dx, k.size), y: BC.snapToken(k.y + dy, k.size) }));
     const other = visibleTokens().filter(t => !moved.some(k => k.id === t.id));
     if (
-      moved.some(t => {
+      moved.some((t, i) => {
         const size = BC.tokenSpan(t);
         return (
           t.x < 0 ||
@@ -5592,11 +5959,12 @@
           t.x + size > S.grid.cols ||
           t.y + size > S.grid.rows ||
           overlapsPieces(t, other) ||
-          (!d.free && !BC.roomFor(S.grid, S.terrain, t, []))
+          (!d.free && !BC.roomFor(S.grid, S.terrain, t, [])) ||
+          (!d.free && !!BC.wallOnPath(S.walls, BC.steps(all[i], t, Math.min(1, size)), size))
         );
       })
     ) {
-      toast('El grupo no entra en esas casillas.');
+      toast('El grupo no entra en esas casillas, o una pared le corta el camino.');
       return pick();
     }
     try {
@@ -5856,13 +6224,15 @@
         m.image_path
           ? `<p class="small">Hacé coincidir la cuadrícula con la del dibujo: primero el tamaño de la casilla, después el desfase. Se ve en vivo detrás de esta ventana.</p><div class="form-grid">${field('Tamaño de casilla (px)', 'size', +g.size.toFixed(2), 'number', 'min="8" max="1000" step="0.1" data-live')}${field('Desfase X (px)', 'ox', +g.ox.toFixed(1), 'number', 'step="0.5" data-live')}${field('Desfase Y (px)', 'oy', +g.oy.toFixed(1), 'number', 'step="0.5" data-live')}</div><div class="form-grid">${field('Columnas', 'cols', g.cols, 'number', 'min="1" max="200" data-live')}${field('Filas', 'rows', g.rows, 'number', 'min="1" max="200" data-live')}</div><div class="actions">${button('Calcular columnas y filas', 'grid-auto')}</div>`
           : `<div class="form-grid">${field('Columnas', 'cols', g.cols, 'number', 'min="1" max="200"')}${field('Filas', 'rows', g.rows, 'number', 'min="1" max="200"')}</div>`
-      }<div class="form-grid">${field('Pies por casilla', 'feet', g.feet, 'number', 'min="1" max="100"')}<label class="field">Color de la cuadrícula<input type="color" name="color" value="${esc(g.color)}" data-live></label>${field('Opacidad', 'opacity', g.opacity, 'range', 'min="0" max="1" step="0.05" data-live')}</div><label class="check"><input type="checkbox" name="show" ${g.show ? 'checked' : ''} data-live>Mostrar cuadrícula</label>${typeof Sound !== 'undefined' ? `<label class="field">Sonido de ambiente (lo oye toda la mesa)<select name="ambient">${Sound.AMBIENTS.map(([id, n]) => `<option value="${id}" ${id === g.ambient ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>` : ''}<fieldset class="skill-choice"><legend>Visión de los jugadores</legend><input type="hidden" name="visionForm" value="1"><label class="check"><input type="checkbox" name="los" ${g.vision.los ? 'checked' : ''}>Solo ven lo que sus personajes tienen a la vista (muros, rocas, puertas y paredes importadas tapan)</label><label class="check"><input type="checkbox" name="dark" ${g.vision.dark ? 'checked' : ''}>Mapa a oscuras: se ve hasta la luz que llevan o su visión en la oscuridad, y lo que alumbren las antorchas, faroles y fogatas que pongas</label>${field('Luz que lleva la party (pies)', 'light', g.vision.light, 'number', 'min="0" max="600" step="5"')}<p class="small muted">Se combina con la niebla manual. Como la niebla, se dibuja en el dispositivo de cada jugador.</p></fieldset>`,
+      }<div class="form-grid">${field('Pies por casilla', 'feet', g.feet, 'number', 'min="1" max="100"')}<label class="field">Color de la cuadrícula<input type="color" name="color" value="${esc(g.color)}" data-live></label>${field('Opacidad', 'opacity', g.opacity, 'range', 'min="0" max="1" step="0.05" data-live')}</div><label class="check"><input type="checkbox" name="show" ${g.show ? 'checked' : ''} data-live>Mostrar cuadrícula</label>${typeof Sound !== 'undefined' ? `<label class="field">Sonido de ambiente (lo oye toda la mesa)<select name="ambient">${Sound.AMBIENTS.map(([id, n]) => `<option value="${id}" ${id === g.ambient ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>` : ''}<fieldset class="skill-choice"><legend>Visión de los jugadores</legend><input type="hidden" name="visionForm" value="1"><label class="check"><input type="checkbox" name="los" ${g.vision.los ? 'checked' : ''}>Solo ven lo que sus personajes tienen a la vista (tapan los muros, rocas y puertas pintados y las paredes de la herramienta «Paredes»)</label><label class="check"><input type="checkbox" name="dark" ${g.vision.dark ? 'checked' : ''}>Mapa a oscuras: se ve hasta la luz que llevan o su visión en la oscuridad, y lo que alumbren las antorchas, faroles y fogatas que pongas</label>${field('Luz que lleva la party (pies)', 'light', g.vision.light, 'number', 'min="0" max="600" step="5"')}<p class="small muted">Se combina con la niebla manual. Como la niebla, se dibuja en el dispositivo de cada jugador.</p></fieldset>`,
       async fd => {
         const grid = readGrid(fd, g);
         // Cambiar columnas o filas reacomoda terreno y niebla.
         const terrain = {
           cells: resizeCells(m, g, grid),
-          walls: m.terrain?.walls || [],
+          walls: m.image_path
+            ? BC.regridWalls(BC.normWalls(m.terrain?.walls), g, grid)
+            : BC.normWalls(m.terrain?.walls),
           links: m.terrain?.links || {},
           props: BP ? BP.norm(grid, m.terrain?.props) : [],
         };
@@ -5886,6 +6256,7 @@
       if (S.mapId !== m.id) return;
       S.grid = readGrid(new FormData(form), g);
       S.terrain = BC.cells(S.grid, resizeCells(m, g, S.grid));
+      if (m.image_path) S.walls = BC.regridWalls(BC.normWalls(m.terrain?.walls), g, S.grid);
       S.dirty = true;
     };
     form.addEventListener('input', live);
@@ -6230,6 +6601,11 @@
       turnBy(key === 'q' ? -1 : 1);
       return;
     }
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && key === 'z' && S.tool === 'walls' && dmView()) {
+      e.preventDefault();
+      if (undoWalls()) ui();
+      return;
+    }
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && key === 'z' && S.poseUndo.length) {
       e.preventDefault();
       undoPose().catch(err => toast(err.message));
@@ -6237,6 +6613,7 @@
     }
     if (e.key === 'Escape') {
       if (casting?.active()) return casting.close();
+      if (S.wallChain || S.wallDraw) return endWallChain();
       if (S.aimFacing) {
         S.aimFacing = false;
         tools();

@@ -174,6 +174,152 @@
   };
 
   // ---------- Paredes (segmentos en casillas) ----------
+  // Cada pared es [x1, y1, x2, y2, tipo]. El tipo dice qué tapa: la vista, el paso o nada.
+  const WALL = { wall: 0, door: 1, open: 2, locked: 3, window: 4 };
+  const WALL_KINDS = [
+    [WALL.wall, 'Pared'],
+    [WALL.door, 'Puerta cerrada'],
+    [WALL.open, 'Puerta abierta'],
+    [WALL.locked, 'Puerta trabada'],
+    [WALL.window, 'Ventana'],
+  ];
+  const MAX_WALLS = 4000;
+  const wallKind = w => {
+    const k = Number(w?.[4]) || 0;
+    return Number.isInteger(k) && k >= 0 && k <= 4 ? k : 0;
+  };
+  const isWallDoor = w => [WALL.door, WALL.open, WALL.locked].includes(wallKind(w));
+  // Las puertas abiertas y las ventanas dejan ver; solo las puertas abiertas dejan pasar.
+  const blocksSight = w => [WALL.wall, WALL.door, WALL.locked].includes(wallKind(w));
+  const blocksMove = w => wallKind(w) !== WALL.open;
+  // Paredes guardadas: descarta lo que no sea un segmento válido y redondea a centésimas de casilla.
+  function normWalls(raw) {
+    if (!Array.isArray(raw)) return [];
+    const out = [];
+    for (const w of raw) {
+      if (!Array.isArray(w) || w.length < 4) continue;
+      const p = w.slice(0, 4).map(Number);
+      if (!p.every(n => Number.isFinite(n) && Math.abs(n) <= MAX_SIDE * 2)) continue;
+      if (p[0] === p[2] && p[1] === p[3]) continue;
+      out.push([...p.map(round2), wallKind(w)]);
+      if (out.length >= MAX_WALLS) break;
+    }
+    return out;
+  }
+  // Distancia de un punto al segmento de una pared, en casillas.
+  function wallDistance(w, x, y) {
+    const [ax, ay, bx, by] = w,
+      dx = bx - ax,
+      dy = by - ay,
+      len = dx * dx + dy * dy,
+      t = len ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / len)) : 0;
+    return Math.hypot(ax + dx * t - x, ay + dy * t - y);
+  }
+  // Índice de la pared más cercana a (x,y) que cumple `keep`, si está a menos de `max` casillas; -1 si no hay.
+  function nearestWall(walls, x, y, max = 0.4, keep = () => true) {
+    let best = -1,
+      dist = max;
+    walls.forEach((w, i) => {
+      if (!keep(w)) return;
+      const d = wallDistance(w, x, y);
+      if (d <= dist) {
+        best = i;
+        dist = d;
+      }
+    });
+    return best;
+  }
+  // Abre o cierra la puerta i. Devuelve las paredes nuevas, o null si no es una puerta que se pueda mover.
+  function toggleWallDoor(walls, i) {
+    const w = walls[i],
+      k = wallKind(w);
+    if (k !== WALL.door && k !== WALL.open) return null;
+    return walls.map((x, j) => (j === i ? [...x.slice(0, 4), k === WALL.door ? WALL.open : WALL.door] : x));
+  }
+  const setWallKind = (walls, i, kind) =>
+    walls[i] ? walls.map((x, j) => (j === i ? [...x.slice(0, 4), wallKind([0, 0, 0, 0, kind])] : x)) : walls;
+  // Quita de la pared w el tramo a-b (si está sobre la misma recta). Devuelve 0, 1 o 2 tramos.
+  function cutWall(w, a, b, eps = 0.06) {
+    const [ax, ay, bx, by] = w,
+      dx = bx - ax,
+      dy = by - ay,
+      len = Math.hypot(dx, dy);
+    if (!len) return [w];
+    const off = p => Math.abs((p[0] - ax) * dy - (p[1] - ay) * dx) / len,
+      along = p => ((p[0] - ax) * dx + (p[1] - ay) * dy) / (len * len);
+    if (off(a) > eps || off(b) > eps) return [w];
+    const lo = Math.min(along(a), along(b)),
+      hi = Math.max(along(a), along(b)),
+      tiny = eps / len;
+    if (hi <= tiny || lo >= 1 - tiny) return [w];
+    const at = t => [round2(ax + dx * t), round2(ay + dy * t)],
+      out = [];
+    if (lo > tiny) out.push([ax, ay, ...at(lo), wallKind(w)]);
+    if (hi < 1 - tiny) out.push([...at(hi), bx, by, wallKind(w)]);
+    return out;
+  }
+  // Agrega un tramo. Una puerta o una ventana dibujada encima de una pared la corta: la abertura queda hecha.
+  function addWall(walls, seg) {
+    const [x1, y1, x2, y2] = seg.map(round2),
+      kind = wallKind(seg);
+    if (Math.hypot(x2 - x1, y2 - y1) < 0.05) return walls;
+    let out = walls;
+    if (kind !== WALL.wall)
+      out = walls.flatMap(w => (wallKind(w) === WALL.wall ? cutWall(w, [x1, y1], [x2, y2]) : [w]));
+    return out.length >= MAX_WALLS ? out : [...out, [x1, y1, x2, y2, kind]];
+  }
+  // Punto donde apoyar un tramo: el extremo de una pared cercana o, con `grid`, la esquina de casilla más cercana.
+  function snapWallPoint(walls, p, grid = true, radius = 0.3) {
+    let best = null,
+      dist = radius;
+    for (const w of walls)
+      for (const [x, y] of [
+        [w[0], w[1]],
+        [w[2], w[3]],
+      ]) {
+        const d = Math.hypot(x - p.x, y - p.y);
+        if (d <= dist) {
+          best = { x, y };
+          dist = d;
+        }
+      }
+    if (best) return best;
+    return grid ? { x: Math.round(p.x), y: Math.round(p.y) } : { x: round2(p.x), y: round2(p.y) };
+  }
+  // Al cambiar el tamaño o el desfase de la cuadrícula de una imagen, las paredes siguen pegadas al dibujo.
+  function regridWalls(walls, from, to) {
+    if (from.size === to.size && from.ox === to.ox && from.oy === to.oy) return walls;
+    const x = v => round2((from.ox + v * from.size - to.ox) / to.size),
+      y = v => round2((from.oy + v * from.size - to.oy) / to.size);
+    return walls.map(w => [x(w[0]), y(w[1]), x(w[2]), y(w[3]), wallKind(w)]);
+  }
+  // Primera pared que corta el recorrido de una ficha (posiciones sucesivas de su esquina), o null.
+  // Se mide de centro a centro de su espacio: pasar en diagonal justo por la punta de una pared también choca.
+  function wallOnPath(walls, path, span = 1) {
+    if (path.length < 2) return null;
+    const half = span / 2,
+      pts = path.map(p => [p.x + half, p.y + half]),
+      x0 = Math.min(...pts.map(p => p[0])) - 0.01,
+      x1 = Math.max(...pts.map(p => p[0])) + 0.01,
+      y0 = Math.min(...pts.map(p => p[1])) - 0.01,
+      y1 = Math.max(...pts.map(p => p[1])) + 0.01;
+    const near = walls.filter(
+      w =>
+        blocksMove(w) &&
+        Math.max(w[0], w[2]) >= x0 &&
+        Math.min(w[0], w[2]) <= x1 &&
+        Math.max(w[1], w[3]) >= y0 &&
+        Math.min(w[1], w[3]) <= y1,
+    );
+    for (let i = 1; i < pts.length; i++) {
+      const [ax, ay] = pts[i - 1],
+        [bx, by] = pts[i];
+      if (ax === bx && ay === by) continue;
+      const hit = near.find(w => crosses(ax, ay, bx, by, w[0], w[1], w[2], w[3]));
+      if (hit) return hit;
+    }
+    return null;
+  }
   // ¿El segmento p1-p2 corta al segmento q1-q2? (sin contar toques en los extremos)
   function crosses(ax, ay, bx, by, cx, cy, dx, dy) {
     const d = (bx - ax) * (dy - cy) - (by - ay) * (dx - cx);
@@ -208,7 +354,7 @@
   function room(g, terrain, walls, sx, sy, limit = 2500) {
     if (!inside(g, sx, sy)) return [];
     const t = cells(g, terrain),
-      edges = wallEdges(g, walls),
+      edges = wallEdges(g, walls.filter(blocksMove)),
       seen = new Uint8Array(g.cols * g.rows),
       out = [],
       queue = [[sx, sy]];
@@ -531,7 +677,7 @@
     };
     for (const line of [...(d.line_of_sight || []), ...(d.objects_line_of_sight || [])]) add(line || []);
     for (const portal of d.portals || [])
-      if (portal.bounds?.length >= 2) add(portal.bounds, portal.closed === false ? 2 : 1);
+      if (portal.bounds?.length >= 2) add(portal.bounds, portal.closed === false ? WALL.open : WALL.door);
     return {
       grid: normGrid({ cols: r.map_size.x, rows: r.map_size.y, size: r.pixels_per_grid, ox: 0, oy: 0 }),
       image: 'data:image/png;base64,' + String(d.image).replace(/^data:[^,]*,/, ''),
@@ -573,6 +719,23 @@
     crosses,
     wallEdges,
     room,
+    WALL,
+    WALL_KINDS,
+    MAX_WALLS,
+    wallKind,
+    isWallDoor,
+    blocksSight,
+    blocksMove,
+    normWalls,
+    wallDistance,
+    nearestWall,
+    toggleWallDoor,
+    setWallKind,
+    cutWall,
+    addWall,
+    snapWallPoint,
+    regridWalls,
+    wallOnPath,
     squares,
     feet,
     difficultOnPath,
@@ -676,7 +839,7 @@
   // ---------- Línea de visión ----------
   // Segmentos que tapan la vista: paredes importadas y los bordes de las casillas de muro, roca o puerta.
   function sightBlockers(g, terrain = '', walls = []) {
-    const segs = walls.map(w => [w[0], w[1], w[2], w[3]]);
+    const segs = walls.filter(blocksSight).map(w => [w[0], w[1], w[2], w[3]]);
     const solid = (x, y) => inside(g, x, y) && !!terrainType(terrain[y * g.cols + x] || '.').blocks;
     for (let y = 0; y < g.rows; y++)
       for (let x = 0; x < g.cols; x++) {
