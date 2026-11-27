@@ -1,0 +1,9288 @@
+[
+  {
+    "id": "forjado",
+    "name": "Forjado",
+    "size": "medium",
+    "faction": "ally",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "facing": 20,
+    "appearance": "{\"race\":\"warforged\",\"gender\":\"neutral\",\"height\":197,\"build\":\"athletic\",\"ears\":\"auto\",\"headwear\":\"none\",\"eyewear\":\"none\",\"scar\":\"none\",\"beard\":\"none\",\"neck\":\"none\",\"belt\":\"none\",\"headColor\":\"#30303d\",\"hair\":\"bald\",\"outfit\":\"armor\",\"gear\":\"spear\",\"offhand\":\"none\",\"pose\":\"ready\",\"skin\":\"#535b61\",\"woodColor\":\"#8d532e\",\"cloth\":\"#5c586c\",\"hairColor\":\"#513a32\",\"accent\":\"#aa7e53\",\"feature\":\"woodIron\",\"size\":\"medium\"}",
+    "image": "forjado_px_r000.png",
+    "anchor": {
+      "x": 24,
+      "y": 36
+    },
+    "rotations": {
+      "135": {
+        "image": "forjado_px_r135.png",
+        "anchor": {
+          "x": 23,
+          "y": 50
+        }
+      },
+      "180": {
+        "image": "forjado_px_r180.png",
+        "anchor": {
+          "x": 28,
+          "y": 40
+        }
+      },
+      "225": {
+        "image": "forjado_px_r225.png",
+        "anchor": {
+          "x": 23,
+          "y": 41
+        }
+      },
+      "270": {
+        "image": "forjado_px_r270.png",
+        "anchor": {
+          "x": 22,
+          "y": 39
+        }
+      },
+      "315": {
+        "image": "forjado_px_r315.png",
+        "anchor": {
+          "x": 25,
+          "y": 36
+        }
+      },
+      "000": {
+        "image": "forjado_px_r000.png",
+        "anchor": {
+          "x": 24,
+          "y": 36
+        }
+      },
+      "045": {
+        "image": "forjado_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 47
+        }
+      },
+      "090": {
+        "image": "forjado_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 53
+        }
+      }
+    }
+  },
+  {
+    "id": "enano",
+    "name": "Enano",
+    "size": "medium",
+    "faction": "ally",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "facing": 20,
+    "appearance": "{\"race\":\"dwarf\",\"gender\":\"neutral\",\"height\":137,\"build\":\"stocky\",\"ears\":\"auto\",\"headwear\":\"none\",\"eyewear\":\"none\",\"scar\":\"none\",\"beard\":\"braided\",\"neck\":\"none\",\"belt\":\"none\",\"headColor\":\"#30303d\",\"hair\":\"long\",\"outfit\":\"armor\",\"gear\":\"hammer\",\"offhand\":\"shield\",\"pose\":\"ready\",\"skin\":\"#bc866b\",\"woodColor\":\"#96633e\",\"cloth\":\"#90412c\",\"hairColor\":\"#a34d2b\",\"accent\":\"#c8a055\",\"size\":\"medium\"}",
+    "image": "enano_px_r000.png",
+    "anchor": {
+      "x": 23,
+      "y": 32
+    },
+    "rotations": {
+      "135": {
+        "image": "enano_px_r135.png",
+        "anchor": {
+          "x": 24,
+          "y": 37
+        }
+      },
+      "180": {
+        "image": "enano_px_r180.png",
+        "anchor": {
+          "x": 31,
+          "y": 35
+        }
+      },
+      "225": {
+        "image": "enano_px_r225.png",
+        "anchor": {
+          "x": 24,
+          "y": 38
+        }
+      },
+      "270": {
+        "image": "enano_px_r270.png",
+        "anchor": {
+          "x": 22,
+          "y": 35
+        }
+      },
+      "315": {
+        "image": "enano_px_r315.png",
+        "anchor": {
+          "x": 29,
+          "y": 32
+        }
+      },
+      "000": {
+        "image": "enano_px_r000.png",
+        "anchor": {
+          "x": 23,
+          "y": 32
+        }
+      },
+      "045": {
+        "image": "enano_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 37
+        }
+      },
+      "090": {
+        "image": "enano_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 42
+        }
+      }
+    }
+  },
+  {
+    "id": "cleriga-elfa",
+    "name": "Clériga elfa",
+    "size": "medium",
+    "faction": "ally",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "facing": 20,
+    "appearance": "{\"race\":\"elf\",\"gender\":\"neutral\",\"height\":178,\"build\":\"slender\",\"ears\":\"auto\",\"headwear\":\"hood\",\"eyewear\":\"none\",\"scar\":\"none\",\"beard\":\"none\",\"neck\":\"holy\",\"belt\":\"none\",\"headColor\":\"#2c344a\",\"hair\":\"long\",\"outfit\":\"vestments\",\"gear\":\"staff\",\"offhand\":\"book\",\"pose\":\"rest\",\"skin\":\"#bc866b\",\"woodColor\":\"#96633e\",\"cloth\":\"#3d4963\",\"hairColor\":\"#c7a56c\",\"accent\":\"#e7cb89\",\"size\":\"medium\"}",
+    "image": "cleriga-elfa_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 43
+    },
+    "rotations": {
+      "135": {
+        "image": "cleriga-elfa_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 47
+        }
+      },
+      "180": {
+        "image": "cleriga-elfa_px_r180.png",
+        "anchor": {
+          "x": 21,
+          "y": 42
+        }
+      },
+      "225": {
+        "image": "cleriga-elfa_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 43
+        }
+      },
+      "270": {
+        "image": "cleriga-elfa_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 46
+        }
+      },
+      "315": {
+        "image": "cleriga-elfa_px_r315.png",
+        "anchor": {
+          "x": 22,
+          "y": 44
+        }
+      },
+      "000": {
+        "image": "cleriga-elfa_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 43
+        }
+      },
+      "045": {
+        "image": "cleriga-elfa_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 46
+        }
+      },
+      "090": {
+        "image": "cleriga-elfa_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 49
+        }
+      }
+    }
+  },
+  {
+    "id": "goblin",
+    "name": "Goblin",
+    "size": "small",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "goblin_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 25
+    },
+    "rotations": {
+      "135": {
+        "image": "goblin_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 28
+        }
+      },
+      "180": {
+        "image": "goblin_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 28
+        }
+      },
+      "225": {
+        "image": "goblin_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 33
+        }
+      },
+      "270": {
+        "image": "goblin_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 32
+        }
+      },
+      "315": {
+        "image": "goblin_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 25
+        }
+      },
+      "000": {
+        "image": "goblin_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 25
+        }
+      },
+      "045": {
+        "image": "goblin_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 32
+        }
+      },
+      "090": {
+        "image": "goblin_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 33
+        }
+      }
+    }
+  },
+  {
+    "id": "skeleton",
+    "name": "Esqueleto",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "skeleton_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 33
+    },
+    "rotations": {
+      "135": {
+        "image": "skeleton_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 47
+        }
+      },
+      "180": {
+        "image": "skeleton_px_r180.png",
+        "anchor": {
+          "x": 23,
+          "y": 41
+        }
+      },
+      "225": {
+        "image": "skeleton_px_r225.png",
+        "anchor": {
+          "x": 21,
+          "y": 39
+        }
+      },
+      "270": {
+        "image": "skeleton_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 36
+        }
+      },
+      "315": {
+        "image": "skeleton_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 33
+        }
+      },
+      "000": {
+        "image": "skeleton_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 33
+        }
+      },
+      "045": {
+        "image": "skeleton_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 42
+        }
+      },
+      "090": {
+        "image": "skeleton_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 49
+        }
+      }
+    }
+  },
+  {
+    "id": "bull-skeleton",
+    "name": "Esqueleto de minotauro",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "bull-skeleton_px_r000.png",
+    "anchor": {
+      "x": 36,
+      "y": 74
+    },
+    "rotations": {
+      "135": {
+        "image": "bull-skeleton_px_r135.png",
+        "anchor": {
+          "x": 36,
+          "y": 80
+        }
+      },
+      "180": {
+        "image": "bull-skeleton_px_r180.png",
+        "anchor": {
+          "x": 39,
+          "y": 79
+        }
+      },
+      "225": {
+        "image": "bull-skeleton_px_r225.png",
+        "anchor": {
+          "x": 36,
+          "y": 88
+        }
+      },
+      "270": {
+        "image": "bull-skeleton_px_r270.png",
+        "anchor": {
+          "x": 36,
+          "y": 86
+        }
+      },
+      "315": {
+        "image": "bull-skeleton_px_r315.png",
+        "anchor": {
+          "x": 36,
+          "y": 75
+        }
+      },
+      "000": {
+        "image": "bull-skeleton_px_r000.png",
+        "anchor": {
+          "x": 36,
+          "y": 74
+        }
+      },
+      "045": {
+        "image": "bull-skeleton_px_r045.png",
+        "anchor": {
+          "x": 36,
+          "y": 86
+        }
+      },
+      "090": {
+        "image": "bull-skeleton_px_r090.png",
+        "anchor": {
+          "x": 36,
+          "y": 88
+        }
+      }
+    }
+  },
+  {
+    "id": "horse-skeleton",
+    "name": "Esqueleto de caballo de guerra",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "horse-skeleton_px_r000.png",
+    "anchor": {
+      "x": 37,
+      "y": 61
+    },
+    "rotations": {
+      "135": {
+        "image": "horse-skeleton_px_r135.png",
+        "anchor": {
+          "x": 36,
+          "y": 99
+        }
+      },
+      "180": {
+        "image": "horse-skeleton_px_r180.png",
+        "anchor": {
+          "x": 53,
+          "y": 82
+        }
+      },
+      "225": {
+        "image": "horse-skeleton_px_r225.png",
+        "anchor": {
+          "x": 62,
+          "y": 58
+        }
+      },
+      "270": {
+        "image": "horse-skeleton_px_r270.png",
+        "anchor": {
+          "x": 41,
+          "y": 64
+        }
+      },
+      "315": {
+        "image": "horse-skeleton_px_r315.png",
+        "anchor": {
+          "x": 36,
+          "y": 67
+        }
+      },
+      "000": {
+        "image": "horse-skeleton_px_r000.png",
+        "anchor": {
+          "x": 37,
+          "y": 61
+        }
+      },
+      "045": {
+        "image": "horse-skeleton_px_r045.png",
+        "anchor": {
+          "x": 47,
+          "y": 68
+        }
+      },
+      "090": {
+        "image": "horse-skeleton_px_r090.png",
+        "anchor": {
+          "x": 36,
+          "y": 91
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-red-young",
+    "name": "Dragón rojo",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "young",
+    "image": "dragon-red-young_px_r000.png",
+    "anchor": {
+      "x": 55,
+      "y": 91
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-red-young_px_r135.png",
+        "anchor": {
+          "x": 58,
+          "y": 98
+        }
+      },
+      "180": {
+        "image": "dragon-red-young_px_r180.png",
+        "anchor": {
+          "x": 46,
+          "y": 102
+        }
+      },
+      "225": {
+        "image": "dragon-red-young_px_r225.png",
+        "anchor": {
+          "x": 50,
+          "y": 91
+        }
+      },
+      "270": {
+        "image": "dragon-red-young_px_r270.png",
+        "anchor": {
+          "x": 55,
+          "y": 106
+        }
+      },
+      "315": {
+        "image": "dragon-red-young_px_r315.png",
+        "anchor": {
+          "x": 37,
+          "y": 97
+        }
+      },
+      "000": {
+        "image": "dragon-red-young_px_r000.png",
+        "anchor": {
+          "x": 55,
+          "y": 91
+        }
+      },
+      "045": {
+        "image": "dragon-red-young_px_r045.png",
+        "anchor": {
+          "x": 65,
+          "y": 108
+        }
+      },
+      "090": {
+        "image": "dragon-red-young_px_r090.png",
+        "anchor": {
+          "x": 62,
+          "y": 102
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-red-wyrmling",
+    "name": "Dragón rojo",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "wyrmling",
+    "image": "dragon-red-wyrmling_px_r000.png",
+    "anchor": {
+      "x": 25,
+      "y": 40
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-red-wyrmling_px_r135.png",
+        "anchor": {
+          "x": 26,
+          "y": 43
+        }
+      },
+      "180": {
+        "image": "dragon-red-wyrmling_px_r180.png",
+        "anchor": {
+          "x": 22,
+          "y": 44
+        }
+      },
+      "225": {
+        "image": "dragon-red-wyrmling_px_r225.png",
+        "anchor": {
+          "x": 23,
+          "y": 40
+        }
+      },
+      "270": {
+        "image": "dragon-red-wyrmling_px_r270.png",
+        "anchor": {
+          "x": 25,
+          "y": 46
+        }
+      },
+      "315": {
+        "image": "dragon-red-wyrmling_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 42
+        }
+      },
+      "000": {
+        "image": "dragon-red-wyrmling_px_r000.png",
+        "anchor": {
+          "x": 25,
+          "y": 40
+        }
+      },
+      "045": {
+        "image": "dragon-red-wyrmling_px_r045.png",
+        "anchor": {
+          "x": 29,
+          "y": 47
+        }
+      },
+      "090": {
+        "image": "dragon-red-wyrmling_px_r090.png",
+        "anchor": {
+          "x": 28,
+          "y": 44
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-red-adult",
+    "name": "Dragón rojo",
+    "size": "huge",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "adult",
+    "image": "dragon-red-adult_px_r000.png",
+    "anchor": {
+      "x": 83,
+      "y": 139
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-red-adult_px_r135.png",
+        "anchor": {
+          "x": 88,
+          "y": 150
+        }
+      },
+      "180": {
+        "image": "dragon-red-adult_px_r180.png",
+        "anchor": {
+          "x": 70,
+          "y": 156
+        }
+      },
+      "225": {
+        "image": "dragon-red-adult_px_r225.png",
+        "anchor": {
+          "x": 75,
+          "y": 140
+        }
+      },
+      "270": {
+        "image": "dragon-red-adult_px_r270.png",
+        "anchor": {
+          "x": 83,
+          "y": 163
+        }
+      },
+      "315": {
+        "image": "dragon-red-adult_px_r315.png",
+        "anchor": {
+          "x": 55,
+          "y": 149
+        }
+      },
+      "000": {
+        "image": "dragon-red-adult_px_r000.png",
+        "anchor": {
+          "x": 83,
+          "y": 139
+        }
+      },
+      "045": {
+        "image": "dragon-red-adult_px_r045.png",
+        "anchor": {
+          "x": 98,
+          "y": 166
+        }
+      },
+      "090": {
+        "image": "dragon-red-adult_px_r090.png",
+        "anchor": {
+          "x": 95,
+          "y": 157
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-red-ancient",
+    "name": "Dragón rojo",
+    "size": "gargantuan",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "ancient",
+    "image": "dragon-red-ancient_px_r000.png",
+    "anchor": {
+      "x": 114,
+      "y": 193
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-red-ancient_px_r135.png",
+        "anchor": {
+          "x": 121,
+          "y": 208
+        }
+      },
+      "180": {
+        "image": "dragon-red-ancient_px_r180.png",
+        "anchor": {
+          "x": 96,
+          "y": 216
+        }
+      },
+      "225": {
+        "image": "dragon-red-ancient_px_r225.png",
+        "anchor": {
+          "x": 103,
+          "y": 194
+        }
+      },
+      "270": {
+        "image": "dragon-red-ancient_px_r270.png",
+        "anchor": {
+          "x": 115,
+          "y": 226
+        }
+      },
+      "315": {
+        "image": "dragon-red-ancient_px_r315.png",
+        "anchor": {
+          "x": 75,
+          "y": 206
+        }
+      },
+      "000": {
+        "image": "dragon-red-ancient_px_r000.png",
+        "anchor": {
+          "x": 114,
+          "y": 193
+        }
+      },
+      "045": {
+        "image": "dragon-red-ancient_px_r045.png",
+        "anchor": {
+          "x": 136,
+          "y": 230
+        }
+      },
+      "090": {
+        "image": "dragon-red-ancient_px_r090.png",
+        "anchor": {
+          "x": 130,
+          "y": 217
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-blue-young",
+    "name": "Dragón azul",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "young",
+    "image": "dragon-blue-young_px_r000.png",
+    "anchor": {
+      "x": 55,
+      "y": 94
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-blue-young_px_r135.png",
+        "anchor": {
+          "x": 59,
+          "y": 117
+        }
+      },
+      "180": {
+        "image": "dragon-blue-young_px_r180.png",
+        "anchor": {
+          "x": 48,
+          "y": 122
+        }
+      },
+      "225": {
+        "image": "dragon-blue-young_px_r225.png",
+        "anchor": {
+          "x": 54,
+          "y": 101
+        }
+      },
+      "270": {
+        "image": "dragon-blue-young_px_r270.png",
+        "anchor": {
+          "x": 60,
+          "y": 111
+        }
+      },
+      "315": {
+        "image": "dragon-blue-young_px_r315.png",
+        "anchor": {
+          "x": 39,
+          "y": 101
+        }
+      },
+      "000": {
+        "image": "dragon-blue-young_px_r000.png",
+        "anchor": {
+          "x": 55,
+          "y": 94
+        }
+      },
+      "045": {
+        "image": "dragon-blue-young_px_r045.png",
+        "anchor": {
+          "x": 65,
+          "y": 112
+        }
+      },
+      "090": {
+        "image": "dragon-blue-young_px_r090.png",
+        "anchor": {
+          "x": 62,
+          "y": 107
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-blue-wyrmling",
+    "name": "Dragón azul",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "wyrmling",
+    "image": "dragon-blue-wyrmling_px_r000.png",
+    "anchor": {
+      "x": 25,
+      "y": 41
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-blue-wyrmling_px_r135.png",
+        "anchor": {
+          "x": 26,
+          "y": 50
+        }
+      },
+      "180": {
+        "image": "dragon-blue-wyrmling_px_r180.png",
+        "anchor": {
+          "x": 22,
+          "y": 52
+        }
+      },
+      "225": {
+        "image": "dragon-blue-wyrmling_px_r225.png",
+        "anchor": {
+          "x": 25,
+          "y": 44
+        }
+      },
+      "270": {
+        "image": "dragon-blue-wyrmling_px_r270.png",
+        "anchor": {
+          "x": 27,
+          "y": 48
+        }
+      },
+      "315": {
+        "image": "dragon-blue-wyrmling_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 44
+        }
+      },
+      "000": {
+        "image": "dragon-blue-wyrmling_px_r000.png",
+        "anchor": {
+          "x": 25,
+          "y": 41
+        }
+      },
+      "045": {
+        "image": "dragon-blue-wyrmling_px_r045.png",
+        "anchor": {
+          "x": 29,
+          "y": 48
+        }
+      },
+      "090": {
+        "image": "dragon-blue-wyrmling_px_r090.png",
+        "anchor": {
+          "x": 28,
+          "y": 46
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-blue-adult",
+    "name": "Dragón azul",
+    "size": "huge",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "adult",
+    "image": "dragon-blue-adult_px_r000.png",
+    "anchor": {
+      "x": 84,
+      "y": 144
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-blue-adult_px_r135.png",
+        "anchor": {
+          "x": 89,
+          "y": 180
+        }
+      },
+      "180": {
+        "image": "dragon-blue-adult_px_r180.png",
+        "anchor": {
+          "x": 73,
+          "y": 188
+        }
+      },
+      "225": {
+        "image": "dragon-blue-adult_px_r225.png",
+        "anchor": {
+          "x": 82,
+          "y": 156
+        }
+      },
+      "270": {
+        "image": "dragon-blue-adult_px_r270.png",
+        "anchor": {
+          "x": 91,
+          "y": 170
+        }
+      },
+      "315": {
+        "image": "dragon-blue-adult_px_r315.png",
+        "anchor": {
+          "x": 58,
+          "y": 154
+        }
+      },
+      "000": {
+        "image": "dragon-blue-adult_px_r000.png",
+        "anchor": {
+          "x": 84,
+          "y": 144
+        }
+      },
+      "045": {
+        "image": "dragon-blue-adult_px_r045.png",
+        "anchor": {
+          "x": 98,
+          "y": 173
+        }
+      },
+      "090": {
+        "image": "dragon-blue-adult_px_r090.png",
+        "anchor": {
+          "x": 95,
+          "y": 165
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-blue-ancient",
+    "name": "Dragón azul",
+    "size": "gargantuan",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "ancient",
+    "image": "dragon-blue-ancient_px_r000.png",
+    "anchor": {
+      "x": 116,
+      "y": 199
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-blue-ancient_px_r135.png",
+        "anchor": {
+          "x": 123,
+          "y": 249
+        }
+      },
+      "180": {
+        "image": "dragon-blue-ancient_px_r180.png",
+        "anchor": {
+          "x": 100,
+          "y": 261
+        }
+      },
+      "225": {
+        "image": "dragon-blue-ancient_px_r225.png",
+        "anchor": {
+          "x": 112,
+          "y": 215
+        }
+      },
+      "270": {
+        "image": "dragon-blue-ancient_px_r270.png",
+        "anchor": {
+          "x": 126,
+          "y": 236
+        }
+      },
+      "315": {
+        "image": "dragon-blue-ancient_px_r315.png",
+        "anchor": {
+          "x": 79,
+          "y": 213
+        }
+      },
+      "000": {
+        "image": "dragon-blue-ancient_px_r000.png",
+        "anchor": {
+          "x": 116,
+          "y": 199
+        }
+      },
+      "045": {
+        "image": "dragon-blue-ancient_px_r045.png",
+        "anchor": {
+          "x": 136,
+          "y": 239
+        }
+      },
+      "090": {
+        "image": "dragon-blue-ancient_px_r090.png",
+        "anchor": {
+          "x": 130,
+          "y": 228
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-green-young",
+    "name": "Dragón verde",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "young",
+    "image": "dragon-green-young_px_r000.png",
+    "anchor": {
+      "x": 55,
+      "y": 91
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-green-young_px_r135.png",
+        "anchor": {
+          "x": 58,
+          "y": 98
+        }
+      },
+      "180": {
+        "image": "dragon-green-young_px_r180.png",
+        "anchor": {
+          "x": 46,
+          "y": 102
+        }
+      },
+      "225": {
+        "image": "dragon-green-young_px_r225.png",
+        "anchor": {
+          "x": 50,
+          "y": 91
+        }
+      },
+      "270": {
+        "image": "dragon-green-young_px_r270.png",
+        "anchor": {
+          "x": 55,
+          "y": 106
+        }
+      },
+      "315": {
+        "image": "dragon-green-young_px_r315.png",
+        "anchor": {
+          "x": 37,
+          "y": 97
+        }
+      },
+      "000": {
+        "image": "dragon-green-young_px_r000.png",
+        "anchor": {
+          "x": 55,
+          "y": 91
+        }
+      },
+      "045": {
+        "image": "dragon-green-young_px_r045.png",
+        "anchor": {
+          "x": 65,
+          "y": 108
+        }
+      },
+      "090": {
+        "image": "dragon-green-young_px_r090.png",
+        "anchor": {
+          "x": 62,
+          "y": 102
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-green-wyrmling",
+    "name": "Dragón verde",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "wyrmling",
+    "image": "dragon-green-wyrmling_px_r000.png",
+    "anchor": {
+      "x": 25,
+      "y": 40
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-green-wyrmling_px_r135.png",
+        "anchor": {
+          "x": 26,
+          "y": 43
+        }
+      },
+      "180": {
+        "image": "dragon-green-wyrmling_px_r180.png",
+        "anchor": {
+          "x": 22,
+          "y": 44
+        }
+      },
+      "225": {
+        "image": "dragon-green-wyrmling_px_r225.png",
+        "anchor": {
+          "x": 23,
+          "y": 40
+        }
+      },
+      "270": {
+        "image": "dragon-green-wyrmling_px_r270.png",
+        "anchor": {
+          "x": 25,
+          "y": 46
+        }
+      },
+      "315": {
+        "image": "dragon-green-wyrmling_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 42
+        }
+      },
+      "000": {
+        "image": "dragon-green-wyrmling_px_r000.png",
+        "anchor": {
+          "x": 25,
+          "y": 40
+        }
+      },
+      "045": {
+        "image": "dragon-green-wyrmling_px_r045.png",
+        "anchor": {
+          "x": 29,
+          "y": 47
+        }
+      },
+      "090": {
+        "image": "dragon-green-wyrmling_px_r090.png",
+        "anchor": {
+          "x": 28,
+          "y": 44
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-green-adult",
+    "name": "Dragón verde",
+    "size": "huge",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "adult",
+    "image": "dragon-green-adult_px_r000.png",
+    "anchor": {
+      "x": 83,
+      "y": 139
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-green-adult_px_r135.png",
+        "anchor": {
+          "x": 88,
+          "y": 150
+        }
+      },
+      "180": {
+        "image": "dragon-green-adult_px_r180.png",
+        "anchor": {
+          "x": 70,
+          "y": 156
+        }
+      },
+      "225": {
+        "image": "dragon-green-adult_px_r225.png",
+        "anchor": {
+          "x": 75,
+          "y": 140
+        }
+      },
+      "270": {
+        "image": "dragon-green-adult_px_r270.png",
+        "anchor": {
+          "x": 83,
+          "y": 163
+        }
+      },
+      "315": {
+        "image": "dragon-green-adult_px_r315.png",
+        "anchor": {
+          "x": 55,
+          "y": 149
+        }
+      },
+      "000": {
+        "image": "dragon-green-adult_px_r000.png",
+        "anchor": {
+          "x": 83,
+          "y": 139
+        }
+      },
+      "045": {
+        "image": "dragon-green-adult_px_r045.png",
+        "anchor": {
+          "x": 98,
+          "y": 166
+        }
+      },
+      "090": {
+        "image": "dragon-green-adult_px_r090.png",
+        "anchor": {
+          "x": 95,
+          "y": 157
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-green-ancient",
+    "name": "Dragón verde",
+    "size": "gargantuan",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "ancient",
+    "image": "dragon-green-ancient_px_r000.png",
+    "anchor": {
+      "x": 114,
+      "y": 193
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-green-ancient_px_r135.png",
+        "anchor": {
+          "x": 121,
+          "y": 208
+        }
+      },
+      "180": {
+        "image": "dragon-green-ancient_px_r180.png",
+        "anchor": {
+          "x": 96,
+          "y": 216
+        }
+      },
+      "225": {
+        "image": "dragon-green-ancient_px_r225.png",
+        "anchor": {
+          "x": 103,
+          "y": 194
+        }
+      },
+      "270": {
+        "image": "dragon-green-ancient_px_r270.png",
+        "anchor": {
+          "x": 115,
+          "y": 226
+        }
+      },
+      "315": {
+        "image": "dragon-green-ancient_px_r315.png",
+        "anchor": {
+          "x": 75,
+          "y": 206
+        }
+      },
+      "000": {
+        "image": "dragon-green-ancient_px_r000.png",
+        "anchor": {
+          "x": 114,
+          "y": 193
+        }
+      },
+      "045": {
+        "image": "dragon-green-ancient_px_r045.png",
+        "anchor": {
+          "x": 136,
+          "y": 230
+        }
+      },
+      "090": {
+        "image": "dragon-green-ancient_px_r090.png",
+        "anchor": {
+          "x": 130,
+          "y": 217
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-black-young",
+    "name": "Dragón negro",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "young",
+    "image": "dragon-black-young_px_r000.png",
+    "anchor": {
+      "x": 55,
+      "y": 88
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-black-young_px_r135.png",
+        "anchor": {
+          "x": 63,
+          "y": 118
+        }
+      },
+      "180": {
+        "image": "dragon-black-young_px_r180.png",
+        "anchor": {
+          "x": 47,
+          "y": 119
+        }
+      },
+      "225": {
+        "image": "dragon-black-young_px_r225.png",
+        "anchor": {
+          "x": 62,
+          "y": 108
+        }
+      },
+      "270": {
+        "image": "dragon-black-young_px_r270.png",
+        "anchor": {
+          "x": 63,
+          "y": 105
+        }
+      },
+      "315": {
+        "image": "dragon-black-young_px_r315.png",
+        "anchor": {
+          "x": 50,
+          "y": 95
+        }
+      },
+      "000": {
+        "image": "dragon-black-young_px_r000.png",
+        "anchor": {
+          "x": 55,
+          "y": 88
+        }
+      },
+      "045": {
+        "image": "dragon-black-young_px_r045.png",
+        "anchor": {
+          "x": 68,
+          "y": 106
+        }
+      },
+      "090": {
+        "image": "dragon-black-young_px_r090.png",
+        "anchor": {
+          "x": 63,
+          "y": 102
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-black-wyrmling",
+    "name": "Dragón negro",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "wyrmling",
+    "image": "dragon-black-wyrmling_px_r000.png",
+    "anchor": {
+      "x": 25,
+      "y": 39
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-black-wyrmling_px_r135.png",
+        "anchor": {
+          "x": 28,
+          "y": 51
+        }
+      },
+      "180": {
+        "image": "dragon-black-wyrmling_px_r180.png",
+        "anchor": {
+          "x": 22,
+          "y": 51
+        }
+      },
+      "225": {
+        "image": "dragon-black-wyrmling_px_r225.png",
+        "anchor": {
+          "x": 28,
+          "y": 47
+        }
+      },
+      "270": {
+        "image": "dragon-black-wyrmling_px_r270.png",
+        "anchor": {
+          "x": 28,
+          "y": 45
+        }
+      },
+      "315": {
+        "image": "dragon-black-wyrmling_px_r315.png",
+        "anchor": {
+          "x": 23,
+          "y": 41
+        }
+      },
+      "000": {
+        "image": "dragon-black-wyrmling_px_r000.png",
+        "anchor": {
+          "x": 25,
+          "y": 39
+        }
+      },
+      "045": {
+        "image": "dragon-black-wyrmling_px_r045.png",
+        "anchor": {
+          "x": 30,
+          "y": 46
+        }
+      },
+      "090": {
+        "image": "dragon-black-wyrmling_px_r090.png",
+        "anchor": {
+          "x": 28,
+          "y": 44
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-black-adult",
+    "name": "Dragón negro",
+    "size": "huge",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "adult",
+    "image": "dragon-black-adult_px_r000.png",
+    "anchor": {
+      "x": 83,
+      "y": 135
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-black-adult_px_r135.png",
+        "anchor": {
+          "x": 96,
+          "y": 182
+        }
+      },
+      "180": {
+        "image": "dragon-black-adult_px_r180.png",
+        "anchor": {
+          "x": 70,
+          "y": 183
+        }
+      },
+      "225": {
+        "image": "dragon-black-adult_px_r225.png",
+        "anchor": {
+          "x": 94,
+          "y": 166
+        }
+      },
+      "270": {
+        "image": "dragon-black-adult_px_r270.png",
+        "anchor": {
+          "x": 96,
+          "y": 161
+        }
+      },
+      "315": {
+        "image": "dragon-black-adult_px_r315.png",
+        "anchor": {
+          "x": 76,
+          "y": 145
+        }
+      },
+      "000": {
+        "image": "dragon-black-adult_px_r000.png",
+        "anchor": {
+          "x": 83,
+          "y": 135
+        }
+      },
+      "045": {
+        "image": "dragon-black-adult_px_r045.png",
+        "anchor": {
+          "x": 103,
+          "y": 163
+        }
+      },
+      "090": {
+        "image": "dragon-black-adult_px_r090.png",
+        "anchor": {
+          "x": 96,
+          "y": 156
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-black-ancient",
+    "name": "Dragón negro",
+    "size": "gargantuan",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "ancient",
+    "image": "dragon-black-ancient_px_r000.png",
+    "anchor": {
+      "x": 115,
+      "y": 186
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-black-ancient_px_r135.png",
+        "anchor": {
+          "x": 133,
+          "y": 252
+        }
+      },
+      "180": {
+        "image": "dragon-black-ancient_px_r180.png",
+        "anchor": {
+          "x": 96,
+          "y": 253
+        }
+      },
+      "225": {
+        "image": "dragon-black-ancient_px_r225.png",
+        "anchor": {
+          "x": 130,
+          "y": 230
+        }
+      },
+      "270": {
+        "image": "dragon-black-ancient_px_r270.png",
+        "anchor": {
+          "x": 132,
+          "y": 223
+        }
+      },
+      "315": {
+        "image": "dragon-black-ancient_px_r315.png",
+        "anchor": {
+          "x": 104,
+          "y": 200
+        }
+      },
+      "000": {
+        "image": "dragon-black-ancient_px_r000.png",
+        "anchor": {
+          "x": 115,
+          "y": 186
+        }
+      },
+      "045": {
+        "image": "dragon-black-ancient_px_r045.png",
+        "anchor": {
+          "x": 142,
+          "y": 226
+        }
+      },
+      "090": {
+        "image": "dragon-black-ancient_px_r090.png",
+        "anchor": {
+          "x": 132,
+          "y": 216
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-white-young",
+    "name": "Dragón blanco",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "young",
+    "image": "dragon-white-young_px_r000.png",
+    "anchor": {
+      "x": 54,
+      "y": 99
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-white-young_px_r135.png",
+        "anchor": {
+          "x": 58,
+          "y": 98
+        }
+      },
+      "180": {
+        "image": "dragon-white-young_px_r180.png",
+        "anchor": {
+          "x": 42,
+          "y": 103
+        }
+      },
+      "225": {
+        "image": "dragon-white-young_px_r225.png",
+        "anchor": {
+          "x": 51,
+          "y": 93
+        }
+      },
+      "270": {
+        "image": "dragon-white-young_px_r270.png",
+        "anchor": {
+          "x": 57,
+          "y": 110
+        }
+      },
+      "315": {
+        "image": "dragon-white-young_px_r315.png",
+        "anchor": {
+          "x": 37,
+          "y": 105
+        }
+      },
+      "000": {
+        "image": "dragon-white-young_px_r000.png",
+        "anchor": {
+          "x": 54,
+          "y": 99
+        }
+      },
+      "045": {
+        "image": "dragon-white-young_px_r045.png",
+        "anchor": {
+          "x": 61,
+          "y": 113
+        }
+      },
+      "090": {
+        "image": "dragon-white-young_px_r090.png",
+        "anchor": {
+          "x": 62,
+          "y": 104
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-white-wyrmling",
+    "name": "Dragón blanco",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "wyrmling",
+    "image": "dragon-white-wyrmling_px_r000.png",
+    "anchor": {
+      "x": 24,
+      "y": 43
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-white-wyrmling_px_r135.png",
+        "anchor": {
+          "x": 26,
+          "y": 43
+        }
+      },
+      "180": {
+        "image": "dragon-white-wyrmling_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 45
+        }
+      },
+      "225": {
+        "image": "dragon-white-wyrmling_px_r225.png",
+        "anchor": {
+          "x": 23,
+          "y": 40
+        }
+      },
+      "270": {
+        "image": "dragon-white-wyrmling_px_r270.png",
+        "anchor": {
+          "x": 26,
+          "y": 47
+        }
+      },
+      "315": {
+        "image": "dragon-white-wyrmling_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 45
+        }
+      },
+      "000": {
+        "image": "dragon-white-wyrmling_px_r000.png",
+        "anchor": {
+          "x": 24,
+          "y": 43
+        }
+      },
+      "045": {
+        "image": "dragon-white-wyrmling_px_r045.png",
+        "anchor": {
+          "x": 27,
+          "y": 49
+        }
+      },
+      "090": {
+        "image": "dragon-white-wyrmling_px_r090.png",
+        "anchor": {
+          "x": 28,
+          "y": 45
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-white-adult",
+    "name": "Dragón blanco",
+    "size": "huge",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "adult",
+    "image": "dragon-white-adult_px_r000.png",
+    "anchor": {
+      "x": 81,
+      "y": 153
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-white-adult_px_r135.png",
+        "anchor": {
+          "x": 88,
+          "y": 150
+        }
+      },
+      "180": {
+        "image": "dragon-white-adult_px_r180.png",
+        "anchor": {
+          "x": 63,
+          "y": 158
+        }
+      },
+      "225": {
+        "image": "dragon-white-adult_px_r225.png",
+        "anchor": {
+          "x": 77,
+          "y": 142
+        }
+      },
+      "270": {
+        "image": "dragon-white-adult_px_r270.png",
+        "anchor": {
+          "x": 86,
+          "y": 169
+        }
+      },
+      "315": {
+        "image": "dragon-white-adult_px_r315.png",
+        "anchor": {
+          "x": 55,
+          "y": 160
+        }
+      },
+      "000": {
+        "image": "dragon-white-adult_px_r000.png",
+        "anchor": {
+          "x": 81,
+          "y": 153
+        }
+      },
+      "045": {
+        "image": "dragon-white-adult_px_r045.png",
+        "anchor": {
+          "x": 93,
+          "y": 174
+        }
+      },
+      "090": {
+        "image": "dragon-white-adult_px_r090.png",
+        "anchor": {
+          "x": 94,
+          "y": 160
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-white-ancient",
+    "name": "Dragón blanco",
+    "size": "gargantuan",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "ancient",
+    "image": "dragon-white-ancient_px_r000.png",
+    "anchor": {
+      "x": 112,
+      "y": 211
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-white-ancient_px_r135.png",
+        "anchor": {
+          "x": 121,
+          "y": 208
+        }
+      },
+      "180": {
+        "image": "dragon-white-ancient_px_r180.png",
+        "anchor": {
+          "x": 87,
+          "y": 218
+        }
+      },
+      "225": {
+        "image": "dragon-white-ancient_px_r225.png",
+        "anchor": {
+          "x": 106,
+          "y": 196
+        }
+      },
+      "270": {
+        "image": "dragon-white-ancient_px_r270.png",
+        "anchor": {
+          "x": 119,
+          "y": 234
+        }
+      },
+      "315": {
+        "image": "dragon-white-ancient_px_r315.png",
+        "anchor": {
+          "x": 75,
+          "y": 222
+        }
+      },
+      "000": {
+        "image": "dragon-white-ancient_px_r000.png",
+        "anchor": {
+          "x": 112,
+          "y": 211
+        }
+      },
+      "045": {
+        "image": "dragon-white-ancient_px_r045.png",
+        "anchor": {
+          "x": 128,
+          "y": 241
+        }
+      },
+      "090": {
+        "image": "dragon-white-ancient_px_r090.png",
+        "anchor": {
+          "x": 129,
+          "y": 221
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-brass-young",
+    "name": "Dragón de latón",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "young",
+    "image": "dragon-brass-young_px_r000.png",
+    "anchor": {
+      "x": 55,
+      "y": 91
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-brass-young_px_r135.png",
+        "anchor": {
+          "x": 58,
+          "y": 98
+        }
+      },
+      "180": {
+        "image": "dragon-brass-young_px_r180.png",
+        "anchor": {
+          "x": 46,
+          "y": 102
+        }
+      },
+      "225": {
+        "image": "dragon-brass-young_px_r225.png",
+        "anchor": {
+          "x": 50,
+          "y": 91
+        }
+      },
+      "270": {
+        "image": "dragon-brass-young_px_r270.png",
+        "anchor": {
+          "x": 55,
+          "y": 106
+        }
+      },
+      "315": {
+        "image": "dragon-brass-young_px_r315.png",
+        "anchor": {
+          "x": 37,
+          "y": 97
+        }
+      },
+      "000": {
+        "image": "dragon-brass-young_px_r000.png",
+        "anchor": {
+          "x": 55,
+          "y": 91
+        }
+      },
+      "045": {
+        "image": "dragon-brass-young_px_r045.png",
+        "anchor": {
+          "x": 65,
+          "y": 108
+        }
+      },
+      "090": {
+        "image": "dragon-brass-young_px_r090.png",
+        "anchor": {
+          "x": 62,
+          "y": 102
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-brass-wyrmling",
+    "name": "Dragón de latón",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "wyrmling",
+    "image": "dragon-brass-wyrmling_px_r000.png",
+    "anchor": {
+      "x": 25,
+      "y": 40
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-brass-wyrmling_px_r135.png",
+        "anchor": {
+          "x": 26,
+          "y": 43
+        }
+      },
+      "180": {
+        "image": "dragon-brass-wyrmling_px_r180.png",
+        "anchor": {
+          "x": 22,
+          "y": 44
+        }
+      },
+      "225": {
+        "image": "dragon-brass-wyrmling_px_r225.png",
+        "anchor": {
+          "x": 23,
+          "y": 40
+        }
+      },
+      "270": {
+        "image": "dragon-brass-wyrmling_px_r270.png",
+        "anchor": {
+          "x": 25,
+          "y": 46
+        }
+      },
+      "315": {
+        "image": "dragon-brass-wyrmling_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 42
+        }
+      },
+      "000": {
+        "image": "dragon-brass-wyrmling_px_r000.png",
+        "anchor": {
+          "x": 25,
+          "y": 40
+        }
+      },
+      "045": {
+        "image": "dragon-brass-wyrmling_px_r045.png",
+        "anchor": {
+          "x": 29,
+          "y": 47
+        }
+      },
+      "090": {
+        "image": "dragon-brass-wyrmling_px_r090.png",
+        "anchor": {
+          "x": 28,
+          "y": 44
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-brass-adult",
+    "name": "Dragón de latón",
+    "size": "huge",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "adult",
+    "image": "dragon-brass-adult_px_r000.png",
+    "anchor": {
+      "x": 83,
+      "y": 139
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-brass-adult_px_r135.png",
+        "anchor": {
+          "x": 88,
+          "y": 150
+        }
+      },
+      "180": {
+        "image": "dragon-brass-adult_px_r180.png",
+        "anchor": {
+          "x": 70,
+          "y": 156
+        }
+      },
+      "225": {
+        "image": "dragon-brass-adult_px_r225.png",
+        "anchor": {
+          "x": 75,
+          "y": 140
+        }
+      },
+      "270": {
+        "image": "dragon-brass-adult_px_r270.png",
+        "anchor": {
+          "x": 83,
+          "y": 163
+        }
+      },
+      "315": {
+        "image": "dragon-brass-adult_px_r315.png",
+        "anchor": {
+          "x": 55,
+          "y": 149
+        }
+      },
+      "000": {
+        "image": "dragon-brass-adult_px_r000.png",
+        "anchor": {
+          "x": 83,
+          "y": 139
+        }
+      },
+      "045": {
+        "image": "dragon-brass-adult_px_r045.png",
+        "anchor": {
+          "x": 98,
+          "y": 166
+        }
+      },
+      "090": {
+        "image": "dragon-brass-adult_px_r090.png",
+        "anchor": {
+          "x": 95,
+          "y": 157
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-brass-ancient",
+    "name": "Dragón de latón",
+    "size": "gargantuan",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "ancient",
+    "image": "dragon-brass-ancient_px_r000.png",
+    "anchor": {
+      "x": 114,
+      "y": 193
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-brass-ancient_px_r135.png",
+        "anchor": {
+          "x": 121,
+          "y": 208
+        }
+      },
+      "180": {
+        "image": "dragon-brass-ancient_px_r180.png",
+        "anchor": {
+          "x": 96,
+          "y": 216
+        }
+      },
+      "225": {
+        "image": "dragon-brass-ancient_px_r225.png",
+        "anchor": {
+          "x": 103,
+          "y": 194
+        }
+      },
+      "270": {
+        "image": "dragon-brass-ancient_px_r270.png",
+        "anchor": {
+          "x": 115,
+          "y": 226
+        }
+      },
+      "315": {
+        "image": "dragon-brass-ancient_px_r315.png",
+        "anchor": {
+          "x": 75,
+          "y": 206
+        }
+      },
+      "000": {
+        "image": "dragon-brass-ancient_px_r000.png",
+        "anchor": {
+          "x": 114,
+          "y": 193
+        }
+      },
+      "045": {
+        "image": "dragon-brass-ancient_px_r045.png",
+        "anchor": {
+          "x": 136,
+          "y": 230
+        }
+      },
+      "090": {
+        "image": "dragon-brass-ancient_px_r090.png",
+        "anchor": {
+          "x": 130,
+          "y": 217
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-bronze-young",
+    "name": "Dragón de bronce",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "young",
+    "image": "dragon-bronze-young_px_r000.png",
+    "anchor": {
+      "x": 54,
+      "y": 86
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-bronze-young_px_r135.png",
+        "anchor": {
+          "x": 64,
+          "y": 98
+        }
+      },
+      "180": {
+        "image": "dragon-bronze-young_px_r180.png",
+        "anchor": {
+          "x": 48,
+          "y": 102
+        }
+      },
+      "225": {
+        "image": "dragon-bronze-young_px_r225.png",
+        "anchor": {
+          "x": 50,
+          "y": 96
+        }
+      },
+      "270": {
+        "image": "dragon-bronze-young_px_r270.png",
+        "anchor": {
+          "x": 55,
+          "y": 105
+        }
+      },
+      "315": {
+        "image": "dragon-bronze-young_px_r315.png",
+        "anchor": {
+          "x": 41,
+          "y": 92
+        }
+      },
+      "000": {
+        "image": "dragon-bronze-young_px_r000.png",
+        "anchor": {
+          "x": 54,
+          "y": 86
+        }
+      },
+      "045": {
+        "image": "dragon-bronze-young_px_r045.png",
+        "anchor": {
+          "x": 72,
+          "y": 106
+        }
+      },
+      "090": {
+        "image": "dragon-bronze-young_px_r090.png",
+        "anchor": {
+          "x": 69,
+          "y": 104
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-bronze-wyrmling",
+    "name": "Dragón de bronce",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "wyrmling",
+    "image": "dragon-bronze-wyrmling_px_r000.png",
+    "anchor": {
+      "x": 24,
+      "y": 38
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-bronze-wyrmling_px_r135.png",
+        "anchor": {
+          "x": 29,
+          "y": 43
+        }
+      },
+      "180": {
+        "image": "dragon-bronze-wyrmling_px_r180.png",
+        "anchor": {
+          "x": 22,
+          "y": 44
+        }
+      },
+      "225": {
+        "image": "dragon-bronze-wyrmling_px_r225.png",
+        "anchor": {
+          "x": 23,
+          "y": 42
+        }
+      },
+      "270": {
+        "image": "dragon-bronze-wyrmling_px_r270.png",
+        "anchor": {
+          "x": 25,
+          "y": 46
+        }
+      },
+      "315": {
+        "image": "dragon-bronze-wyrmling_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 40
+        }
+      },
+      "000": {
+        "image": "dragon-bronze-wyrmling_px_r000.png",
+        "anchor": {
+          "x": 24,
+          "y": 38
+        }
+      },
+      "045": {
+        "image": "dragon-bronze-wyrmling_px_r045.png",
+        "anchor": {
+          "x": 32,
+          "y": 46
+        }
+      },
+      "090": {
+        "image": "dragon-bronze-wyrmling_px_r090.png",
+        "anchor": {
+          "x": 31,
+          "y": 45
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-bronze-adult",
+    "name": "Dragón de bronce",
+    "size": "huge",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "adult",
+    "image": "dragon-bronze-adult_px_r000.png",
+    "anchor": {
+      "x": 81,
+      "y": 131
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-bronze-adult_px_r135.png",
+        "anchor": {
+          "x": 97,
+          "y": 150
+        }
+      },
+      "180": {
+        "image": "dragon-bronze-adult_px_r180.png",
+        "anchor": {
+          "x": 73,
+          "y": 156
+        }
+      },
+      "225": {
+        "image": "dragon-bronze-adult_px_r225.png",
+        "anchor": {
+          "x": 75,
+          "y": 146
+        }
+      },
+      "270": {
+        "image": "dragon-bronze-adult_px_r270.png",
+        "anchor": {
+          "x": 83,
+          "y": 162
+        }
+      },
+      "315": {
+        "image": "dragon-bronze-adult_px_r315.png",
+        "anchor": {
+          "x": 61,
+          "y": 141
+        }
+      },
+      "000": {
+        "image": "dragon-bronze-adult_px_r000.png",
+        "anchor": {
+          "x": 81,
+          "y": 131
+        }
+      },
+      "045": {
+        "image": "dragon-bronze-adult_px_r045.png",
+        "anchor": {
+          "x": 110,
+          "y": 162
+        }
+      },
+      "090": {
+        "image": "dragon-bronze-adult_px_r090.png",
+        "anchor": {
+          "x": 106,
+          "y": 160
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-bronze-ancient",
+    "name": "Dragón de bronce",
+    "size": "gargantuan",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "ancient",
+    "image": "dragon-bronze-ancient_px_r000.png",
+    "anchor": {
+      "x": 112,
+      "y": 181
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-bronze-ancient_px_r135.png",
+        "anchor": {
+          "x": 134,
+          "y": 208
+        }
+      },
+      "180": {
+        "image": "dragon-bronze-ancient_px_r180.png",
+        "anchor": {
+          "x": 100,
+          "y": 216
+        }
+      },
+      "225": {
+        "image": "dragon-bronze-ancient_px_r225.png",
+        "anchor": {
+          "x": 103,
+          "y": 202
+        }
+      },
+      "270": {
+        "image": "dragon-bronze-ancient_px_r270.png",
+        "anchor": {
+          "x": 115,
+          "y": 224
+        }
+      },
+      "315": {
+        "image": "dragon-bronze-ancient_px_r315.png",
+        "anchor": {
+          "x": 83,
+          "y": 195
+        }
+      },
+      "000": {
+        "image": "dragon-bronze-ancient_px_r000.png",
+        "anchor": {
+          "x": 112,
+          "y": 181
+        }
+      },
+      "045": {
+        "image": "dragon-bronze-ancient_px_r045.png",
+        "anchor": {
+          "x": 152,
+          "y": 224
+        }
+      },
+      "090": {
+        "image": "dragon-bronze-ancient_px_r090.png",
+        "anchor": {
+          "x": 146,
+          "y": 222
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-copper-young",
+    "name": "Dragón de cobre",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "young",
+    "image": "dragon-copper-young_px_r000.png",
+    "anchor": {
+      "x": 55,
+      "y": 91
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-copper-young_px_r135.png",
+        "anchor": {
+          "x": 58,
+          "y": 98
+        }
+      },
+      "180": {
+        "image": "dragon-copper-young_px_r180.png",
+        "anchor": {
+          "x": 46,
+          "y": 102
+        }
+      },
+      "225": {
+        "image": "dragon-copper-young_px_r225.png",
+        "anchor": {
+          "x": 50,
+          "y": 91
+        }
+      },
+      "270": {
+        "image": "dragon-copper-young_px_r270.png",
+        "anchor": {
+          "x": 55,
+          "y": 106
+        }
+      },
+      "315": {
+        "image": "dragon-copper-young_px_r315.png",
+        "anchor": {
+          "x": 37,
+          "y": 97
+        }
+      },
+      "000": {
+        "image": "dragon-copper-young_px_r000.png",
+        "anchor": {
+          "x": 55,
+          "y": 91
+        }
+      },
+      "045": {
+        "image": "dragon-copper-young_px_r045.png",
+        "anchor": {
+          "x": 65,
+          "y": 108
+        }
+      },
+      "090": {
+        "image": "dragon-copper-young_px_r090.png",
+        "anchor": {
+          "x": 62,
+          "y": 102
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-copper-wyrmling",
+    "name": "Dragón de cobre",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "wyrmling",
+    "image": "dragon-copper-wyrmling_px_r000.png",
+    "anchor": {
+      "x": 25,
+      "y": 40
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-copper-wyrmling_px_r135.png",
+        "anchor": {
+          "x": 26,
+          "y": 43
+        }
+      },
+      "180": {
+        "image": "dragon-copper-wyrmling_px_r180.png",
+        "anchor": {
+          "x": 22,
+          "y": 44
+        }
+      },
+      "225": {
+        "image": "dragon-copper-wyrmling_px_r225.png",
+        "anchor": {
+          "x": 23,
+          "y": 40
+        }
+      },
+      "270": {
+        "image": "dragon-copper-wyrmling_px_r270.png",
+        "anchor": {
+          "x": 25,
+          "y": 46
+        }
+      },
+      "315": {
+        "image": "dragon-copper-wyrmling_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 42
+        }
+      },
+      "000": {
+        "image": "dragon-copper-wyrmling_px_r000.png",
+        "anchor": {
+          "x": 25,
+          "y": 40
+        }
+      },
+      "045": {
+        "image": "dragon-copper-wyrmling_px_r045.png",
+        "anchor": {
+          "x": 29,
+          "y": 47
+        }
+      },
+      "090": {
+        "image": "dragon-copper-wyrmling_px_r090.png",
+        "anchor": {
+          "x": 28,
+          "y": 44
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-copper-adult",
+    "name": "Dragón de cobre",
+    "size": "huge",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "adult",
+    "image": "dragon-copper-adult_px_r000.png",
+    "anchor": {
+      "x": 83,
+      "y": 139
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-copper-adult_px_r135.png",
+        "anchor": {
+          "x": 88,
+          "y": 150
+        }
+      },
+      "180": {
+        "image": "dragon-copper-adult_px_r180.png",
+        "anchor": {
+          "x": 70,
+          "y": 156
+        }
+      },
+      "225": {
+        "image": "dragon-copper-adult_px_r225.png",
+        "anchor": {
+          "x": 75,
+          "y": 140
+        }
+      },
+      "270": {
+        "image": "dragon-copper-adult_px_r270.png",
+        "anchor": {
+          "x": 83,
+          "y": 163
+        }
+      },
+      "315": {
+        "image": "dragon-copper-adult_px_r315.png",
+        "anchor": {
+          "x": 55,
+          "y": 149
+        }
+      },
+      "000": {
+        "image": "dragon-copper-adult_px_r000.png",
+        "anchor": {
+          "x": 83,
+          "y": 139
+        }
+      },
+      "045": {
+        "image": "dragon-copper-adult_px_r045.png",
+        "anchor": {
+          "x": 98,
+          "y": 166
+        }
+      },
+      "090": {
+        "image": "dragon-copper-adult_px_r090.png",
+        "anchor": {
+          "x": 95,
+          "y": 157
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-copper-ancient",
+    "name": "Dragón de cobre",
+    "size": "gargantuan",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "ancient",
+    "image": "dragon-copper-ancient_px_r000.png",
+    "anchor": {
+      "x": 114,
+      "y": 193
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-copper-ancient_px_r135.png",
+        "anchor": {
+          "x": 121,
+          "y": 208
+        }
+      },
+      "180": {
+        "image": "dragon-copper-ancient_px_r180.png",
+        "anchor": {
+          "x": 96,
+          "y": 216
+        }
+      },
+      "225": {
+        "image": "dragon-copper-ancient_px_r225.png",
+        "anchor": {
+          "x": 103,
+          "y": 194
+        }
+      },
+      "270": {
+        "image": "dragon-copper-ancient_px_r270.png",
+        "anchor": {
+          "x": 115,
+          "y": 226
+        }
+      },
+      "315": {
+        "image": "dragon-copper-ancient_px_r315.png",
+        "anchor": {
+          "x": 75,
+          "y": 206
+        }
+      },
+      "000": {
+        "image": "dragon-copper-ancient_px_r000.png",
+        "anchor": {
+          "x": 114,
+          "y": 193
+        }
+      },
+      "045": {
+        "image": "dragon-copper-ancient_px_r045.png",
+        "anchor": {
+          "x": 136,
+          "y": 230
+        }
+      },
+      "090": {
+        "image": "dragon-copper-ancient_px_r090.png",
+        "anchor": {
+          "x": 130,
+          "y": 217
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-gold-young",
+    "name": "Dragón de oro",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "young",
+    "image": "dragon-gold-young_px_r000.png",
+    "anchor": {
+      "x": 55,
+      "y": 91
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-gold-young_px_r135.png",
+        "anchor": {
+          "x": 58,
+          "y": 106
+        }
+      },
+      "180": {
+        "image": "dragon-gold-young_px_r180.png",
+        "anchor": {
+          "x": 46,
+          "y": 105
+        }
+      },
+      "225": {
+        "image": "dragon-gold-young_px_r225.png",
+        "anchor": {
+          "x": 61,
+          "y": 100
+        }
+      },
+      "270": {
+        "image": "dragon-gold-young_px_r270.png",
+        "anchor": {
+          "x": 62,
+          "y": 106
+        }
+      },
+      "315": {
+        "image": "dragon-gold-young_px_r315.png",
+        "anchor": {
+          "x": 50,
+          "y": 97
+        }
+      },
+      "000": {
+        "image": "dragon-gold-young_px_r000.png",
+        "anchor": {
+          "x": 55,
+          "y": 91
+        }
+      },
+      "045": {
+        "image": "dragon-gold-young_px_r045.png",
+        "anchor": {
+          "x": 65,
+          "y": 108
+        }
+      },
+      "090": {
+        "image": "dragon-gold-young_px_r090.png",
+        "anchor": {
+          "x": 62,
+          "y": 102
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-gold-wyrmling",
+    "name": "Dragón de oro",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "wyrmling",
+    "image": "dragon-gold-wyrmling_px_r000.png",
+    "anchor": {
+      "x": 25,
+      "y": 40
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-gold-wyrmling_px_r135.png",
+        "anchor": {
+          "x": 26,
+          "y": 46
+        }
+      },
+      "180": {
+        "image": "dragon-gold-wyrmling_px_r180.png",
+        "anchor": {
+          "x": 22,
+          "y": 45
+        }
+      },
+      "225": {
+        "image": "dragon-gold-wyrmling_px_r225.png",
+        "anchor": {
+          "x": 27,
+          "y": 43
+        }
+      },
+      "270": {
+        "image": "dragon-gold-wyrmling_px_r270.png",
+        "anchor": {
+          "x": 28,
+          "y": 46
+        }
+      },
+      "315": {
+        "image": "dragon-gold-wyrmling_px_r315.png",
+        "anchor": {
+          "x": 23,
+          "y": 42
+        }
+      },
+      "000": {
+        "image": "dragon-gold-wyrmling_px_r000.png",
+        "anchor": {
+          "x": 25,
+          "y": 40
+        }
+      },
+      "045": {
+        "image": "dragon-gold-wyrmling_px_r045.png",
+        "anchor": {
+          "x": 29,
+          "y": 47
+        }
+      },
+      "090": {
+        "image": "dragon-gold-wyrmling_px_r090.png",
+        "anchor": {
+          "x": 28,
+          "y": 44
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-gold-adult",
+    "name": "Dragón de oro",
+    "size": "huge",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "adult",
+    "image": "dragon-gold-adult_px_r000.png",
+    "anchor": {
+      "x": 83,
+      "y": 139
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-gold-adult_px_r135.png",
+        "anchor": {
+          "x": 88,
+          "y": 162
+        }
+      },
+      "180": {
+        "image": "dragon-gold-adult_px_r180.png",
+        "anchor": {
+          "x": 70,
+          "y": 161
+        }
+      },
+      "225": {
+        "image": "dragon-gold-adult_px_r225.png",
+        "anchor": {
+          "x": 93,
+          "y": 153
+        }
+      },
+      "270": {
+        "image": "dragon-gold-adult_px_r270.png",
+        "anchor": {
+          "x": 94,
+          "y": 163
+        }
+      },
+      "315": {
+        "image": "dragon-gold-adult_px_r315.png",
+        "anchor": {
+          "x": 76,
+          "y": 149
+        }
+      },
+      "000": {
+        "image": "dragon-gold-adult_px_r000.png",
+        "anchor": {
+          "x": 83,
+          "y": 139
+        }
+      },
+      "045": {
+        "image": "dragon-gold-adult_px_r045.png",
+        "anchor": {
+          "x": 98,
+          "y": 166
+        }
+      },
+      "090": {
+        "image": "dragon-gold-adult_px_r090.png",
+        "anchor": {
+          "x": 95,
+          "y": 157
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-gold-ancient",
+    "name": "Dragón de oro",
+    "size": "gargantuan",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "ancient",
+    "image": "dragon-gold-ancient_px_r000.png",
+    "anchor": {
+      "x": 114,
+      "y": 193
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-gold-ancient_px_r135.png",
+        "anchor": {
+          "x": 121,
+          "y": 225
+        }
+      },
+      "180": {
+        "image": "dragon-gold-ancient_px_r180.png",
+        "anchor": {
+          "x": 96,
+          "y": 223
+        }
+      },
+      "225": {
+        "image": "dragon-gold-ancient_px_r225.png",
+        "anchor": {
+          "x": 128,
+          "y": 212
+        }
+      },
+      "270": {
+        "image": "dragon-gold-ancient_px_r270.png",
+        "anchor": {
+          "x": 130,
+          "y": 226
+        }
+      },
+      "315": {
+        "image": "dragon-gold-ancient_px_r315.png",
+        "anchor": {
+          "x": 105,
+          "y": 206
+        }
+      },
+      "000": {
+        "image": "dragon-gold-ancient_px_r000.png",
+        "anchor": {
+          "x": 114,
+          "y": 193
+        }
+      },
+      "045": {
+        "image": "dragon-gold-ancient_px_r045.png",
+        "anchor": {
+          "x": 136,
+          "y": 230
+        }
+      },
+      "090": {
+        "image": "dragon-gold-ancient_px_r090.png",
+        "anchor": {
+          "x": 130,
+          "y": 217
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-silver-young",
+    "name": "Dragón de plata",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "young",
+    "image": "dragon-silver-young_px_r000.png",
+    "anchor": {
+      "x": 58,
+      "y": 97
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-silver-young_px_r135.png",
+        "anchor": {
+          "x": 65,
+          "y": 98
+        }
+      },
+      "180": {
+        "image": "dragon-silver-young_px_r180.png",
+        "anchor": {
+          "x": 44,
+          "y": 102
+        }
+      },
+      "225": {
+        "image": "dragon-silver-young_px_r225.png",
+        "anchor": {
+          "x": 50,
+          "y": 93
+        }
+      },
+      "270": {
+        "image": "dragon-silver-young_px_r270.png",
+        "anchor": {
+          "x": 55,
+          "y": 109
+        }
+      },
+      "315": {
+        "image": "dragon-silver-young_px_r315.png",
+        "anchor": {
+          "x": 37,
+          "y": 103
+        }
+      },
+      "000": {
+        "image": "dragon-silver-young_px_r000.png",
+        "anchor": {
+          "x": 58,
+          "y": 97
+        }
+      },
+      "045": {
+        "image": "dragon-silver-young_px_r045.png",
+        "anchor": {
+          "x": 71,
+          "y": 112
+        }
+      },
+      "090": {
+        "image": "dragon-silver-young_px_r090.png",
+        "anchor": {
+          "x": 68,
+          "y": 104
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-silver-wyrmling",
+    "name": "Dragón de plata",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "wyrmling",
+    "image": "dragon-silver-wyrmling_px_r000.png",
+    "anchor": {
+      "x": 26,
+      "y": 42
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-silver-wyrmling_px_r135.png",
+        "anchor": {
+          "x": 29,
+          "y": 43
+        }
+      },
+      "180": {
+        "image": "dragon-silver-wyrmling_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 44
+        }
+      },
+      "225": {
+        "image": "dragon-silver-wyrmling_px_r225.png",
+        "anchor": {
+          "x": 23,
+          "y": 41
+        }
+      },
+      "270": {
+        "image": "dragon-silver-wyrmling_px_r270.png",
+        "anchor": {
+          "x": 25,
+          "y": 47
+        }
+      },
+      "315": {
+        "image": "dragon-silver-wyrmling_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 45
+        }
+      },
+      "000": {
+        "image": "dragon-silver-wyrmling_px_r000.png",
+        "anchor": {
+          "x": 26,
+          "y": 42
+        }
+      },
+      "045": {
+        "image": "dragon-silver-wyrmling_px_r045.png",
+        "anchor": {
+          "x": 32,
+          "y": 48
+        }
+      },
+      "090": {
+        "image": "dragon-silver-wyrmling_px_r090.png",
+        "anchor": {
+          "x": 30,
+          "y": 45
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-silver-adult",
+    "name": "Dragón de plata",
+    "size": "huge",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "adult",
+    "image": "dragon-silver-adult_px_r000.png",
+    "anchor": {
+      "x": 88,
+      "y": 149
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-silver-adult_px_r135.png",
+        "anchor": {
+          "x": 99,
+          "y": 150
+        }
+      },
+      "180": {
+        "image": "dragon-silver-adult_px_r180.png",
+        "anchor": {
+          "x": 66,
+          "y": 156
+        }
+      },
+      "225": {
+        "image": "dragon-silver-adult_px_r225.png",
+        "anchor": {
+          "x": 75,
+          "y": 143
+        }
+      },
+      "270": {
+        "image": "dragon-silver-adult_px_r270.png",
+        "anchor": {
+          "x": 83,
+          "y": 168
+        }
+      },
+      "315": {
+        "image": "dragon-silver-adult_px_r315.png",
+        "anchor": {
+          "x": 55,
+          "y": 158
+        }
+      },
+      "000": {
+        "image": "dragon-silver-adult_px_r000.png",
+        "anchor": {
+          "x": 88,
+          "y": 149
+        }
+      },
+      "045": {
+        "image": "dragon-silver-adult_px_r045.png",
+        "anchor": {
+          "x": 109,
+          "y": 173
+        }
+      },
+      "090": {
+        "image": "dragon-silver-adult_px_r090.png",
+        "anchor": {
+          "x": 104,
+          "y": 160
+        }
+      }
+    }
+  },
+  {
+    "id": "dragon-silver-ancient",
+    "name": "Dragón de plata",
+    "size": "gargantuan",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "age": "ancient",
+    "image": "dragon-silver-ancient_px_r000.png",
+    "anchor": {
+      "x": 122,
+      "y": 206
+    },
+    "rotations": {
+      "135": {
+        "image": "dragon-silver-ancient_px_r135.png",
+        "anchor": {
+          "x": 136,
+          "y": 208
+        }
+      },
+      "180": {
+        "image": "dragon-silver-ancient_px_r180.png",
+        "anchor": {
+          "x": 90,
+          "y": 216
+        }
+      },
+      "225": {
+        "image": "dragon-silver-ancient_px_r225.png",
+        "anchor": {
+          "x": 103,
+          "y": 197
+        }
+      },
+      "270": {
+        "image": "dragon-silver-ancient_px_r270.png",
+        "anchor": {
+          "x": 115,
+          "y": 233
+        }
+      },
+      "315": {
+        "image": "dragon-silver-ancient_px_r315.png",
+        "anchor": {
+          "x": 75,
+          "y": 218
+        }
+      },
+      "000": {
+        "image": "dragon-silver-ancient_px_r000.png",
+        "anchor": {
+          "x": 122,
+          "y": 206
+        }
+      },
+      "045": {
+        "image": "dragon-silver-ancient_px_r045.png",
+        "anchor": {
+          "x": 150,
+          "y": 239
+        }
+      },
+      "090": {
+        "image": "dragon-silver-ancient_px_r090.png",
+        "anchor": {
+          "x": 143,
+          "y": 222
+        }
+      }
+    }
+  },
+  {
+    "id": "bandit",
+    "name": "Bandido",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "bandit_px_r000.png",
+    "anchor": {
+      "x": 21,
+      "y": 37
+    },
+    "rotations": {
+      "135": {
+        "image": "bandit_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 39
+        }
+      },
+      "180": {
+        "image": "bandit_px_r180.png",
+        "anchor": {
+          "x": 24,
+          "y": 40
+        }
+      },
+      "225": {
+        "image": "bandit_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 41
+        }
+      },
+      "270": {
+        "image": "bandit_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 38
+        }
+      },
+      "315": {
+        "image": "bandit_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 37
+        }
+      },
+      "000": {
+        "image": "bandit_px_r000.png",
+        "anchor": {
+          "x": 21,
+          "y": 37
+        }
+      },
+      "045": {
+        "image": "bandit_px_r045.png",
+        "anchor": {
+          "x": 21,
+          "y": 38
+        }
+      },
+      "090": {
+        "image": "bandit_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 40
+        }
+      }
+    }
+  },
+  {
+    "id": "scout",
+    "name": "Explorador",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "scout_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 40
+    },
+    "rotations": {
+      "135": {
+        "image": "scout_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 42
+        }
+      },
+      "180": {
+        "image": "scout_px_r180.png",
+        "anchor": {
+          "x": 23,
+          "y": 43
+        }
+      },
+      "225": {
+        "image": "scout_px_r225.png",
+        "anchor": {
+          "x": 21,
+          "y": 42
+        }
+      },
+      "270": {
+        "image": "scout_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 41
+        }
+      },
+      "315": {
+        "image": "scout_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 40
+        }
+      },
+      "000": {
+        "image": "scout_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 40
+        }
+      },
+      "045": {
+        "image": "scout_px_r045.png",
+        "anchor": {
+          "x": 21,
+          "y": 44
+        }
+      },
+      "090": {
+        "image": "scout_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 43
+        }
+      }
+    }
+  },
+  {
+    "id": "guard",
+    "name": "Guardia",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "guard_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 37
+    },
+    "rotations": {
+      "135": {
+        "image": "guard_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 49
+        }
+      },
+      "180": {
+        "image": "guard_px_r180.png",
+        "anchor": {
+          "x": 25,
+          "y": 41
+        }
+      },
+      "225": {
+        "image": "guard_px_r225.png",
+        "anchor": {
+          "x": 21,
+          "y": 40
+        }
+      },
+      "270": {
+        "image": "guard_px_r270.png",
+        "anchor": {
+          "x": 24,
+          "y": 39
+        }
+      },
+      "315": {
+        "image": "guard_px_r315.png",
+        "anchor": {
+          "x": 28,
+          "y": 37
+        }
+      },
+      "000": {
+        "image": "guard_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 37
+        }
+      },
+      "045": {
+        "image": "guard_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 46
+        }
+      },
+      "090": {
+        "image": "guard_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 52
+        }
+      }
+    }
+  },
+  {
+    "id": "cultist",
+    "name": "Sectario",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "cultist_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 39
+    },
+    "rotations": {
+      "135": {
+        "image": "cultist_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 41
+        }
+      },
+      "180": {
+        "image": "cultist_px_r180.png",
+        "anchor": {
+          "x": 22,
+          "y": 42
+        }
+      },
+      "225": {
+        "image": "cultist_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 40
+        }
+      },
+      "270": {
+        "image": "cultist_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 39
+        }
+      },
+      "315": {
+        "image": "cultist_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 39
+        }
+      },
+      "000": {
+        "image": "cultist_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 39
+        }
+      },
+      "045": {
+        "image": "cultist_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 39
+        }
+      },
+      "090": {
+        "image": "cultist_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 40
+        }
+      }
+    }
+  },
+  {
+    "id": "druid",
+    "name": "Druida",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "druid_px_r000.png",
+    "anchor": {
+      "x": 21,
+      "y": 43
+    },
+    "rotations": {
+      "135": {
+        "image": "druid_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 52
+        }
+      },
+      "180": {
+        "image": "druid_px_r180.png",
+        "anchor": {
+          "x": 25,
+          "y": 44
+        }
+      },
+      "225": {
+        "image": "druid_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 48
+        }
+      },
+      "270": {
+        "image": "druid_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 48
+        }
+      },
+      "315": {
+        "image": "druid_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 43
+        }
+      },
+      "000": {
+        "image": "druid_px_r000.png",
+        "anchor": {
+          "x": 21,
+          "y": 43
+        }
+      },
+      "045": {
+        "image": "druid_px_r045.png",
+        "anchor": {
+          "x": 21,
+          "y": 49
+        }
+      },
+      "090": {
+        "image": "druid_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 55
+        }
+      }
+    }
+  },
+  {
+    "id": "mage",
+    "name": "Mago",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "mage_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 38
+    },
+    "rotations": {
+      "135": {
+        "image": "mage_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 46
+        }
+      },
+      "180": {
+        "image": "mage_px_r180.png",
+        "anchor": {
+          "x": 21,
+          "y": 40
+        }
+      },
+      "225": {
+        "image": "mage_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 40
+        }
+      },
+      "270": {
+        "image": "mage_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 40
+        }
+      },
+      "315": {
+        "image": "mage_px_r315.png",
+        "anchor": {
+          "x": 22,
+          "y": 39
+        }
+      },
+      "000": {
+        "image": "mage_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 38
+        }
+      },
+      "045": {
+        "image": "mage_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 43
+        }
+      },
+      "090": {
+        "image": "mage_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 48
+        }
+      }
+    }
+  },
+  {
+    "id": "priest",
+    "name": "Sacerdote",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "priest_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 39
+    },
+    "rotations": {
+      "135": {
+        "image": "priest_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 38
+        }
+      },
+      "180": {
+        "image": "priest_px_r180.png",
+        "anchor": {
+          "x": 23,
+          "y": 38
+        }
+      },
+      "225": {
+        "image": "priest_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 39
+        }
+      },
+      "270": {
+        "image": "priest_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 39
+        }
+      },
+      "315": {
+        "image": "priest_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 39
+        }
+      },
+      "000": {
+        "image": "priest_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 39
+        }
+      },
+      "045": {
+        "image": "priest_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 39
+        }
+      },
+      "090": {
+        "image": "priest_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 39
+        }
+      }
+    }
+  },
+  {
+    "id": "berserker",
+    "name": "Bersérker",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "berserker_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 38
+    },
+    "rotations": {
+      "135": {
+        "image": "berserker_px_r135.png",
+        "anchor": {
+          "x": 26,
+          "y": 48
+        }
+      },
+      "180": {
+        "image": "berserker_px_r180.png",
+        "anchor": {
+          "x": 35,
+          "y": 41
+        }
+      },
+      "225": {
+        "image": "berserker_px_r225.png",
+        "anchor": {
+          "x": 27,
+          "y": 41
+        }
+      },
+      "270": {
+        "image": "berserker_px_r270.png",
+        "anchor": {
+          "x": 23,
+          "y": 39
+        }
+      },
+      "315": {
+        "image": "berserker_px_r315.png",
+        "anchor": {
+          "x": 23,
+          "y": 38
+        }
+      },
+      "000": {
+        "image": "berserker_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 38
+        }
+      },
+      "045": {
+        "image": "berserker_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 41
+        }
+      },
+      "090": {
+        "image": "berserker_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 50
+        }
+      }
+    }
+  },
+  {
+    "id": "orc",
+    "name": "Orco",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "orc_px_r000.png",
+    "anchor": {
+      "x": 21,
+      "y": 40
+    },
+    "rotations": {
+      "135": {
+        "image": "orc_px_r135.png",
+        "anchor": {
+          "x": 26,
+          "y": 51
+        }
+      },
+      "180": {
+        "image": "orc_px_r180.png",
+        "anchor": {
+          "x": 37,
+          "y": 43
+        }
+      },
+      "225": {
+        "image": "orc_px_r225.png",
+        "anchor": {
+          "x": 29,
+          "y": 45
+        }
+      },
+      "270": {
+        "image": "orc_px_r270.png",
+        "anchor": {
+          "x": 24,
+          "y": 44
+        }
+      },
+      "315": {
+        "image": "orc_px_r315.png",
+        "anchor": {
+          "x": 25,
+          "y": 40
+        }
+      },
+      "000": {
+        "image": "orc_px_r000.png",
+        "anchor": {
+          "x": 21,
+          "y": 40
+        }
+      },
+      "045": {
+        "image": "orc_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 45
+        }
+      },
+      "090": {
+        "image": "orc_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 52
+        }
+      }
+    }
+  },
+  {
+    "id": "hobgoblin",
+    "name": "Hobgoblin",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "hobgoblin_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 35
+    },
+    "rotations": {
+      "135": {
+        "image": "hobgoblin_px_r135.png",
+        "anchor": {
+          "x": 22,
+          "y": 58
+        }
+      },
+      "180": {
+        "image": "hobgoblin_px_r180.png",
+        "anchor": {
+          "x": 38,
+          "y": 41
+        }
+      },
+      "225": {
+        "image": "hobgoblin_px_r225.png",
+        "anchor": {
+          "x": 35,
+          "y": 42
+        }
+      },
+      "270": {
+        "image": "hobgoblin_px_r270.png",
+        "anchor": {
+          "x": 22,
+          "y": 40
+        }
+      },
+      "315": {
+        "image": "hobgoblin_px_r315.png",
+        "anchor": {
+          "x": 27,
+          "y": 36
+        }
+      },
+      "000": {
+        "image": "hobgoblin_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      },
+      "045": {
+        "image": "hobgoblin_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 47
+        }
+      },
+      "090": {
+        "image": "hobgoblin_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 61
+        }
+      }
+    }
+  },
+  {
+    "id": "kobold",
+    "name": "Kobold",
+    "size": "small",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "kobold_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 24
+    },
+    "rotations": {
+      "135": {
+        "image": "kobold_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 28
+        }
+      },
+      "180": {
+        "image": "kobold_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 24
+        }
+      },
+      "225": {
+        "image": "kobold_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 24
+        }
+      },
+      "270": {
+        "image": "kobold_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 25
+        }
+      },
+      "315": {
+        "image": "kobold_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 24
+        }
+      },
+      "000": {
+        "image": "kobold_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 24
+        }
+      },
+      "045": {
+        "image": "kobold_px_r045.png",
+        "anchor": {
+          "x": 22,
+          "y": 29
+        }
+      },
+      "090": {
+        "image": "kobold_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 31
+        }
+      }
+    }
+  },
+  {
+    "id": "winged-kobold",
+    "name": "Kobold alado",
+    "size": "small",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "winged-kobold_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 33
+    },
+    "rotations": {
+      "135": {
+        "image": "winged-kobold_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 24
+        }
+      },
+      "180": {
+        "image": "winged-kobold_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 24
+        }
+      },
+      "225": {
+        "image": "winged-kobold_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 32
+        }
+      },
+      "270": {
+        "image": "winged-kobold_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      },
+      "315": {
+        "image": "winged-kobold_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 32
+        }
+      },
+      "000": {
+        "image": "winged-kobold_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 33
+        }
+      },
+      "045": {
+        "image": "winged-kobold_px_r045.png",
+        "anchor": {
+          "x": 22,
+          "y": 35
+        }
+      },
+      "090": {
+        "image": "winged-kobold_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 31
+        }
+      }
+    }
+  },
+  {
+    "id": "gnoll",
+    "name": "Gnoll",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "gnoll_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 44
+    },
+    "rotations": {
+      "135": {
+        "image": "gnoll_px_r135.png",
+        "anchor": {
+          "x": 35,
+          "y": 58
+        }
+      },
+      "180": {
+        "image": "gnoll_px_r180.png",
+        "anchor": {
+          "x": 38,
+          "y": 57
+        }
+      },
+      "225": {
+        "image": "gnoll_px_r225.png",
+        "anchor": {
+          "x": 30,
+          "y": 51
+        }
+      },
+      "270": {
+        "image": "gnoll_px_r270.png",
+        "anchor": {
+          "x": 29,
+          "y": 46
+        }
+      },
+      "315": {
+        "image": "gnoll_px_r315.png",
+        "anchor": {
+          "x": 24,
+          "y": 45
+        }
+      },
+      "000": {
+        "image": "gnoll_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 44
+        }
+      },
+      "045": {
+        "image": "gnoll_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 54
+        }
+      },
+      "090": {
+        "image": "gnoll_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 56
+        }
+      }
+    }
+  },
+  {
+    "id": "bugbear",
+    "name": "Osgo",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "bugbear_px_r000.png",
+    "anchor": {
+      "x": 25,
+      "y": 42
+    },
+    "rotations": {
+      "135": {
+        "image": "bugbear_px_r135.png",
+        "anchor": {
+          "x": 34,
+          "y": 51
+        }
+      },
+      "180": {
+        "image": "bugbear_px_r180.png",
+        "anchor": {
+          "x": 39,
+          "y": 51
+        }
+      },
+      "225": {
+        "image": "bugbear_px_r225.png",
+        "anchor": {
+          "x": 25,
+          "y": 49
+        }
+      },
+      "270": {
+        "image": "bugbear_px_r270.png",
+        "anchor": {
+          "x": 23,
+          "y": 46
+        }
+      },
+      "315": {
+        "image": "bugbear_px_r315.png",
+        "anchor": {
+          "x": 28,
+          "y": 42
+        }
+      },
+      "000": {
+        "image": "bugbear_px_r000.png",
+        "anchor": {
+          "x": 25,
+          "y": 42
+        }
+      },
+      "045": {
+        "image": "bugbear_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 55
+        }
+      },
+      "090": {
+        "image": "bugbear_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 59
+        }
+      }
+    }
+  },
+  {
+    "id": "ogre",
+    "name": "Ogro",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "ogre_px_r000.png",
+    "anchor": {
+      "x": 38,
+      "y": 61
+    },
+    "rotations": {
+      "135": {
+        "image": "ogre_px_r135.png",
+        "anchor": {
+          "x": 48,
+          "y": 73
+        }
+      },
+      "180": {
+        "image": "ogre_px_r180.png",
+        "anchor": {
+          "x": 55,
+          "y": 69
+        }
+      },
+      "225": {
+        "image": "ogre_px_r225.png",
+        "anchor": {
+          "x": 36,
+          "y": 67
+        }
+      },
+      "270": {
+        "image": "ogre_px_r270.png",
+        "anchor": {
+          "x": 36,
+          "y": 66
+        }
+      },
+      "315": {
+        "image": "ogre_px_r315.png",
+        "anchor": {
+          "x": 43,
+          "y": 61
+        }
+      },
+      "000": {
+        "image": "ogre_px_r000.png",
+        "anchor": {
+          "x": 38,
+          "y": 61
+        }
+      },
+      "045": {
+        "image": "ogre_px_r045.png",
+        "anchor": {
+          "x": 36,
+          "y": 83
+        }
+      },
+      "090": {
+        "image": "ogre_px_r090.png",
+        "anchor": {
+          "x": 36,
+          "y": 89
+        }
+      }
+    }
+  },
+  {
+    "id": "troll",
+    "name": "Trol",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "troll_px_r000.png",
+    "anchor": {
+      "x": 36,
+      "y": 74
+    },
+    "rotations": {
+      "135": {
+        "image": "troll_px_r135.png",
+        "anchor": {
+          "x": 36,
+          "y": 81
+        }
+      },
+      "180": {
+        "image": "troll_px_r180.png",
+        "anchor": {
+          "x": 36,
+          "y": 81
+        }
+      },
+      "225": {
+        "image": "troll_px_r225.png",
+        "anchor": {
+          "x": 36,
+          "y": 76
+        }
+      },
+      "270": {
+        "image": "troll_px_r270.png",
+        "anchor": {
+          "x": 36,
+          "y": 78
+        }
+      },
+      "315": {
+        "image": "troll_px_r315.png",
+        "anchor": {
+          "x": 36,
+          "y": 73
+        }
+      },
+      "000": {
+        "image": "troll_px_r000.png",
+        "anchor": {
+          "x": 36,
+          "y": 74
+        }
+      },
+      "045": {
+        "image": "troll_px_r045.png",
+        "anchor": {
+          "x": 36,
+          "y": 78
+        }
+      },
+      "090": {
+        "image": "troll_px_r090.png",
+        "anchor": {
+          "x": 36,
+          "y": 77
+        }
+      }
+    }
+  },
+  {
+    "id": "cyclops",
+    "name": "Cíclope",
+    "size": "huge",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "cyclops_px_r000.png",
+    "anchor": {
+      "x": 60,
+      "y": 109
+    },
+    "rotations": {
+      "135": {
+        "image": "cyclops_px_r135.png",
+        "anchor": {
+          "x": 82,
+          "y": 130
+        }
+      },
+      "180": {
+        "image": "cyclops_px_r180.png",
+        "anchor": {
+          "x": 93,
+          "y": 116
+        }
+      },
+      "225": {
+        "image": "cyclops_px_r225.png",
+        "anchor": {
+          "x": 60,
+          "y": 115
+        }
+      },
+      "270": {
+        "image": "cyclops_px_r270.png",
+        "anchor": {
+          "x": 53,
+          "y": 114
+        }
+      },
+      "315": {
+        "image": "cyclops_px_r315.png",
+        "anchor": {
+          "x": 68,
+          "y": 107
+        }
+      },
+      "000": {
+        "image": "cyclops_px_r000.png",
+        "anchor": {
+          "x": 60,
+          "y": 109
+        }
+      },
+      "045": {
+        "image": "cyclops_px_r045.png",
+        "anchor": {
+          "x": 52,
+          "y": 148
+        }
+      },
+      "090": {
+        "image": "cyclops_px_r090.png",
+        "anchor": {
+          "x": 52,
+          "y": 157
+        }
+      }
+    }
+  },
+  {
+    "id": "lizardfolk",
+    "name": "Hombre lagarto",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "lizardfolk_px_r000.png",
+    "anchor": {
+      "x": 26,
+      "y": 36
+    },
+    "rotations": {
+      "135": {
+        "image": "lizardfolk_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 43
+        }
+      },
+      "180": {
+        "image": "lizardfolk_px_r180.png",
+        "anchor": {
+          "x": 22,
+          "y": 37
+        }
+      },
+      "225": {
+        "image": "lizardfolk_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 40
+        }
+      },
+      "270": {
+        "image": "lizardfolk_px_r270.png",
+        "anchor": {
+          "x": 22,
+          "y": 38
+        }
+      },
+      "315": {
+        "image": "lizardfolk_px_r315.png",
+        "anchor": {
+          "x": 27,
+          "y": 36
+        }
+      },
+      "000": {
+        "image": "lizardfolk_px_r000.png",
+        "anchor": {
+          "x": 26,
+          "y": 36
+        }
+      },
+      "045": {
+        "image": "lizardfolk_px_r045.png",
+        "anchor": {
+          "x": 28,
+          "y": 45
+        }
+      },
+      "090": {
+        "image": "lizardfolk_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 48
+        }
+      }
+    }
+  },
+  {
+    "id": "sahuagin",
+    "name": "Sahuagin",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "sahuagin_px_r000.png",
+    "anchor": {
+      "x": 21,
+      "y": 37
+    },
+    "rotations": {
+      "135": {
+        "image": "sahuagin_px_r135.png",
+        "anchor": {
+          "x": 22,
+          "y": 44
+        }
+      },
+      "180": {
+        "image": "sahuagin_px_r180.png",
+        "anchor": {
+          "x": 26,
+          "y": 42
+        }
+      },
+      "225": {
+        "image": "sahuagin_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 41
+        }
+      },
+      "270": {
+        "image": "sahuagin_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 41
+        }
+      },
+      "315": {
+        "image": "sahuagin_px_r315.png",
+        "anchor": {
+          "x": 21,
+          "y": 37
+        }
+      },
+      "000": {
+        "image": "sahuagin_px_r000.png",
+        "anchor": {
+          "x": 21,
+          "y": 37
+        }
+      },
+      "045": {
+        "image": "sahuagin_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 48
+        }
+      },
+      "090": {
+        "image": "sahuagin_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 51
+        }
+      }
+    }
+  },
+  {
+    "id": "zombie",
+    "name": "Zombi",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "zombie_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 31
+    },
+    "rotations": {
+      "135": {
+        "image": "zombie_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 36
+        }
+      },
+      "180": {
+        "image": "zombie_px_r180.png",
+        "anchor": {
+          "x": 21,
+          "y": 36
+        }
+      },
+      "225": {
+        "image": "zombie_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      },
+      "270": {
+        "image": "zombie_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 33
+        }
+      },
+      "315": {
+        "image": "zombie_px_r315.png",
+        "anchor": {
+          "x": 21,
+          "y": 31
+        }
+      },
+      "000": {
+        "image": "zombie_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 31
+        }
+      },
+      "045": {
+        "image": "zombie_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 33
+        }
+      },
+      "090": {
+        "image": "zombie_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      }
+    }
+  },
+  {
+    "id": "ogre-zombie",
+    "name": "Ogro zombi",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "ogre-zombie_px_r000.png",
+    "anchor": {
+      "x": 39,
+      "y": 57
+    },
+    "rotations": {
+      "135": {
+        "image": "ogre-zombie_px_r135.png",
+        "anchor": {
+          "x": 42,
+          "y": 71
+        }
+      },
+      "180": {
+        "image": "ogre-zombie_px_r180.png",
+        "anchor": {
+          "x": 46,
+          "y": 71
+        }
+      },
+      "225": {
+        "image": "ogre-zombie_px_r225.png",
+        "anchor": {
+          "x": 36,
+          "y": 66
+        }
+      },
+      "270": {
+        "image": "ogre-zombie_px_r270.png",
+        "anchor": {
+          "x": 39,
+          "y": 65
+        }
+      },
+      "315": {
+        "image": "ogre-zombie_px_r315.png",
+        "anchor": {
+          "x": 46,
+          "y": 56
+        }
+      },
+      "000": {
+        "image": "ogre-zombie_px_r000.png",
+        "anchor": {
+          "x": 39,
+          "y": 57
+        }
+      },
+      "045": {
+        "image": "ogre-zombie_px_r045.png",
+        "anchor": {
+          "x": 36,
+          "y": 66
+        }
+      },
+      "090": {
+        "image": "ogre-zombie_px_r090.png",
+        "anchor": {
+          "x": 36,
+          "y": 69
+        }
+      }
+    }
+  },
+  {
+    "id": "ghoul",
+    "name": "Gul",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "ghoul_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 23
+    },
+    "rotations": {
+      "135": {
+        "image": "ghoul_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 34
+        }
+      },
+      "180": {
+        "image": "ghoul_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 34
+        }
+      },
+      "225": {
+        "image": "ghoul_px_r225.png",
+        "anchor": {
+          "x": 22,
+          "y": 29
+        }
+      },
+      "270": {
+        "image": "ghoul_px_r270.png",
+        "anchor": {
+          "x": 22,
+          "y": 25
+        }
+      },
+      "315": {
+        "image": "ghoul_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 23
+        }
+      },
+      "000": {
+        "image": "ghoul_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 23
+        }
+      },
+      "045": {
+        "image": "ghoul_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 26
+        }
+      },
+      "090": {
+        "image": "ghoul_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 30
+        }
+      }
+    }
+  },
+  {
+    "id": "wight",
+    "name": "Tumulario",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "wight_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 35
+    },
+    "rotations": {
+      "135": {
+        "image": "wight_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 44
+        }
+      },
+      "180": {
+        "image": "wight_px_r180.png",
+        "anchor": {
+          "x": 24,
+          "y": 39
+        }
+      },
+      "225": {
+        "image": "wight_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 38
+        }
+      },
+      "270": {
+        "image": "wight_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 36
+        }
+      },
+      "315": {
+        "image": "wight_px_r315.png",
+        "anchor": {
+          "x": 22,
+          "y": 35
+        }
+      },
+      "000": {
+        "image": "wight_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      },
+      "045": {
+        "image": "wight_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 44
+        }
+      },
+      "090": {
+        "image": "wight_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 48
+        }
+      }
+    }
+  },
+  {
+    "id": "mummy",
+    "name": "Momia",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "mummy_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 32
+    },
+    "rotations": {
+      "135": {
+        "image": "mummy_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 37
+        }
+      },
+      "180": {
+        "image": "mummy_px_r180.png",
+        "anchor": {
+          "x": 21,
+          "y": 37
+        }
+      },
+      "225": {
+        "image": "mummy_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      },
+      "270": {
+        "image": "mummy_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 34
+        }
+      },
+      "315": {
+        "image": "mummy_px_r315.png",
+        "anchor": {
+          "x": 21,
+          "y": 32
+        }
+      },
+      "000": {
+        "image": "mummy_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 32
+        }
+      },
+      "045": {
+        "image": "mummy_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 34
+        }
+      },
+      "090": {
+        "image": "mummy_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 36
+        }
+      }
+    }
+  },
+  {
+    "id": "vampire",
+    "name": "Vampiro",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "vampire_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 36
+    },
+    "rotations": {
+      "135": {
+        "image": "vampire_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 36
+        }
+      },
+      "180": {
+        "image": "vampire_px_r180.png",
+        "anchor": {
+          "x": 21,
+          "y": 36
+        }
+      },
+      "225": {
+        "image": "vampire_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      },
+      "270": {
+        "image": "vampire_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 38
+        }
+      },
+      "315": {
+        "image": "vampire_px_r315.png",
+        "anchor": {
+          "x": 21,
+          "y": 36
+        }
+      },
+      "000": {
+        "image": "vampire_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 36
+        }
+      },
+      "045": {
+        "image": "vampire_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 38
+        }
+      },
+      "090": {
+        "image": "vampire_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      }
+    }
+  },
+  {
+    "id": "ghost",
+    "name": "Fantasma",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "ghost_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 37
+    },
+    "rotations": {
+      "135": {
+        "image": "ghost_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 43
+        }
+      },
+      "180": {
+        "image": "ghost_px_r180.png",
+        "anchor": {
+          "x": 26,
+          "y": 38
+        }
+      },
+      "225": {
+        "image": "ghost_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 40
+        }
+      },
+      "270": {
+        "image": "ghost_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 39
+        }
+      },
+      "315": {
+        "image": "ghost_px_r315.png",
+        "anchor": {
+          "x": 23,
+          "y": 39
+        }
+      },
+      "000": {
+        "image": "ghost_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 37
+        }
+      },
+      "045": {
+        "image": "ghost_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 42
+        }
+      },
+      "090": {
+        "image": "ghost_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 48
+        }
+      }
+    }
+  },
+  {
+    "id": "wraith",
+    "name": "Aparición",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "wraith_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 35
+    },
+    "rotations": {
+      "135": {
+        "image": "wraith_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 41
+        }
+      },
+      "180": {
+        "image": "wraith_px_r180.png",
+        "anchor": {
+          "x": 26,
+          "y": 36
+        }
+      },
+      "225": {
+        "image": "wraith_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 38
+        }
+      },
+      "270": {
+        "image": "wraith_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 37
+        }
+      },
+      "315": {
+        "image": "wraith_px_r315.png",
+        "anchor": {
+          "x": 23,
+          "y": 37
+        }
+      },
+      "000": {
+        "image": "wraith_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      },
+      "045": {
+        "image": "wraith_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 40
+        }
+      },
+      "090": {
+        "image": "wraith_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 46
+        }
+      }
+    }
+  },
+  {
+    "id": "wisp",
+    "name": "Fuego fatuo",
+    "size": "tiny",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "wisp_px_r000.png",
+    "anchor": {
+      "x": 18,
+      "y": 25
+    },
+    "rotations": {
+      "135": {
+        "image": "wisp_px_r135.png",
+        "anchor": {
+          "x": 18,
+          "y": 29
+        }
+      },
+      "180": {
+        "image": "wisp_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 29
+        }
+      },
+      "225": {
+        "image": "wisp_px_r225.png",
+        "anchor": {
+          "x": 21,
+          "y": 28
+        }
+      },
+      "270": {
+        "image": "wisp_px_r270.png",
+        "anchor": {
+          "x": 21,
+          "y": 26
+        }
+      },
+      "315": {
+        "image": "wisp_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 25
+        }
+      },
+      "000": {
+        "image": "wisp_px_r000.png",
+        "anchor": {
+          "x": 18,
+          "y": 25
+        }
+      },
+      "045": {
+        "image": "wisp_px_r045.png",
+        "anchor": {
+          "x": 17,
+          "y": 26
+        }
+      },
+      "090": {
+        "image": "wisp_px_r090.png",
+        "anchor": {
+          "x": 17,
+          "y": 28
+        }
+      }
+    }
+  },
+  {
+    "id": "wolf",
+    "name": "Lobo",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "wolf_px_r000.png",
+    "anchor": {
+      "x": 29,
+      "y": 29
+    },
+    "rotations": {
+      "135": {
+        "image": "wolf_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 40
+        }
+      },
+      "180": {
+        "image": "wolf_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 38
+        }
+      },
+      "225": {
+        "image": "wolf_px_r225.png",
+        "anchor": {
+          "x": 30,
+          "y": 29
+        }
+      },
+      "270": {
+        "image": "wolf_px_r270.png",
+        "anchor": {
+          "x": 27,
+          "y": 35
+        }
+      },
+      "315": {
+        "image": "wolf_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 37
+        }
+      },
+      "000": {
+        "image": "wolf_px_r000.png",
+        "anchor": {
+          "x": 29,
+          "y": 29
+        }
+      },
+      "045": {
+        "image": "wolf_px_r045.png",
+        "anchor": {
+          "x": 31,
+          "y": 25
+        }
+      },
+      "090": {
+        "image": "wolf_px_r090.png",
+        "anchor": {
+          "x": 23,
+          "y": 32
+        }
+      }
+    }
+  },
+  {
+    "id": "hyena",
+    "name": "Hiena",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "hyena_px_r000.png",
+    "anchor": {
+      "x": 31,
+      "y": 25
+    },
+    "rotations": {
+      "135": {
+        "image": "hyena_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 39
+        }
+      },
+      "180": {
+        "image": "hyena_px_r180.png",
+        "anchor": {
+          "x": 26,
+          "y": 32
+        }
+      },
+      "225": {
+        "image": "hyena_px_r225.png",
+        "anchor": {
+          "x": 30,
+          "y": 30
+        }
+      },
+      "270": {
+        "image": "hyena_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 38
+        }
+      },
+      "315": {
+        "image": "hyena_px_r315.png",
+        "anchor": {
+          "x": 22,
+          "y": 33
+        }
+      },
+      "000": {
+        "image": "hyena_px_r000.png",
+        "anchor": {
+          "x": 31,
+          "y": 25
+        }
+      },
+      "045": {
+        "image": "hyena_px_r045.png",
+        "anchor": {
+          "x": 27,
+          "y": 29
+        }
+      },
+      "090": {
+        "image": "hyena_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 36
+        }
+      }
+    }
+  },
+  {
+    "id": "hyena-giant",
+    "name": "Hiena gigante",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "variant": "giant",
+    "image": "hyena-giant_px_r000.png",
+    "anchor": {
+      "x": 58,
+      "y": 45
+    },
+    "rotations": {
+      "135": {
+        "image": "hyena-giant_px_r135.png",
+        "anchor": {
+          "x": 36,
+          "y": 74
+        }
+      },
+      "180": {
+        "image": "hyena-giant_px_r180.png",
+        "anchor": {
+          "x": 47,
+          "y": 59
+        }
+      },
+      "225": {
+        "image": "hyena-giant_px_r225.png",
+        "anchor": {
+          "x": 55,
+          "y": 56
+        }
+      },
+      "270": {
+        "image": "hyena-giant_px_r270.png",
+        "anchor": {
+          "x": 36,
+          "y": 71
+        }
+      },
+      "315": {
+        "image": "hyena-giant_px_r315.png",
+        "anchor": {
+          "x": 40,
+          "y": 61
+        }
+      },
+      "000": {
+        "image": "hyena-giant_px_r000.png",
+        "anchor": {
+          "x": 58,
+          "y": 45
+        }
+      },
+      "045": {
+        "image": "hyena-giant_px_r045.png",
+        "anchor": {
+          "x": 50,
+          "y": 53
+        }
+      },
+      "090": {
+        "image": "hyena-giant_px_r090.png",
+        "anchor": {
+          "x": 36,
+          "y": 67
+        }
+      }
+    }
+  },
+  {
+    "id": "bear",
+    "name": "Oso",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "bear_px_r000.png",
+    "anchor": {
+      "x": 38,
+      "y": 56
+    },
+    "rotations": {
+      "135": {
+        "image": "bear_px_r135.png",
+        "anchor": {
+          "x": 36,
+          "y": 73
+        }
+      },
+      "180": {
+        "image": "bear_px_r180.png",
+        "anchor": {
+          "x": 46,
+          "y": 65
+        }
+      },
+      "225": {
+        "image": "bear_px_r225.png",
+        "anchor": {
+          "x": 53,
+          "y": 52
+        }
+      },
+      "270": {
+        "image": "bear_px_r270.png",
+        "anchor": {
+          "x": 39,
+          "y": 54
+        }
+      },
+      "315": {
+        "image": "bear_px_r315.png",
+        "anchor": {
+          "x": 36,
+          "y": 53
+        }
+      },
+      "000": {
+        "image": "bear_px_r000.png",
+        "anchor": {
+          "x": 38,
+          "y": 56
+        }
+      },
+      "045": {
+        "image": "bear_px_r045.png",
+        "anchor": {
+          "x": 38,
+          "y": 59
+        }
+      },
+      "090": {
+        "image": "bear_px_r090.png",
+        "anchor": {
+          "x": 42,
+          "y": 67
+        }
+      }
+    }
+  },
+  {
+    "id": "bear-black",
+    "name": "Oso negro",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "variant": "black",
+    "image": "bear-black_px_r000.png",
+    "anchor": {
+      "x": 21,
+      "y": 30
+    },
+    "rotations": {
+      "135": {
+        "image": "bear-black_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 39
+        }
+      },
+      "180": {
+        "image": "bear-black_px_r180.png",
+        "anchor": {
+          "x": 25,
+          "y": 35
+        }
+      },
+      "225": {
+        "image": "bear-black_px_r225.png",
+        "anchor": {
+          "x": 29,
+          "y": 28
+        }
+      },
+      "270": {
+        "image": "bear-black_px_r270.png",
+        "anchor": {
+          "x": 22,
+          "y": 29
+        }
+      },
+      "315": {
+        "image": "bear-black_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 29
+        }
+      },
+      "000": {
+        "image": "bear-black_px_r000.png",
+        "anchor": {
+          "x": 21,
+          "y": 30
+        }
+      },
+      "045": {
+        "image": "bear-black_px_r045.png",
+        "anchor": {
+          "x": 21,
+          "y": 32
+        }
+      },
+      "090": {
+        "image": "bear-black_px_r090.png",
+        "anchor": {
+          "x": 23,
+          "y": 36
+        }
+      }
+    }
+  },
+  {
+    "id": "boar",
+    "name": "Jabalí",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "boar_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 25
+    },
+    "rotations": {
+      "135": {
+        "image": "boar_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 37
+        }
+      },
+      "180": {
+        "image": "boar_px_r180.png",
+        "anchor": {
+          "x": 26,
+          "y": 31
+        }
+      },
+      "225": {
+        "image": "boar_px_r225.png",
+        "anchor": {
+          "x": 30,
+          "y": 25
+        }
+      },
+      "270": {
+        "image": "boar_px_r270.png",
+        "anchor": {
+          "x": 21,
+          "y": 24
+        }
+      },
+      "315": {
+        "image": "boar_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 26
+        }
+      },
+      "000": {
+        "image": "boar_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 25
+        }
+      },
+      "045": {
+        "image": "boar_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 27
+        }
+      },
+      "090": {
+        "image": "boar_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 34
+        }
+      }
+    }
+  },
+  {
+    "id": "rat",
+    "name": "Rata",
+    "size": "tiny",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "rat_px_r000.png",
+    "anchor": {
+      "x": 23,
+      "y": 16
+    },
+    "rotations": {
+      "135": {
+        "image": "rat_px_r135.png",
+        "anchor": {
+          "x": 13,
+          "y": 23
+        }
+      },
+      "180": {
+        "image": "rat_px_r180.png",
+        "anchor": {
+          "x": 17,
+          "y": 20
+        }
+      },
+      "225": {
+        "image": "rat_px_r225.png",
+        "anchor": {
+          "x": 19,
+          "y": 17
+        }
+      },
+      "270": {
+        "image": "rat_px_r270.png",
+        "anchor": {
+          "x": 14,
+          "y": 21
+        }
+      },
+      "315": {
+        "image": "rat_px_r315.png",
+        "anchor": {
+          "x": 17,
+          "y": 18
+        }
+      },
+      "000": {
+        "image": "rat_px_r000.png",
+        "anchor": {
+          "x": 23,
+          "y": 16
+        }
+      },
+      "045": {
+        "image": "rat_px_r045.png",
+        "anchor": {
+          "x": 18,
+          "y": 19
+        }
+      },
+      "090": {
+        "image": "rat_px_r090.png",
+        "anchor": {
+          "x": 14,
+          "y": 21
+        }
+      }
+    }
+  },
+  {
+    "id": "rat-giant",
+    "name": "Rata gigante",
+    "size": "small",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "variant": "giant",
+    "image": "rat-giant_px_r000.png",
+    "anchor": {
+      "x": 22,
+      "y": 18
+    },
+    "rotations": {
+      "135": {
+        "image": "rat-giant_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 23
+        }
+      },
+      "180": {
+        "image": "rat-giant_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 21
+        }
+      },
+      "225": {
+        "image": "rat-giant_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 18
+        }
+      },
+      "270": {
+        "image": "rat-giant_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 21
+        }
+      },
+      "315": {
+        "image": "rat-giant_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 18
+        }
+      },
+      "000": {
+        "image": "rat-giant_px_r000.png",
+        "anchor": {
+          "x": 22,
+          "y": 18
+        }
+      },
+      "045": {
+        "image": "rat-giant_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 19
+        }
+      },
+      "090": {
+        "image": "rat-giant_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 21
+        }
+      }
+    }
+  },
+  {
+    "id": "cat",
+    "name": "Felino",
+    "size": "tiny",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "cat_px_r000.png",
+    "anchor": {
+      "x": 19,
+      "y": 22
+    },
+    "rotations": {
+      "135": {
+        "image": "cat_px_r135.png",
+        "anchor": {
+          "x": 12,
+          "y": 26
+        }
+      },
+      "180": {
+        "image": "cat_px_r180.png",
+        "anchor": {
+          "x": 16,
+          "y": 23
+        }
+      },
+      "225": {
+        "image": "cat_px_r225.png",
+        "anchor": {
+          "x": 19,
+          "y": 23
+        }
+      },
+      "270": {
+        "image": "cat_px_r270.png",
+        "anchor": {
+          "x": 14,
+          "y": 28
+        }
+      },
+      "315": {
+        "image": "cat_px_r315.png",
+        "anchor": {
+          "x": 12,
+          "y": 28
+        }
+      },
+      "000": {
+        "image": "cat_px_r000.png",
+        "anchor": {
+          "x": 19,
+          "y": 22
+        }
+      },
+      "045": {
+        "image": "cat_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 20
+        }
+      },
+      "090": {
+        "image": "cat_px_r090.png",
+        "anchor": {
+          "x": 14,
+          "y": 25
+        }
+      }
+    }
+  },
+  {
+    "id": "elk",
+    "name": "Alce",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "elk_px_r000.png",
+    "anchor": {
+      "x": 36,
+      "y": 78
+    },
+    "rotations": {
+      "135": {
+        "image": "elk_px_r135.png",
+        "anchor": {
+          "x": 40,
+          "y": 88
+        }
+      },
+      "180": {
+        "image": "elk_px_r180.png",
+        "anchor": {
+          "x": 46,
+          "y": 96
+        }
+      },
+      "225": {
+        "image": "elk_px_r225.png",
+        "anchor": {
+          "x": 54,
+          "y": 88
+        }
+      },
+      "270": {
+        "image": "elk_px_r270.png",
+        "anchor": {
+          "x": 44,
+          "y": 71
+        }
+      },
+      "315": {
+        "image": "elk_px_r315.png",
+        "anchor": {
+          "x": 36,
+          "y": 59
+        }
+      },
+      "000": {
+        "image": "elk_px_r000.png",
+        "anchor": {
+          "x": 36,
+          "y": 78
+        }
+      },
+      "045": {
+        "image": "elk_px_r045.png",
+        "anchor": {
+          "x": 36,
+          "y": 93
+        }
+      },
+      "090": {
+        "image": "elk_px_r090.png",
+        "anchor": {
+          "x": 36,
+          "y": 94
+        }
+      }
+    }
+  },
+  {
+    "id": "goat",
+    "name": "Cabra",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "goat_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 28
+    },
+    "rotations": {
+      "135": {
+        "image": "goat_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 36
+        }
+      },
+      "180": {
+        "image": "goat_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 31
+        }
+      },
+      "225": {
+        "image": "goat_px_r225.png",
+        "anchor": {
+          "x": 23,
+          "y": 29
+        }
+      },
+      "270": {
+        "image": "goat_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 28
+        }
+      },
+      "315": {
+        "image": "goat_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 26
+        }
+      },
+      "000": {
+        "image": "goat_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 28
+        }
+      },
+      "045": {
+        "image": "goat_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 30
+        }
+      },
+      "090": {
+        "image": "goat_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 33
+        }
+      }
+    }
+  },
+  {
+    "id": "owlbear",
+    "name": "Oso lechuza",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "owlbear_px_r000.png",
+    "anchor": {
+      "x": 38,
+      "y": 60
+    },
+    "rotations": {
+      "135": {
+        "image": "owlbear_px_r135.png",
+        "anchor": {
+          "x": 38,
+          "y": 94
+        }
+      },
+      "180": {
+        "image": "owlbear_px_r180.png",
+        "anchor": {
+          "x": 55,
+          "y": 82
+        }
+      },
+      "225": {
+        "image": "owlbear_px_r225.png",
+        "anchor": {
+          "x": 65,
+          "y": 70
+        }
+      },
+      "270": {
+        "image": "owlbear_px_r270.png",
+        "anchor": {
+          "x": 46,
+          "y": 57
+        }
+      },
+      "315": {
+        "image": "owlbear_px_r315.png",
+        "anchor": {
+          "x": 36,
+          "y": 56
+        }
+      },
+      "000": {
+        "image": "owlbear_px_r000.png",
+        "anchor": {
+          "x": 38,
+          "y": 60
+        }
+      },
+      "045": {
+        "image": "owlbear_px_r045.png",
+        "anchor": {
+          "x": 38,
+          "y": 75
+        }
+      },
+      "090": {
+        "image": "owlbear_px_r090.png",
+        "anchor": {
+          "x": 42,
+          "y": 88
+        }
+      }
+    }
+  },
+  {
+    "id": "lizard",
+    "name": "Lagarto",
+    "size": "tiny",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "lizard_px_r000.png",
+    "anchor": {
+      "x": 22,
+      "y": 14
+    },
+    "rotations": {
+      "135": {
+        "image": "lizard_px_r135.png",
+        "anchor": {
+          "x": 13,
+          "y": 22
+        }
+      },
+      "180": {
+        "image": "lizard_px_r180.png",
+        "anchor": {
+          "x": 18,
+          "y": 17
+        }
+      },
+      "225": {
+        "image": "lizard_px_r225.png",
+        "anchor": {
+          "x": 21,
+          "y": 17
+        }
+      },
+      "270": {
+        "image": "lizard_px_r270.png",
+        "anchor": {
+          "x": 15,
+          "y": 22
+        }
+      },
+      "315": {
+        "image": "lizard_px_r315.png",
+        "anchor": {
+          "x": 16,
+          "y": 19
+        }
+      },
+      "000": {
+        "image": "lizard_px_r000.png",
+        "anchor": {
+          "x": 22,
+          "y": 14
+        }
+      },
+      "045": {
+        "image": "lizard_px_r045.png",
+        "anchor": {
+          "x": 18,
+          "y": 14
+        }
+      },
+      "090": {
+        "image": "lizard_px_r090.png",
+        "anchor": {
+          "x": 15,
+          "y": 20
+        }
+      }
+    }
+  },
+  {
+    "id": "lizard-giant",
+    "name": "Lagarto gigante",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "variant": "giant",
+    "image": "lizard-giant_px_r000.png",
+    "anchor": {
+      "x": 58,
+      "y": 36
+    },
+    "rotations": {
+      "135": {
+        "image": "lizard-giant_px_r135.png",
+        "anchor": {
+          "x": 36,
+          "y": 61
+        }
+      },
+      "180": {
+        "image": "lizard-giant_px_r180.png",
+        "anchor": {
+          "x": 48,
+          "y": 45
+        }
+      },
+      "225": {
+        "image": "lizard-giant_px_r225.png",
+        "anchor": {
+          "x": 57,
+          "y": 45
+        }
+      },
+      "270": {
+        "image": "lizard-giant_px_r270.png",
+        "anchor": {
+          "x": 37,
+          "y": 61
+        }
+      },
+      "315": {
+        "image": "lizard-giant_px_r315.png",
+        "anchor": {
+          "x": 40,
+          "y": 50
+        }
+      },
+      "000": {
+        "image": "lizard-giant_px_r000.png",
+        "anchor": {
+          "x": 58,
+          "y": 36
+        }
+      },
+      "045": {
+        "image": "lizard-giant_px_r045.png",
+        "anchor": {
+          "x": 49,
+          "y": 34
+        }
+      },
+      "090": {
+        "image": "lizard-giant_px_r090.png",
+        "anchor": {
+          "x": 37,
+          "y": 54
+        }
+      }
+    }
+  },
+  {
+    "id": "crocodile",
+    "name": "Cocodrilo",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "crocodile_px_r000.png",
+    "anchor": {
+      "x": 62,
+      "y": 39
+    },
+    "rotations": {
+      "135": {
+        "image": "crocodile_px_r135.png",
+        "anchor": {
+          "x": 36,
+          "y": 70
+        }
+      },
+      "180": {
+        "image": "crocodile_px_r180.png",
+        "anchor": {
+          "x": 57,
+          "y": 50
+        }
+      },
+      "225": {
+        "image": "crocodile_px_r225.png",
+        "anchor": {
+          "x": 69,
+          "y": 45
+        }
+      },
+      "270": {
+        "image": "crocodile_px_r270.png",
+        "anchor": {
+          "x": 44,
+          "y": 63
+        }
+      },
+      "315": {
+        "image": "crocodile_px_r315.png",
+        "anchor": {
+          "x": 40,
+          "y": 53
+        }
+      },
+      "000": {
+        "image": "crocodile_px_r000.png",
+        "anchor": {
+          "x": 62,
+          "y": 39
+        }
+      },
+      "045": {
+        "image": "crocodile_px_r045.png",
+        "anchor": {
+          "x": 53,
+          "y": 36
+        }
+      },
+      "090": {
+        "image": "crocodile_px_r090.png",
+        "anchor": {
+          "x": 42,
+          "y": 61
+        }
+      }
+    }
+  },
+  {
+    "id": "toad",
+    "name": "Sapo gigante",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "toad_px_r000.png",
+    "anchor": {
+      "x": 36,
+      "y": 42
+    },
+    "rotations": {
+      "135": {
+        "image": "toad_px_r135.png",
+        "anchor": {
+          "x": 43,
+          "y": 56
+        }
+      },
+      "180": {
+        "image": "toad_px_r180.png",
+        "anchor": {
+          "x": 46,
+          "y": 49
+        }
+      },
+      "225": {
+        "image": "toad_px_r225.png",
+        "anchor": {
+          "x": 49,
+          "y": 41
+        }
+      },
+      "270": {
+        "image": "toad_px_r270.png",
+        "anchor": {
+          "x": 42,
+          "y": 40
+        }
+      },
+      "315": {
+        "image": "toad_px_r315.png",
+        "anchor": {
+          "x": 41,
+          "y": 37
+        }
+      },
+      "000": {
+        "image": "toad_px_r000.png",
+        "anchor": {
+          "x": 36,
+          "y": 42
+        }
+      },
+      "045": {
+        "image": "toad_px_r045.png",
+        "anchor": {
+          "x": 36,
+          "y": 44
+        }
+      },
+      "090": {
+        "image": "toad_px_r090.png",
+        "anchor": {
+          "x": 45,
+          "y": 52
+        }
+      }
+    }
+  },
+  {
+    "id": "toad-frog",
+    "name": "Rana",
+    "size": "tiny",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "variant": "frog",
+    "image": "toad-frog_px_r000.png",
+    "anchor": {
+      "x": 16,
+      "y": 18
+    },
+    "rotations": {
+      "135": {
+        "image": "toad-frog_px_r135.png",
+        "anchor": {
+          "x": 19,
+          "y": 23
+        }
+      },
+      "180": {
+        "image": "toad-frog_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 20
+        }
+      },
+      "225": {
+        "image": "toad-frog_px_r225.png",
+        "anchor": {
+          "x": 21,
+          "y": 18
+        }
+      },
+      "270": {
+        "image": "toad-frog_px_r270.png",
+        "anchor": {
+          "x": 18,
+          "y": 17
+        }
+      },
+      "315": {
+        "image": "toad-frog_px_r315.png",
+        "anchor": {
+          "x": 18,
+          "y": 16
+        }
+      },
+      "000": {
+        "image": "toad-frog_px_r000.png",
+        "anchor": {
+          "x": 16,
+          "y": 18
+        }
+      },
+      "045": {
+        "image": "toad-frog_px_r045.png",
+        "anchor": {
+          "x": 15,
+          "y": 19
+        }
+      },
+      "090": {
+        "image": "toad-frog_px_r090.png",
+        "anchor": {
+          "x": 19,
+          "y": 22
+        }
+      }
+    }
+  },
+  {
+    "id": "snake",
+    "name": "Serpiente",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "snake_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 22
+    },
+    "rotations": {
+      "135": {
+        "image": "snake_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 33
+        }
+      },
+      "180": {
+        "image": "snake_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 34
+        }
+      },
+      "225": {
+        "image": "snake_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 30
+        }
+      },
+      "270": {
+        "image": "snake_px_r270.png",
+        "anchor": {
+          "x": 22,
+          "y": 24
+        }
+      },
+      "315": {
+        "image": "snake_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 21
+        }
+      },
+      "000": {
+        "image": "snake_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 22
+        }
+      },
+      "045": {
+        "image": "snake_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 23
+        }
+      },
+      "090": {
+        "image": "snake_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 25
+        }
+      }
+    }
+  },
+  {
+    "id": "snake-poisonous",
+    "name": "Serpiente venenosa",
+    "size": "tiny",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "variant": "poisonous",
+    "image": "snake-poisonous_px_r000.png",
+    "anchor": {
+      "x": 17,
+      "y": 21
+    },
+    "rotations": {
+      "135": {
+        "image": "snake-poisonous_px_r135.png",
+        "anchor": {
+          "x": 17,
+          "y": 31
+        }
+      },
+      "180": {
+        "image": "snake-poisonous_px_r180.png",
+        "anchor": {
+          "x": 17,
+          "y": 33
+        }
+      },
+      "225": {
+        "image": "snake-poisonous_px_r225.png",
+        "anchor": {
+          "x": 19,
+          "y": 29
+        }
+      },
+      "270": {
+        "image": "snake-poisonous_px_r270.png",
+        "anchor": {
+          "x": 21,
+          "y": 22
+        }
+      },
+      "315": {
+        "image": "snake-poisonous_px_r315.png",
+        "anchor": {
+          "x": 17,
+          "y": 20
+        }
+      },
+      "000": {
+        "image": "snake-poisonous_px_r000.png",
+        "anchor": {
+          "x": 17,
+          "y": 21
+        }
+      },
+      "045": {
+        "image": "snake-poisonous_px_r045.png",
+        "anchor": {
+          "x": 17,
+          "y": 21
+        }
+      },
+      "090": {
+        "image": "snake-poisonous_px_r090.png",
+        "anchor": {
+          "x": 17,
+          "y": 23
+        }
+      }
+    }
+  },
+  {
+    "id": "snake-constrictor",
+    "name": "Serpiente constrictora",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "variant": "constrictor",
+    "image": "snake-constrictor_px_r000.png",
+    "anchor": {
+      "x": 36,
+      "y": 41
+    },
+    "rotations": {
+      "135": {
+        "image": "snake-constrictor_px_r135.png",
+        "anchor": {
+          "x": 36,
+          "y": 61
+        }
+      },
+      "180": {
+        "image": "snake-constrictor_px_r180.png",
+        "anchor": {
+          "x": 36,
+          "y": 64
+        }
+      },
+      "225": {
+        "image": "snake-constrictor_px_r225.png",
+        "anchor": {
+          "x": 36,
+          "y": 56
+        }
+      },
+      "270": {
+        "image": "snake-constrictor_px_r270.png",
+        "anchor": {
+          "x": 40,
+          "y": 43
+        }
+      },
+      "315": {
+        "image": "snake-constrictor_px_r315.png",
+        "anchor": {
+          "x": 36,
+          "y": 38
+        }
+      },
+      "000": {
+        "image": "snake-constrictor_px_r000.png",
+        "anchor": {
+          "x": 36,
+          "y": 41
+        }
+      },
+      "045": {
+        "image": "snake-constrictor_px_r045.png",
+        "anchor": {
+          "x": 36,
+          "y": 42
+        }
+      },
+      "090": {
+        "image": "snake-constrictor_px_r090.png",
+        "anchor": {
+          "x": 36,
+          "y": 45
+        }
+      }
+    }
+  },
+  {
+    "id": "spider",
+    "name": "Araña gigante",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "spider_px_r000.png",
+    "anchor": {
+      "x": 50,
+      "y": 51
+    },
+    "rotations": {
+      "135": {
+        "image": "spider_px_r135.png",
+        "anchor": {
+          "x": 45,
+          "y": 41
+        }
+      },
+      "180": {
+        "image": "spider_px_r180.png",
+        "anchor": {
+          "x": 45,
+          "y": 47
+        }
+      },
+      "225": {
+        "image": "spider_px_r225.png",
+        "anchor": {
+          "x": 36,
+          "y": 48
+        }
+      },
+      "270": {
+        "image": "spider_px_r270.png",
+        "anchor": {
+          "x": 41,
+          "y": 52
+        }
+      },
+      "315": {
+        "image": "spider_px_r315.png",
+        "anchor": {
+          "x": 44,
+          "y": 45
+        }
+      },
+      "000": {
+        "image": "spider_px_r000.png",
+        "anchor": {
+          "x": 50,
+          "y": 51
+        }
+      },
+      "045": {
+        "image": "spider_px_r045.png",
+        "anchor": {
+          "x": 38,
+          "y": 48
+        }
+      },
+      "090": {
+        "image": "spider_px_r090.png",
+        "anchor": {
+          "x": 48,
+          "y": 49
+        }
+      }
+    }
+  },
+  {
+    "id": "spider-normal",
+    "name": "Araña",
+    "size": "tiny",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "variant": "normal",
+    "image": "spider-normal_px_r000.png",
+    "anchor": {
+      "x": 22,
+      "y": 22
+    },
+    "rotations": {
+      "135": {
+        "image": "spider-normal_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 18
+        }
+      },
+      "180": {
+        "image": "spider-normal_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 21
+        }
+      },
+      "225": {
+        "image": "spider-normal_px_r225.png",
+        "anchor": {
+          "x": 16,
+          "y": 21
+        }
+      },
+      "270": {
+        "image": "spider-normal_px_r270.png",
+        "anchor": {
+          "x": 19,
+          "y": 23
+        }
+      },
+      "315": {
+        "image": "spider-normal_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 20
+        }
+      },
+      "000": {
+        "image": "spider-normal_px_r000.png",
+        "anchor": {
+          "x": 22,
+          "y": 22
+        }
+      },
+      "045": {
+        "image": "spider-normal_px_r045.png",
+        "anchor": {
+          "x": 18,
+          "y": 21
+        }
+      },
+      "090": {
+        "image": "spider-normal_px_r090.png",
+        "anchor": {
+          "x": 22,
+          "y": 21
+        }
+      }
+    }
+  },
+  {
+    "id": "phase-spider",
+    "name": "Araña de fase",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "phase-spider_px_r000.png",
+    "anchor": {
+      "x": 57,
+      "y": 55
+    },
+    "rotations": {
+      "135": {
+        "image": "phase-spider_px_r135.png",
+        "anchor": {
+          "x": 48,
+          "y": 42
+        }
+      },
+      "180": {
+        "image": "phase-spider_px_r180.png",
+        "anchor": {
+          "x": 48,
+          "y": 49
+        }
+      },
+      "225": {
+        "image": "phase-spider_px_r225.png",
+        "anchor": {
+          "x": 36,
+          "y": 60
+        }
+      },
+      "270": {
+        "image": "phase-spider_px_r270.png",
+        "anchor": {
+          "x": 43,
+          "y": 65
+        }
+      },
+      "315": {
+        "image": "phase-spider_px_r315.png",
+        "anchor": {
+          "x": 58,
+          "y": 52
+        }
+      },
+      "000": {
+        "image": "phase-spider_px_r000.png",
+        "anchor": {
+          "x": 57,
+          "y": 55
+        }
+      },
+      "045": {
+        "image": "phase-spider_px_r045.png",
+        "anchor": {
+          "x": 44,
+          "y": 53
+        }
+      },
+      "090": {
+        "image": "phase-spider_px_r090.png",
+        "anchor": {
+          "x": 50,
+          "y": 52
+        }
+      }
+    }
+  },
+  {
+    "id": "scorpion",
+    "name": "Escorpión",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "scorpion_px_r000.png",
+    "anchor": {
+      "x": 50,
+      "y": 62
+    },
+    "rotations": {
+      "135": {
+        "image": "scorpion_px_r135.png",
+        "anchor": {
+          "x": 45,
+          "y": 60
+        }
+      },
+      "180": {
+        "image": "scorpion_px_r180.png",
+        "anchor": {
+          "x": 52,
+          "y": 62
+        }
+      },
+      "225": {
+        "image": "scorpion_px_r225.png",
+        "anchor": {
+          "x": 55,
+          "y": 47
+        }
+      },
+      "270": {
+        "image": "scorpion_px_r270.png",
+        "anchor": {
+          "x": 57,
+          "y": 51
+        }
+      },
+      "315": {
+        "image": "scorpion_px_r315.png",
+        "anchor": {
+          "x": 44,
+          "y": 65
+        }
+      },
+      "000": {
+        "image": "scorpion_px_r000.png",
+        "anchor": {
+          "x": 50,
+          "y": 62
+        }
+      },
+      "045": {
+        "image": "scorpion_px_r045.png",
+        "anchor": {
+          "x": 44,
+          "y": 49
+        }
+      },
+      "090": {
+        "image": "scorpion_px_r090.png",
+        "anchor": {
+          "x": 48,
+          "y": 57
+        }
+      }
+    }
+  },
+  {
+    "id": "centipede",
+    "name": "Ciempiés",
+    "size": "small",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "centipede_px_r000.png",
+    "anchor": {
+      "x": 24,
+      "y": 24
+    },
+    "rotations": {
+      "135": {
+        "image": "centipede_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 28
+        }
+      },
+      "180": {
+        "image": "centipede_px_r180.png",
+        "anchor": {
+          "x": 22,
+          "y": 28
+        }
+      },
+      "225": {
+        "image": "centipede_px_r225.png",
+        "anchor": {
+          "x": 24,
+          "y": 22
+        }
+      },
+      "270": {
+        "image": "centipede_px_r270.png",
+        "anchor": {
+          "x": 25,
+          "y": 22
+        }
+      },
+      "315": {
+        "image": "centipede_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 24
+        }
+      },
+      "000": {
+        "image": "centipede_px_r000.png",
+        "anchor": {
+          "x": 24,
+          "y": 24
+        }
+      },
+      "045": {
+        "image": "centipede_px_r045.png",
+        "anchor": {
+          "x": 27,
+          "y": 18
+        }
+      },
+      "090": {
+        "image": "centipede_px_r090.png",
+        "anchor": {
+          "x": 27,
+          "y": 26
+        }
+      }
+    }
+  },
+  {
+    "id": "rust-monster",
+    "name": "Monstruo corrosivo",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "rust-monster_px_r000.png",
+    "anchor": {
+      "x": 29,
+      "y": 28
+    },
+    "rotations": {
+      "135": {
+        "image": "rust-monster_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 31
+        }
+      },
+      "180": {
+        "image": "rust-monster_px_r180.png",
+        "anchor": {
+          "x": 27,
+          "y": 33
+        }
+      },
+      "225": {
+        "image": "rust-monster_px_r225.png",
+        "anchor": {
+          "x": 27,
+          "y": 26
+        }
+      },
+      "270": {
+        "image": "rust-monster_px_r270.png",
+        "anchor": {
+          "x": 29,
+          "y": 31
+        }
+      },
+      "315": {
+        "image": "rust-monster_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      },
+      "000": {
+        "image": "rust-monster_px_r000.png",
+        "anchor": {
+          "x": 29,
+          "y": 28
+        }
+      },
+      "045": {
+        "image": "rust-monster_px_r045.png",
+        "anchor": {
+          "x": 34,
+          "y": 20
+        }
+      },
+      "090": {
+        "image": "rust-monster_px_r090.png",
+        "anchor": {
+          "x": 25,
+          "y": 31
+        }
+      }
+    }
+  },
+  {
+    "id": "bat",
+    "name": "Murciélago",
+    "size": "tiny",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "bat_px_r000.png",
+    "anchor": {
+      "x": 19,
+      "y": 16
+    },
+    "rotations": {
+      "135": {
+        "image": "bat_px_r135.png",
+        "anchor": {
+          "x": 18,
+          "y": 14
+        }
+      },
+      "180": {
+        "image": "bat_px_r180.png",
+        "anchor": {
+          "x": 18,
+          "y": 12
+        }
+      },
+      "225": {
+        "image": "bat_px_r225.png",
+        "anchor": {
+          "x": 12,
+          "y": 19
+        }
+      },
+      "270": {
+        "image": "bat_px_r270.png",
+        "anchor": {
+          "x": 12,
+          "y": 21
+        }
+      },
+      "315": {
+        "image": "bat_px_r315.png",
+        "anchor": {
+          "x": 16,
+          "y": 17
+        }
+      },
+      "000": {
+        "image": "bat_px_r000.png",
+        "anchor": {
+          "x": 19,
+          "y": 16
+        }
+      },
+      "045": {
+        "image": "bat_px_r045.png",
+        "anchor": {
+          "x": 16,
+          "y": 20
+        }
+      },
+      "090": {
+        "image": "bat_px_r090.png",
+        "anchor": {
+          "x": 13,
+          "y": 20
+        }
+      }
+    }
+  },
+  {
+    "id": "bat-giant",
+    "name": "Murciélago gigante",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "variant": "giant",
+    "image": "bat-giant_px_r000.png",
+    "anchor": {
+      "x": 50,
+      "y": 41
+    },
+    "rotations": {
+      "135": {
+        "image": "bat-giant_px_r135.png",
+        "anchor": {
+          "x": 47,
+          "y": 36
+        }
+      },
+      "180": {
+        "image": "bat-giant_px_r180.png",
+        "anchor": {
+          "x": 48,
+          "y": 32
+        }
+      },
+      "225": {
+        "image": "bat-giant_px_r225.png",
+        "anchor": {
+          "x": 36,
+          "y": 50
+        }
+      },
+      "270": {
+        "image": "bat-giant_px_r270.png",
+        "anchor": {
+          "x": 36,
+          "y": 56
+        }
+      },
+      "315": {
+        "image": "bat-giant_px_r315.png",
+        "anchor": {
+          "x": 43,
+          "y": 46
+        }
+      },
+      "000": {
+        "image": "bat-giant_px_r000.png",
+        "anchor": {
+          "x": 50,
+          "y": 41
+        }
+      },
+      "045": {
+        "image": "bat-giant_px_r045.png",
+        "anchor": {
+          "x": 40,
+          "y": 53
+        }
+      },
+      "090": {
+        "image": "bat-giant_px_r090.png",
+        "anchor": {
+          "x": 36,
+          "y": 55
+        }
+      }
+    }
+  },
+  {
+    "id": "hawk",
+    "name": "Ave rapaz",
+    "size": "tiny",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "hawk_px_r000.png",
+    "anchor": {
+      "x": 18,
+      "y": 15
+    },
+    "rotations": {
+      "135": {
+        "image": "hawk_px_r135.png",
+        "anchor": {
+          "x": 17,
+          "y": 15
+        }
+      },
+      "180": {
+        "image": "hawk_px_r180.png",
+        "anchor": {
+          "x": 19,
+          "y": 12
+        }
+      },
+      "225": {
+        "image": "hawk_px_r225.png",
+        "anchor": {
+          "x": 12,
+          "y": 19
+        }
+      },
+      "270": {
+        "image": "hawk_px_r270.png",
+        "anchor": {
+          "x": 12,
+          "y": 20
+        }
+      },
+      "315": {
+        "image": "hawk_px_r315.png",
+        "anchor": {
+          "x": 18,
+          "y": 16
+        }
+      },
+      "000": {
+        "image": "hawk_px_r000.png",
+        "anchor": {
+          "x": 18,
+          "y": 15
+        }
+      },
+      "045": {
+        "image": "hawk_px_r045.png",
+        "anchor": {
+          "x": 14,
+          "y": 19
+        }
+      },
+      "090": {
+        "image": "hawk_px_r090.png",
+        "anchor": {
+          "x": 13,
+          "y": 20
+        }
+      }
+    }
+  },
+  {
+    "id": "owl",
+    "name": "Búho",
+    "size": "tiny",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "owl_px_r000.png",
+    "anchor": {
+      "x": 18,
+      "y": 18
+    },
+    "rotations": {
+      "135": {
+        "image": "owl_px_r135.png",
+        "anchor": {
+          "x": 19,
+          "y": 15
+        }
+      },
+      "180": {
+        "image": "owl_px_r180.png",
+        "anchor": {
+          "x": 17,
+          "y": 13
+        }
+      },
+      "225": {
+        "image": "owl_px_r225.png",
+        "anchor": {
+          "x": 12,
+          "y": 18
+        }
+      },
+      "270": {
+        "image": "owl_px_r270.png",
+        "anchor": {
+          "x": 12,
+          "y": 21
+        }
+      },
+      "315": {
+        "image": "owl_px_r315.png",
+        "anchor": {
+          "x": 16,
+          "y": 19
+        }
+      },
+      "000": {
+        "image": "owl_px_r000.png",
+        "anchor": {
+          "x": 18,
+          "y": 18
+        }
+      },
+      "045": {
+        "image": "owl_px_r045.png",
+        "anchor": {
+          "x": 17,
+          "y": 21
+        }
+      },
+      "090": {
+        "image": "owl_px_r090.png",
+        "anchor": {
+          "x": 15,
+          "y": 19
+        }
+      }
+    }
+  },
+  {
+    "id": "stirge",
+    "name": "Estirge",
+    "size": "tiny",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "stirge_px_r000.png",
+    "anchor": {
+      "x": 19,
+      "y": 16
+    },
+    "rotations": {
+      "135": {
+        "image": "stirge_px_r135.png",
+        "anchor": {
+          "x": 18,
+          "y": 17
+        }
+      },
+      "180": {
+        "image": "stirge_px_r180.png",
+        "anchor": {
+          "x": 18,
+          "y": 18
+        }
+      },
+      "225": {
+        "image": "stirge_px_r225.png",
+        "anchor": {
+          "x": 16,
+          "y": 19
+        }
+      },
+      "270": {
+        "image": "stirge_px_r270.png",
+        "anchor": {
+          "x": 17,
+          "y": 21
+        }
+      },
+      "315": {
+        "image": "stirge_px_r315.png",
+        "anchor": {
+          "x": 16,
+          "y": 17
+        }
+      },
+      "000": {
+        "image": "stirge_px_r000.png",
+        "anchor": {
+          "x": 19,
+          "y": 16
+        }
+      },
+      "045": {
+        "image": "stirge_px_r045.png",
+        "anchor": {
+          "x": 16,
+          "y": 20
+        }
+      },
+      "090": {
+        "image": "stirge_px_r090.png",
+        "anchor": {
+          "x": 13,
+          "y": 20
+        }
+      }
+    }
+  },
+  {
+    "id": "wasp",
+    "name": "Avispa",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "wasp_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 32
+    },
+    "rotations": {
+      "135": {
+        "image": "wasp_px_r135.png",
+        "anchor": {
+          "x": 21,
+          "y": 23
+        }
+      },
+      "180": {
+        "image": "wasp_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 23
+        }
+      },
+      "225": {
+        "image": "wasp_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 21
+        }
+      },
+      "270": {
+        "image": "wasp_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 26
+        }
+      },
+      "315": {
+        "image": "wasp_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 30
+        }
+      },
+      "000": {
+        "image": "wasp_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 32
+        }
+      },
+      "045": {
+        "image": "wasp_px_r045.png",
+        "anchor": {
+          "x": 27,
+          "y": 27
+        }
+      },
+      "090": {
+        "image": "wasp_px_r090.png",
+        "anchor": {
+          "x": 30,
+          "y": 24
+        }
+      }
+    }
+  },
+  {
+    "id": "rat-swarm",
+    "name": "Enjambre de ratas",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "rat-swarm_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 22
+    },
+    "rotations": {
+      "135": {
+        "image": "rat-swarm_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 20
+        }
+      },
+      "180": {
+        "image": "rat-swarm_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 21
+        }
+      },
+      "225": {
+        "image": "rat-swarm_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 19
+        }
+      },
+      "270": {
+        "image": "rat-swarm_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 20
+        }
+      },
+      "315": {
+        "image": "rat-swarm_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 24
+        }
+      },
+      "000": {
+        "image": "rat-swarm_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 22
+        }
+      },
+      "045": {
+        "image": "rat-swarm_px_r045.png",
+        "anchor": {
+          "x": 24,
+          "y": 20
+        }
+      },
+      "090": {
+        "image": "rat-swarm_px_r090.png",
+        "anchor": {
+          "x": 21,
+          "y": 18
+        }
+      }
+    }
+  },
+  {
+    "id": "bat-swarm",
+    "name": "Enjambre de murciélagos",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "bat-swarm_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 22
+    },
+    "rotations": {
+      "135": {
+        "image": "bat-swarm_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 21
+        }
+      },
+      "180": {
+        "image": "bat-swarm_px_r180.png",
+        "anchor": {
+          "x": 22,
+          "y": 18
+        }
+      },
+      "225": {
+        "image": "bat-swarm_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 22
+        }
+      },
+      "270": {
+        "image": "bat-swarm_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 20
+        }
+      },
+      "315": {
+        "image": "bat-swarm_px_r315.png",
+        "anchor": {
+          "x": 21,
+          "y": 20
+        }
+      },
+      "000": {
+        "image": "bat-swarm_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 22
+        }
+      },
+      "045": {
+        "image": "bat-swarm_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 19
+        }
+      },
+      "090": {
+        "image": "bat-swarm_px_r090.png",
+        "anchor": {
+          "x": 21,
+          "y": 24
+        }
+      }
+    }
+  },
+  {
+    "id": "raven-swarm",
+    "name": "Bandada de cuervos",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "raven-swarm_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 23
+    },
+    "rotations": {
+      "135": {
+        "image": "raven-swarm_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 22
+        }
+      },
+      "180": {
+        "image": "raven-swarm_px_r180.png",
+        "anchor": {
+          "x": 22,
+          "y": 19
+        }
+      },
+      "225": {
+        "image": "raven-swarm_px_r225.png",
+        "anchor": {
+          "x": 21,
+          "y": 22
+        }
+      },
+      "270": {
+        "image": "raven-swarm_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 20
+        }
+      },
+      "315": {
+        "image": "raven-swarm_px_r315.png",
+        "anchor": {
+          "x": 21,
+          "y": 21
+        }
+      },
+      "000": {
+        "image": "raven-swarm_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 23
+        }
+      },
+      "045": {
+        "image": "raven-swarm_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 19
+        }
+      },
+      "090": {
+        "image": "raven-swarm_px_r090.png",
+        "anchor": {
+          "x": 22,
+          "y": 24
+        }
+      }
+    }
+  },
+  {
+    "id": "insect-swarm",
+    "name": "Enjambre de insectos",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "insect-swarm_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 20
+    },
+    "rotations": {
+      "135": {
+        "image": "insect-swarm_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 20
+        }
+      },
+      "180": {
+        "image": "insect-swarm_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 21
+        }
+      },
+      "225": {
+        "image": "insect-swarm_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 18
+        }
+      },
+      "270": {
+        "image": "insect-swarm_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 21
+        }
+      },
+      "315": {
+        "image": "insect-swarm_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 20
+        }
+      },
+      "000": {
+        "image": "insect-swarm_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 20
+        }
+      },
+      "045": {
+        "image": "insect-swarm_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 20
+        }
+      },
+      "090": {
+        "image": "insect-swarm_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 19
+        }
+      }
+    }
+  },
+  {
+    "id": "mimic",
+    "name": "Mímico",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "mimic_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 31
+    },
+    "rotations": {
+      "135": {
+        "image": "mimic_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 28
+        }
+      },
+      "180": {
+        "image": "mimic_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 27
+        }
+      },
+      "225": {
+        "image": "mimic_px_r225.png",
+        "anchor": {
+          "x": 22,
+          "y": 30
+        }
+      },
+      "270": {
+        "image": "mimic_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 31
+        }
+      },
+      "315": {
+        "image": "mimic_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 30
+        }
+      },
+      "000": {
+        "image": "mimic_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 31
+        }
+      },
+      "045": {
+        "image": "mimic_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 32
+        }
+      },
+      "090": {
+        "image": "mimic_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 29
+        }
+      }
+    }
+  },
+  {
+    "id": "cube",
+    "name": "Cubo gelatinoso",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "cube_px_r000.png",
+    "anchor": {
+      "x": 37,
+      "y": 67
+    },
+    "rotations": {
+      "135": {
+        "image": "cube_px_r135.png",
+        "anchor": {
+          "x": 36,
+          "y": 66
+        }
+      },
+      "180": {
+        "image": "cube_px_r180.png",
+        "anchor": {
+          "x": 37,
+          "y": 67
+        }
+      },
+      "225": {
+        "image": "cube_px_r225.png",
+        "anchor": {
+          "x": 36,
+          "y": 66
+        }
+      },
+      "270": {
+        "image": "cube_px_r270.png",
+        "anchor": {
+          "x": 36,
+          "y": 68
+        }
+      },
+      "315": {
+        "image": "cube_px_r315.png",
+        "anchor": {
+          "x": 36,
+          "y": 66
+        }
+      },
+      "000": {
+        "image": "cube_px_r000.png",
+        "anchor": {
+          "x": 37,
+          "y": 67
+        }
+      },
+      "045": {
+        "image": "cube_px_r045.png",
+        "anchor": {
+          "x": 36,
+          "y": 66
+        }
+      },
+      "090": {
+        "image": "cube_px_r090.png",
+        "anchor": {
+          "x": 36,
+          "y": 68
+        }
+      }
+    }
+  },
+  {
+    "id": "ooze",
+    "name": "Cieno",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "ooze_px_r000.png",
+    "anchor": {
+      "x": 21,
+      "y": 18
+    },
+    "rotations": {
+      "135": {
+        "image": "ooze_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 19
+        }
+      },
+      "180": {
+        "image": "ooze_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 23
+        }
+      },
+      "225": {
+        "image": "ooze_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 24
+        }
+      },
+      "270": {
+        "image": "ooze_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 23
+        }
+      },
+      "315": {
+        "image": "ooze_px_r315.png",
+        "anchor": {
+          "x": 22,
+          "y": 19
+        }
+      },
+      "000": {
+        "image": "ooze_px_r000.png",
+        "anchor": {
+          "x": 21,
+          "y": 18
+        }
+      },
+      "045": {
+        "image": "ooze_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 19
+        }
+      },
+      "090": {
+        "image": "ooze_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 19
+        }
+      }
+    }
+  },
+  {
+    "id": "ooze-black-pudding",
+    "name": "Pudín negro",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "variant": "black-pudding",
+    "image": "ooze-black-pudding_px_r000.png",
+    "anchor": {
+      "x": 38,
+      "y": 32
+    },
+    "rotations": {
+      "135": {
+        "image": "ooze-black-pudding_px_r135.png",
+        "anchor": {
+          "x": 36,
+          "y": 34
+        }
+      },
+      "180": {
+        "image": "ooze-black-pudding_px_r180.png",
+        "anchor": {
+          "x": 36,
+          "y": 42
+        }
+      },
+      "225": {
+        "image": "ooze-black-pudding_px_r225.png",
+        "anchor": {
+          "x": 36,
+          "y": 44
+        }
+      },
+      "270": {
+        "image": "ooze-black-pudding_px_r270.png",
+        "anchor": {
+          "x": 36,
+          "y": 41
+        }
+      },
+      "315": {
+        "image": "ooze-black-pudding_px_r315.png",
+        "anchor": {
+          "x": 39,
+          "y": 33
+        }
+      },
+      "000": {
+        "image": "ooze-black-pudding_px_r000.png",
+        "anchor": {
+          "x": 38,
+          "y": 32
+        }
+      },
+      "045": {
+        "image": "ooze-black-pudding_px_r045.png",
+        "anchor": {
+          "x": 36,
+          "y": 34
+        }
+      },
+      "090": {
+        "image": "ooze-black-pudding_px_r090.png",
+        "anchor": {
+          "x": 36,
+          "y": 34
+        }
+      }
+    }
+  },
+  {
+    "id": "flying-sword",
+    "name": "Espada voladora",
+    "size": "small",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "flying-sword_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 25
+    },
+    "rotations": {
+      "135": {
+        "image": "flying-sword_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 18
+        }
+      },
+      "180": {
+        "image": "flying-sword_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 18
+        }
+      },
+      "225": {
+        "image": "flying-sword_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 18
+        }
+      },
+      "270": {
+        "image": "flying-sword_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 18
+        }
+      },
+      "315": {
+        "image": "flying-sword_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 18
+        }
+      },
+      "000": {
+        "image": "flying-sword_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 25
+        }
+      },
+      "045": {
+        "image": "flying-sword_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 27
+        }
+      },
+      "090": {
+        "image": "flying-sword_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 24
+        }
+      }
+    }
+  },
+  {
+    "id": "armor",
+    "name": "Armadura animada",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "armor_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 32
+    },
+    "rotations": {
+      "135": {
+        "image": "armor_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 37
+        }
+      },
+      "180": {
+        "image": "armor_px_r180.png",
+        "anchor": {
+          "x": 21,
+          "y": 37
+        }
+      },
+      "225": {
+        "image": "armor_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      },
+      "270": {
+        "image": "armor_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 34
+        }
+      },
+      "315": {
+        "image": "armor_px_r315.png",
+        "anchor": {
+          "x": 21,
+          "y": 32
+        }
+      },
+      "000": {
+        "image": "armor_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 32
+        }
+      },
+      "045": {
+        "image": "armor_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 39
+        }
+      },
+      "090": {
+        "image": "armor_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 41
+        }
+      }
+    }
+  },
+  {
+    "id": "grick",
+    "name": "Grick",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "grick_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 25
+    },
+    "rotations": {
+      "135": {
+        "image": "grick_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 43
+        }
+      },
+      "180": {
+        "image": "grick_px_r180.png",
+        "anchor": {
+          "x": 21,
+          "y": 43
+        }
+      },
+      "225": {
+        "image": "grick_px_r225.png",
+        "anchor": {
+          "x": 25,
+          "y": 38
+        }
+      },
+      "270": {
+        "image": "grick_px_r270.png",
+        "anchor": {
+          "x": 24,
+          "y": 28
+        }
+      },
+      "315": {
+        "image": "grick_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 24
+        }
+      },
+      "000": {
+        "image": "grick_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 25
+        }
+      },
+      "045": {
+        "image": "grick_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 30
+        }
+      },
+      "090": {
+        "image": "grick_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 39
+        }
+      }
+    }
+  },
+  {
+    "id": "nothic",
+    "name": "Nótico",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "nothic_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 32
+    },
+    "rotations": {
+      "135": {
+        "image": "nothic_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 39
+        }
+      },
+      "180": {
+        "image": "nothic_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 38
+        }
+      },
+      "225": {
+        "image": "nothic_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 33
+        }
+      },
+      "270": {
+        "image": "nothic_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 34
+        }
+      },
+      "315": {
+        "image": "nothic_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 31
+        }
+      },
+      "000": {
+        "image": "nothic_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 32
+        }
+      },
+      "045": {
+        "image": "nothic_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 33
+        }
+      },
+      "090": {
+        "image": "nothic_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 34
+        }
+      }
+    }
+  },
+  {
+    "id": "grell",
+    "name": "Grell",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "grell_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 35
+    },
+    "rotations": {
+      "135": {
+        "image": "grell_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      },
+      "180": {
+        "image": "grell_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      },
+      "225": {
+        "image": "grell_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 36
+        }
+      },
+      "270": {
+        "image": "grell_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      },
+      "315": {
+        "image": "grell_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      },
+      "000": {
+        "image": "grell_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      },
+      "045": {
+        "image": "grell_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      },
+      "090": {
+        "image": "grell_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 36
+        }
+      }
+    }
+  },
+  {
+    "id": "claw",
+    "name": "Garra reptante",
+    "size": "tiny",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "claw_px_r000.png",
+    "anchor": {
+      "x": 14,
+      "y": 22
+    },
+    "rotations": {
+      "135": {
+        "image": "claw_px_r135.png",
+        "anchor": {
+          "x": 12,
+          "y": 23
+        }
+      },
+      "180": {
+        "image": "claw_px_r180.png",
+        "anchor": {
+          "x": 18,
+          "y": 23
+        }
+      },
+      "225": {
+        "image": "claw_px_r225.png",
+        "anchor": {
+          "x": 18,
+          "y": 23
+        }
+      },
+      "270": {
+        "image": "claw_px_r270.png",
+        "anchor": {
+          "x": 19,
+          "y": 22
+        }
+      },
+      "315": {
+        "image": "claw_px_r315.png",
+        "anchor": {
+          "x": 17,
+          "y": 24
+        }
+      },
+      "000": {
+        "image": "claw_px_r000.png",
+        "anchor": {
+          "x": 14,
+          "y": 22
+        }
+      },
+      "045": {
+        "image": "claw_px_r045.png",
+        "anchor": {
+          "x": 17,
+          "y": 19
+        }
+      },
+      "090": {
+        "image": "claw_px_r090.png",
+        "anchor": {
+          "x": 15,
+          "y": 24
+        }
+      }
+    }
+  },
+  {
+    "id": "minotaur",
+    "name": "Minotauro",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "minotaur_px_r000.png",
+    "anchor": {
+      "x": 36,
+      "y": 71
+    },
+    "rotations": {
+      "135": {
+        "image": "minotaur_px_r135.png",
+        "anchor": {
+          "x": 43,
+          "y": 87
+        }
+      },
+      "180": {
+        "image": "minotaur_px_r180.png",
+        "anchor": {
+          "x": 62,
+          "y": 77
+        }
+      },
+      "225": {
+        "image": "minotaur_px_r225.png",
+        "anchor": {
+          "x": 47,
+          "y": 85
+        }
+      },
+      "270": {
+        "image": "minotaur_px_r270.png",
+        "anchor": {
+          "x": 38,
+          "y": 81
+        }
+      },
+      "315": {
+        "image": "minotaur_px_r315.png",
+        "anchor": {
+          "x": 39,
+          "y": 69
+        }
+      },
+      "000": {
+        "image": "minotaur_px_r000.png",
+        "anchor": {
+          "x": 36,
+          "y": 71
+        }
+      },
+      "045": {
+        "image": "minotaur_px_r045.png",
+        "anchor": {
+          "x": 36,
+          "y": 82
+        }
+      },
+      "090": {
+        "image": "minotaur_px_r090.png",
+        "anchor": {
+          "x": 36,
+          "y": 90
+        }
+      }
+    }
+  },
+  {
+    "id": "hill-giant",
+    "name": "Gigante de las colinas",
+    "size": "huge",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "hill-giant_px_r000.png",
+    "anchor": {
+      "x": 57,
+      "y": 119
+    },
+    "rotations": {
+      "135": {
+        "image": "hill-giant_px_r135.png",
+        "anchor": {
+          "x": 99,
+          "y": 137
+        }
+      },
+      "180": {
+        "image": "hill-giant_px_r180.png",
+        "anchor": {
+          "x": 107,
+          "y": 115
+        }
+      },
+      "225": {
+        "image": "hill-giant_px_r225.png",
+        "anchor": {
+          "x": 67,
+          "y": 108
+        }
+      },
+      "270": {
+        "image": "hill-giant_px_r270.png",
+        "anchor": {
+          "x": 52,
+          "y": 107
+        }
+      },
+      "315": {
+        "image": "hill-giant_px_r315.png",
+        "anchor": {
+          "x": 65,
+          "y": 93
+        }
+      },
+      "000": {
+        "image": "hill-giant_px_r000.png",
+        "anchor": {
+          "x": 57,
+          "y": 119
+        }
+      },
+      "045": {
+        "image": "hill-giant_px_r045.png",
+        "anchor": {
+          "x": 52,
+          "y": 162
+        }
+      },
+      "090": {
+        "image": "hill-giant_px_r090.png",
+        "anchor": {
+          "x": 52,
+          "y": 170
+        }
+      }
+    }
+  },
+  {
+    "id": "ettin",
+    "name": "Ettin",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "ettin_px_r000.png",
+    "anchor": {
+      "x": 47,
+      "y": 70
+    },
+    "rotations": {
+      "135": {
+        "image": "ettin_px_r135.png",
+        "anchor": {
+          "x": 49,
+          "y": 78
+        }
+      },
+      "180": {
+        "image": "ettin_px_r180.png",
+        "anchor": {
+          "x": 56,
+          "y": 81
+        }
+      },
+      "225": {
+        "image": "ettin_px_r225.png",
+        "anchor": {
+          "x": 36,
+          "y": 95
+        }
+      },
+      "270": {
+        "image": "ettin_px_r270.png",
+        "anchor": {
+          "x": 40,
+          "y": 87
+        }
+      },
+      "315": {
+        "image": "ettin_px_r315.png",
+        "anchor": {
+          "x": 57,
+          "y": 70
+        }
+      },
+      "000": {
+        "image": "ettin_px_r000.png",
+        "anchor": {
+          "x": 47,
+          "y": 70
+        }
+      },
+      "045": {
+        "image": "ettin_px_r045.png",
+        "anchor": {
+          "x": 36,
+          "y": 89
+        }
+      },
+      "090": {
+        "image": "ettin_px_r090.png",
+        "anchor": {
+          "x": 36,
+          "y": 94
+        }
+      }
+    }
+  },
+  {
+    "id": "griffon",
+    "name": "Grifo",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "griffon_px_r000.png",
+    "anchor": {
+      "x": 57,
+      "y": 87
+    },
+    "rotations": {
+      "135": {
+        "image": "griffon_px_r135.png",
+        "anchor": {
+          "x": 55,
+          "y": 70
+        }
+      },
+      "180": {
+        "image": "griffon_px_r180.png",
+        "anchor": {
+          "x": 37,
+          "y": 68
+        }
+      },
+      "225": {
+        "image": "griffon_px_r225.png",
+        "anchor": {
+          "x": 52,
+          "y": 88
+        }
+      },
+      "270": {
+        "image": "griffon_px_r270.png",
+        "anchor": {
+          "x": 48,
+          "y": 96
+        }
+      },
+      "315": {
+        "image": "griffon_px_r315.png",
+        "anchor": {
+          "x": 43,
+          "y": 81
+        }
+      },
+      "000": {
+        "image": "griffon_px_r000.png",
+        "anchor": {
+          "x": 57,
+          "y": 87
+        }
+      },
+      "045": {
+        "image": "griffon_px_r045.png",
+        "anchor": {
+          "x": 63,
+          "y": 96
+        }
+      },
+      "090": {
+        "image": "griffon_px_r090.png",
+        "anchor": {
+          "x": 52,
+          "y": 82
+        }
+      }
+    }
+  },
+  {
+    "id": "hippogriff",
+    "name": "Hipogrifo",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "hippogriff_px_r000.png",
+    "anchor": {
+      "x": 58,
+      "y": 95
+    },
+    "rotations": {
+      "135": {
+        "image": "hippogriff_px_r135.png",
+        "anchor": {
+          "x": 55,
+          "y": 79
+        }
+      },
+      "180": {
+        "image": "hippogriff_px_r180.png",
+        "anchor": {
+          "x": 36,
+          "y": 77
+        }
+      },
+      "225": {
+        "image": "hippogriff_px_r225.png",
+        "anchor": {
+          "x": 52,
+          "y": 95
+        }
+      },
+      "270": {
+        "image": "hippogriff_px_r270.png",
+        "anchor": {
+          "x": 48,
+          "y": 103
+        }
+      },
+      "315": {
+        "image": "hippogriff_px_r315.png",
+        "anchor": {
+          "x": 43,
+          "y": 88
+        }
+      },
+      "000": {
+        "image": "hippogriff_px_r000.png",
+        "anchor": {
+          "x": 58,
+          "y": 95
+        }
+      },
+      "045": {
+        "image": "hippogriff_px_r045.png",
+        "anchor": {
+          "x": 69,
+          "y": 103
+        }
+      },
+      "090": {
+        "image": "hippogriff_px_r090.png",
+        "anchor": {
+          "x": 52,
+          "y": 89
+        }
+      }
+    }
+  },
+  {
+    "id": "manticore",
+    "name": "Mantícora",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "manticore_px_r000.png",
+    "anchor": {
+      "x": 57,
+      "y": 87
+    },
+    "rotations": {
+      "135": {
+        "image": "manticore_px_r135.png",
+        "anchor": {
+          "x": 55,
+          "y": 66
+        }
+      },
+      "180": {
+        "image": "manticore_px_r180.png",
+        "anchor": {
+          "x": 40,
+          "y": 64
+        }
+      },
+      "225": {
+        "image": "manticore_px_r225.png",
+        "anchor": {
+          "x": 45,
+          "y": 88
+        }
+      },
+      "270": {
+        "image": "manticore_px_r270.png",
+        "anchor": {
+          "x": 40,
+          "y": 96
+        }
+      },
+      "315": {
+        "image": "manticore_px_r315.png",
+        "anchor": {
+          "x": 43,
+          "y": 82
+        }
+      },
+      "000": {
+        "image": "manticore_px_r000.png",
+        "anchor": {
+          "x": 57,
+          "y": 87
+        }
+      },
+      "045": {
+        "image": "manticore_px_r045.png",
+        "anchor": {
+          "x": 66,
+          "y": 96
+        }
+      },
+      "090": {
+        "image": "manticore_px_r090.png",
+        "anchor": {
+          "x": 52,
+          "y": 82
+        }
+      }
+    }
+  },
+  {
+    "id": "beholder",
+    "name": "Contemplador",
+    "size": "large",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "beholder_px_r000.png",
+    "anchor": {
+      "x": 36,
+      "y": 70
+    },
+    "rotations": {
+      "135": {
+        "image": "beholder_px_r135.png",
+        "anchor": {
+          "x": 36,
+          "y": 73
+        }
+      },
+      "180": {
+        "image": "beholder_px_r180.png",
+        "anchor": {
+          "x": 37,
+          "y": 69
+        }
+      },
+      "225": {
+        "image": "beholder_px_r225.png",
+        "anchor": {
+          "x": 36,
+          "y": 79
+        }
+      },
+      "270": {
+        "image": "beholder_px_r270.png",
+        "anchor": {
+          "x": 36,
+          "y": 77
+        }
+      },
+      "315": {
+        "image": "beholder_px_r315.png",
+        "anchor": {
+          "x": 39,
+          "y": 67
+        }
+      },
+      "000": {
+        "image": "beholder_px_r000.png",
+        "anchor": {
+          "x": 36,
+          "y": 70
+        }
+      },
+      "045": {
+        "image": "beholder_px_r045.png",
+        "anchor": {
+          "x": 36,
+          "y": 71
+        }
+      },
+      "090": {
+        "image": "beholder_px_r090.png",
+        "anchor": {
+          "x": 36,
+          "y": 75
+        }
+      }
+    }
+  },
+  {
+    "id": "mind-flayer",
+    "name": "Azotamentes",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "mind-flayer_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 34
+    },
+    "rotations": {
+      "135": {
+        "image": "mind-flayer_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 36
+        }
+      },
+      "180": {
+        "image": "mind-flayer_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      },
+      "225": {
+        "image": "mind-flayer_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      },
+      "270": {
+        "image": "mind-flayer_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      },
+      "315": {
+        "image": "mind-flayer_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 34
+        }
+      },
+      "000": {
+        "image": "mind-flayer_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 34
+        }
+      },
+      "045": {
+        "image": "mind-flayer_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      },
+      "090": {
+        "image": "mind-flayer_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 35
+        }
+      }
+    }
+  },
+  {
+    "id": "lich",
+    "name": "Liche",
+    "size": "medium",
+    "faction": "enemy",
+    "pixelsPerSquare": 32,
+    "shadow": false,
+    "image": "lich_px_r000.png",
+    "anchor": {
+      "x": 20,
+      "y": 36
+    },
+    "rotations": {
+      "135": {
+        "image": "lich_px_r135.png",
+        "anchor": {
+          "x": 20,
+          "y": 40
+        }
+      },
+      "180": {
+        "image": "lich_px_r180.png",
+        "anchor": {
+          "x": 20,
+          "y": 37
+        }
+      },
+      "225": {
+        "image": "lich_px_r225.png",
+        "anchor": {
+          "x": 20,
+          "y": 37
+        }
+      },
+      "270": {
+        "image": "lich_px_r270.png",
+        "anchor": {
+          "x": 20,
+          "y": 36
+        }
+      },
+      "315": {
+        "image": "lich_px_r315.png",
+        "anchor": {
+          "x": 20,
+          "y": 36
+        }
+      },
+      "000": {
+        "image": "lich_px_r000.png",
+        "anchor": {
+          "x": 20,
+          "y": 36
+        }
+      },
+      "045": {
+        "image": "lich_px_r045.png",
+        "anchor": {
+          "x": 20,
+          "y": 42
+        }
+      },
+      "090": {
+        "image": "lich_px_r090.png",
+        "anchor": {
+          "x": 20,
+          "y": 44
+        }
+      }
+    }
+  }
+]

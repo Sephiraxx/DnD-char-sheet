@@ -1144,16 +1144,39 @@
     draw(ctx, raw, size, null, true);
   }
   const sprites = new Map();
+  // Pixel style: board figures are rasterised at `pixelDensity` art pixels per square, then blown up
+  // to the board's 64 px per square with nearest-neighbour sampling. 0 keeps the smooth renderer.
+  let pixelDensity = 0;
+  function setPixelStyle(density) {
+    const next = [16, 32].includes(density) ? density : 0;
+    if (next === pixelDensity) return;
+    pixelDensity = next;
+    sprites.clear();
+    boardPacks.clear();
+  }
+  function blowUp(canvas) {
+    const f = Math.round(pixelsPerSquare / pixelDensity);
+    const big = document.createElement('canvas');
+    big.width = canvas.width * f;
+    big.height = canvas.height * f;
+    const g = big.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    g.drawImage(canvas, 0, 0, big.width, big.height);
+    if (canvas.anchor) big.anchor = { x: canvas.anchor.x * f, y: canvas.anchor.y * f };
+    return big;
+  }
   function cachedSprite(key, model, render, footprint, descriptor) {
     if (!sprites.has(key)) {
       if (sprites.size >= 96) sprites.delete(sprites.keys().next().value);
-      const canvas = document.createElement('canvas');
+      let canvas = document.createElement('canvas');
       canvas.width = canvas.height = 256;
       const ctx = canvas.getContext('2d');
       ctx.miniBoard = Boolean(footprint);
       ctx.miniRotation = descriptor?.rotation || 0;
       ctx.miniLayer = descriptor?.layer;
+      if (footprint && pixelDensity) ctx.miniPixel = pixelDensity;
       render(ctx, model, footprint ? pixelsPerSquare * footprint : 256, descriptor);
+      if (footprint && pixelDensity) canvas = blowUp(canvas);
       sprites.set(key, canvas);
     }
     return sprites.get(key);
@@ -1260,6 +1283,24 @@
     canvas.width = Math.max(figure.width - x, Math.ceil(dx + radius)) - left;
     canvas.height = Math.max(figure.height - y, Math.ceil(dy + radius * 0.65)) - top;
     const ctx = canvas.getContext('2d');
+    if (pixelDensity) {
+      // Hard-edged two-step shadow on the art-pixel grid.
+      const f = Math.round(pixelsPerSquare / pixelDensity);
+      const cx = dx - left,
+        cy = dy - top;
+      for (const [r, alpha] of [
+        [radius * 0.92, 0.18],
+        [radius * 0.62, 0.16],
+      ]) {
+        ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+        for (let row = -r * 0.65; row <= r * 0.65; row += f) {
+          const half = Math.floor((r * Math.sqrt(Math.max(0, 1 - (row / (r * 0.65)) ** 2))) / f) * f;
+          ctx.fillRect(Math.round((cx - half) / f) * f, Math.round((cy + row) / f) * f, half * 2, f);
+        }
+      }
+      ctx.drawImage(figure, -x - left, -y - top);
+      return { image: canvas, anchor: { x: -left, y: -top }, sculpt: figure };
+    }
     ctx.save();
     ctx.translate(dx - left, dy - top);
     ctx.scale(1, 0.65);
@@ -1277,7 +1318,7 @@
   function boardPack(raw) {
     const model = boardAppearance(raw);
     if (!model) return null;
-    const key = JSON.stringify(model);
+    const key = JSON.stringify(model) + ':' + pixelDensity;
     if (boardPacks.has(key)) return boardPacks.get(key);
     if (boardPacks.size >= 64) boardPacks.delete(boardPacks.keys().next().value);
     let guarded;
@@ -1286,6 +1327,12 @@
       const ctx = figure.getContext('2d', { willReadFrequently: true });
       ctx.miniBoard = true;
       ctx.miniRotation = angle;
+      if (pixelDensity) {
+        // The pixel renderer outlines every figure, so it never needs the rim boost.
+        ctx.miniPixel = pixelDensity;
+        draw(ctx, model, pixelsPerSquare);
+        return withContactShadow(blowUp(figure));
+      }
       if (guarded) ctx.miniRim = 104;
       draw(ctx, model, pixelsPerSquare);
       if (guarded === undefined) {
@@ -1328,5 +1375,9 @@
     appearanceKey,
     boardAppearance,
     boardPack,
+    setPixelStyle,
+    get pixelDensity() {
+      return pixelDensity;
+    },
   };
 })(globalThis);

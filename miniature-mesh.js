@@ -101,6 +101,149 @@
     ctx.putImageData(image, 0, 0);
   }
 
+  // ---------------------------------------------------------------- pixel-art mode
+  // Same sculptures, drawn the way a sprite artist would: a 4-step ramp per material lit by colour
+  // (cool violet shade, warm highlight), ordered dither between steps, a dark coloured outline round
+  // the silhouette and a darker line wherever one part passes in front of another.
+  function hsl([r, g, b]) {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    const max = Math.max(r, g, b),
+      min = Math.min(r, g, b),
+      l = (max + min) / 2;
+    if (max === min) return [0, 0, l];
+    const d = max - min;
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return [h * 60, s, l];
+  }
+  function rgbOf(h, s, l) {
+    h = (((h % 360) + 360) % 360) / 360;
+    s = Math.max(0, Math.min(1, s));
+    l = Math.max(0, Math.min(1, l));
+    if (!s) return [l * 255, l * 255, l * 255].map(Math.round);
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s,
+      p = 2 * l - q;
+    const channel = t => {
+      t = (t + 1) % 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+    return [channel(h + 1 / 3), channel(h), channel(h - 1 / 3)].map(v => Math.round(v * 255));
+  }
+  const toward = (h, target, k) => h + (((((target - h) % 360) + 540) % 360) - 180) * k;
+  // Steps are the material under four light levels (the same multiply the smooth renderer uses),
+  // then pushed: shade toward violet, highlight toward warm yellow.
+  function ramp(face) {
+    if (face.tones) return face.tones;
+    const lit = k => hsl(face.rgb.map(c => Math.min(255, c * k)));
+    const grey = face.neutral || hsl(face.rgb)[1] < 0.08;
+    const [h0, s0, l0] = lit(0.62);
+    const [h1, s1, l1] = lit(0.86);
+    const [h2, s2, l2] = lit(1.1);
+    const [h3, s3, l3] = lit(1.1);
+    face.tones = [
+      rgbOf(toward(h0, 255, grey ? 0 : 0.14), grey ? 0.1 : s0 * 1.05, l0),
+      rgbOf(toward(h1, 255, grey ? 0 : 0.04), grey ? Math.min(s1, 0.06) : s1, l1),
+      rgbOf(h2, grey ? Math.min(s2, 0.05) : s2, l2),
+      rgbOf(toward(h3, 48, grey ? 0 : 0.2), s3 * 0.75, l3 + (1 - l3) * 0.45),
+    ];
+    face.ink = rgbOf(toward(h0, 255, grey ? 0 : 0.3), grey ? 0.15 : Math.min(1, s0 + 0.1), Math.min(0.15, l0 * 0.35));
+    return face.tones;
+  }
+  const bayer = [0, 2, 3, 1];
+  function rasterizePixel(ctx, faces, width, height, scale, originX, originY) {
+    const image = ctx.createImageData(width, height);
+    const pixels = image.data;
+    const depth = new Float32Array(width * height).fill(-Infinity);
+    const owner = new Int32Array(width * height).fill(-1);
+    const layers = faces.filter(face => face.layered).sort((a, b) => a.z - b.z);
+    const order = layers.length ? [...faces.filter(face => !face.layered), ...layers] : faces;
+    order.forEach((face, id) => {
+      const points = face.p.map(([x, y, z]) => [originX + x * scale, originY - y * scale, z]);
+      const tones = ramp(face);
+      const a = points[0];
+      for (let i = 1; i < points.length - 1; i++) {
+        const q = points[i],
+          c = points[i + 1];
+        const area = (q[1] - c[1]) * (a[0] - c[0]) + (c[0] - q[0]) * (a[1] - c[1]);
+        if (Math.abs(area) < 1e-7) continue;
+        const waX = (q[1] - c[1]) / area,
+          waY = (c[0] - q[0]) / area;
+        const wbX = (c[1] - a[1]) / area,
+          wbY = (a[0] - c[0]) / area;
+        const left = Math.max(0, Math.floor(Math.min(a[0], q[0], c[0])));
+        const right = Math.min(width - 1, Math.ceil(Math.max(a[0], q[0], c[0])));
+        const top = Math.max(0, Math.floor(Math.min(a[1], q[1], c[1])));
+        const bottom = Math.min(height - 1, Math.ceil(Math.max(a[1], q[1], c[1])));
+        const A = face.lights[0],
+          B = face.lights[i],
+          C = face.lights[i + 1];
+        for (let y = top; y <= bottom; y++) {
+          const dy = y + 0.5 - c[1];
+          let wa = waX * (left + 0.5 - c[0]) + waY * dy;
+          let wb = wbX * (left + 0.5 - c[0]) + wbY * dy;
+          for (let x = left; x <= right; x++, wa += waX, wb += wbX) {
+            const wc = 1 - wa - wb;
+            if (Math.min(wa, wb, wc) < -1e-6) continue;
+            const z = wa * a[2] + wb * q[2] + wc * c[2];
+            const index = y * width + x;
+            if (z <= depth[index]) continue;
+            if (face.layered && face.alpha < 0.5 && (x + y) & 1) continue; // see-through as a checker
+            if (!face.layered || face.alpha >= 0.5) depth[index] = z;
+            const light = wa * A[0] + wb * B[0] + wc * C[0];
+            const gloss = wa * A[1] + wb * B[1] + wc * C[1];
+            const rim = wa * A[2] + wb * B[2] + wc * C[2];
+            const t =
+              light +
+              Math.min(0.5, gloss / 160) +
+              (rim / 255) * 0.3 +
+              (bayer[(y & 1) * 2 + (x & 1)] / 4 - 0.375) * 0.045;
+            const step = t < 0.7 ? 0 : t < 0.93 ? 1 : t < 1.32 && gloss < 90 ? 2 : 3;
+            const p = index * 4;
+            pixels.set(tones[step], p);
+            pixels[p + 3] = 255;
+            owner[index] = id;
+          }
+        }
+      }
+    });
+    // Inner lines: the part behind gets a dark edge where a nearer part overlaps it.
+    const inner = new Uint8Array(width * height);
+    const gap = 0.07;
+    for (let y = 1; y < height - 1; y++)
+      for (let x = 1; x < width - 1; x++) {
+        const i = y * width + x;
+        if (owner[i] < 0) continue;
+        for (const j of [i - 1, i + 1, i - width, i + width])
+          if (owner[j] >= 0 && depth[j] - depth[i] > gap) inner[i] = 1;
+      }
+    for (let i = 0; i < inner.length; i++)
+      if (inner[i]) {
+        const face = order[owner[i]];
+        const d = face.tones[0];
+        pixels.set([d[0] * 0.62, d[1] * 0.62, d[2] * 0.68].map(Math.round), i * 4);
+      }
+    // Outline: tinted by the part it wraps, never flat black.
+    const solid = new Uint8Array(width * height);
+    for (let i = 0; i < solid.length; i++) solid[i] = owner[i] >= 0 ? 1 : 0;
+    for (let y = 0; y < height; y++)
+      for (let x = 0; x < width; x++) {
+        const i = y * width + x;
+        if (solid[i]) continue;
+        const n = [x > 0 && i - 1, x < width - 1 && i + 1, y > 0 && i - width, y < height - 1 && i + width].find(
+          j => j !== false && solid[j],
+        );
+        if (n === undefined) continue;
+        pixels.set(order[owner[n]].ink, i * 4);
+        pixels[i * 4 + 3] = 255;
+      }
+    ctx.putImageData(image, 0, 0);
+  }
+
   function create(facing, context) {
     const faces = [],
       turn = ((context?.miniProfile ? 90 : facing + (context?.miniRotation || 0)) * Math.PI) / 180,
@@ -351,7 +494,9 @@
     function paint(ctx, size, zoom, focus) {
       if (collecting) return;
       if (tabletop) {
-        const scale = size / 1.438;
+        // miniPixel = art pixels per 5 ft square; the sprite is then blown up with nearest-neighbour.
+        const pixel = context?.miniPixel;
+        const scale = (pixel ? (size / pixelsPerSquare) * pixel : size) / 1.438;
         let minX = 0,
           maxX = 0,
           minY = 0,
@@ -370,6 +515,7 @@
         ctx.canvas.width = width;
         ctx.canvas.height = height;
         ctx.canvas.anchor = { x: -left, y: -top };
+        if (pixel) return rasterizePixel(ctx, faces, width, height, scale, -left, -top);
         return rasterize(ctx, faces, width, height, scale, -left, -top, false);
       }
       let scale = size * zoom;

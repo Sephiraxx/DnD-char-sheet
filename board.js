@@ -938,11 +938,14 @@
   const spellCrumbles = new Map();
   const teleportFrames = new Map();
   let weaponAim = null;
-  const fxPrefs = { reduced: false, shake: true };
+  const fxPrefs = { reduced: false, shake: true, pixelMinis: true };
+  // Pixel-art figures: art pixels per square for the sprite set in assets/minis-pixel.
+  const PIXEL_MINIS = 32;
   try {
     const prefs = JSON.parse(localStorage.getItem('dnd-board-spell-effects') || '{}');
     fxPrefs.reduced = prefs.reduced === true;
     fxPrefs.shake = prefs.shake !== false;
+    fxPrefs.pixelMinis = prefs.pixelMinis !== false;
     fxPrefs.reactionSeconds = prefs.reactionSeconds;
   } catch {}
   const reduceEffects = () => fxPrefs.reduced || reducedMotion.matches;
@@ -2594,7 +2597,9 @@
     else lastSpellPoses = [];
     drawSpellAim(true, pieces);
     drawSpellLayer(now, 'ground');
+    ctx.imageSmoothingEnabled = !pixelMinis(); // pixel figures stay hard-edged at any zoom
     drawPieces(pieces);
+    ctx.imageSmoothingEnabled = true;
     drawBoardTraits(pieces, now);
     drawSpellLayer(now, 'air');
     drawThunderRipple(now, dpr, shake);
@@ -3000,15 +3005,22 @@
   const landing = new Map();
   let hoverToken = null;
   let coveredPieces = [];
+  const pixelMinis = () => (fxPrefs.pixelMinis ? PIXEL_MINIS : 0);
   async function loadMiniPack() {
+    Miniatures.setPixelStyle?.(pixelMinis());
+    miniPack.clear();
+    characterPack.clear();
+    displayFacings.clear();
+    S.dirty = true;
     if (typeof fetch !== 'function') return;
     try {
-      const response = await fetch('./assets/minis/index.json');
+      const density = pixelMinis();
+      const response = await fetch(`./assets/${density ? 'minis-pixel' : 'minis'}/index.json`);
       if (!response.ok) return;
       for (const entry of await response.json()) {
         if (!/^[A-Za-z0-9_-]+\.png$/.test(entry.image) || typeof entry.id !== 'string') continue;
         if (!Number.isFinite(entry.anchor?.x) || !Number.isFinite(entry.anchor?.y)) continue;
-        if (entry.pixelsPerSquare !== CELL || !propSizes[entry.size]) continue;
+        if (entry.pixelsPerSquare !== (density || CELL) || !propSizes[entry.size]) continue;
         miniPack.set(entry.id, entry);
         if (typeof entry.appearance === 'string') characterPack.set(entry.appearance, entry);
       }
@@ -3083,7 +3095,10 @@
     'beholder',
     'flying-sword',
   ]);
-  const boardSpriteUrl = filename => `./assets/minis/${filename}?px=${CELL}`;
+  const boardSpriteUrl = filename =>
+    pixelMinis() ? `./assets/minis-pixel/${filename}` : `./assets/minis/${filename}?px=${CELL}`;
+  // Pixel sprites ship at art resolution; blow each up once to the board's scale, hard-edged.
+  const blownUp = new WeakMap();
   function frameImage(frame) {
     if (
       !/^[A-Za-z0-9_-]+\.png$/.test(frame?.image) ||
@@ -3092,7 +3107,19 @@
     )
       return null;
     const image = portraitImg(boardSpriteUrl(frame.image));
-    return image && { image, anchor: frame.anchor };
+    if (!image || !pixelMinis()) return image && { image, anchor: frame.anchor };
+    const f = Math.round(CELL / pixelMinis());
+    let big = blownUp.get(image);
+    if (!big) {
+      big = document.createElement('canvas');
+      big.width = image.naturalWidth * f;
+      big.height = image.naturalHeight * f;
+      const g = big.getContext('2d');
+      g.imageSmoothingEnabled = false;
+      g.drawImage(image, 0, 0, big.width, big.height);
+      blownUp.set(image, big);
+    }
+    return { image: big, anchor: { x: frame.anchor.x * f, y: frame.anchor.y * f } };
   }
   function presentToken(t, now) {
     const tele = teleportFrames.get(t.id);
@@ -6081,7 +6108,7 @@
       if (a === 'cast-settings')
         return modal(
           'Ajustes del tablero',
-          `<label class="check"><input type="checkbox" data-action="bd-fx-reduced" ${fxPrefs.reduced ? 'checked' : ''}>Efectos reducidos</label><label class="check"><input type="checkbox" data-action="bd-fx-shake" ${fxPrefs.shake ? 'checked' : ''}>Vibración leve</label><label class="field">Segundos para reaccionar<input type="number" min="3" max="60" data-action="bd-reaction-seconds" value="${reactionSeconds()}"></label>`,
+          `<label class="check"><input type="checkbox" data-action="bd-fx-reduced" ${fxPrefs.reduced ? 'checked' : ''}>Efectos reducidos</label><label class="check"><input type="checkbox" data-action="bd-fx-shake" ${fxPrefs.shake ? 'checked' : ''}>Vibración leve</label><label class="check"><input type="checkbox" data-action="bd-fx-pixel" ${fxPrefs.pixelMinis ? 'checked' : ''}>Figuras pixeladas</label><label class="field">Segundos para reaccionar<input type="number" min="3" max="60" data-action="bd-reaction-seconds" value="${reactionSeconds()}"></label>`,
           null,
         );
       if (a === 'dock-min') S.dockMin = !S.dockMin;
@@ -6235,11 +6262,13 @@
     } else if (a === 'bd-reaction-seconds') {
       fxPrefs.reactionSeconds = Number(e.target.value);
       localStorage.setItem('dnd-board-spell-effects', JSON.stringify(fxPrefs));
-    } else if (a === 'bd-fx-reduced' || a === 'bd-fx-shake') {
-      fxPrefs[a === 'bd-fx-reduced' ? 'reduced' : 'shake'] = e.target.checked;
+    } else if (a === 'bd-fx-reduced' || a === 'bd-fx-shake' || a === 'bd-fx-pixel') {
+      fxPrefs[{ 'bd-fx-reduced': 'reduced', 'bd-fx-shake': 'shake', 'bd-fx-pixel': 'pixelMinis' }[a]] =
+        e.target.checked;
       try {
         localStorage.setItem('dnd-board-spell-effects', JSON.stringify(fxPrefs));
       } catch {}
+      if (a === 'bd-fx-pixel') loadMiniPack();
       S.dirty = true;
     } else if (a === 'bd-fog-on') {
       S.fogOn = e.target.checked;

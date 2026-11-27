@@ -103,6 +103,27 @@
         border-radius: 6px;
         background: #071014;
       }
+      .label {
+        color: var(--muted);
+      }
+      .roster {
+        margin-top: 22px;
+      }
+      .roster h2 {
+        margin: 0 0 4px;
+        font-size: 18px;
+      }
+      .scroller {
+        overflow-x: auto;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px;
+      }
+      .scroller canvas {
+        width: 1560px;
+        max-width: none;
+      }
       .notes {
         margin-top: 18px;
         display: grid;
@@ -134,8 +155,9 @@
     <main>
       <h1>Pixel Spell Lab</h1>
       <p class="lede">
-        Same cast, both renderers. Left is what the board draws today; right is the pixel-art prototype with hitstop,
-        knockback, screen shake and light/dark flashes. Click a spell, or turn on slow motion to see the frames.
+        Same cast, both renderers. Left is what the board draws today. Right is the pixel-art version: spell effects
+        with hitstop, knockback, screen shake and light/dark flashes, and the figures re-rendered as pixel art from the
+        same sculptures. Click a spell, or turn on slow motion to see the frames.
       </p>
       <div class="bar" id="spells"></div>
       <div class="bar">
@@ -144,6 +166,11 @@
         <button id="loop" aria-pressed="false">Auto-repeat</button>
         <span class="sep"></span>
         <button id="layout" aria-pressed="false">Pixel only (large)</button>
+        <span class="sep"></span>
+        <span class="label">Figures</span>
+        <button data-figures="32" aria-pressed="true">32 px</button>
+        <button data-figures="16" aria-pressed="false">16 px</button>
+        <button data-figures="smooth" aria-pressed="false">Current 3D</button>
       </div>
       <div class="boards" id="boards">
         <figure id="old-fig">
@@ -151,10 +178,19 @@
           <canvas id="old" width="832" height="512"></canvas>
         </figure>
         <figure>
-          <figcaption>Pixel prototype <span>16 px per 5 ft</span></figcaption>
+          <figcaption>Pixel prototype <span id="new-caption">effects 16 px · figures 32 px per 5 ft</span></figcaption>
           <canvas id="new" width="832" height="512"></canvas>
         </figure>
       </div>
+      <section class="roster">
+        <h2>Roster</h2>
+        <p class="lede">
+          Same sculptures, two renderers. Top row is today's Blender render; bottom row is the pixel renderer: four
+          light steps per material with violet shade and warm highlights, a coloured outline round the silhouette, and a
+          dark line wherever one part crosses another.
+        </p>
+        <div class="scroller"><canvas id="roster" width="1560" height="640"></canvas></div>
+      </section>
       <section class="notes">
         <div>
           <h3>Fireball</h3>
@@ -193,7 +229,6 @@
           COLS = 13,
           ROWS = 8;
         const grid = { cols: COLS, rows: ROWS, feet: 5 };
-        const minis = {};
         const cast = [
           { id: 'caster', mini: 'druid', rot: '315', x: 2.5, y: 4.6 },
           { id: 'goblin', mini: 'goblin', rot: '045', x: 8.6, y: 2.9 },
@@ -298,18 +333,85 @@
         }
         let ground = terrain(false);
         // ---------------------------------------------------------------- minis
-        fetch('./assets/minis/index.json')
-          .then(r => r.json())
-          .catch(() => [])
-          .then(index => {
-            for (const t of cast) {
-              const entry = index.find?.(m => m.id === t.mini);
-              const rot = entry?.rotations?.[t.rot];
-              const img = new Image();
-              img.src = './assets/minis/' + (rot?.image || `${t.mini}_board_r${t.rot}.png`);
-              minis[t.id] = { img, anchor: rot?.anchor, ppc: entry?.pixelsPerSquare || 64 };
-            }
-          });
+        // Three sprite sets: today's renders, and the pixel renderer at 32 and 16 art pixels per square.
+        const sets = {
+          smooth: './assets/minis/',
+          32: './assets/minis-pixel/',
+          16: './assets/minis-pixel-16/',
+        };
+        const indexes = {};
+        const images = new Map();
+        let figures = '32';
+        for (const [key, dir] of Object.entries(sets))
+          fetch(dir + 'index.json')
+            .then(r => (r.ok ? r.json() : []))
+            .catch(() => [])
+            .then(list => (indexes[key] = new Map(list.map(e => [e.id, e]))));
+        function mini(set, id, rot) {
+          const entry = indexes[set]?.get(id);
+          const frame = entry?.rotations?.[rot];
+          if (!frame) return null;
+          const src = sets[set] + frame.image;
+          if (!images.has(src)) {
+            const img = new Image();
+            img.src = src;
+            images.set(src, img);
+          }
+          const img = images.get(src);
+          return img.complete && img.naturalWidth ? { img, anchor: frame.anchor, ppc: entry.pixelsPerSquare } : null;
+        }
+        function drawMini(ctx, m, x, y) {
+          const s = CELL / m.ppc;
+          ctx.imageSmoothingEnabled = m.ppc >= CELL;
+          ctx.drawImage(m.img, x - m.anchor.x * s, y - m.anchor.y * s, m.img.naturalWidth * s, m.img.naturalHeight * s);
+          ctx.imageSmoothingEnabled = true;
+        }
+        document.querySelectorAll('[data-figures]').forEach(b =>
+          b.addEventListener('click', () => {
+            figures = b.dataset.figures;
+            document.querySelectorAll('[data-figures]').forEach(o => o.setAttribute('aria-pressed', o === b));
+            document.getElementById('new-caption').textContent =
+              figures === 'smooth'
+                ? 'effects 16 px · current figures'
+                : `effects 16 px · figures ${figures} px per 5 ft`;
+          }),
+        );
+        const roster = [
+          ['forjado', '315'],
+          ['druid', '315'],
+          ['goblin', '045'],
+          ['skeleton', '045'],
+          ['bugbear', '045'],
+          ['mind-flayer', '045'],
+          ['ghost', '045'],
+          ['owlbear', '045'],
+          ['troll', '045'],
+          ['beholder', '045'],
+          ['dragon-red-adult', '045'],
+        ];
+        function drawRoster() {
+          const cv = document.getElementById('roster'),
+            ctx = cv.getContext('2d');
+          const dpr = Math.min(2, window.devicePixelRatio || 1);
+          if (cv.width !== 1560 * dpr) {
+            cv.width = 1560 * dpr;
+            cv.height = 640 * dpr;
+            cv.style.height = '640px';
+          }
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(ground, 0, 0, 1560, 640);
+          const set = figures === 'smooth' ? '32' : figures;
+          let x = 30;
+          for (const [id, rot] of roster) {
+            const a = mini('smooth', id, rot),
+              b = mini(set, id, rot);
+            const w = a ? Math.max(70, (a.img.naturalWidth * CELL) / a.ppc) : 80;
+            if (a) drawMini(ctx, a, x + w / 2, 300);
+            if (b) drawMini(ctx, b, x + w / 2, 610);
+            x += w + 14;
+          }
+        }
         // ---------------------------------------------------------------- events
         let castCount = 0;
         function fire(spell) {
@@ -445,21 +547,11 @@
             ctx.restore();
           };
           layer('ground');
-          ctx.imageSmoothingEnabled = true;
+          const set = board.pixel ? figures : 'smooth';
           for (const tok of [...cast].sort((a, b) => poses.get(a.id).baseY - poses.get(b.id).baseY)) {
-            const m = minis[tok.id],
+            const m = mini(set, tok.mini, tok.rot) || mini('smooth', tok.mini, tok.rot),
               p = poses.get(tok.id);
-            if (!m?.img.complete || !m.img.naturalWidth) continue;
-            const s = CELL / m.ppc;
-            const ax = m.anchor?.x ?? m.img.naturalWidth / 2,
-              ay = m.anchor?.y ?? m.img.naturalHeight * 0.8;
-            ctx.drawImage(
-              m.img,
-              p.baseX * CELL - ax * s,
-              p.baseY * CELL - ay * s + CELL * 0.18,
-              m.img.naturalWidth * s,
-              m.img.naturalHeight * s,
-            );
+            if (m) drawMini(ctx, m, p.baseX * CELL, p.baseY * CELL + CELL * 0.18);
           }
           layer('air');
           for (const e of board.events) {
@@ -478,6 +570,7 @@
           last = t;
           for (const board of boards) draw(board, vnow);
           BoardPixelFX.enabled = true;
+          drawRoster();
           requestAnimationFrame(tick);
         }
         requestAnimationFrame(tick);
@@ -491,6 +584,7 @@
             vnow = ms;
             for (const board of boards) draw(board, vnow);
             BoardPixelFX.enabled = true;
+            drawRoster();
           },
         };
       })();
