@@ -3231,6 +3231,7 @@
     if (current?.previous && now - current.at >= 120) current.previous = null;
     return {
       t,
+      motion: figureMotion(t, d, now),
       alpha: teleportAlpha * (1 - crumble),
       crumble,
       foot,
@@ -3250,6 +3251,27 @@
       ghost: creature === 'ghost',
       name: d.name || displayTokenName(t, model),
     };
+  }
+  // Poses from BoardFigureMotion: cast lean, hit squash and flash, defeat topple.
+  const aliveSeen = new Set(),
+    defeats = new Map();
+  function figureMotion(t, d, now) {
+    const Motion = globalThis.BoardFigureMotion;
+    if (!Motion || t.kind === 'object') return null;
+    if (!d.dead) {
+      aliveSeen.add(t.id);
+      defeats.delete(t.id);
+    } else if (!defeats.has(t.id)) {
+      // Seen alive before: play the fall. Already down when the map opened: just lie there.
+      defeats.set(t.id, { at: aliveSeen.has(t.id) ? now : -Infinity, pc: t.kind === 'pc', side: t.x % 2 ? 1 : -1 });
+    }
+    const death = defeats.get(t.id) || null;
+    if (death && now - death.at < 1400) S.dirty = true;
+    const where = id => {
+      const k = id && mapTokens().find(x => x.id === id);
+      return k ? tokenPos(k) : null;
+    };
+    return Motion.pose(S.spellCasts, { id: t.id, ...tokenPos(t) }, where, now, reduceEffects(), death);
   }
   function drawMiniGround({ t, foot, d, lift, faction, ghost, facing }) {
     const { x, y, diameter } = foot;
@@ -3302,13 +3324,18 @@
     ctx.restore();
   }
   function drawToken(
-    { t, foot, d, sprite, frame, portrait, bounds, fixture, previous, prevBounds, blend, direction },
+    { t, foot, d, sprite, frame, portrait, bounds, fixture, previous, prevBounds, blend, direction, motion },
     opacity = 1,
     silhouette = false,
   ) {
     const { x, y, diameter } = foot;
+    const Motion = globalThis.BoardFigureMotion;
     ctx.save();
-    ctx.globalAlpha = opacity * (t.hidden ? 0.45 : 1);
+    ctx.globalAlpha = opacity * (t.hidden ? 0.45 : 1) * (motion?.alpha ?? 1);
+    if (motion) {
+      ctx.translate(motion.dx * cellPx(), motion.dy * cellPx());
+      Motion.apply(ctx, x, y, motion);
+    }
     if (silhouette) ctx.filter = 'grayscale(1) brightness(.52) blur(1.3px)';
     if (fixture) ctx.drawImage(fixture.image, x - fixture.anchor.x, y - fixture.anchor.y);
     if (sprite) {
@@ -3321,13 +3348,17 @@
         ctx.rotate(angle);
         if (art.mirror) ctx.scale(-1, 1);
         ctx.drawImage(art.image, art.mirror ? x - b.x - b.w : b.x - x, b.y - y, b.w, b.h);
+        if (motion?.flash && !silhouette && art === frame)
+          Motion.flash(ctx, art.image, art.mirror ? x - b.x - b.w : b.x - x, b.y - y, b.w, b.h, motion.flash);
         ctx.restore();
       };
       const turn = direction * 0.045;
       if (previous) drawFrame(previous, prevBounds, 1 - blend, turn * blend);
       drawFrame(frame, bounds, blend, -turn * (1 - blend));
-    } else if (portrait) ctx.drawImage(portrait, bounds.x, bounds.y, bounds.w, bounds.h);
-    else if (!silhouette) {
+    } else if (portrait) {
+      ctx.drawImage(portrait, bounds.x, bounds.y, bounds.w, bounds.h);
+      if (motion?.flash) Motion.flash(ctx, portrait, bounds.x, bounds.y, bounds.w, bounds.h, motion.flash);
+    } else if (!silhouette) {
       const glyph = t.kind === 'pc' ? d.cls : globalThis.Sigils?.forName(t.name);
       const hasGlyph =
         glyph && globalThis.Sigils?.draw(ctx, glyph, x, y - diameter * 0.1, diameter * 0.46, '#fff4da', 1);
@@ -3343,6 +3374,7 @@
       }
     }
     ctx.restore();
+    if (motion?.dust != null && !silhouette) Motion.dust(ctx, x, y, motion.dust, cellPx() / 32, t.id.length);
   }
   function drawTokenStatus({ t, foot, d }) {
     const { x, y, diameter } = foot;

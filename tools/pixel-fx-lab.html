@@ -150,6 +150,7 @@
     <script src="./board-ink.js"></script>
     <script src="./board-pixel-fx.js"></script>
     <script src="./board-spell-fx.js"></script>
+    <script src="./board-figure-motion.js"></script>
   </head>
   <body>
     <main>
@@ -171,6 +172,10 @@
         <button data-figures="32" aria-pressed="true">32 px</button>
         <button data-figures="16" aria-pressed="false">16 px</button>
         <button data-figures="smooth" aria-pressed="false">Current 3D</button>
+        <span class="sep"></span>
+        <button id="defeat">Defeat the bugbear</button>
+        <button id="down">Knock out the druid</button>
+        <button id="revive">Stand everyone up</button>
       </div>
       <div class="boards" id="boards">
         <figure id="old-fig">
@@ -446,6 +451,14 @@
           b.addEventListener('click', () => fire(spell));
           bar.append(b);
         }
+        const defeats = new Map();
+        document
+          .getElementById('defeat')
+          .addEventListener('click', () => defeats.set('bugbear', { at: vnow, pc: false, side: 1 }));
+        document
+          .getElementById('down')
+          .addEventListener('click', () => defeats.set('caster', { at: vnow, pc: true, side: -1 }));
+        document.getElementById('revive').addEventListener('click', () => defeats.clear());
         const toggle = (id, fn) => {
           const b = document.getElementById(id);
           b.addEventListener('click', () => {
@@ -551,7 +564,34 @@
           for (const tok of [...cast].sort((a, b) => poses.get(a.id).baseY - poses.get(b.id).baseY)) {
             const m = mini(set, tok.mini, tok.rot) || mini('smooth', tok.mini, tok.rot),
               p = poses.get(tok.id);
-            if (m) drawMini(ctx, m, p.baseX * CELL, p.baseY * CELL + CELL * 0.18);
+            if (!m) continue;
+            const x = p.baseX * CELL,
+              y = p.baseY * CELL + CELL * 0.18;
+            // Figure motion only on the pixel board: the left board is today's behaviour.
+            const pose =
+              board.pixel &&
+              BoardFigureMotion.pose(board.events, tok, id => poses.get(id), now, false, defeats.get(tok.id));
+            if (!pose) {
+              drawMini(ctx, m, x, y);
+              continue;
+            }
+            ctx.save();
+            ctx.globalAlpha = pose.alpha;
+            ctx.translate(pose.dx * CELL, pose.dy * CELL);
+            BoardFigureMotion.apply(ctx, x, y, pose);
+            drawMini(ctx, m, x, y);
+            const s = CELL / m.ppc;
+            BoardFigureMotion.flash(
+              ctx,
+              m.img,
+              x - m.anchor.x * s,
+              y - m.anchor.y * s,
+              m.img.naturalWidth * s,
+              m.img.naturalHeight * s,
+              pose.flash,
+            );
+            ctx.restore();
+            BoardFigureMotion.dust(ctx, x, y, pose.dust, CELL / 32, tok.id.length);
           }
           layer('air');
           for (const e of board.events) {
@@ -577,6 +617,7 @@
         // Test hook: freeze the clock and render an exact moment.
         window.lab = {
           fire,
+          defeats,
           spells,
           boards,
           at(ms) {
