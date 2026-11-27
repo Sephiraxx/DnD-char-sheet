@@ -134,6 +134,10 @@
       await loadBoard();
       return Board.resolveSpellSave(campaign, request, subject, result);
     },
+    async spellHit(campaign, meta, subject, spellId) {
+      await loadBoard();
+      return Board.spellHit(campaign, meta, subject, spellId);
+    },
     projectAbility(id, name, target = null) {
       const l = TableUI.link();
       if (!l) return;

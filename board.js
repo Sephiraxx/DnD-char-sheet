@@ -622,7 +622,8 @@
           offerSpellReaction({ id: 'counter', source });
       }
     }
-    if (m.t === 'spell-resolution' && m.map === S.mapId && m.map === activeId()) {
+    if (m.t === 'spell-resolution' && m.action === 'pull' && m.map === S.mapId) applySpellPull(m);
+    else if (m.t === 'spell-resolution' && m.map === S.mapId && m.map === activeId()) {
       spellResolution(m);
       if (typeof m.saved === 'boolean') casting?.updateSave(m.castId, m.token, m.saved);
     }
@@ -1011,7 +1012,8 @@
   }
   async function resolveSpellSave(campaign, request, subject, result) {
     const meta = request.board;
-    if (!meta?.map || !meta.castId || !['thunderwave', 'disintegrate', 'bane'].includes(request.spellId)) return;
+    if (!meta?.map || !meta.castId || !['thunderwave', 'thorn-whip', 'disintegrate', 'bane'].includes(request.spellId))
+      return;
     if (result.saved && request.spellId !== 'bane') return;
     if (request.spellId === 'disintegrate' && !result.destroyed) return;
     const data = await Cloud.board(campaign);
@@ -1048,7 +1050,8 @@
     const terrain = BC.cells(grid, map.terrain?.cells || '');
     const walls = BC.sightBlockers(grid, terrain, map.terrain?.walls || []);
     const others = tokens.filter(t => t.id !== token.id && t.kind !== 'object');
-    const next = Spells.pushDestination(
+    const move = request.spellId === 'thorn-whip' ? Spells.pullDestination : Spells.pushDestination;
+    const next = move(
       grid,
       meta.origin,
       token,
@@ -1069,6 +1072,40 @@
     } else await Cloud.poseTokens(campaign, meta.map, [{ id: token.id, patch, before: token.savedXY }]);
   }
 
+  /* A spell attack that moves its target on a hit (Thorn Whip pulls 10 ft). Only the DM's board may
+     move creature tokens, so a player's hit is sent to the DM's board, which applies it. */
+  async function spellHit(campaign, meta, subject, spellId) {
+    if (spellId !== 'thorn-whip' || !meta?.map || !meta.castId || !subject) return;
+    const m = {
+      t: 'spell-resolution',
+      map: meta.map,
+      castId: meta.castId,
+      action: 'pull',
+      origin: meta.origin,
+      subject,
+    };
+    if (S.id === campaign && dmView()) return applySpellPull(m);
+    await Cloud.broadcastBoardSpell(campaign, m);
+  }
+  function applySpellPull(m) {
+    if (!S.id || !dmView() || !m.origin || !m.subject) return;
+    const subject = m.subject.combatant
+      ? { combatant: String(m.subject.combatant) }
+      : { character: String(m.subject.character) };
+    // Let the whip land and go taut before the figure moves.
+    setTimeout(
+      () =>
+        resolveSpellSave(
+          S.id,
+          { spellId: 'thorn-whip', board: { map: m.map, castId: m.castId, origin: m.origin } },
+          subject,
+          {
+            saved: false,
+          },
+        ).catch(err => toast(err.message)),
+      150,
+    );
+  }
   let spellClouds = [];
   function updateSpellClouds(now) {
     const previous = spellClouds;
@@ -7414,6 +7451,7 @@
     resolveSpellSave,
     swingSpiritualWeapon,
     spiritualImpact,
+    spellHit,
     undoPose,
     aimSpell: id => {
       S.sheetSpell = id;

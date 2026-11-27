@@ -534,8 +534,24 @@
     return last;
   }
 
+  // Thorn Whip: up to 10 ft straight toward the caster, stopping where the next step no longer fits
+  // (the caster, another creature or a wall).
+  function pullDestination(grid, toward, target, fits) {
+    const f = footprint(target);
+    const dx = toward.x - (target.x + (f.right - f.x) / 2);
+    const dy = toward.y - (target.y + (f.bottom - f.y) / 2);
+    if (Math.hypot(dx, dy) < EPS) return null;
+    return pushDestination(
+      grid,
+      { x: target.x + (f.right - f.x) / 2 - dx, y: target.y + (f.bottom - f.y) / 2 - dy },
+      target,
+      fits,
+    );
+  }
+
   const api = {
     kindFor,
+    pullDestination,
     implemented,
     markedCast,
     missileCount,

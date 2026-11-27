@@ -707,6 +707,16 @@ const RollUI = (() => {
         line += out.hit ? ` → <b>impacta a ${esc(out.name)}</b>` : ` → <b>falla contra ${esc(out.name)}</b>`;
         spellSession.hitTarget = out.hit ? target : null;
       }
+      // Thorn Whip pulls a creature it hits up to 10 ft toward the caster: the board moves the figure.
+      if (out?.hit && sp.id === 'thorn-whip' && session.boardCast) {
+        const player = TableUI.targets().monsters.find(e => e.id === target && e.player);
+        globalThis.BoardPlayer?.spellHit(
+          TableUI.link()?.campaignId,
+          session.boardCast,
+          player ? { character: target } : { combatant: target },
+          sp.id,
+        ).catch(() => toast('No se pudo mover la figura en el tablero.'));
+      }
       // Si falló (o no sabemos), Conjuro rastreador ofrece repetir el d20.
       if (!crit && !(out && out.hit) && canMM('seeking', 2) && !spellSession.sought)
         line += ` ${button('Conjuro rastreador · 2 puntos: repetir el d20', 'spell-seek', 'secondary')}`;

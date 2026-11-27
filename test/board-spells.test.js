@@ -181,3 +181,20 @@ test('Thunderwave has a three-by-three area flush with the casting side and push
     null,
   );
 });
+
+test('el látigo de espinas acerca al objetivo hasta 10 pies hacia quien lanza, sin atravesarlo', () => {
+  const grid = { cols: 20, rows: 10, feet: 5 };
+  // Caster centred at (2.5, 4.5); target five squares to the east.
+  const target = { x: 7, y: 4, size: 1 };
+  assert.deepEqual((({ x, y }) => ({ x, y }))(spells.pullDestination(grid, { x: 2.5, y: 4.5 }, target, () => true)), {
+    x: 5,
+    y: 4,
+  });
+  // Stops next to the caster: the square the caster stands on does not fit.
+  const near = { x: 4, y: 4, size: 1 };
+  assert.equal(spells.pullDestination(grid, { x: 2.5, y: 4.5 }, near, at => at.x > 2).x, 3);
+  assert.equal(
+    spells.pullDestination(grid, { x: 2.5, y: 4.5 }, target, () => false),
+    null,
+  );
+});
