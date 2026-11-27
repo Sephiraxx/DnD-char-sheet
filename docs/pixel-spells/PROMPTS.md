@@ -832,6 +832,26 @@ Batch 39. Write board-pixel-spells-39.js with a definition for each spell below 
 
 ---
 
+## Batches 40–41: the spells with board behavior
+
+Attach `docs/pixel-spells/RESERVED.md` as well as the usual three files.
+
+### Batch 40
+
+```text
+Batch 40. Read RESERVED.md (attached) as well as BRIEF.md. Write board-pixel-spells-40.js with definitions for these spells, following RESERVED.md exactly (which hooks to use, what the board passes in, what not to draw):
+- fog-cloud, darkness, hunger-of-hadar, stinking-cloud, cloudkill, silence
+```
+
+### Batch 41
+
+```text
+Batch 41. Read RESERVED.md (attached) as well as BRIEF.md. Write board-pixel-spells-41.js with definitions for these spells, following RESERVED.md exactly:
+- wall-of-fire, moonbeam, spirit-guardians, entangle, spiritual-weapon, misty-step, counterspell (also registered as counter)
+```
+
+---
+
 ## Fix prompt (Claude fills in the failures)
 
 ```text

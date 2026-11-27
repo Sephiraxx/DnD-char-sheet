@@ -105,7 +105,7 @@ for (const file of files) {
       fail(file, `${key}: la definición no es un objeto`);
       continue;
     }
-    for (const fn of ['air', 'ground', 'linger', 'beats', 'end', 'flash', 'reach'])
+    for (const fn of ['air', 'ground', 'linger', 'lingerAir', 'fog', 'beats', 'end', 'flash', 'reach'])
       if (def[fn] != null && typeof def[fn] !== 'function') fail(file, `${key}.${fn} debe ser una función`);
     if (!def.air && !def.ground) fail(file, `${key}: necesita air o ground`);
     for (const n of ['travel', 'decal'])
@@ -154,17 +154,26 @@ function serve() {
       }
       const total = await page.evaluate(id => {
         lab.at(0);
-        lab.fire({ id, element: 'magic', level: 3 });
+        // Spells with lasting art stay 2.5 s after the cast so the linger, lingerAir and fog hooks run.
+        const def =
+          BoardPixelFX.lingers({ id }, 'ground') ||
+          BoardPixelFX.lingers({ id }, 'air') ||
+          BoardPixelFX.lingers({ id }, 'fog');
+        lab.fire({ id, element: 'magic', level: 3, lingerMs: def ? 2500 : 0 });
         const event = lab.boards[1].events[0];
         const t = BoardSpellFX.phase(event, 0, false);
         const timing = BoardPixelFX.timing(event);
-        return { total: 300 + timing.travel + timing.impact, handled: BoardPixelFX.handles(event), t };
+        return { total: 300 + timing.travel + timing.impact, handled: BoardPixelFX.handles(event), lasting: !!def, t };
       }, id);
       if (!total.handled) fail(batch.file, `${key}: el tablero no lo toma (¿id o arquetipo?)`);
       if (total.total > 3200) fail(batch.file, `${key}: dura ${Math.round(total.total)} ms (máximo 3200)`);
       const shots = [];
-      for (const k of [0.12, 0.3, 0.45, 0.6, 0.75, 0.92]) {
-        await page.evaluate(t => lab.at(t), Math.round(total.total * k));
+      // Lasting spells: the last two shots fall in the lingering phase (and Spiritual Weapon's swing).
+      const moments = total.lasting
+        ? [0.15, 0.4, 0.65, 0.9].map(k => total.total * k).concat([total.total + 900, total.total + 1900])
+        : [0.12, 0.3, 0.45, 0.6, 0.75, 0.92].map(k => total.total * k);
+      for (const at of moments) {
+        await page.evaluate(t => lab.at(t), Math.round(at));
         shots.push(await page.locator('#new').screenshot());
       }
       const broken = await page.evaluate(id => BoardPixelFX.failed.has(id), id);

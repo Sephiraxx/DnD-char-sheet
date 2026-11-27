@@ -33,6 +33,8 @@ FX.register('<spell-id>' | 'kind:<archetype>', {
   ground(s, kit),      // drawn under the figures
   air(s, kit),         // drawn over the figures
   linger(s, kit),      // optional loop under the figures while a zone, wall or aura lasts (s.linger 1 → 0)
+  lingerAir(s, kit),   // optional loop over the figures while it lasts (a floating weapon, flame tips)
+  fog(s, kit),         // optional obscuring cloud over everything while s.fogAlpha > 0 (see RESERVED.md)
   flash(event, e),     // optional board flash e ms after each beat: { color, alpha } or null (alpha ≤ 0.3, light then dark)
   reach(event, grid),  // optional { r, up } in cells: how far the drawing extends around the area centre
   decal,               // optional ms a ground mark stays after the impact

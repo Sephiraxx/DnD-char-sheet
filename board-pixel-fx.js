@@ -1032,7 +1032,7 @@
       p.dirs.set(t.id, { x: dx / d, y: dy / d });
     }
   }
-  function frame(event, pose, now, grid, layer) {
+  function frame(event, pose, now, grid, layer, dm = false) {
     const p = plan(event);
     const def = p.def;
     const c = clock(event, now);
@@ -1067,15 +1067,22 @@
       real: hit => c.raw - hit.freeze.raw,
     };
     try {
+      const lasting = pose.linger > 0 && c.t >= CAST + p.travel;
       if (layer === 'ground') {
         if (def.cast !== false) castCircle(pose.base, c.t, ramp);
         if (c.t < p.end) def.ground?.(scene, kit);
         // Concentration zones and walls: a loop while the effect lasts (linger 1 → 0 as it ends).
-        if (def.linger && pose.linger > 0 && c.t >= CAST + p.travel) def.linger({ ...scene, linger: pose.linger }, kit);
+        if (def.linger && lasting) def.linger({ ...scene, linger: pose.linger }, kit);
+      } else if (layer === 'fog') {
+        // Over the figures, only while the board treats the area as obscuring (fogAlpha 0 → 1 → 0).
+        def.fog?.({ ...scene, fogAlpha: pose.fogAlpha || 0, dm: !!scene.dm }, kit);
       } else {
         remember(event, pose);
-        if (def.cast !== false) handCharge(pose.hand, c.t, ramp, event.seed || 0);
-        def.air?.(scene, kit);
+        if (c.t < p.end) {
+          if (def.cast !== false) handCharge(pose.hand, c.t, ramp, event.seed || 0);
+          def.air?.(scene, kit);
+        }
+        if (def.lingerAir && lasting) def.lingerAir({ ...scene, linger: pose.linger }, kit);
       }
     } catch (error) {
       // A broken definition must never take the board down with it.
@@ -1125,7 +1132,11 @@
     register,
     kit,
     handles: event => api.enabled && !!defFor(event) && !api.failed.has(event?.id),
-    lingers: event => !!defFor(event)?.linger,
+    // Which lasting hooks a definition has: 'ground' (linger), 'air' (lingerAir), 'fog' (fog).
+    lingers: (event, layer = 'ground') => {
+      const def = defFor(event);
+      return !!(layer === 'air' ? def?.lingerAir : layer === 'fog' ? def?.fog : def?.linger);
+    },
     get ids() {
       return [...registry.keys()];
     },
@@ -1139,6 +1150,9 @@
     },
     drawAir(ctx, event, pose, now, grid) {
       if (frame(event, pose, now, grid, 'air')) end(ctx);
+    },
+    drawFog(ctx, event, pose, now, grid, dm) {
+      if (frame(event, pose, now, grid, 'fog', dm)) end(ctx);
     },
   };
   root.BoardPixelFX = api;
