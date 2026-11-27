@@ -1462,13 +1462,28 @@
     }
     ctx.restore();
   }
+  // Big impacts flash the board once light, once dark (never a flat white add).
+  function drawSpellFlash(now, o, c) {
+    if (reduceEffects() || !fxPrefs.shake || !SpellFX.flash) return;
+    for (const event of S.spellCasts) {
+      const f = SpellFX.flash(event, now);
+      if (!f) continue;
+      ctx.save();
+      ctx.globalAlpha = f.alpha;
+      ctx.fillStyle = f.color;
+      ctx.fillRect(o.x, o.y, S.grid.cols * c, S.grid.rows * c);
+      ctx.restore();
+      S.dirty = true;
+      return;
+    }
+  }
   function drawThunderRipple(now, dpr, shake) {
     if (reduceEffects()) return;
     const o = origin(),
       s = S.view.s,
       c = cellPx() * s,
-      x = S.view.x + shake + o.x * s,
-      y = S.view.y + shake * 0.45 + o.y * s;
+      x = S.view.x + shake.x + o.x * s,
+      y = S.view.y + shake.y + o.y * s;
     ctx.save();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.beginPath();
@@ -2501,11 +2516,14 @@
     ctx.fillStyle = playerView() && (S.fogOn || S.grid.vision?.los) ? '#05090b' : '#071014';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (!S.mapId) return requestAnimationFrame(draw);
-    const shake =
-      fastSpell && fxPrefs.shake && !reduceEffects()
-        ? S.spellCasts.reduce((acc, event) => acc || SpellFX.shake(event, now), 0)
-        : 0;
-    ctx.setTransform(dpr * S.view.s, 0, 0, dpr * S.view.s, dpr * (S.view.x + shake), dpr * (S.view.y + shake * 0.45));
+    const shake = { x: 0, y: 0 };
+    if (fastSpell && fxPrefs.shake && !reduceEffects())
+      for (const event of S.spellCasts) {
+        const s = SpellFX.shake(event, now);
+        shake.x += s?.x || 0;
+        shake.y += s?.y || 0;
+      }
+    ctx.setTransform(dpr * S.view.s, 0, 0, dpr * S.view.s, dpr * (S.view.x + shake.x), dpr * (S.view.y + shake.y));
     // Celdas visibles en pantalla (para no dibujar todo el mapa en cada cuadro).
     const tl = toCell(toWorld(0, 0)),
       br = toCell(toWorld(canvas.width / dpr, canvas.height / dpr));
@@ -2580,6 +2598,7 @@
     drawBoardTraits(pieces, now);
     drawSpellLayer(now, 'air');
     drawThunderRipple(now, dpr, shake);
+    drawSpellFlash(now, o, c);
     drawSpellLayer(now, 'fog');
     drawSpellAim(false, pieces);
     drawScene(now, c, o, w, h, dpr);
@@ -3106,6 +3125,14 @@
         foot.y += dy * f;
       }
     }
+    if (!endpoint && !crumb && SpellFX.reaction)
+      for (const event of S.spellCasts) {
+        if (!event.targets?.includes(t.id) && !event.darts?.includes(t.id) && !event.rays?.includes(t.id)) continue;
+        const r = SpellFX.reaction(event, t.id, now, reduceEffects());
+        if (!r) continue;
+        foot.x += r.x * cellPx();
+        foot.y += r.y * cellPx();
+      }
     const creature = model?.id,
       figure = !t.creature_model && d.miniature;
     const portrait = !t.creature_model && !figure && portraitImg(d.portrait);

@@ -87,17 +87,21 @@
     'barbarian-rage': { impact: 630 },
     'halo-of-spores': { impact: 510 },
   };
+  const pixel = event => root.BoardPixelFX?.handles(event);
   function phase(event, now, reduced) {
-    const style = signatures[event.id] || {};
+    const style = pixel(event) ? root.BoardPixelFX.timing(event) : signatures[event.id] || {};
     const cast = 300;
     const flight =
       event.travelMs ??
       style.travel ??
       (event.kind === 'projectile' ? 480 : ['vitriolic-sphere', 'ice-knife'].includes(event.id) ? 460 : 0);
-    const travel = reduced ? flight * 0.75 : flight;
-    const offsets = event.id === 'magic-missile' ? (root.BoardSpells.missileCount(event.level) - 1) * 80 : 0;
+    const travel = reduced && !pixel(event) ? flight * 0.75 : flight;
+    const offsets =
+      pixel(event) || event.id !== 'magic-missile' ? 0 : (root.BoardSpells.missileCount(event.level) - 1) * 80;
     const impact =
-      (style.impact || 720) + offsets + (event.id === 'eldritch-blast' ? ((event.beats || 1) - 1) * 155 : 0);
+      (style.impact || 720) +
+      offsets +
+      (event.id === 'eldritch-blast' && !pixel(event) ? ((event.beats || 1) - 1) * 155 : 0);
     const age = Math.max(0, now - event.started),
       elapsed = age - cast - travel;
     return {
@@ -937,6 +941,11 @@
     }
   }
   function drawGround(ctx, event, pose, now, reduced, grid, budget) {
+    if (pixel(event)) {
+      if (!phase(event, now, reduced).done || event.id === 'fireball')
+        root.BoardPixelFX.drawGround(ctx, event, pose, now, grid);
+      return;
+    }
     const p = phase(event, now, reduced),
       colors = colorFor(event.id, event.element, event.school);
     ctx.save();
@@ -1183,6 +1192,10 @@
     if (event.id === 'spiritual-weapon') drawWeapon(ctx, pose, p, now, reduced);
     if (event.id === 'wall-of-fire') fireWall(ctx, pose, p, reduced, grid, true);
     if (p.done) return;
+    if (pixel(event)) {
+      root.BoardPixelFX.drawAir(ctx, event, pose, now, grid);
+      return;
+    }
     const colors = colorFor(event.id, event.element, event.school),
       a = pose.area;
     const targets = pose.targets.length ? pose.targets : pose.target ? [{ ...pose.target, span: 1 }] : [];
@@ -1306,11 +1319,29 @@
       }
     ctx.restore();
   }
+  /* Screen offset in CSS pixels. */
   function shake(event, now) {
-    if (event.level < 3 || !['fireball', 'lightning-bolt'].includes(event.id)) return 0;
+    if (pixel(event)) return root.BoardPixelFX.shake(event, now);
+    if (event.level < 3 || !['fireball', 'lightning-bolt'].includes(event.id)) return { x: 0, y: 0 };
     const t = phase(event, now, false).elapsed;
-    return t >= 0 && t < 155 ? Math.sin(t / 12) * 2.2 * (1 - t / 155) : 0;
+    const s = t >= 0 && t < 155 ? Math.sin(t / 12) * 2.2 * (1 - t / 155) : 0;
+    return { x: s, y: s * 0.45 };
   }
+  const flash = (event, now) => (pixel(event) ? root.BoardPixelFX.flash(event, now) : null);
+  const reaction = (event, id, now, reduced) =>
+    pixel(event) ? root.BoardPixelFX.reaction(event, id, now, reduced) : null;
   const beginFrame = () => ({ left: 2000 });
-  root.BoardSpellFX = { phase, colorFor, drawGround, drawAir, drawFog, drawWardMarkers, drawTraits, beginFrame, shake };
+  root.BoardSpellFX = {
+    phase,
+    colorFor,
+    drawGround,
+    drawAir,
+    drawFog,
+    drawWardMarkers,
+    drawTraits,
+    beginFrame,
+    shake,
+    flash,
+    reaction,
+  };
 })(typeof window !== 'undefined' ? window : globalThis);

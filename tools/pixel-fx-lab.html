@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="../" />
+    <title>Pixel Spell Lab</title>
+    <style>
+      :root {
+        --bg: #12171a;
+        --panel: #1b2226;
+        --ink: #e9e2cf;
+        --muted: #a59e8b;
+        --line: #3a4247;
+        --accent: #ffb53a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          15px/1.5 system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 1500px;
+        margin: auto;
+        padding: 20px 16px 40px;
+      }
+      h1 {
+        margin: 0 0 4px;
+        font-size: 22px;
+      }
+      p.lede {
+        margin: 0 0 16px;
+        color: var(--muted);
+        max-width: 70ch;
+      }
+      .bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      button {
+        min-height: 40px;
+        padding: 0 14px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--ink);
+        font: inherit;
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: var(--accent);
+      }
+      button[aria-pressed='true'] {
+        background: #3a2a12;
+        border-color: var(--accent);
+      }
+      .sep {
+        width: 1px;
+        height: 28px;
+        background: var(--line);
+        margin: 0 4px;
+      }
+      .boards {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      @media (max-width: 900px) {
+        .boards {
+          grid-template-columns: 1fr;
+        }
+      }
+      figure {
+        margin: 0;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px;
+      }
+      figcaption {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+      figcaption span {
+        color: var(--muted);
+        font-weight: 400;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 6px;
+        background: #071014;
+      }
+      .notes {
+        margin-top: 18px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 12px;
+      }
+      .notes div {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 14px;
+      }
+      .notes h3 {
+        margin: 0 0 6px;
+        font-size: 15px;
+      }
+      .notes ul {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--muted);
+      }
+    </style>
+    <script src="./board-spells.js"></script>
+    <script src="./board-ink.js"></script>
+    <script src="./board-pixel-fx.js"></script>
+    <script src="./board-spell-fx.js"></script>
+  </head>
+  <body>
+    <main>
+      <h1>Pixel Spell Lab</h1>
+      <p class="lede">
+        Same cast, both renderers. Left is what the board draws today; right is the pixel-art prototype with hitstop,
+        knockback, screen shake and light/dark flashes. Click a spell, or turn on slow motion to see the frames.
+      </p>
+      <div class="bar" id="spells"></div>
+      <div class="bar">
+        <button id="slow" aria-pressed="false">Slow motion ×0.25</button>
+        <button id="map" aria-pressed="false">Bright map</button>
+        <button id="loop" aria-pressed="false">Auto-repeat</button>
+        <span class="sep"></span>
+        <button id="layout" aria-pressed="false">Pixel only (large)</button>
+      </div>
+      <div class="boards" id="boards">
+        <figure id="old-fig">
+          <figcaption>Current <span>soft glow sprites</span></figcaption>
+          <canvas id="old" width="832" height="512"></canvas>
+        </figure>
+        <figure>
+          <figcaption>Pixel prototype <span>16 px per 5 ft</span></figcaption>
+          <canvas id="new" width="832" height="512"></canvas>
+        </figure>
+      </div>
+      <section class="notes">
+        <div>
+          <h3>Fireball</h3>
+          <ul>
+            <li>Ember bead arcs in, then a 2-frame light/dark flash held through a ~160 ms hitstop.</li>
+            <li>Staged: flash → billowing fireball → black smoke takes over → embers settle.</li>
+            <li>Dust shockwave on the ground, scorch decal that steps out. Big random shake.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Magic Missile</h3>
+          <ul>
+            <li>Darts fan out from the hand and accelerate into the target (they never miss).</li>
+            <li>Each hit gets a short stop and a tiny vertical-only shake, so 3 darts read as 3 thumps.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Eldritch Blast</h3>
+          <ul>
+            <li>Beam fires in ~1 frame, thick, then thins and breaks into dashes.</li>
+            <li>Rings ride the beam; the hit is a jagged star around a void that implodes. Knockback per beam.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Thorn Whip</h3>
+          <ul>
+            <li>Whip wave travels down a thorned vine; a crack on contact, then the vine goes taut.</li>
+            <li>The target is yanked toward the caster (the spell's 10 ft pull) and the vine retracts.</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+    <script>
+      (() => {
+        const CELL = 64,
+          COLS = 13,
+          ROWS = 8;
+        const grid = { cols: COLS, rows: ROWS, feet: 5 };
+        const minis = {};
+        const cast = [
+          { id: 'caster', mini: 'druid', rot: '315', x: 2.5, y: 4.6 },
+          { id: 'goblin', mini: 'goblin', rot: '045', x: 8.6, y: 2.9 },
+          { id: 'bugbear', mini: 'bugbear', rot: '045', x: 10.3, y: 4.4 },
+          { id: 'orc', mini: 'orc', rot: '045', x: 8.4, y: 6.2 },
+          { id: 'gnoll', mini: 'gnoll', rot: '045', x: 11.2, y: 6.6 },
+        ];
+        const spells = [
+          {
+            label: 'Fireball',
+            id: 'fireball',
+            kind: 'sphere',
+            element: 'fire',
+            level: 3,
+            targets: ['goblin', 'bugbear', 'orc'],
+          },
+          {
+            label: 'Magic Missile (1st)',
+            id: 'magic-missile',
+            kind: 'multi',
+            element: 'fuerza',
+            level: 1,
+            darts: ['goblin', 'bugbear', 'bugbear'],
+          },
+          {
+            label: 'Magic Missile (3rd)',
+            id: 'magic-missile',
+            kind: 'multi',
+            element: 'fuerza',
+            level: 3,
+            darts: ['goblin', 'bugbear', 'orc', 'gnoll', 'goblin'],
+          },
+          {
+            label: 'Eldritch Blast',
+            id: 'eldritch-blast',
+            kind: 'multi',
+            element: 'fuerza',
+            level: 0,
+            beats: 1,
+            rays: ['bugbear'],
+          },
+          {
+            label: 'Eldritch Blast ×3',
+            id: 'eldritch-blast',
+            kind: 'multi',
+            element: 'fuerza',
+            level: 0,
+            beats: 3,
+            rays: ['goblin', 'bugbear', 'orc'],
+          },
+          {
+            label: 'Thorn Whip',
+            id: 'thorn-whip',
+            kind: 'projectile',
+            element: 'perforante',
+            level: 0,
+            targets: ['bugbear'],
+          },
+        ];
+        let speed = 1,
+          vnow = 0,
+          last = performance.now(),
+          bright = false,
+          loop = false,
+          current = null;
+        const boards = [
+          { canvas: document.getElementById('old'), pixel: false, events: [] },
+          { canvas: document.getElementById('new'), pixel: true, events: [] },
+        ];
+        // ---------------------------------------------------------------- terrain
+        function terrain(light) {
+          const c = document.createElement('canvas');
+          c.width = COLS * 16;
+          c.height = ROWS * 16;
+          const g = c.getContext('2d');
+          const img = g.createImageData(c.width, c.height);
+          const base = light
+            ? [
+                [214, 199, 160],
+                [201, 185, 146],
+                [226, 213, 178],
+                [188, 172, 134],
+              ]
+            : [
+                [52, 77, 50],
+                [44, 67, 44],
+                [61, 88, 56],
+                [38, 58, 40],
+              ];
+          for (let y = 0; y < c.height; y++)
+            for (let x = 0; x < c.width; x++) {
+              const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+              const n = v - Math.floor(v);
+              const blob = Math.sin(x / 9) + Math.cos(y / 7 + x / 13);
+              const k = n < 0.08 ? 3 : n > 0.93 ? 2 : blob > 0.9 ? 1 : 0;
+              const i = (y * c.width + x) * 4;
+              [img.data[i], img.data[i + 1], img.data[i + 2]] = base[k];
+              img.data[i + 3] = 255;
+            }
+          g.putImageData(img, 0, 0);
+          return c;
+        }
+        let ground = terrain(false);
+        // ---------------------------------------------------------------- minis
+        fetch('./assets/minis/index.json')
+          .then(r => r.json())
+          .catch(() => [])
+          .then(index => {
+            for (const t of cast) {
+              const entry = index.find?.(m => m.id === t.mini);
+              const rot = entry?.rotations?.[t.rot];
+              const img = new Image();
+              img.src = './assets/minis/' + (rot?.image || `${t.mini}_board_r${t.rot}.png`);
+              minis[t.id] = { img, anchor: rot?.anchor, ppc: entry?.pixelsPerSquare || 64 };
+            }
+          });
+        // ---------------------------------------------------------------- events
+        let castCount = 0;
+        function fire(spell) {
+          current = spell;
+          castCount++;
+          for (const board of boards) {
+            const center = { x: 9.6, y: 4.9 };
+            const event = {
+              ...spell,
+              castId: 'lab' + castCount,
+              caster: 'caster',
+              started: vnow,
+              seed: castCount * 7,
+              slot: Math.max(1, spell.level),
+              targets: spell.targets || [...new Set(spell.darts || spell.rays || [])],
+              darts: spell.darts || [],
+              rays: spell.rays || [],
+              beats: spell.beats || 1,
+              saved: new Map(),
+              saveTargets: new Set(),
+              area: spell.id === 'fireball' ? { kind: 'circle', feet: 20, ...center, origin: center } : null,
+              point: spell.id === 'fireball' ? center : null,
+            };
+            BoardInk.prepare(event.id, event.kind);
+            board.events = [event];
+          }
+        }
+        const bar = document.getElementById('spells');
+        for (const spell of spells) {
+          const b = document.createElement('button');
+          b.textContent = spell.label;
+          b.addEventListener('click', () => fire(spell));
+          bar.append(b);
+        }
+        const toggle = (id, fn) => {
+          const b = document.getElementById(id);
+          b.addEventListener('click', () => {
+            const on = b.getAttribute('aria-pressed') !== 'true';
+            b.setAttribute('aria-pressed', on);
+            fn(on);
+          });
+        };
+        toggle('slow', on => (speed = on ? 0.25 : 1));
+        toggle('map', on => {
+          bright = on;
+          ground = terrain(on);
+        });
+        toggle('loop', on => (loop = on));
+        toggle('layout', on => {
+          document.getElementById('old-fig').hidden = on;
+          document.getElementById('boards').style.gridTemplateColumns = on ? '1fr' : '';
+        });
+        // ---------------------------------------------------------------- render
+        function poseOf(tok, board, now) {
+          let x = tok.x,
+            y = tok.y;
+          for (const e of board.events) {
+            const r = BoardSpellFX.reaction(e, tok.id, now, false);
+            if (r) {
+              x += r.x;
+              y += r.y;
+            }
+          }
+          return { id: tok.id, x, y: y - 0.62, baseX: x, baseY: y, span: 1 };
+        }
+        function draw(board, now) {
+          const cv = board.canvas,
+            ctx = cv.getContext('2d');
+          BoardPixelFX.enabled = board.pixel;
+          const dpr = Math.min(2, window.devicePixelRatio || 1);
+          const W = COLS * CELL,
+            H = ROWS * CELL;
+          if (cv.width !== W * dpr) {
+            cv.width = W * dpr;
+            cv.height = H * dpr;
+          }
+          const shake = { x: 0, y: 0 };
+          for (const e of board.events) {
+            const s = BoardSpellFX.shake(e, now);
+            shake.x += s?.x || 0;
+            shake.y += s?.y || 0;
+          }
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          ctx.fillStyle = '#071014';
+          ctx.fillRect(0, 0, W, H);
+          ctx.setTransform(dpr, 0, 0, dpr, dpr * shake.x, dpr * shake.y);
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(ground, 0, 0, W, H);
+          ctx.strokeStyle = bright ? 'rgba(0,0,0,0.16)' : 'rgba(0,0,0,0.22)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          for (let x = 0; x <= COLS; x++) {
+            ctx.moveTo(x * CELL + 0.5, 0);
+            ctx.lineTo(x * CELL + 0.5, H);
+          }
+          for (let y = 0; y <= ROWS; y++) {
+            ctx.moveTo(0, y * CELL + 0.5);
+            ctx.lineTo(W, y * CELL + 0.5);
+          }
+          ctx.stroke();
+          const poses = new Map(cast.map(t => [t.id, poseOf(t, board, now)]));
+          const spellPoses = [];
+          board.events = board.events.filter(event => {
+            const p = BoardSpellFX.phase(event, now, false);
+            if (p.done && p.decal >= 1) return false;
+            const hand = poses.get('caster');
+            const targets = event.targets.map(id => poses.get(id)).filter(Boolean);
+            spellPoses.push({
+              event,
+              hand,
+              base: { x: hand.baseX, y: hand.baseY, span: 1 },
+              area: event.area,
+              target: event.area ? event.point : targets[0],
+              targets,
+              linger: 0,
+              allies: new Set(),
+              top: 0,
+              rowY: 0,
+            });
+            return true;
+          });
+          if (loop && !board.events.length && current && board === boards[1]) fire(current);
+          const layer = which => {
+            ctx.save();
+            ctx.scale(CELL, CELL);
+            ctx.beginPath();
+            ctx.rect(0, 0, COLS, ROWS);
+            ctx.clip();
+            const budget = BoardSpellFX.beginFrame();
+            for (const pose of spellPoses)
+              if (which === 'ground') BoardSpellFX.drawGround(ctx, pose.event, pose, now, false, grid, budget);
+              else BoardSpellFX.drawAir(ctx, pose.event, pose, now, false, grid, budget);
+            ctx.restore();
+          };
+          layer('ground');
+          ctx.imageSmoothingEnabled = true;
+          for (const tok of [...cast].sort((a, b) => poses.get(a.id).baseY - poses.get(b.id).baseY)) {
+            const m = minis[tok.id],
+              p = poses.get(tok.id);
+            if (!m?.img.complete || !m.img.naturalWidth) continue;
+            const s = CELL / m.ppc;
+            const ax = m.anchor?.x ?? m.img.naturalWidth / 2,
+              ay = m.anchor?.y ?? m.img.naturalHeight * 0.8;
+            ctx.drawImage(
+              m.img,
+              p.baseX * CELL - ax * s,
+              p.baseY * CELL - ay * s + CELL * 0.18,
+              m.img.naturalWidth * s,
+              m.img.naturalHeight * s,
+            );
+          }
+          layer('air');
+          for (const e of board.events) {
+            const f = BoardSpellFX.flash(e, now);
+            if (!f) continue;
+            ctx.globalAlpha = f.alpha;
+            ctx.fillStyle = f.color;
+            ctx.fillRect(0, 0, W, H);
+            ctx.globalAlpha = 1;
+            break;
+          }
+        }
+        let paused = false;
+        function tick(t) {
+          if (!paused) vnow += (t - last) * speed;
+          last = t;
+          for (const board of boards) draw(board, vnow);
+          BoardPixelFX.enabled = true;
+          requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+        // Test hook: freeze the clock and render an exact moment.
+        window.lab = {
+          fire,
+          spells,
+          boards,
+          at(ms) {
+            paused = true;
+            vnow = ms;
+            for (const board of boards) draw(board, vnow);
+            BoardPixelFX.enabled = true;
+          },
+        };
+      })();
+    </script>
+  </body>
+</html>
