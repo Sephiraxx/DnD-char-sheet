@@ -1,0 +1,504 @@
+/* Pixel spells, batch 01: damage-palette fallbacks for the ten attack archetypes. */
+(function (root) {
+  'use strict';
+  const FX = root.BoardPixelFX;
+  if (!FX) return;
+  const k = FX.kit;
+
+  const seed = s => s.event.seed || 0;
+  const level = event => Math.max(0, Math.min(9, Number(event.level) || 0));
+  const colors = ramp => ramp.join(',');
+  const ids = event => (event.targets?.length ? event.targets : [null]);
+  // Equal timestamps share a freeze, even when an area catches many figures.
+  const beats = (event, travel, kind = 'hit', stop = 90, power = 0.06) =>
+    ids(event).map(target => ({ at: k.CAST + travel, stop, target, kind, power }));
+  const end = (event, travel) => k.CAST + travel + 460;
+  const center = s => s.area || s.pose.target || s.targets[0] || s.pose.hand;
+  const units = s => k.PX / (s.grid.feet || 5);
+  const radius = s => Math.max(3, (s.area?.feet || 5) * units(s));
+  const aim = (s, hit) => {
+    const target = s.targets.find(t => t.id === hit.id) || s.targets[0];
+    return target ? k.contact(target, s.pose.hand || target) : s.pose.target || s.area;
+  };
+  const mark = (s, hit, point, key, size = 32, count = 7, reach = 24) => {
+    if (!point) return;
+    const e = s.real(hit);
+    k.drawHit(k.hitStyle(`01:${key}:${colors(s.ramp)}`, s.ramp, { S: size, spikes: 6, jag: 0.32 }), point, e);
+    k.shards(point, e, s.ramp, seed(s) + s.hits.indexOf(hit) * 17, count, reach);
+  };
+  function targetMarks(s, key, size = 30) {
+    for (const hit of s.hits) {
+      const point = aim(s, hit);
+      if (point) mark(s, hit, k.P(point), key, size);
+    }
+  }
+  function flash(event, e) {
+    if (e < 0) return null;
+    const ramp = k.paletteFor(event);
+    return e < 32 ? { color: ramp[5], alpha: 0.22 } : e < 68 ? { color: ramp[0], alpha: 0.18 } : null;
+  }
+  function stroke(A, B, ramp, width = 3, index = 3) {
+    const steps = Math.max(1, Math.ceil(Math.hypot(B.x - A.x, B.y - A.y) / 2));
+    for (const [color, size] of [
+      [ramp[0], width + 2],
+      [ramp[index], width],
+    ])
+      for (let i = 0; i <= steps; i++) {
+        const q = i / steps;
+        k.dot(k.mix(A.x, B.x, q), k.mix(A.y, B.y, q), color, size);
+      }
+  }
+  // Rings are cached raster shapes: their cost stays constant for very large templates.
+  function ring(C, rx, ry, ramp, index = 3, broken = false) {
+    rx = Math.max(2, Math.round(rx));
+    ry = Math.max(2, Math.round(ry));
+    const w = rx * 2 + 6,
+      h = ry * 2 + 6;
+    const image = k.sprite(`01:ring:${rx}:${ry}:${index}:${broken}:${colors(ramp)}`, w, h, ramp, set => {
+      for (let y = 1; y < h - 1; y++)
+        for (let x = 1; x < w - 1; x++) {
+          const dx = x - w / 2,
+            dy = y - h / 2;
+          const d = Math.hypot(dx / rx, dy / ry);
+          if (Math.abs(d - 1) * Math.min(rx, ry) > 0.85) continue;
+          if (broken && Math.floor((Math.atan2(dy / ry, dx / rx) + Math.PI) * 8) % 3 === 0) continue;
+          set(x, y, index);
+        }
+    });
+    k.blit(image, C.x - w / 2, C.y - h / 2);
+  }
+  function areaRing(s, duration = 380) {
+    const C = center(s),
+      hit = s.hits[0];
+    if (!C || !hit) return;
+    const e = s.real(hit);
+    if (e < 0 || e >= duration) return;
+    const q = e / duration,
+      r = radius(s) * (0.25 + 0.8 * k.ease(q));
+    ring(k.P(C), r, r, s.ramp, q < 0.22 ? 5 : q < 0.6 ? 3 : 2, q > 0.45);
+  }
+  function polygon(s) {
+    if (!s.area) return [];
+    return k.outline(s.area, s.grid).map(p => k.P(Array.isArray(p) ? { x: p[0], y: p[1] } : p));
+  }
+  function inside(x, y, points) {
+    let yes = false;
+    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+      const a = points[i],
+        b = points[j];
+      if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) yes = !yes;
+    }
+    return yes;
+  }
+  // Geometry is relative to the sprite, so moving the drawing buffer cannot poison the cache.
+  function panel(points, height, phase, ramp, wall = false) {
+    if (points.length < 3) return;
+    const x0 = Math.floor(Math.min(...points.map(p => p.x))) - 2;
+    const y0 = Math.floor(Math.min(...points.map(p => p.y)) - height) - 2;
+    const w = Math.ceil(Math.max(...points.map(p => p.x)) - x0) + 3;
+    const h = Math.ceil(Math.max(...points.map(p => p.y)) - y0) + 3;
+    const p = points.map(p => ({ x: Math.round(p.x - x0), y: Math.round(p.y - y0) }));
+    const geometry = p.map(p => `${p.x},${p.y}`).join(';');
+    const image = k.sprite(`01:panel:${wall}:${geometry}:${height}:${phase}:${colors(ramp)}`, w, h, ramp, set => {
+      const faces = wall
+        ? p.map((a, i) => {
+            const b = p[(i + 1) % p.length];
+            return [a, b, { x: b.x, y: b.y - height }, { x: a.x, y: a.y - height }];
+          })
+        : [p];
+      for (let y = 1; y < h - 1; y++)
+        for (let x = 1; x < w - 1; x++) {
+          if (!faces.some(face => inside(x + 0.5, y + 0.5, face))) continue;
+          const edge = faces.some(
+            face =>
+              inside(x + 0.5, y + 0.5, face) &&
+              (!inside(x + 2.5, y + 0.5, face) ||
+                !inside(x - 1.5, y + 0.5, face) ||
+                !inside(x + 0.5, y - 1.5, face) ||
+                !inside(x + 0.5, y + 2.5, face)),
+          );
+          const stripe = wall ? (x + y + phase * 2) % 12 < 3 : (Math.floor(x / 5) + Math.floor(y / 5)) % 2 === 0;
+          if (phase === 3 && !edge && (Math.floor(x / 6) + Math.floor(y / 6)) % 3 !== 0) continue;
+          set(x, y, edge ? (phase === 1 ? 5 : 3) : stripe ? (phase === 1 ? 4 : 2) : 1);
+        }
+    });
+    k.blit(image, x0, y0);
+  }
+  function areaReach(event, grid) {
+    const a = event.area;
+    return { r: ((a?.feet || 5) / (grid.feet || 5)) * 1.4 + 2, up: ((a?.height || 15) * 2) / (grid.feet || 5) + 2 };
+  }
+  function wall(s, active) {
+    if (!s.area) return;
+    const t = s.c.t - k.CAST;
+    if (t < 0 || (active && s.linger <= 0)) return;
+    const q = active ? s.linger : t < 280 ? k.ease(k.clamp(t / 180)) : 1 - k.clamp((t - 280) / 380);
+    const height = Math.max(2, Math.round(((s.area.height || 10) * units(s) * q) / 3) * 3);
+    const phase = active ? Math.floor(s.c.raw / 160) % 3 : t < 230 ? 1 : 2;
+    panel(polygon(s), height, phase, s.ramp, true);
+  }
+
+  // Projectile: a snapped-off bolt with an arcing outlined tail, a sharp star and flying chips.
+  FX.register('kind:projectile', {
+    travel: 240,
+    beats: (event, kit, travel) => beats(event, travel, 'hit', 80),
+    end,
+    air(s) {
+      for (const hit of s.hits) {
+        const point = aim(s, hit);
+        if (!s.pose.hand || !point) continue;
+        const H = k.P(s.pose.hand),
+          T = k.P(point),
+          t = s.c.t - k.CAST;
+        if (t >= 0 && s.c.t < hit.at) {
+          const q = t / (hit.at - k.CAST);
+          const at = u => ({ x: k.mix(H.x, T.x, u), y: k.mix(H.y, T.y, u) - Math.sin(u * Math.PI) * 6 });
+          for (let i = 10; i >= 1; i--) {
+            const u = q - i * 0.035;
+            if (u < 0) continue;
+            const p = at(u),
+              size = i < 4 ? 3 : 2;
+            k.dot(p.x, p.y, s.ramp[0], size + 2);
+            k.dot(p.x, p.y, s.ramp[i < 4 ? 4 : i < 8 ? 3 : 2], size);
+          }
+          const p = at(q);
+          k.disc(p.x, p.y, 4.5, s.ramp[0]);
+          k.disc(p.x, p.y, 3.5, s.ramp[3]);
+          k.disc(p.x, p.y, 1.5, s.ramp[5]);
+        }
+        mark(s, hit, T, 'bolt', 34, 8, 24);
+      }
+    },
+  });
+
+  // Beam: simultaneous sustained rays, bright travelling collars and a crack on each target.
+  FX.register('kind:beam', {
+    travel: 40,
+    beats: (event, kit, travel) => beats(event, travel, 'beam', 90, 0.07),
+    end,
+    air(s) {
+      if (!s.pose.hand) return;
+      const H = k.P(s.pose.hand),
+        e = s.c.t - k.CAST;
+      s.hits.forEach((hit, i) => {
+        const point = aim(s, hit);
+        if (!point) return;
+        const T = k.P(point);
+        if (e >= 0) k.beam(H, T, e, seed(s) + i * 13, s.ramp);
+        mark(s, hit, T, 'beam', 36, 8, 26);
+      });
+    },
+  });
+
+  // Line: a five-foot strip ignites behind a fast sweeping front, then cracks into short dashes.
+  FX.register('kind:line', {
+    travel: 150,
+    beats: (event, kit, travel) => beats(event, travel, 'beam', 105, 0.07),
+    end,
+    ground(s) {
+      if (!s.area) return;
+      const t = s.c.t - k.CAST;
+      if (t < 0 || t >= 540) return;
+      const A = k.P(s.area),
+        L = radius(s),
+        dir = s.area.dir || 0;
+      const dx = Math.cos(dir),
+        dy = Math.sin(dir),
+        width = Math.max(2, Math.round(5 * units(s)));
+      const front = k.clamp(t / 150),
+        frame = Math.floor(t / 16);
+      const corners = [
+        [0, -width / 2],
+        [L, -width / 2],
+        [L, width / 2],
+        [0, width / 2],
+      ].map(([along, side]) => ({ x: dx * along - dy * side, y: dy * along + dx * side }));
+      const x0 = Math.floor(Math.min(...corners.map(p => p.x))) - 2;
+      const y0 = Math.floor(Math.min(...corners.map(p => p.y))) - 2;
+      const w = Math.ceil(Math.max(...corners.map(p => p.x)) - x0) + 3;
+      const h = Math.ceil(Math.max(...corners.map(p => p.y)) - y0) + 3;
+      const image = k.sprite(
+        `01:line:${L}:${dir}:${width}:${frame}:${seed(s)}:${colors(s.ramp)}`,
+        w,
+        h,
+        s.ramp,
+        set => {
+          const tick = frame * 16,
+            reach = k.clamp(tick / 144),
+            decay = k.clamp((tick - 150) / 390);
+          for (let y = 1; y < h - 1; y++)
+            for (let x = 1; x < w - 1; x++) {
+              const px = x + x0,
+                py = y + y0;
+              const along = px * dx + py * dy,
+                across = -px * dy + py * dx;
+              if (along < 0 || along > L * reach || Math.abs(across) > width / 2) continue;
+              const dash = Math.floor(along / 8);
+              if (decay > 0 && (dash % 4 === 0 || k.hash(dash, seed(s)) < decay)) continue;
+              const hot = L * reach - along < 7;
+              set(x, y, hot ? 5 : Math.abs(across) < width * 0.2 ? 3 : 2);
+            }
+        },
+      );
+      k.blit(image, A.x + x0, A.y + y0);
+      if (t < 180) {
+        const F = { x: A.x + dx * L * front, y: A.y + dy * L * front };
+        stroke(
+          { x: F.x - (dy * width) / 2, y: F.y + (dx * width) / 2 },
+          { x: F.x + (dy * width) / 2, y: F.y - (dx * width) / 2 },
+          s.ramp,
+          3,
+          5,
+        );
+      }
+    },
+    air(s) {
+      targetMarks(s, 'line');
+    },
+  });
+
+  // Cone: three widening particle bands fan out from the apex inside a 53-degree mouth.
+  FX.register('kind:cone', {
+    travel: 160,
+    beats: (event, kit, travel) => beats(event, travel, 'hit', 110, 0.07),
+    end,
+    ground(s) {
+      if (!s.area) return;
+      const t = s.c.t - k.CAST;
+      if (t < 0 || t >= 540) return;
+      const A = k.P(s.area),
+        L = radius(s),
+        dir = s.area.dir || 0;
+      for (let band = 0; band < 3; band++) {
+        const e = t - band * 34;
+        if (e < 0) continue;
+        const q = k.clamp(e / 165),
+          breakup = k.clamp((e - 185) / 230);
+        for (let i = 0; i < 19; i++) {
+          if (k.hash(i, seed(s), band) < breakup) continue;
+          const a = dir + (i / 18 - 0.5) * ((53 * Math.PI) / 180);
+          const r = L * q * (1 - band * 0.07);
+          const size = Math.max(2, Math.min(7, Math.round(2 + r * 0.07)));
+          const x = A.x + Math.cos(a) * r,
+            y = A.y + Math.sin(a) * r;
+          k.dot(x, y, s.ramp[0], size + 2);
+          k.dot(x, y, s.ramp[band === 0 ? 4 : band === 1 ? 3 : 2], size);
+        }
+      }
+    },
+    air(s) {
+      targetMarks(s, 'cone');
+    },
+  });
+
+  // Sphere: a light/dark flash pair opens a banded blast body and a ring; chips leap over figures.
+  FX.register('kind:sphere', {
+    travel: 90,
+    beats: (event, kit, travel) => beats(event, travel, 'blast', 110 + level(event) * 12, 0.09),
+    end: (event, travel) => k.CAST + travel + 720,
+    flash,
+    reach: areaReach,
+    ground(s) {
+      const point = center(s),
+        hit = s.hits[0];
+      if (!point || !hit) return;
+      const e = s.real(hit);
+      if (e < 0 || e >= 850) return;
+      const C = k.P(point),
+        R = Math.round(radius(s));
+      const f = Math.floor(e / 55),
+        drama = level(s.event);
+      const w = R * 3 + 8,
+        h = R * 3 + 8,
+        c = w / 2;
+      const image = k.sprite(`01:burst:${R}:${f}:${drama}:${seed(s)}:${colors(s.ramp)}`, w, h, s.ramp, set => {
+        const growth = f < 2 ? 0.55 : 0.55 + 0.45 * k.ease(k.clamp((f - 2) / 4));
+        for (let y = 1; y < h - 1; y++)
+          for (let x = 1; x < w - 1; x++) {
+            const dx = (x - c) / R,
+              dy = (y - c) / R;
+            const d = Math.hypot(dx, dy),
+              angle = Math.atan2(dy, dx);
+            if (f < 2) {
+              const ray = Math.abs(Math.cos(angle * (4 + Math.floor(drama / 3)) + seed(s))) ** 18;
+              if (d < 0.22 || d < 0.25 + ray * (0.65 + drama * 0.015))
+                set(x, y, f === 0 ? (d < 0.22 ? 5 : 4) : d < 0.22 ? 1 : 5);
+              continue;
+            }
+            const scallop = 1 + Math.cos(angle * 9 + seed(s)) * 0.055;
+            const distance = d / (growth * scallop);
+            if (distance >= 1) continue;
+            if (f >= 8 && (distance < (f - 8) / 8 || Math.floor((angle + Math.PI) * 12) % 3 === 0)) continue;
+            const shade = Math.max(1, Math.min(5, 1 + Math.floor((1 - distance) * 4) - Math.max(0, f - 6)));
+            set(x, y, shade);
+          }
+      });
+      k.blit(image, C.x - c, C.y - c);
+      areaRing(s, 460);
+    },
+    air(s) {
+      const point = center(s),
+        hit = s.hits[0];
+      if (!point || !hit) return;
+      mark(
+        s,
+        hit,
+        k.P(point),
+        'sphere',
+        38 + level(s.event) * 2,
+        10 + level(s.event),
+        radius(s) * (0.85 + level(s.event) * 0.025),
+      );
+      targetMarks(s, 'sphere-target', 26);
+    },
+  });
+
+  // Column: a cylinder drops from its stated height, slams into a ground ring and shears apart.
+  FX.register('kind:column', {
+    travel: 180,
+    beats: (event, kit, travel) => beats(event, travel, 'blast', 140, 0.08),
+    end,
+    reach: areaReach,
+    ground(s) {
+      const point = center(s);
+      if (!point) return;
+      const t = s.c.t - k.CAST;
+      if (t < 0 || t >= 540) return;
+      const C = k.P(point),
+        R = Math.round(radius(s)),
+        H = Math.round((s.area?.height || 15) * units(s));
+      const drop = H * (1 - k.clamp(t / 180));
+      const f = Math.floor(Math.max(0, t - 180) / 55);
+      const w = R * 2 + 8,
+        h = H + R * 2 + 8,
+        cx = w / 2,
+        cy = H + R + 3;
+      const image = k.sprite(`01:column:${R}:${H}:${f}:${colors(s.ramp)}`, w, h, s.ramp, set => {
+        for (let y = 1; y < h - 1; y++)
+          for (let x = 1; x < w - 1; x++) {
+            const dx = (x - cx) / R;
+            if (Math.abs(dx) >= 1) continue;
+            const cap = Math.sqrt(1 - dx * dx) * R * 0.42;
+            if (y < cy - H - cap || y > cy + cap) continue;
+            if (f > 1 && (Math.floor(y / 8) + Math.floor(x / 6)) % 5 < f - 1) continue;
+            const band = Math.abs(dx) > 0.8 ? 1 : Math.abs(dx) > 0.5 ? 2 : Math.abs(dx) > 0.22 ? 3 : 4;
+            set(x, y, y > cy - 5 && f === 0 ? 5 : band);
+          }
+      });
+      k.blit(image, C.x - cx, C.y - cy - drop);
+      areaRing(s);
+    },
+    air(s) {
+      targetMarks(s, 'column', 36);
+    },
+  });
+
+  // Cube: the exact template fills with dark checked tiles, pulses bright once and splits away.
+  FX.register('kind:cube', {
+    travel: 130,
+    beats: (event, kit, travel) => beats(event, travel, 'hit', 110, 0.07),
+    end,
+    ground(s) {
+      const t = s.c.t - k.CAST;
+      if (t < 0 || t >= 540) return;
+      panel(polygon(s), 0, t < 130 ? 0 : t < 235 ? 1 : t < 350 ? 2 : 3, s.ramp);
+    },
+    air(s) {
+      targetMarks(s, 'cube');
+    },
+  });
+
+  // Wall: outlined striped faces rise around the area perimeter, with a slow active shimmer loop.
+  FX.register('kind:wall', {
+    travel: 180,
+    beats: (event, kit, travel) => beats(event, travel, 'hit', 95),
+    end: (event, travel) => k.CAST + travel + 500,
+    reach: areaReach,
+    ground(s) {
+      if (!(s.pose.linger > 0) || s.c.t < k.CAST + 180) wall(s, false);
+    },
+    air(s) {
+      targetMarks(s, 'wall');
+    },
+    linger(s) {
+      wall(s, true);
+    },
+  });
+
+  // Strike: a suspended diamond sigil snaps into a descending spike directly over each victim.
+  FX.register('kind:strike', {
+    travel: 180,
+    beats: (event, kit, travel) => beats(event, travel, 'hit', 110, 0.08),
+    end,
+    air(s) {
+      for (const hit of s.hits) {
+        const point = aim(s, hit);
+        if (!point) continue;
+        const T = k.P(point),
+          t = s.c.t - k.CAST;
+        if (t >= 0 && t < 180) {
+          const S = { x: T.x, y: T.y - 16 };
+          const image = k.sprite(`01:sigil:${colors(s.ramp)}`, 19, 19, s.ramp, set => {
+            for (let y = 2; y < 17; y++)
+              for (let x = 2; x < 17; x++) {
+                const d = Math.abs(x - 9) + Math.abs(y - 9);
+                if (d >= 6 && d <= 7) set(x, y, 4);
+                else if (x === 9 && Math.abs(y - 9) < 4) set(x, y, 3);
+              }
+          });
+          k.blit(image, S.x - 9, S.y - 9);
+          if (t >= 105) {
+            const q = k.clamp((t - 105) / 75);
+            stroke({ x: T.x, y: T.y - 22 }, { x: T.x, y: k.mix(T.y - 22, T.y, q) }, s.ramp, 5, 5);
+          }
+        }
+        const e = s.real(hit);
+        if (e >= 0 && e < 100) stroke({ x: T.x, y: T.y - 20 }, T, s.ramp, e < 40 ? 5 : 2, 4);
+        mark(s, hit, T, 'strike', 38, 9, 25);
+      }
+    },
+  });
+
+  // On-hit: the weapon hand flashes, followed by a heavy diagonal cut and splintering impact.
+  FX.register('kind:on-hit', {
+    travel: 100,
+    beats: (event, kit, travel) => beats(event, travel, 'hit', 125, 0.08),
+    end,
+    air(s) {
+      const t = s.c.t - k.CAST;
+      if (s.pose.hand && t >= 0 && t < 90) {
+        const H = k.P(s.pose.hand);
+        k.disc(H.x, H.y, t < 35 ? 7 : 5, s.ramp[0]);
+        k.disc(H.x, H.y, t < 35 ? 6 : 4, s.ramp[t < 35 ? 5 : 2]);
+        stroke({ x: H.x - 7, y: H.y + 5 }, { x: H.x + 7, y: H.y - 5 }, s.ramp, 2, 4);
+      }
+      for (const hit of s.hits) {
+        const point = aim(s, hit);
+        if (!point) continue;
+        const T = k.P(point),
+          e = s.real(hit);
+        if (e >= 0 && e < 250) {
+          const q = e / 250,
+            length = 17 * (1 - q * 0.45);
+          const direction = s.pose.hand && s.pose.hand.x > point.x ? -1 : 1;
+          stroke(
+            { x: T.x - length * direction, y: T.y + length * 0.7 },
+            { x: T.x + length * direction, y: T.y - length * 0.7 },
+            s.ramp,
+            e < 60 ? 6 : 3,
+            e < 60 ? 5 : 3,
+          );
+          if (e < 140)
+            stroke(
+              { x: T.x - length * direction + 5, y: T.y + length * 0.7 },
+              { x: T.x + length * direction + 3, y: T.y - length * 0.7 + 5 },
+              s.ramp,
+              1,
+              4,
+            );
+        }
+        mark(s, hit, T, 'smite', 30, 9, 28);
+      }
+    },
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
