@@ -190,103 +190,158 @@
     },
   });
 
-  // Line: a five-foot strip ignites behind a fast sweeping front, then cracks into short dashes.
+  // Line: a bright front races down an outlined strip, which cools and splits into short dashes.
   FX.register('kind:line', {
     travel: 150,
     beats: (event, kit, travel) => beats(event, travel, 'beam', 105, 0.07),
     end,
-    ground(s) {
-      if (!s.area) return;
-      const t = s.c.t - k.CAST;
-      if (t < 0 || t >= 540) return;
-      const A = k.P(s.area),
-        L = radius(s),
-        dir = s.area.dir || 0;
-      const dx = Math.cos(dir),
-        dy = Math.sin(dir),
-        width = Math.max(2, Math.round(5 * units(s)));
-      const front = k.clamp(t / 150),
-        frame = Math.floor(t / 16);
-      const corners = [
-        [0, -width / 2],
-        [L, -width / 2],
-        [L, width / 2],
-        [0, width / 2],
-      ].map(([along, side]) => ({ x: dx * along - dy * side, y: dy * along + dx * side }));
-      const x0 = Math.floor(Math.min(...corners.map(p => p.x))) - 2;
-      const y0 = Math.floor(Math.min(...corners.map(p => p.y))) - 2;
-      const w = Math.ceil(Math.max(...corners.map(p => p.x)) - x0) + 3;
-      const h = Math.ceil(Math.max(...corners.map(p => p.y)) - y0) + 3;
-      const image = k.sprite(
-        `01:line:${L}:${dir}:${width}:${frame}:${seed(s)}:${colors(s.ramp)}`,
-        w,
-        h,
-        s.ramp,
-        set => {
-          const tick = frame * 16,
-            reach = k.clamp(tick / 144),
-            decay = k.clamp((tick - 150) / 390);
-          for (let y = 1; y < h - 1; y++)
-            for (let x = 1; x < w - 1; x++) {
-              const px = x + x0,
-                py = y + y0;
-              const along = px * dx + py * dy,
-                across = -px * dy + py * dx;
-              if (along < 0 || along > L * reach || Math.abs(across) > width / 2) continue;
-              const dash = Math.floor(along / 8);
-              if (decay > 0 && (dash % 4 === 0 || k.hash(dash, seed(s)) < decay)) continue;
-              const hot = L * reach - along < 7;
-              set(x, y, hot ? 5 : Math.abs(across) < width * 0.2 ? 3 : 2);
-            }
-        },
-      );
-      k.blit(image, A.x + x0, A.y + y0);
-      if (t < 180) {
-        const F = { x: A.x + dx * L * front, y: A.y + dy * L * front };
-        stroke(
-          { x: F.x - (dy * width) / 2, y: F.y + (dx * width) / 2 },
-          { x: F.x + (dy * width) / 2, y: F.y - (dx * width) / 2 },
-          s.ramp,
-          3,
-          5,
-        );
-      }
-    },
     air(s) {
+      const t = s.c.t - k.CAST;
+      if (s.area && t >= 0) {
+        const A = k.P(s.area),
+          L = s.area.feet * units(s),
+          dir = s.area.dir || 0;
+        const dx = Math.cos(dir),
+          dy = Math.sin(dir),
+          width = Math.max(2, (s.area.width || 5) * units(s));
+        const hit = s.hits[0],
+          e = hit ? s.real(hit) : t - 150;
+        // The front and trail share one raster, so the leading edge never detaches from its wake.
+        const sweep = Math.min(15, Math.floor(t / 10)),
+          phase = Math.max(0, Math.floor((e - 70) / 20));
+        const corners = [
+          [0, -width / 2],
+          [L, -width / 2],
+          [L, width / 2],
+          [0, width / 2],
+        ].map(([along, side]) => ({ x: dx * along - dy * side, y: dy * along + dx * side }));
+        const x0 = Math.floor(Math.min(...corners.map(p => p.x))) - 2,
+          y0 = Math.floor(Math.min(...corners.map(p => p.y))) - 2;
+        const w = Math.ceil(Math.max(...corners.map(p => p.x)) - x0) + 3,
+          h = Math.ceil(Math.max(...corners.map(p => p.y)) - y0) + 3;
+        if (L > 0 && e < 400) {
+          const image = k.sprite(
+            `01:line:${L}:${dir}:${width}:${sweep}:${phase}:${seed(s)}:${colors(s.ramp)}`,
+            w,
+            h,
+            s.ramp,
+            set => {
+              const reach = Math.min(L, Math.max(2, (L * sweep) / 15)),
+                breakup = k.clamp(phase / 16),
+                half = (width / 2) * (1 - breakup * 0.65),
+                spacing = Math.max(10, width * 1.25);
+              for (let y = 1; y < h - 1; y++)
+                for (let x = 1; x < w - 1; x++) {
+                  const px = x + x0,
+                    py = y + y0;
+                  const along = px * dx + py * dy,
+                    across = Math.abs(-px * dy + py * dx);
+                  if (along < 0 || along > reach || across > half) continue;
+                  const dash = Math.floor(along / spacing),
+                    local = along / spacing - dash;
+                  if (
+                    breakup > 0 &&
+                    (Math.abs(local - 0.5) > 0.5 - breakup * 0.3 ||
+                      k.hash(dash, seed(s)) < Math.max(0, (breakup - 0.5) * 2))
+                  )
+                    continue;
+                  const hot = phase === 0 && reach - along < Math.max(4, width * 0.45);
+                  set(
+                    x,
+                    y,
+                    hot
+                      ? across < half * 0.65
+                        ? 5
+                        : 4
+                      : Math.max(1, (across < half * 0.3 ? 4 : across < half * 0.7 ? 3 : 2) - Math.floor(breakup * 2)),
+                  );
+                }
+            },
+          );
+          k.blit(image, A.x + x0, A.y + y0);
+        }
+      }
       targetMarks(s, 'line');
     },
   });
 
-  // Cone: three widening particle bands fan out from the apex inside a 53-degree mouth.
+  // Cone: a solid four-band fan sweeps across the template, then shatters into drifting pixels.
   FX.register('kind:cone', {
-    travel: 160,
+    travel: 200,
     beats: (event, kit, travel) => beats(event, travel, 'hit', 110, 0.07),
     end,
     ground(s) {
       if (!s.area) return;
       const t = s.c.t - k.CAST;
-      if (t < 0 || t >= 540) return;
+      if (t < 0) return;
       const A = k.P(s.area),
-        L = radius(s),
-        dir = s.area.dir || 0;
-      for (let band = 0; band < 3; band++) {
-        const e = t - band * 34;
-        if (e < 0) continue;
-        const q = k.clamp(e / 165),
-          breakup = k.clamp((e - 185) / 230);
-        for (let i = 0; i < 19; i++) {
-          if (k.hash(i, seed(s), band) < breakup) continue;
-          const a = dir + (i / 18 - 0.5) * ((53 * Math.PI) / 180);
-          const r = L * q * (1 - band * 0.07);
-          const size = Math.max(2, Math.min(7, Math.round(2 + r * 0.07)));
-          const x = A.x + Math.cos(a) * r,
-            y = A.y + Math.sin(a) * r;
-          k.dot(x, y, s.ramp[0], size + 2);
-          k.dot(x, y, s.ramp[band === 0 ? 4 : band === 1 ? 3 : 2], size);
-        }
-      }
+        dir = s.area.dir || 0,
+        dx = Math.cos(dir),
+        dy = Math.sin(dir);
+      // Use the board's full 53-degree triangle, including both far corners, rather than an arc.
+      const points = k.outline(s.area, s.grid).map(p => {
+        const P = k.P(Array.isArray(p) ? { x: p[0], y: p[1] } : p);
+        return { x: P.x - A.x, y: P.y - A.y };
+      });
+      if (points.length !== 3) return;
+      const L = Math.max(...points.map(p => p.x * dx + p.y * dy));
+      if (L <= 0) return;
+      const hit = s.hits[0],
+        e = hit ? s.real(hit) : t - 200;
+      if (e >= 250) return;
+      const sweep = Math.min(10, Math.floor(t / 20)),
+        phase = Math.max(0, Math.floor((e - 70) / 20));
+      const x0 = Math.floor(Math.min(...points.map(p => p.x))) - 2,
+        y0 = Math.floor(Math.min(...points.map(p => p.y))) - 2;
+      const w = Math.ceil(Math.max(...points.map(p => p.x)) - x0) + 3,
+        h = Math.ceil(Math.max(...points.map(p => p.y)) - y0) + 3;
+      const geometry = points.map(p => `${p.x.toFixed(4)},${p.y.toFixed(4)}`).join(';');
+      const image = k.sprite(`01:cone:${geometry}:${sweep}:${phase}:${colors(s.ramp)}`, w, h, s.ramp, set => {
+        const reach = Math.min(L, Math.max(2, (L * sweep) / 10)),
+          breakup = k.clamp(phase / 9);
+        for (let y = 1; y < h - 1; y++)
+          for (let x = 1; x < w - 1; x++) {
+            const px = x + x0,
+              py = y + y0,
+              along = px * dx + py * dy;
+            if (along > reach || !inside(px, py, points)) continue;
+            // Whole tiles shrink into separate chips; the cached sprite outlines every fragment.
+            if (
+              breakup > 0 &&
+              (Math.abs((x % 8) - 3.5) > 3.5 * (1 - breakup) || Math.abs((y % 8) - 3.5) > 3.5 * (1 - breakup))
+            )
+              continue;
+            set(x, y, 1 + Math.min(3, Math.floor(k.clamp(along / reach) * 4)));
+          }
+      });
+      k.blit(image, A.x + x0, A.y + y0);
     },
     air(s) {
+      const hit = s.hits[0],
+        e = hit ? s.real(hit) - 70 : -1;
+      if (s.area && e >= 0 && e < 340) {
+        const points = polygon(s);
+        if (points.length === 3) {
+          const q = e / 340,
+            dir = s.area.dir || 0;
+          // Barycentric samples cover the whole fan; debris advances on real time through hitstop.
+          for (let i = 0; i < 40; i++) {
+            if (q > 0.6 + k.hash(i, seed(s), 3) * 0.4) continue;
+            const u = Math.sqrt(k.hash(i, seed(s), 1)),
+              v = k.hash(i, seed(s), 2),
+              drift = k.ease(q) * (5 + k.hash(i, seed(s), 4) * 12);
+            const x = (1 - u) * points[0].x + u * ((1 - v) * points[1].x + v * points[2].x) + Math.cos(dir) * drift,
+              y =
+                (1 - u) * points[0].y +
+                u * ((1 - v) * points[1].y + v * points[2].y) +
+                Math.sin(dir) * drift -
+                Math.sin(q * Math.PI) * 7;
+            const size = q < 0.3 ? 3 : q < 0.7 ? 2 : 1;
+            k.dot(x, y, s.ramp[0], size + 2);
+            k.dot(x, y, s.ramp[Math.max(1, 1 + Math.min(3, Math.floor(u * 4)) - Math.floor(q * 2))], size);
+          }
+        }
+      }
       targetMarks(s, 'cone');
     },
   });
