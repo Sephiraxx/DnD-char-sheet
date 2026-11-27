@@ -29,8 +29,48 @@ function serve() {
   return new Promise(ok => server.listen(0, '127.0.0.1', () => ok(server)));
 }
 const fixture = JSON.parse(fs.readFileSync(path.join(ROOT, 'test/fixtures/wizard-3.json'), 'utf8'));
+// Miniaturas de la party. Lyra y Bram usan las del paquete ya renderizado (assets/minis); Sera y Nim, las que el
+// tablero esculpe a partir de la apariencia.
+const packed = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/minis/index.json'), 'utf8'))
+  .filter(e => typeof e.appearance === 'string')
+  .map(e => JSON.parse(e.appearance));
+const MINIS = {
+  Lyra: packed.find(m => m.race === 'elf'),
+  Bram: packed.find(m => m.race === 'dwarf'),
+  Sera: {
+    race: 'human',
+    gender: 'woman',
+    build: 'athletic',
+    hair: 'braid',
+    hairColor: '#7a4a2a',
+    outfit: 'vestments',
+    neck: 'holy',
+    gear: 'hammer',
+    offhand: 'shield',
+    pose: 'ready',
+    cloth: '#d8d2c0',
+    accent: '#d9b46a',
+  },
+  Nim: {
+    race: 'halfling',
+    gender: 'man',
+    build: 'small',
+    hair: 'curls',
+    hairColor: '#3b2a20',
+    outfit: 'leathers',
+    headwear: 'hood',
+    headColor: '#2a3a34',
+    belt: 'pouch',
+    gear: 'dagger',
+    offhand: 'dagger',
+    pose: 'ready',
+    cloth: '#33443d',
+    accent: '#a8a8a8',
+  },
+};
 const sheet = (name, classId, race, hp) => ({
   ...fixture,
+  miniature: MINIS[name],
   name,
   classId,
   classSubclass: classId === 'wizard' ? fixture.classSubclass : '',

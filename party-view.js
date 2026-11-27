@@ -129,6 +129,32 @@
     };
   }
 
+  // Avatar de la tarjeta: el retrato de la ficha; si no tiene, la cara de su miniatura; si tampoco, la inicial.
+  const faces = new Map();
+  function miniFace(miniature) {
+    const M = root.Miniatures;
+    if (!miniature || !M?.drawFace || !root.MiniatureMesh || typeof document === 'undefined') return '';
+    const key = M.appearanceKey(miniature);
+    if (!faces.has(key)) {
+      if (faces.size >= 64) faces.delete(faces.keys().next().value);
+      let url = '';
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 96;
+        M.drawFace(canvas.getContext('2d'), miniature, 96);
+        url = canvas.toDataURL('image/png');
+      } catch {
+        url = '';
+      }
+      faces.set(key, url);
+    }
+    return faces.get(key);
+  }
+  function avatar(x) {
+    if (x.portrait) return `<img src="${x.portrait}" alt="">`;
+    const face = miniFace(x.miniature);
+    return face ? `<img class="mini-face" src="${face}" alt="">` : esc((x.name || '?').trim().charAt(0).toUpperCase());
+  }
   function hpClass(x) {
     if (x.hp === null || x.hp === undefined) return '';
     if (x.hp === 0) return 'down';
@@ -152,7 +178,7 @@
       x.hp === 0 ? `<span class="chip warn">Salvaciones: ${x.death.success}✓ ${x.death.failure}✗</span>` : '',
     ].join('');
     return `<article class="card party-card ${hpClass(x)} ${x.onTurn ? 'on-turn' : ''} ${mine ? 'mine' : ''}"${/^[a-z]+$/.test(x.cls || '') ? ` data-cls="${x.cls}"` : ''}${x.color ? ` style="--accent:${x.color}"` : ''}>
-      <div class="party-card-head"><div class="party-who"><span class="party-avatar" aria-hidden="true">${x.portrait ? `<img src="${x.portrait}" alt="">` : esc((x.name || '?').trim().charAt(0).toUpperCase())}</span><div><h3>${online ? '<span class="online-dot" title="Con la aplicación abierta"></span>' : ''}${esc(x.name)}${x.onTurn ? ' <span class="chip turn">En turno</span>' : ''}</h3><p class="small muted">${esc(x.line)}${x.race ? ' · ' + esc(x.race) : ''}${owner ? ' · ' + esc(owner) : ''}</p></div></div>
+      <div class="party-card-head"><div class="party-who"><span class="party-avatar" aria-hidden="true">${avatar(x)}</span><div><h3>${online ? '<span class="online-dot" title="Con la aplicación abierta"></span>' : ''}${esc(x.name)}${x.onTurn ? ' <span class="chip turn">En turno</span>' : ''}</h3><p class="small muted">${esc(x.line)}${x.race ? ' · ' + esc(x.race) : ''}${owner ? ' · ' + esc(owner) : ''}</p></div></div>
       <div class="party-ac" title="Clase de armadura"><b>${x.ac}</b><span>CA</span></div></div>
       <div class="party-hp"><div class="meter" aria-hidden="true"><span style="width:${pct}%"></span></div><p><b>${hpKnown ? x.hp : '—'}</b> / ${x.maxHP} PG${x.temp ? ` · +${x.temp} temp.` : ''}</p></div>
       <dl class="party-stats"><div><dt>Iniciativa</dt><dd>${sign(x.initiative)}</dd></div><div><dt>Percepción pasiva</dt><dd>${x.passive.perception}</dd></div><div><dt>Perspicacia pasiva</dt><dd>${x.passive.insight}</dd></div>${x.caster ? `<div><dt>CD de conjuros</dt><dd>${x.dc}</dd></div>` : `<div><dt>Velocidad</dt><dd>${x.speed}</dd></div>`}</dl>
@@ -345,6 +371,7 @@
       .join('')}</div>`;
   }
   root.PartyView = {
+    miniFace,
     pay,
     initiative,
     initiativeStrip,
