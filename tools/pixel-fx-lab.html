@@ -164,6 +164,8 @@
         same sculptures. Click a spell, or turn on slow motion to see the frames.
       </p>
       <div class="bar" id="spells"></div>
+      <div class="bar" id="fallbacks"><span class="label">Fallbacks</span></div>
+      <div class="bar" id="signature" hidden><span class="label">Own definitions</span></div>
       <div class="bar">
         <button id="slow" aria-pressed="false">Slow motion ×0.25</button>
         <button id="map" aria-pressed="false">Bright map</button>
@@ -472,6 +474,51 @@
           b.textContent = spell.label;
           b.addEventListener('click', () => fire(spell));
           bar.append(b);
+        }
+        // Archetype fallbacks (batches 01–02): one sample spell per archetype, with an area and an element that
+        // shows its damage-type ramp. Only archetypes that have a 'kind:' definition get a button.
+        const samples = [
+          ['projectile', 'ray-of-frost', 'frost'],
+          ['beam', 'witch-bolt', 'lightning'],
+          ['line', 'aganazzars-scorcher', 'fire'],
+          ['cone', 'fear', 'psíquico'],
+          ['sphere', 'cloudkill', 'veneno'],
+          ['column', 'flame-strike', 'radiante'],
+          ['cube', 'entangle', 'nature'],
+          ['wall', 'wall-of-fire', 'fire'],
+          ['strike', 'blight', 'necrótico'],
+          ['on-hit', 'thunderous-smite', 'trueno'],
+          ['aura-instant', 'word-of-radiance', 'radiante'],
+          ['aura-persistent', 'spirit-guardians', 'radiante'],
+          ['touch', 'shocking-grasp', 'lightning'],
+          ['buff', 'bless', 'magic'],
+          ['heal', 'cure', 'heal'],
+          ['summon', 'conjure-animals', 'nature'],
+          ['teleport', 'misty-step', 'magic'],
+          ['multi', 'chain-lightning', 'lightning', ['goblin', 'bugbear', 'orc']],
+          ['utility', 'arcane-eye', 'magic'],
+        ];
+        const registered = new Set(BoardPixelFX.ids);
+        const fallbackBar = document.getElementById('fallbacks');
+        for (const [kind, id, element, targets] of samples) {
+          if (!registered.has('kind:' + kind)) continue;
+          const spell = { label: kind, id, kind, element, level: 3, ...(targets ? { targets } : {}) };
+          const b = document.createElement('button');
+          b.textContent = kind;
+          b.title = `${id} (${element}) drawn with the kind:${kind} fallback`;
+          b.addEventListener('click', () => fire(spell));
+          fallbackBar.append(b);
+        }
+        // Spells with a definition of their own (batch 00 onwards), minus the reference spells above.
+        const signatureBar = document.getElementById('signature');
+        const reference = new Set(spells.map(s => s.id));
+        for (const id of [...registered].filter(id => !id.startsWith('kind:') && !reference.has(id)).sort()) {
+          const spell = { label: id, id, level: 3 };
+          const b = document.createElement('button');
+          b.textContent = id;
+          b.addEventListener('click', () => fire(spell));
+          signatureBar.append(b);
+          signatureBar.hidden = false;
         }
         const defeats = new Map();
         document
