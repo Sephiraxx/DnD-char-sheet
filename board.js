@@ -2577,9 +2577,31 @@
       }
     }
     // Línea de visión: lo que la party no tiene a la vista (opaco para jugadores, velado para el DM).
-    const bits = seen(!playerView());
-    const clearSight = playerView() && spellClouds.length ? seen(true) : null;
-    if (bits) {
+    const state = sightState(!playerView());
+    if (state && state.los && !(playerView() && spellClouds.length)) {
+      // Con paredes: la máscara suave, con penumbra y visión en la oscuridad.
+      const mask = visionMask(state);
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      if (playerView() && mask.grey) {
+        ctx.globalCompositeOperation = 'saturation';
+        ctx.drawImage(mask.grey, o.x, o.y, g.cols * c, g.rows * c);
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      ctx.globalAlpha = playerView() ? 1 : 0.5;
+      ctx.drawImage(mask.dark, o.x, o.y, g.cols * c, g.rows * c);
+      ctx.restore();
+      if (playerView() && S.img && !S.fogOn) {
+        ctx.fillStyle = '#05090b';
+        ctx.fillRect(-w, -h, w * 3, h + o.y);
+        ctx.fillRect(-w, o.y + g.rows * c, w * 3, h * 2);
+        ctx.fillRect(-w, 0, w + o.x, h);
+        ctx.fillRect(o.x + g.cols * c, 0, w * 2, h);
+      }
+    } else if (state) {
+      // Nubes de conjuro (Nube de niebla, Oscuridad…): casilla por casilla.
+      const bits = state.bits;
+      const clearSight = playerView() && spellClouds.length ? seen(true) : null;
       const solid = playerView(),
         pad = solid ? 0.5 : 0;
       ctx.fillStyle = solid ? '#05090b' : 'rgba(5,9,11,0.45)';
@@ -4412,8 +4434,8 @@
       return 0;
     }
   }
-  // Casillas que ve la party (null si el mapa no usa línea de visión).
   // Fichas que dan luz en este mapa: [{ x, y (centro, en casillas), range (casillas), feet }].
+  // La mitad del radio es luz brillante y el resto penumbra (antorcha: 20 + 20 pies).
   function lightSources() {
     return mapTokens()
       .filter(t => !t.hidden && BC.lightFeet(t.stage))
@@ -4425,18 +4447,46 @@
       }))
       .concat(BP ? BP.lights(S.props).map(l => ({ ...l, range: l.feet / S.grid.feet })) : []);
   }
+  // Luces de un mapa a oscuras: las de fichas y muebles, más la que lleva cada personaje («Luz que lleva la party»),
+  // salvo que su propia luz sea mayor.
+  function sceneLights() {
+    const v = S.grid.vision || {},
+      own = lightSources(),
+      carried = v.light
+        ? mapTokens()
+            .filter(t => t.kind === 'pc' && !t.hidden && BC.lightFeet(t.stage) < v.light)
+            .map(t => ({
+              x: t.x + (t.size || 1) / 2,
+              y: t.y + (t.size || 1) / 2,
+              feet: v.light,
+              range: v.light / S.grid.feet,
+            }))
+        : [];
+    return own.concat(carried).map(l => ({ ...l, dim: l.range, bright: l.range / 2 }));
+  }
+  // Quién mira: los personajes en el mapa. Con «cada jugador ve lo suyo», la pantalla de un jugador usa solo
+  // a sus personajes (si tiene alguno acá); el DM, la tele y la pantalla compartida ven lo de toda la party.
+  function viewerTokens() {
+    const pcs = mapTokens().filter(t => t.kind === 'pc' && !t.hidden);
+    if (!S.grid.vision?.own || S.isDM || TV || PLAYER_SCREEN) return pcs;
+    const mine = pcs.filter(t => myCharacters().includes(t.character_id));
+    return mine.length ? mine : pcs;
+  }
+  // Casillas que ve la party (null si el mapa no usa línea de visión).
   function seen(ignoreClouds = false) {
+    return sightState(ignoreClouds)?.bits || null;
+  }
+  function sightState(ignoreClouds = false) {
     const v = S.grid.vision || {};
     const clouds = ignoreClouds ? [] : spellClouds;
     if (!v.los && !clouds.length) return null;
-    const lights = v.los && v.dark ? lightSources() : [],
-      viewers = mapTokens()
-        .filter(t => t.kind === 'pc' && !t.hidden)
-        .map(t => ({
-          x: t.x + (t.size || 1) / 2,
-          y: t.y + (t.size || 1) / 2,
-          range: v.los && v.dark ? Math.max(v.light, darkvision(t), BC.lightFeet(t.stage)) / S.grid.feet : Infinity,
-        }));
+    const dark = !!(v.los && v.dark),
+      lights = dark ? sceneLights() : [],
+      viewers = viewerTokens().map(t => ({
+        x: t.x + (t.size || 1) / 2,
+        y: t.y + (t.size || 1) / 2,
+        range: dark ? darkvision(t) / S.grid.feet : Infinity,
+      }));
     const key =
       S.mapId +
       '|' +
@@ -4452,48 +4502,185 @@
       '|' +
       clouds.map(p => [p.x, p.y, p.r].join(',')).join(';');
     const sight = sightCache[Number(ignoreClouds)];
-    if (sight.key !== key || sight.terrain !== S.terrain || sight.walls !== S.walls)
+    if (sight.key !== key || sight.terrain !== S.terrain || sight.walls !== S.walls) {
+      const terrain = v.los ? S.terrain : '',
+        walls = v.los ? S.walls : [],
+        levels = dark ? BC.sightLevels(S.grid, terrain, walls, viewers, lights, clouds) : null;
       Object.assign(sight, {
         key,
         terrain: S.terrain,
         walls: S.walls,
-        bits: BC.sight(S.grid, v.los ? S.terrain : '', v.los ? S.walls : [], viewers, lights, clouds),
+        los: !!v.los,
+        dark,
+        viewers,
+        lights,
+        levels,
+        bits: levels ? levels.map(l => (l ? 1 : 0)) : BC.visibleCells(S.grid, terrain, walls, viewers, clouds),
+        mask: null,
       });
-    return sight.bits;
+    }
+    return sight;
   }
-  // Resplandor cálido alrededor de cada luz, solo sobre las casillas que realmente alumbra.
-  const glowCache = new Map();
+  // ---------- Máscara de visión: bordes suaves siguiendo las paredes ----------
+  // Se arma en coordenadas del mapa (unos píxeles por casilla) y solo cuando cambia lo que se ve.
+  // «dark» es la oscuridad que va encima del mapa: opaca donde no se ve, a medias en penumbra y nada con buena luz.
+  // «grey» marca lo que solo se ve con visión en la oscuridad, que se dibuja sin color.
+  const polyCache = { segs: null, map: new Map() };
+  function sightPolygon(p, range) {
+    const segs = targetingWalls();
+    if (polyCache.segs !== segs || polyCache.map.size > 200) Object.assign(polyCache, { segs, map: new Map() });
+    const key = `${p.x},${p.y},${Number.isFinite(range) ? range : 'all'}`;
+    let poly = polyCache.map.get(key);
+    if (!poly) {
+      const g = S.grid,
+        r = Number.isFinite(range) ? range + 1 : Infinity,
+        box = {
+          x0: Math.max(0, p.x - r),
+          y0: Math.max(0, p.y - r),
+          x1: Math.min(g.cols, p.x + r),
+          y1: Math.min(g.rows, p.y + r),
+        };
+      poly = BC.visibilityPolygon(p.x, p.y, segs, box);
+      polyCache.map.set(key, poly);
+    }
+    return poly;
+  }
+  const maskPool = new Map();
+  function maskLayer(name, w, h) {
+    let el = maskPool.get(name);
+    if (!el) maskPool.set(name, (el = document.createElement('canvas')));
+    if (el.width !== w || el.height !== h) Object.assign(el, { width: w, height: h });
+    const cx = el.getContext('2d');
+    cx.setTransform(1, 0, 0, 1, 0, 0);
+    cx.globalCompositeOperation = 'source-over';
+    cx.globalAlpha = 1;
+    cx.clearRect(0, 0, w, h);
+    return cx;
+  }
+  function visionMask(state) {
+    if (state.mask) return state.mask;
+    const g = S.grid,
+      res = Math.max(4, Math.min(24, Math.floor(1600 / Math.max(g.cols, g.rows)))),
+      W = g.cols * res,
+      H = g.rows * res;
+    // Un polígono, opcionalmente hasta un radio con el borde difuminado.
+    const fill = (cx, poly, at = null, r = Infinity) => {
+      if (poly.length < 3 || r <= 0) return;
+      cx.beginPath();
+      poly.forEach(([x, y], i) => (i ? cx.lineTo(x * res, y * res) : cx.moveTo(x * res, y * res)));
+      cx.closePath();
+      if (Number.isFinite(r)) {
+        const outer = (r + 0.75) * res,
+          gr = cx.createRadialGradient(at.x * res, at.y * res, 0, at.x * res, at.y * res, outer);
+        gr.addColorStop(0, '#000');
+        gr.addColorStop(Math.max(0, (r + 0.25) / (r + 0.75)), '#000');
+        gr.addColorStop(1, 'rgba(0,0,0,0)');
+        cx.fillStyle = gr;
+      } else cx.fillStyle = '#000';
+      cx.fill();
+    };
+    // Las casillas de muro o roca que se ven (su cara) se muestran enteras.
+    const solidCells = (cx, min) => {
+      cx.fillStyle = '#000';
+      for (let y = 0; y < g.rows; y++)
+        for (let x = 0; x < g.cols; x++) {
+          const i = y * g.cols + x;
+          if ((state.levels ? state.levels[i] : state.bits[i] ? 2 : 0) >= min && BC.terrainType(S.terrain[i]).blocks)
+            cx.fillRect(x * res, y * res, res, res);
+        }
+    };
+    const own = name => {
+      state[name] ||= document.createElement('canvas');
+      return state[name];
+    };
+    const darkEl = own('darkLayer');
+    if (darkEl.width !== W || darkEl.height !== H) Object.assign(darkEl, { width: W, height: H });
+    const dark = darkEl.getContext('2d');
+    dark.globalCompositeOperation = 'source-over';
+    dark.globalAlpha = 1;
+    dark.fillStyle = '#05090b';
+    dark.fillRect(0, 0, W, H);
+    const los = maskLayer('los', W, H);
+    for (const v of state.viewers) fill(los, sightPolygon(v, Infinity));
+    let grey = null;
+    if (!state.dark) {
+      dark.globalCompositeOperation = 'destination-out';
+      dark.drawImage(los.canvas, 0, 0);
+      solidCells(dark, 1);
+    } else {
+      const dim = maskLayer('dim', W, H),
+        bright = maskLayer('bright', W, H),
+        dv = maskLayer('dv', W, H),
+        work = maskLayer('work', W, H);
+      for (const l of state.lights) {
+        const poly = sightPolygon(l, l.dim);
+        fill(dim, poly, l, l.dim);
+        fill(bright, poly, l, l.bright);
+      }
+      for (const v of state.viewers) fill(dv, sightPolygon(v, Infinity), v, v.range);
+      // Visión en la oscuridad sin ninguna luz: en gris.
+      const greyEl = own('greyLayer');
+      if (greyEl.width !== W || greyEl.height !== H) Object.assign(greyEl, { width: W, height: H });
+      grey = greyEl.getContext('2d');
+      grey.globalCompositeOperation = 'source-over';
+      grey.clearRect(0, 0, W, H);
+      grey.drawImage(dv.canvas, 0, 0);
+      grey.globalCompositeOperation = 'destination-out';
+      grey.drawImage(dim.canvas, 0, 0);
+      grey.globalCompositeOperation = 'source-in';
+      grey.fillStyle = '#808080';
+      grey.fillRect(0, 0, W, H);
+      // Lo que se ve: alguna luz a la vista, o la visión en la oscuridad. Queda en penumbra.
+      work.drawImage(dim.canvas, 0, 0);
+      work.globalCompositeOperation = 'destination-in';
+      work.drawImage(los.canvas, 0, 0);
+      work.globalCompositeOperation = 'source-over';
+      work.drawImage(dv.canvas, 0, 0);
+      solidCells(work, 1);
+      dark.globalCompositeOperation = 'destination-out';
+      dark.globalAlpha = 0.58;
+      dark.drawImage(work.canvas, 0, 0);
+      // Bien iluminado: luz brillante a la vista, o penumbra al alcance de la visión en la oscuridad.
+      work.globalCompositeOperation = 'source-over';
+      work.clearRect(0, 0, W, H);
+      work.drawImage(bright.canvas, 0, 0);
+      work.globalCompositeOperation = 'destination-in';
+      work.drawImage(los.canvas, 0, 0);
+      dv.globalCompositeOperation = 'destination-in';
+      dv.drawImage(dim.canvas, 0, 0);
+      work.globalCompositeOperation = 'source-over';
+      work.drawImage(dv.canvas, 0, 0);
+      solidCells(work, 2);
+      dark.globalAlpha = 1;
+      dark.drawImage(work.canvas, 0, 0);
+    }
+    dark.globalCompositeOperation = 'source-over';
+    dark.globalAlpha = 1;
+    state.mask = { dark: darkEl, grey: grey && grey.canvas };
+    return state.mask;
+  }
+  // Resplandor cálido alrededor de cada luz, solo donde realmente alumbra: más fuerte en la luz brillante.
   function drawLights() {
-    const lights = lightSources();
+    const v = S.grid.vision || {},
+      lights = v.los && v.dark ? sceneLights() : lightSources();
     if (!lights.length) return;
     const c = cellPx(),
-      o = origin(),
-      g = S.grid;
-    if (glowCache.size > 60) glowCache.clear();
+      o = origin();
     for (const l of lights) {
-      const key = `${S.mapId}|${l.x},${l.y},${l.range}|${g.cols}x${g.rows}`;
-      let hit = glowCache.get(key);
-      if (!hit || hit.terrain !== S.terrain || hit.walls !== S.walls) {
-        hit = { terrain: S.terrain, walls: S.walls, bits: BC.visibleCells(g, S.terrain, S.walls, [l]) };
-        glowCache.set(key, hit);
-      }
-      const R = Math.ceil(l.range) + 1,
-        x0 = Math.max(0, Math.floor(l.x - R)),
-        x1 = Math.min(g.cols - 1, Math.ceil(l.x + R)),
-        y0 = Math.max(0, Math.floor(l.y - R)),
-        y1 = Math.min(g.rows - 1, Math.ceil(l.y + R));
+      const poly = sightPolygon(l, l.range);
+      if (poly.length < 3) continue;
       ctx.save();
       ctx.beginPath();
-      for (let y = y0; y <= y1; y++)
-        for (let x = x0; x <= x1; x++)
-          if (hit.bits[y * g.cols + x]) ctx.rect(o.x + x * c, o.y + y * c, c + 0.5, c + 0.5);
+      poly.forEach(([x, y], i) => (i ? ctx.lineTo(o.x + x * c, o.y + y * c) : ctx.moveTo(o.x + x * c, o.y + y * c)));
+      ctx.closePath();
       ctx.clip();
       const cx = o.x + l.x * c,
         cy = o.y + l.y * c,
         rad = (l.range + 0.5) * c,
         gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
       gr.addColorStop(0, 'rgba(255,214,130,0.42)');
-      gr.addColorStop(0.5, 'rgba(255,180,90,0.2)');
+      gr.addColorStop(0.45, 'rgba(255,190,100,0.26)');
+      gr.addColorStop(0.55, 'rgba(255,170,80,0.12)');
       gr.addColorStop(1, 'rgba(255,160,70,0)');
       ctx.globalCompositeOperation = 'lighter';
       ctx.fillStyle = gr;
@@ -6224,7 +6411,7 @@
         m.image_path
           ? `<p class="small">Hacé coincidir la cuadrícula con la del dibujo: primero el tamaño de la casilla, después el desfase. Se ve en vivo detrás de esta ventana.</p><div class="form-grid">${field('Tamaño de casilla (px)', 'size', +g.size.toFixed(2), 'number', 'min="8" max="1000" step="0.1" data-live')}${field('Desfase X (px)', 'ox', +g.ox.toFixed(1), 'number', 'step="0.5" data-live')}${field('Desfase Y (px)', 'oy', +g.oy.toFixed(1), 'number', 'step="0.5" data-live')}</div><div class="form-grid">${field('Columnas', 'cols', g.cols, 'number', 'min="1" max="200" data-live')}${field('Filas', 'rows', g.rows, 'number', 'min="1" max="200" data-live')}</div><div class="actions">${button('Calcular columnas y filas', 'grid-auto')}</div>`
           : `<div class="form-grid">${field('Columnas', 'cols', g.cols, 'number', 'min="1" max="200"')}${field('Filas', 'rows', g.rows, 'number', 'min="1" max="200"')}</div>`
-      }<div class="form-grid">${field('Pies por casilla', 'feet', g.feet, 'number', 'min="1" max="100"')}<label class="field">Color de la cuadrícula<input type="color" name="color" value="${esc(g.color)}" data-live></label>${field('Opacidad', 'opacity', g.opacity, 'range', 'min="0" max="1" step="0.05" data-live')}</div><label class="check"><input type="checkbox" name="show" ${g.show ? 'checked' : ''} data-live>Mostrar cuadrícula</label>${typeof Sound !== 'undefined' ? `<label class="field">Sonido de ambiente (lo oye toda la mesa)<select name="ambient">${Sound.AMBIENTS.map(([id, n]) => `<option value="${id}" ${id === g.ambient ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>` : ''}<fieldset class="skill-choice"><legend>Visión de los jugadores</legend><input type="hidden" name="visionForm" value="1"><label class="check"><input type="checkbox" name="los" ${g.vision.los ? 'checked' : ''}>Solo ven lo que sus personajes tienen a la vista (tapan los muros, rocas y puertas pintados y las paredes de la herramienta «Paredes»)</label><label class="check"><input type="checkbox" name="dark" ${g.vision.dark ? 'checked' : ''}>Mapa a oscuras: se ve hasta la luz que llevan o su visión en la oscuridad, y lo que alumbren las antorchas, faroles y fogatas que pongas</label>${field('Luz que lleva la party (pies)', 'light', g.vision.light, 'number', 'min="0" max="600" step="5"')}<p class="small muted">Se combina con la niebla manual. Como la niebla, se dibuja en el dispositivo de cada jugador.</p></fieldset>`,
+      }<div class="form-grid">${field('Pies por casilla', 'feet', g.feet, 'number', 'min="1" max="100"')}<label class="field">Color de la cuadrícula<input type="color" name="color" value="${esc(g.color)}" data-live></label>${field('Opacidad', 'opacity', g.opacity, 'range', 'min="0" max="1" step="0.05" data-live')}</div><label class="check"><input type="checkbox" name="show" ${g.show ? 'checked' : ''} data-live>Mostrar cuadrícula</label>${typeof Sound !== 'undefined' ? `<label class="field">Sonido de ambiente (lo oye toda la mesa)<select name="ambient">${Sound.AMBIENTS.map(([id, n]) => `<option value="${id}" ${id === g.ambient ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>` : ''}<fieldset class="skill-choice"><legend>Visión de los jugadores</legend><input type="hidden" name="visionForm" value="1"><label class="check"><input type="checkbox" name="los" ${g.vision.los ? 'checked' : ''}>Solo ven lo que sus personajes tienen a la vista (tapan los muros, rocas y puertas pintados y las paredes de la herramienta «Paredes»)</label><label class="check"><input type="checkbox" name="own" ${g.vision.own ? 'checked' : ''}>Cada jugador ve solo lo que ve su personaje (si no, toda la party comparte lo que ve)</label><label class="check"><input type="checkbox" name="dark" ${g.vision.dark ? 'checked' : ''}>Mapa a oscuras: se ve lo que alumbran las luces (la mitad del radio con luz brillante y el resto en penumbra) y, con visión en la oscuridad, la oscuridad cercana en gris</label>${field('Luz que lleva cada personaje (pies; 40 = antorcha)', 'light', g.vision.light, 'number', 'min="0" max="600" step="5"')}<p class="small muted">Se combina con la niebla manual. Como la niebla, se dibuja en el dispositivo de cada jugador.</p></fieldset>`,
       async fd => {
         const grid = readGrid(fd, g);
         // Cambiar columnas o filas reacomoda terreno y niebla.
@@ -6283,7 +6470,9 @@
       color: fd.get('color') || g.color,
       opacity: Number(fd.get('opacity') ?? g.opacity),
       show: fd.has('show'),
-      vision: fd.has('visionForm') ? { los: fd.has('los'), dark: fd.has('dark'), light: fd.get('light') } : g.vision,
+      vision: fd.has('visionForm')
+        ? { los: fd.has('los'), own: fd.has('own'), dark: fd.has('dark'), light: fd.get('light') }
+        : g.vision,
       ambient: fd.has('ambient') ? String(fd.get('ambient')) : g.ambient,
     });
   }
@@ -6351,7 +6540,7 @@
         ([, n, f]) => `<option value="${f}" ${f === cur ? 'selected' : ''}>${esc(n)} · ${f} pies</option>`,
       ).join(
         '',
-      )}</select></label>${field('O un radio a medida (pies)', 'custom', BC.LIGHTS.some(l => l[2] === cur) ? '' : cur || '', 'number', 'min="5" max="300" step="5"')}<p class="small">En un mapa a oscuras, los jugadores ven lo que esta luz alumbra si lo tienen a la vista. El radio cuenta la luz brillante más la tenue.</p>`,
+      )}</select></label>${field('O un radio a medida (pies)', 'custom', BC.LIGHTS.some(l => l[2] === cur) ? '' : cur || '', 'number', 'min="5" max="300" step="5"')}<p class="small">En un mapa a oscuras, los jugadores ven lo que esta luz alumbra si lo tienen a la vista. El radio cuenta la luz brillante más la penumbra: la mitad es luz brillante (antorcha: 20 + 20 pies).</p>`,
       async fd => {
         const feet = Math.max(0, Math.min(300, Math.round(Number(fd.get('custom')) || Number(fd.get('feet')) || 0)));
         const want = feet ? 'light:' + feet : null;
@@ -6792,5 +6981,9 @@
       dock();
     },
     _state: () => S, // para pruebas y depuración
+    _vision: () => {
+      const st = sightState(!playerView());
+      return st && { ...st, mask: st.los ? visionMask(st) : null };
+    },
   };
 })();

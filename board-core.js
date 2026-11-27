@@ -80,6 +80,7 @@
       // (se ve hasta la luz que lleva la party, o hasta la visión en la oscuridad de cada uno).
       vision: {
         los: g.vision?.los === true,
+        own: g.vision?.own === true,
         dark: g.vision?.dark === true,
         light: Math.max(0, Math.min(600, Math.round(Number(g.vision?.light ?? 40)) || 0)),
       },
@@ -841,15 +842,149 @@
   function sightBlockers(g, terrain = '', walls = []) {
     const segs = walls.filter(blocksSight).map(w => [w[0], w[1], w[2], w[3]]);
     const solid = (x, y) => inside(g, x, y) && !!terrainType(terrain[y * g.cols + x] || '.').blocks;
-    for (let y = 0; y < g.rows; y++)
-      for (let x = 0; x < g.cols; x++) {
-        if (!solid(x, y)) continue;
-        if (!solid(x, y - 1)) segs.push([x, y, x + 1, y]);
-        if (!solid(x, y + 1)) segs.push([x, y + 1, x + 1, y + 1]);
-        if (!solid(x - 1, y)) segs.push([x, y, x, y + 1]);
-        if (!solid(x + 1, y)) segs.push([x + 1, y, x + 1, y + 1]);
+    // Bordes entre una casilla sólida y una abierta, unidos en tramos largos (menos segmentos que recorrer).
+    for (let y = 0; y <= g.rows; y++) {
+      let start = -1;
+      for (let x = 0; x <= g.cols; x++) {
+        const edge = x < g.cols && solid(x, y - 1) !== solid(x, y);
+        if (edge && start < 0) start = x;
+        if (!edge && start >= 0) {
+          segs.push([start, y, x, y]);
+          start = -1;
+        }
       }
+    }
+    for (let x = 0; x <= g.cols; x++) {
+      let start = -1;
+      for (let y = 0; y <= g.rows; y++) {
+        const edge = y < g.rows && solid(x - 1, y) !== solid(x, y);
+        if (edge && start < 0) start = y;
+        if (!edge && start >= 0) {
+          segs.push([x, start, x, y]);
+          start = -1;
+        }
+      }
+    }
     return segs;
+  }
+  // ---------- Polígono de visión ----------
+  // Lo que se ve desde (ox, oy) dentro de la caja { x0, y0, x1, y1 }, con los segmentos que tapan:
+  // rayos hacia cada extremo (y apenas a los costados), cortados en la primera pared. Devuelve [[x, y], …] en orden.
+  function clipSegment(s, b) {
+    let [ax, ay, bx, by] = s,
+      t0 = 0,
+      t1 = 1;
+    const dx = bx - ax,
+      dy = by - ay;
+    for (const [p, q] of [
+      [-dx, ax - b.x0],
+      [dx, b.x1 - ax],
+      [-dy, ay - b.y0],
+      [dy, b.y1 - ay],
+    ]) {
+      if (Math.abs(p) < 1e-12) {
+        if (q < 0) return null;
+      } else {
+        const r = q / p;
+        if (p < 0) t0 = Math.max(t0, r);
+        else t1 = Math.min(t1, r);
+        if (t0 > t1) return null;
+      }
+    }
+    return [ax + dx * t0, ay + dy * t0, ax + dx * t1, ay + dy * t1];
+  }
+  function visibilityPolygon(ox, oy, segs, box) {
+    const b = { x0: box.x0, y0: box.y0, x1: box.x1, y1: box.y1 };
+    if (!(b.x1 > b.x0 && b.y1 > b.y0)) return [];
+    const list = [];
+    for (const s of segs) {
+      const c = clipSegment(s, b);
+      if (c && (c[0] !== c[2] || c[1] !== c[3])) list.push(c);
+    }
+    list.push([b.x0, b.y0, b.x1, b.y0], [b.x1, b.y0, b.x1, b.y1], [b.x1, b.y1, b.x0, b.y1], [b.x0, b.y1, b.x0, b.y0]);
+    // Cubetas: cada rayo recorre solo las cercanas, en orden, hasta chocar.
+    const size = Math.max(1, Math.max(b.x1 - b.x0, b.y1 - b.y0) / 48),
+      nx = Math.max(1, Math.ceil((b.x1 - b.x0) / size)),
+      ny = Math.max(1, Math.ceil((b.y1 - b.y0) / size)),
+      buckets = Array.from({ length: nx * ny }, () => []);
+    const col = x => Math.max(0, Math.min(nx - 1, Math.floor((x - b.x0) / size))),
+      row = y => Math.max(0, Math.min(ny - 1, Math.floor((y - b.y0) / size)));
+    list.forEach((s, i) => {
+      for (let y = row(Math.min(s[1], s[3])); y <= row(Math.max(s[1], s[3])); y++)
+        for (let x = col(Math.min(s[0], s[2])); x <= col(Math.max(s[0], s[2])); x++) buckets[y * nx + x].push(i);
+    });
+    const stamp = new Int32Array(list.length).fill(-1);
+    let ray = 0;
+    function cast(dx, dy) {
+      ray++;
+      let best = Infinity,
+        cx = col(ox),
+        cy = row(oy);
+      const stepX = dx > 0 ? 1 : -1,
+        stepY = dy > 0 ? 1 : -1,
+        nextX = Math.abs(dx) < 1e-12 ? Infinity : (b.x0 + (cx + (dx > 0 ? 1 : 0)) * size - ox) / dx,
+        nextY = Math.abs(dy) < 1e-12 ? Infinity : (b.y0 + (cy + (dy > 0 ? 1 : 0)) * size - oy) / dy,
+        stepTX = Math.abs(dx) < 1e-12 ? Infinity : size / Math.abs(dx),
+        stepTY = Math.abs(dy) < 1e-12 ? Infinity : size / Math.abs(dy);
+      let tx = nextX,
+        ty = nextY;
+      for (;;) {
+        for (const i of buckets[cy * nx + cx]) {
+          if (stamp[i] === ray) continue;
+          stamp[i] = ray;
+          const [ax, ay, bx, by] = list[i],
+            sx = bx - ax,
+            sy = by - ay,
+            den = dx * sy - dy * sx;
+          if (Math.abs(den) < 1e-12) continue;
+          const t = ((ax - ox) * sy - (ay - oy) * sx) / den,
+            u = ((ax - ox) * dy - (ay - oy) * dx) / den;
+          if (t > 1e-9 && u >= -1e-9 && u <= 1 + 1e-9 && t < best) best = t;
+        }
+        const exit = Math.min(tx, ty);
+        if (best <= exit) break;
+        if (tx < ty) {
+          cx += stepX;
+          tx += stepTX;
+        } else {
+          cy += stepY;
+          ty += stepTY;
+        }
+        if (cx < 0 || cy < 0 || cx >= nx || cy >= ny) break;
+      }
+      return Number.isFinite(best) ? best : 0;
+    }
+    const angles = [];
+    for (const s of list)
+      for (const [x, y] of [
+        [s[0], s[1]],
+        [s[2], s[3]],
+      ]) {
+        const a = Math.atan2(y - oy, x - ox);
+        angles.push(a - 1e-4, a, a + 1e-4);
+      }
+    angles.sort((p, q) => p - q);
+    const out = [];
+    let last = NaN;
+    for (const a of angles) {
+      if (a - last < 1e-7) continue;
+      last = a;
+      const dx = Math.cos(a),
+        dy = Math.sin(a),
+        t = cast(dx, dy);
+      out.push([ox + dx * t, oy + dy * t]);
+    }
+    return out;
+  }
+  // ¿El punto (x, y) cae dentro del polígono? (para pruebas y para decidir qué se dibuja)
+  function inPolygon(poly, x, y) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [xi, yi] = poly[i],
+        [xj, yj] = poly[j];
+      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
   }
   // Casillas visibles desde los observadores [{ x, y (centro, en casillas), range (casillas; Infinity = sin límite) }].
   // Un muro se ve (su cara), pero no lo que hay detrás.
@@ -929,21 +1064,61 @@
     const m = /^light:(\d{1,3})$/.exec(String(stage || ''));
     return m ? Math.max(0, Math.min(300, Number(m[1]))) : 0;
   }
-  // Lo que se ve en un mapa a oscuras: lo que cada observador tiene a su alcance, más lo que alguna luz
-  // ilumina y el observador tiene a la vista (por lejos que esté). viewers y lights: [{ x, y, range }] en casillas.
+  // Luz en un mapa a oscuras, casilla por casilla: 0 no se ve, 1 penumbra, 2 bien iluminada.
+  // viewers: [{ x, y, range }] con range = visión en la oscuridad (casillas); lights: [{ x, y, bright, dim }].
+  // Se ve lo que alguna luz alumbra y el observador tiene a la vista (por lejos que esté), y lo que está
+  // al alcance de su visión en la oscuridad: la oscuridad como penumbra y la penumbra como luz brillante.
+  function sightLevels(g, terrain, walls, viewers, lights, clouds = []) {
+    const n = g.cols * g.rows,
+      out = new Uint8Array(n);
+    if (!viewers.length) return out;
+    const dark = visibleCells(g, terrain, walls, viewers, clouds),
+      far = lights.length
+        ? visibleCells(
+            g,
+            terrain,
+            walls,
+            viewers.map(v => ({ ...v, range: Infinity })),
+            clouds,
+          )
+        : null,
+      dim = lights.length
+        ? visibleCells(
+            g,
+            terrain,
+            walls,
+            lights.map(l => ({ x: l.x, y: l.y, range: l.dim })),
+          )
+        : null,
+      bright = lights.some(l => l.bright > 0)
+        ? visibleCells(
+            g,
+            terrain,
+            walls,
+            lights.filter(l => l.bright > 0).map(l => ({ x: l.x, y: l.y, range: l.bright })),
+          )
+        : null;
+    for (let i = 0; i < n; i++) {
+      const lit = dim?.[i] ? (bright?.[i] ? 2 : 1) : 0;
+      let level = far?.[i] ? lit : 0;
+      if (dark[i]) level = Math.max(level, lit ? 2 : 1);
+      out[i] = level;
+    }
+    return out;
+  }
+  // Lo que se ve en un mapa a oscuras (0/1). Las luces [{ x, y, range }] alumbran la mitad de su radio con luz
+  // brillante y el resto con penumbra, como una antorcha (20 + 20 pies).
   function sight(g, terrain, walls, viewers, lights, clouds = []) {
-    const near = visibleCells(g, terrain, walls, viewers, clouds);
-    if (!lights.length || !viewers.length) return near;
-    const lit = visibleCells(g, terrain, walls, lights),
-      far = visibleCells(
-        g,
-        terrain,
-        walls,
-        viewers.map(v => ({ ...v, range: Infinity })),
-        clouds,
-      );
-    for (let i = 0; i < near.length; i++) if (!near[i] && lit[i] && far[i]) near[i] = 1;
-    return near;
+    if (!lights.length) return visibleCells(g, terrain, walls, viewers, clouds);
+    const levels = sightLevels(
+      g,
+      terrain,
+      walls,
+      viewers,
+      lights.map(l => ({ x: l.x, y: l.y, dim: l.range, bright: l.range / 2 })),
+      clouds,
+    );
+    return levels.map(v => (v ? 1 : 0));
   }
   // Distancia en pies contando la altura (misma regla que las diagonales: vale el tramo más largo).
   const distance3d = (a, b, feetPerSquare = 5) =>
@@ -953,6 +1128,9 @@
     LIGHTS,
     lightFeet,
     sight,
+    sightLevels,
+    visibilityPolygon,
+    inPolygon,
     SHAPES,
     templateCells,
     templateOutline,

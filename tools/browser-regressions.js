@@ -191,6 +191,24 @@ async function wallsAndDoors(browser, base, errors) {
   await drag(player, [5.5, 3.5], [7.5, 3.5]);
   await player.waitForFunction(() => Board._state().tokens[0].x === 7);
   check('Paredes: por la puerta abierta se pasa', store.tokens[0].x === 7);
+  // A oscuras, con 20 pies de luz propia y la visión en la oscuridad del elfo (60 pies): cerca, luz brillante;
+  // más lejos, penumbra; detrás de la pared, nada. Se lee la capa de oscuridad que va encima del mapa.
+  const darkness = await player.evaluate(() => {
+    Board._state().grid.vision = { los: true, dark: true, light: 20 };
+    const { mask } = Board._vision(),
+      res = mask.dark.width / Board._state().grid.cols,
+      cx = mask.dark.getContext('2d');
+    return [
+      [7.5, 3.5],
+      [11.5, 7.5],
+      [1.5, 7.5],
+    ].map(([x, y]) => cx.getImageData(Math.floor(x * res), Math.floor(y * res), 1, 1).data[3]);
+  });
+  check(
+    'Luz: brillante al lado, penumbra lejos (visión en la oscuridad) y oscuridad total detrás de la pared',
+    darkness[0] < 20 && darkness[1] > 60 && darkness[1] < 160 && darkness[2] > 240,
+    darkness.join(),
+  );
   await context.close();
 }
 

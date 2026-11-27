@@ -558,3 +558,56 @@ test('movimiento: una pared o una puerta cerrada cortan el camino; una abierta, 
   assert.ok(B.wallOnPath(stub, down, 1));
   assert.equal(B.wallOnPath(stub, down, 2), null);
 });
+
+test('polígono de visión: una pared tapa lo de atrás, la caja limita y se ve por la abertura', () => {
+  const box = { x0: 0, y0: 0, x1: 10, y1: 10 };
+  const open = B.visibilityPolygon(2, 5, [], box);
+  assert.ok(B.inPolygon(open, 9, 9) && B.inPolygon(open, 0.5, 0.5));
+  assert.ok(!B.inPolygon(open, 11, 5), 'fuera de la caja no');
+  // Pared en x=5 con una abertura entre y=4 y y=6.
+  const walls = [
+    [5, 0, 5, 4],
+    [5, 6, 5, 10],
+  ];
+  const poly = B.visibilityPolygon(2, 5, walls, box);
+  assert.ok(B.inPolygon(poly, 4, 1), 'de este lado se ve todo');
+  assert.ok(B.inPolygon(poly, 8, 5), 'por la abertura, de frente');
+  assert.ok(!B.inPolygon(poly, 8, 1), 'detrás de la pared, no');
+  assert.ok(!B.inPolygon(poly, 9, 9.5));
+  // El borde del cono que pasa por la abertura sale de la punta de la pared, no de una casilla.
+  assert.ok(B.inPolygon(poly, 8, 5 + (6 - 5) * (6 / 3) - 0.1));
+  assert.ok(!B.inPolygon(poly, 8, 5 + (6 - 5) * (6 / 3) + 0.1));
+  // Muchas paredes: el resultado sigue siendo correcto con las cubetas.
+  const many = [];
+  for (let i = 0; i < 400; i++)
+    many.push([20 + (i % 20), 1 + Math.floor(i / 20), 20.5 + (i % 20), 1 + Math.floor(i / 20)]);
+  const far = B.visibilityPolygon(2, 5, [...many, [5, 0, 5, 4], [5, 6, 5, 50]], { x0: 0, y0: 0, x1: 50, y1: 50 });
+  assert.ok(B.inPolygon(far, 15, 5) && !B.inPolygon(far, 15, 30));
+});
+
+test('bordes de muros pintados: tramos largos en vez de uno por casilla', () => {
+  const grid = B.normGrid({ cols: 6, rows: 3 });
+  const segs = B.sightBlockers(grid, B.cells(grid, '......' + '.####.' + '......'));
+  assert.equal(segs.length, 4);
+  assert.deepEqual(segs.map(s => s.join()).sort(), ['1,1,1,2', '1,1,5,1', '1,2,5,2', '5,1,5,2']);
+});
+
+test('niveles de luz: brillante cerca de la antorcha, penumbra después; la visión en la oscuridad sube un nivel', () => {
+  const grid = B.normGrid({ cols: 30, rows: 3 });
+  const torch = [{ x: 20.5, y: 1.5, bright: 4, dim: 8 }];
+  const at = (levels, x) => levels[1 * 30 + x];
+  const human = B.sightLevels(grid, '', [], [{ x: 2.5, y: 1.5, range: 0 }], torch);
+  assert.equal(at(human, 21), 2);
+  assert.equal(at(human, 26), 1);
+  assert.equal(at(human, 29), 0);
+  assert.equal(at(human, 8), 0, 'la oscuridad entre medio no se ve');
+  // Visión en la oscuridad de 30 pies (6 casillas): la oscuridad cercana como penumbra.
+  const elf = B.sightLevels(grid, '', [], [{ x: 2.5, y: 1.5, range: 6 }], torch);
+  assert.equal(at(elf, 6), 1);
+  assert.equal(at(elf, 10), 0);
+  const close = B.sightLevels(grid, '', [], [{ x: 22.5, y: 1.5, range: 6 }], torch);
+  assert.equal(at(close, 26), 2, 'la penumbra al alcance de la visión en la oscuridad se ve como luz brillante');
+  // Sin luces, solo la visión en la oscuridad.
+  assert.equal(at(B.sightLevels(grid, '', [], [{ x: 2.5, y: 1.5, range: 6 }], []), 4), 1);
+  assert.equal(B.sightLevels(grid, '', [], [], torch).some(Boolean), false);
+});
