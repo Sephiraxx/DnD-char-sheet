@@ -39,6 +39,203 @@ const check = (name, ok, detail = '') => {
   console.log(`${ok ? 'ok  ' : 'FALLA'} ${name}${detail && !ok ? ' — ' + detail : ''}`);
 };
 
+// Paredes dibujadas: el DM traza una pared con una puerta en el tablero suelto y un jugador, en otra pestaña,
+// no la atraviesa ni ve detrás hasta abrir la puerta desde al lado. Las dos pestañas comparten un tablero en memoria.
+async function wallsAndDoors(browser, base, errors) {
+  const store = {
+    board: { campaign_id: 'cripta', map_id: 'map' },
+    maps: [
+      {
+        id: 'map',
+        name: 'Cripta',
+        sort: 0,
+        grid: { cols: 12, rows: 8, vision: { los: true } },
+        terrain: { cells: 'f'.repeat(96), walls: [] },
+        fog: { on: false },
+      },
+    ],
+    tokens: [{ id: 't1', map_id: 'map', kind: 'pc', character_id: 'c1', name: 'Lyra', x: 2, y: 3, size: 1 }],
+  };
+  const party = {
+    campaign: { id: 'cripta', name: 'Cripta', dm_id: 'dm', settings: {} },
+    characters: [{ id: 'c1', owner_id: 'p1', name: 'Lyra', data: fixture }],
+    combatants: [],
+    members: [],
+    secrets: [],
+    encounter: null,
+  };
+  const pages = {};
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: 'block' });
+  await context.exposeFunction('wallsBoard', () => structuredClone(store));
+  await context.exposeFunction('wallsParty', () => structuredClone(party));
+  await context.exposeFunction('wallsSaveMap', (row, id) => {
+    const map = store.maps.find(m => m.id === id);
+    Object.assign(map, structuredClone(row));
+    for (const page of Object.values(pages))
+      page
+        .evaluate(m => window.boardChanged('maps', { eventType: 'UPDATE', new: m }), structuredClone(map))
+        .catch(() => {});
+    return structuredClone(map);
+  });
+  await context.exposeFunction('wallsPose', changes =>
+    changes.map(c =>
+      structuredClone(
+        Object.assign(
+          store.tokens.find(t => t.id === c.id),
+          c.patch,
+        ),
+      ),
+    ),
+  );
+  await context.exposeFunction('wallsSend', (from, msg) => {
+    for (const [who, page] of Object.entries(pages))
+      if (who !== from) page.evaluate(m => window.boardMessage(m), msg).catch(() => {});
+  });
+  const open = async who => {
+    const page = await context.newPage();
+    page.on('pageerror', e => errors.push(`Paredes (${who}): ${e.message}`));
+    await page.route('**/config.js', route =>
+      route.fulfill({ contentType: 'application/javascript', body: 'window.CLOUD_CONFIG = {};' }),
+    );
+    await page.route('**/cloud.js', route =>
+      route.fulfill({
+        contentType: 'application/javascript',
+        body:
+          fs.readFileSync(path.join(ROOT, 'cloud.js'), 'utf8') +
+          `
+        Object.assign(Cloud, {
+          enabled: true,
+          user: async () => ({ id: '${who}' }),
+          party: async () => wallsParty(),
+          board: async () => wallsBoard(),
+          subscribe: async () => () => {},
+          subscribeBoard: async (_, handler, receive) => {
+            window.boardChanged = handler;
+            window.boardMessage = receive;
+            return { send: m => wallsSend('${who}', m), close() {} };
+          },
+          saveMap: async (_, row, id) => wallsSaveMap(row, id),
+          poseTokens: async (_, map, changes) => wallsPose(changes),
+          updateToken: async (id, patch) => wallsPose([{ id, patch }]),
+          addTokens: async () => [],
+          preparedEncounters: async () => [],
+          spellZones: async () => [],
+          hiddenTurnsReady: async () => true,
+        });`,
+      }),
+    );
+    await page.goto(base + 'board.html#cripta');
+    await page.waitForFunction(() => window.Board?._state().mapId === 'map' && !!window.boardMessage);
+    return (pages[who] = page);
+  };
+  const dm = await open('dm'),
+    player = await open('p1');
+  // Punto de la pantalla en (x, y) casillas.
+  const at = (page, x, y) =>
+    page.evaluate(
+      ([x, y]) => {
+        const S = Board._state(),
+          r = document.querySelector('#board').getBoundingClientRect(),
+          c = Miniatures.boardCell * S.view.s;
+        return { x: r.left + S.view.x + x * c, y: r.top + S.view.y + y * c };
+      },
+      [x, y],
+    );
+  const tap = async (page, x, y) => {
+    const p = await at(page, x, y);
+    await page.mouse.click(p.x, p.y);
+  };
+  const drag = async (page, [x0, y0], [x1, y1]) => {
+    const a = await at(page, x0, y0),
+      b = await at(page, x1, y1);
+    await page.mouse.move(a.x, a.y);
+    await page.mouse.down();
+    await page.mouse.move(b.x, b.y, { steps: 10 });
+    await page.mouse.up();
+  };
+  const sees = (x, y) =>
+    player.evaluate(
+      ([x, y]) => {
+        const S = Board._state(),
+          me = S.tokens[0];
+        return BoardCore.sight(S.grid, S.terrain, S.walls, [{ x: me.x + 0.5, y: me.y + 0.5, range: Infinity }], [])[
+          y * S.grid.cols + x
+        ];
+      },
+      [x, y],
+    );
+  await dm.locator('[data-action=bd-tool][data-tool=walls]').click();
+  await tap(dm, 6, 0);
+  await tap(dm, 6, 8);
+  await tap(dm, 6, 8);
+  await dm.locator('[data-action=bd-wall-mode][data-v=door]').click();
+  await drag(dm, [6, 3], [6, 4]);
+  await player.waitForFunction(() => Board._state().walls.length === 3);
+  check(
+    'Paredes: el DM traza una pared y la puerta dibujada encima la corta',
+    JSON.stringify(store.maps[0].terrain.walls) === '[[6,0,6,3,0],[6,4,6,8,0],[6,3,6,4,1]]',
+    JSON.stringify(store.maps[0].terrain.walls),
+  );
+  check('Paredes: el jugador no ve detrás de la puerta cerrada', (await sees(9, 3)) === 0);
+  await drag(player, [2.5, 3.5], [8.5, 1.5]);
+  await player.locator('#toast').filter({ hasText: 'pared' }).waitFor();
+  check('Paredes: el jugador no atraviesa la pared arrastrando', store.tokens[0].x === 2);
+  await drag(player, [2.5, 3.5], [5.5, 3.5]);
+  await player.waitForFunction(() => Board._state().tokens[0].x === 5);
+  await tap(player, 6, 3.5);
+  await player.waitForFunction(() => Board._state().walls.some(w => w[4] === 2));
+  check(
+    'Paredes: desde al lado, el jugador abre la puerta (la guarda la pantalla del DM) y ve a través',
+    store.maps[0].terrain.walls.some(w => w.join() === '6,3,6,4,2') && (await sees(9, 3)) === 1,
+  );
+  await drag(player, [5.5, 3.5], [7.5, 3.5]);
+  await player.waitForFunction(() => Board._state().tokens[0].x === 7);
+  check('Paredes: por la puerta abierta se pasa', store.tokens[0].x === 7);
+  // A oscuras, con 20 pies de luz propia y la visión en la oscuridad del elfo (60 pies): cerca, luz brillante;
+  // más lejos, penumbra; detrás de la pared, nada. Se lee la capa de oscuridad que va encima del mapa.
+  const darkness = await player.evaluate(() => {
+    Board._state().grid.vision = { los: true, dark: true, light: 20 };
+    const { mask } = Board._vision(),
+      { win } = mask,
+      cx = mask.dark.getContext('2d');
+    return [
+      [7.5, 3.5],
+      [11.5, 7.5],
+      [1.5, 7.5],
+    ].map(
+      ([x, y]) => cx.getImageData(Math.floor((x - win.x0) * win.res), Math.floor((y - win.y0) * win.res), 1, 1).data[3],
+    );
+  });
+  check(
+    'Luz: brillante al lado, penumbra lejos (visión en la oscuridad) y oscuridad total detrás de la pared',
+    darkness[0] < 20 && darkness[1] > 60 && darkness[1] < 160 && darkness[2] > 240,
+    darkness.join(),
+  );
+  // Luz del mapa: el DM pinta una zona oscura y pone una luz fija; queda guardado en el mapa.
+  await dm.locator('[data-action=bd-tool][data-tool=light]').click();
+  await dm.locator('[data-action=bd-light-mode][data-v=n]').click();
+  await tap(dm, 10.5, 6.5);
+  await dm.locator('[data-action=bd-light-mode][data-v=place]').click();
+  await tap(dm, 3, 6);
+  await dm.waitForFunction(() => !Object.keys(Board._state().pending).length);
+  const terrain = store.maps[0].terrain;
+  check(
+    'Luz: el DM pinta una zona oscura y pone una luz fija, y el mapa las guarda',
+    terrain.ambient[6 * 12 + 10] === 'n' && JSON.stringify(terrain.lights) === '[[3,6,40]]',
+    JSON.stringify({ ambient: terrain.ambient, lights: terrain.lights }),
+  );
+  // Lo explorado: con la opción, la pantalla del jugador recuerda lo que vio.
+  await player.evaluate(() => {
+    Board._state().grid.vision = { los: true, memory: true };
+    Board._vision();
+  });
+  await player.waitForFunction(() =>
+    Object.keys(localStorage).some(k => k.startsWith('dnd-board-explored-cripta-map')),
+  );
+  check('Lo explorado: la pantalla del jugador lo guarda en el dispositivo', true);
+  await context.close();
+}
+
 async function main() {
   let chromium;
   try {
@@ -1241,6 +1438,7 @@ async function main() {
     await display.close();
     await device.close();
     await dm.close();
+    await wallsAndDoors(browser, base, errors);
     check('Sin errores de JavaScript', !errors.length, errors.join(' | '));
   } finally {
     await browser.close();
