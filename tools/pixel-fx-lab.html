@@ -492,6 +492,15 @@
               area,
               point: area ? { x: area.x, y: area.y } : null,
             };
+            // Lasting spells: stay on the board for lingerMs after the cast (the board keeps them while the
+            // effect or concentration lasts). Spiritual Weapon also gets one simulated attack.
+            if (spell.lingerMs) event.lingerUntil = vnow + spell.lingerMs;
+            if (spell.id === 'spiritual-weapon' && spell.lingerMs) {
+              const at = vnow + Math.min(spell.lingerMs - 900, 1800);
+              event.swing = { at, point: { x: 10.3, y: 4.4 - 0.62 } };
+              event.attackImpact = { at: at + 260, point: { x: 10.3, y: 4.4 - 0.62 }, span: 1 };
+            }
+            if (spell.id === 'misty-step') event.teleport = { from: { x: 2.5, y: 4.6 }, to: { x: 5.5, y: 2.6 } };
             BoardInk.prepare(event.id, event.kind);
             board.events = [event];
           }
@@ -626,7 +635,8 @@
           const spellPoses = [];
           board.events = board.events.filter(event => {
             const p = BoardSpellFX.phase(event, now, false);
-            if (p.done && p.decal >= 1) return false;
+            const linger = event.lingerUntil ? Math.max(0, Math.min(1, (event.lingerUntil + 500 - now) / 500)) : 0;
+            if (p.done && p.decal >= 1 && !linger) return false;
             const hand = poses.get('caster');
             const targets = event.targets.map(id => poses.get(id)).filter(Boolean);
             spellPoses.push({
@@ -636,7 +646,10 @@
               area: event.area,
               target: event.area ? event.point : targets[0],
               targets,
-              linger: 0,
+              linger,
+              // The board fades its obscuring layer in after the impact (Fog Cloud and friends).
+              fogAlpha: p.hit ? Math.min(1, p.elapsed / 450) * (linger || (p.done ? 0 : 1)) : 0,
+              swing: event.swing,
               allies: new Set(),
               top: 0,
               rowY: 0,
@@ -653,6 +666,7 @@
             const budget = BoardSpellFX.beginFrame();
             for (const pose of spellPoses)
               if (which === 'ground') BoardSpellFX.drawGround(ctx, pose.event, pose, now, false, grid, budget);
+              else if (which === 'fog') BoardSpellFX.drawFog(ctx, pose, now, false, grid, false);
               else BoardSpellFX.drawAir(ctx, pose.event, pose, now, false, grid, budget);
             ctx.restore();
           };
@@ -691,6 +705,7 @@
             BoardFigureMotion.dust(ctx, x, y, pose.dust, CELL / 32, tok.id.length);
           }
           layer('air');
+          layer('fog');
           for (const e of board.events) {
             const f = BoardSpellFX.flash(e, now);
             if (!f) continue;

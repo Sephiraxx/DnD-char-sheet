@@ -889,6 +889,8 @@
     const a = pose.area,
       alpha = pose.fogAlpha;
     if (!a || !alpha) return;
+    if (pixel(pose.event) && root.BoardPixelFX.lingers(pose.event, 'fog'))
+      return root.BoardPixelFX.drawFog(ctx, pose.event, pose, now, grid, dm);
     const r = a.feet / grid.feet;
     ctx.save();
     if (
@@ -943,7 +945,7 @@
   function drawGround(ctx, event, pose, now, reduced, grid, budget) {
     if (pixel(event)) {
       const done = phase(event, now, reduced).done;
-      const loops = root.BoardPixelFX.lingers(event);
+      const loops = root.BoardPixelFX.lingers(event, 'ground');
       if (!done || event.id === 'fireball' || (loops && pose.linger))
         root.BoardPixelFX.drawGround(ctx, event, pose, now, grid);
       // Zones and walls without a pixel loop keep today's lingering look.
@@ -1192,13 +1194,15 @@
   }
   function drawAir(ctx, event, pose, now, reduced, grid, budget) {
     const p = phase(event, now, reduced);
+    // A pixel definition replaces all of the spell's art, including what stays on the board.
+    if (pixel(event)) {
+      if (!p.done || (pose.linger && root.BoardPixelFX.lingers(event, 'air')))
+        root.BoardPixelFX.drawAir(ctx, event, pose, now, grid);
+      return;
+    }
     if (event.id === 'spiritual-weapon') drawWeapon(ctx, pose, p, now, reduced);
     if (event.id === 'wall-of-fire') fireWall(ctx, pose, p, reduced, grid, true);
     if (p.done) return;
-    if (pixel(event)) {
-      root.BoardPixelFX.drawAir(ctx, event, pose, now, grid);
-      return;
-    }
     const colors = colorFor(event.id, event.element, event.school),
       a = pose.area;
     const targets = pose.targets.length ? pose.targets : pose.target ? [{ ...pose.target, span: 1 }] : [];
