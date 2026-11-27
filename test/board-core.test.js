@@ -649,3 +649,26 @@ test('importa Universal VTT: las luces del archivo quedan como luces fijas', () 
   });
   assert.deepEqual(m.lights, [[2, 4, 30]]);
 });
+
+test('visión precalculada: al abrir una puerta se reutiliza lo que no la ve, con el mismo resultado', () => {
+  const grid = B.normGrid({ cols: 30, rows: 10 });
+  const base = [
+    [10, 0, 10, 4, 0],
+    [10, 5, 10, 10, 0],
+    [20, 0, 20, 10, 0],
+  ];
+  const shut = [...base, [10, 4, 10, 5, B.WALL.door]],
+    open = [...base, [10, 4, 10, 5, B.WALL.open]];
+  const near = { x: 5.5, y: 4.5 },
+    far = { x: 25.5, y: 4.5 };
+  const before = B.sightContext(grid, '', shut);
+  before.visible(near.x, near.y, Infinity);
+  before.visible(far.x, far.y, Infinity);
+  const after = B.sightContext(grid, '', open, before);
+  assert.ok(after.polys.has('25.5,4.5,all'), 'el del otro cuarto se conserva');
+  assert.ok(!after.polys.has('5.5,4.5,all'), 'el que veía la puerta se recalcula');
+  const fresh = B.sightContext(grid, '', open);
+  for (const p of [near, far])
+    assert.deepEqual(Array.from(after.visible(p.x, p.y, Infinity)), Array.from(fresh.visible(p.x, p.y, Infinity)));
+  assert.equal(after.visible(near.x, near.y, Infinity)[4 * 30 + 15], 1, 'por la puerta abierta se ve');
+});

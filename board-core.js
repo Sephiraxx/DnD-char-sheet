@@ -1005,7 +1005,160 @@
       return Math.hypot(from.x + dx * at - x, from.y + dy * at - y) < r;
     });
   }
-  function visibleCells(g, terrain, walls, viewers, clouds = []) {
+  // Con nubes de conjuro (que no son segmentos), casilla por casilla con rayos; si no, con polígonos y caché.
+  function visibleCells(g, terrain, walls, viewers, clouds = [], context = null) {
+    if (clouds.length) return rayCells(g, terrain, walls, viewers, clouds);
+    const c = context || sightContext(g, terrain, walls),
+      out = new Uint8Array(g.cols * g.rows);
+    for (const v of viewers) orInto(out, c.visible(v.x, v.y, v.range));
+    return out;
+  }
+  const orInto = (out, src) => {
+    for (let i = 0; i < out.length; i++) if (src[i]) out[i] = 1;
+    return out;
+  };
+  // ---------- Visión precalculada de un mapa ----------
+  // Guarda los segmentos que tapan y, por cada fuente (un personaje, una luz) y alcance, su polígono y las casillas
+  // que ve. Al moverse una ficha solo se recalcula esa: las demás salen de la caché.
+  // previous (opcional): el contexto anterior del mismo mapa. Si cambiaron pocas paredes (una puerta que se abre),
+  // se conservan los polígonos que no llegan a ninguna de ellas.
+  function sightContext(g, terrain = '', walls = [], previous = null) {
+    const n = g.cols * g.rows,
+      t = cells(g, terrain),
+      segs = sightBlockers(g, t, walls),
+      solid = new Uint8Array(n),
+      solidRows = new Uint8Array(g.rows);
+    for (let i = 0; i < n; i++)
+      if (terrainType(t[i]).blocks) {
+        solid[i] = 1;
+        solidRows[Math.floor(i / g.cols)] = 1;
+      }
+    const polys = new Map(), // clave → { poly, box: [x0, y0, x1, y1] }
+      rasters = new Map(); // clave → { out, poly: clave del polígono }
+    const keyOf = (x, y, r) => `${x},${y},${Number.isFinite(r) ? r : 'all'}`;
+    if (previous && previous.grid.cols === g.cols && previous.grid.rows === g.rows) {
+      const segKey = q => q.map(v => Math.round(v * 100)).join(','),
+        before = new Set(previous.segs.map(segKey)),
+        after = new Set(segs.map(segKey)),
+        changed = [...previous.segs.filter(q => !after.has(segKey(q))), ...segs.filter(q => !before.has(segKey(q)))];
+      if (changed.length <= 200) {
+        const touches = b =>
+          changed.some(
+            q =>
+              Math.max(q[0], q[2]) >= b[0] - 0.05 &&
+              Math.min(q[0], q[2]) <= b[2] + 0.05 &&
+              Math.max(q[1], q[3]) >= b[1] - 0.05 &&
+              Math.min(q[1], q[3]) <= b[3] + 0.05,
+          );
+        for (const [key, entry] of previous.polys) if (!touches(entry.box)) polys.set(key, entry);
+        for (const [key, entry] of previous.rasters) if (polys.has(entry.poly)) rasters.set(key, entry);
+      }
+    }
+    // Polígono hasta el alcance (con una casilla de margen); sin alcance, todo el mapa.
+    function polygon(x, y, range = Infinity) {
+      const key = keyOf(x, y, range);
+      let entry = polys.get(key);
+      if (!entry) {
+        if (polys.size > 400) {
+          polys.clear();
+          rasters.clear();
+        }
+        const r = Number.isFinite(range) ? range + 1 : Infinity;
+        const poly = visibilityPolygon(x, y, segs, {
+          x0: Math.max(0, x - r),
+          y0: Math.max(0, y - r),
+          x1: Math.min(g.cols, x + r),
+          y1: Math.min(g.rows, y + r),
+        });
+        const box = [Infinity, Infinity, -Infinity, -Infinity];
+        for (const [px, py] of poly) {
+          box[0] = Math.min(box[0], px);
+          box[1] = Math.min(box[1], py);
+          box[2] = Math.max(box[2], px);
+          box[3] = Math.max(box[3], py);
+        }
+        polys.set(key, (entry = { poly, box }));
+      }
+      return entry.poly;
+    }
+    // Casillas que se ven desde (x, y) hasta `range`, usando el polígono de alcance `box` (el de todo el mapa para
+    // los personajes, que lo necesitan igual para ver luces lejanas). Misma regla que con rayos: una casilla abierta
+    // se ve si se ve su centro; un muro, si se ve alguna de sus caras.
+    function visible(x, y, range = Infinity, box = range) {
+      const key = keyOf(x, y, range) + '|' + (Number.isFinite(box) ? box : 'all'),
+        cached = rasters.get(key);
+      if (cached) return cached.out;
+      if (rasters.size > 400) rasters.clear();
+      const out = new Uint8Array(n);
+      rasters.set(key, { out, poly: keyOf(x, y, box) });
+      if (range < 0) return out;
+      const poly = polygon(x, y, box),
+        r = Number.isFinite(range) ? range : Infinity,
+        y0 = Math.max(0, Number.isFinite(r) ? Math.floor(y - r - 1) : 0),
+        y1 = Math.min(g.rows - 1, Number.isFinite(r) ? Math.ceil(y + r + 1) : g.rows - 1);
+      if (poly.length < 3) return out;
+      // Cruces del borde del polígono con cada línea horizontal pedida.
+      const lines = [];
+      for (let yy = y0; yy <= y1; yy++) {
+        lines.push(yy + 0.5);
+        if (solidRows[yy]) lines.push(yy - 0.01, yy + 1.01);
+      }
+      const hits = new Map(lines.map(l => [l, []]));
+      const sorted = [...lines].sort((a, b) => a - b);
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const [ax, ay] = poly[j],
+          [bx, by] = poly[i];
+        if (ay === by) continue;
+        const lo = Math.min(ay, by),
+          hi = Math.max(ay, by);
+        // Primera línea >= lo (búsqueda binaria) y todas las que caen en [lo, hi).
+        let a = 0,
+          b = sorted.length;
+        while (a < b) {
+          const m = (a + b) >> 1;
+          if (sorted[m] < lo) a = m + 1;
+          else b = m;
+        }
+        for (let k = a; k < sorted.length && sorted[k] < hi; k++) {
+          const sy = sorted[k];
+          hits.get(sy).push(ax + ((sy - ay) * (bx - ax)) / (by - ay));
+        }
+      }
+      for (const list of hits.values()) list.sort((p, q) => p - q);
+      const inside = (sy, px) => {
+        const list = hits.get(sy);
+        let a = 0,
+          b = list.length;
+        while (a < b) {
+          const m = (a + b) >> 1;
+          if (list[m] < px) a = m + 1;
+          else b = m;
+        }
+        return (a & 1) === 1;
+      };
+      const reach = r + 0.5;
+      for (let yy = y0; yy <= y1; yy++) {
+        const cy = yy + 0.5,
+          dy = cy - y,
+          span = Number.isFinite(reach) ? Math.sqrt(Math.max(0, reach * reach - dy * dy)) : Infinity;
+        if (Math.abs(dy) > reach) continue;
+        const x0 = Math.max(0, Math.floor(x - span - 0.5)),
+          x1 = Math.min(g.cols - 1, Math.ceil(x + span));
+        for (let xx = x0; xx <= x1; xx++) {
+          const cx = xx + 0.5,
+            i = yy * g.cols + xx;
+          if (Math.hypot(cx - x, dy) > reach) continue;
+          if (!solid[i]) {
+            if (inside(cy, cx)) out[i] = 1;
+          } else if (inside(cy, xx - 0.01) || inside(cy, xx + 1.01) || inside(yy - 0.01, cx) || inside(yy + 1.01, cx))
+            out[i] = 1;
+        }
+      }
+      return out;
+    }
+    return { grid: g, terrain, walls, segs, polys, rasters, polygon, visible };
+  }
+  function rayCells(g, terrain, walls, viewers, clouds = []) {
     const vis = new Uint8Array(g.cols * g.rows),
       segs = sightBlockers(g, terrain, walls);
     for (const v of viewers) {
@@ -1117,37 +1270,54 @@
   // Se ve lo que alguna luz alumbra y el observador tiene a la vista (por lejos que esté), y lo que está
   // al alcance de su visión en la oscuridad: la oscuridad como penumbra y la penumbra como luz brillante.
   // ambient (opcional): la luz que ya tiene cada casilla (zonas pintadas), 0 a 2.
-  function sightLevels(g, terrain, walls, viewers, lights, clouds = [], ambient = null) {
+  // context (opcional): un sightContext del mismo mapa, para no recalcular lo que no se movió.
+  function sightLevels(g, terrain, walls, viewers, lights, clouds = [], ambient = null, context = null) {
     const n = g.cols * g.rows,
       out = new Uint8Array(n);
     if (!viewers.length) return out;
-    const dark = visibleCells(g, terrain, walls, viewers, clouds),
-      far =
-        lights.length || ambient?.some(Boolean)
-          ? visibleCells(
-              g,
-              terrain,
-              walls,
-              viewers.map(v => ({ ...v, range: Infinity })),
-              clouds,
-            )
-          : null,
+    const needFar = lights.length || ambient?.some(Boolean);
+    let dark, far, dim, bright;
+    if (clouds.length) {
+      dark = rayCells(g, terrain, walls, viewers, clouds);
+      far = needFar
+        ? rayCells(
+            g,
+            terrain,
+            walls,
+            viewers.map(v => ({ ...v, range: Infinity })),
+            clouds,
+          )
+        : null;
       dim = lights.length
-        ? visibleCells(
+        ? rayCells(
             g,
             terrain,
             walls,
             lights.map(l => ({ x: l.x, y: l.y, range: l.dim })),
           )
-        : null,
+        : null;
       bright = lights.some(l => l.bright > 0)
-        ? visibleCells(
+        ? rayCells(
             g,
             terrain,
             walls,
             lights.filter(l => l.bright > 0).map(l => ({ x: l.x, y: l.y, range: l.bright })),
           )
         : null;
+    } else {
+      // Los personajes usan el polígono de todo el mapa; las luces, el de su alcance.
+      const c = context || sightContext(g, terrain, walls);
+      dark = new Uint8Array(n);
+      for (const v of viewers) orInto(dark, c.visible(v.x, v.y, v.range, Infinity));
+      far = needFar ? new Uint8Array(n) : null;
+      if (far) for (const v of viewers) orInto(far, c.visible(v.x, v.y, Infinity));
+      dim = lights.length ? new Uint8Array(n) : null;
+      bright = lights.some(l => l.bright > 0) ? new Uint8Array(n) : null;
+      for (const l of lights) {
+        orInto(dim, c.visible(l.x, l.y, l.dim));
+        if (l.bright > 0) orInto(bright, c.visible(l.x, l.y, l.bright, l.dim));
+      }
+    }
     for (let i = 0; i < n; i++) {
       const lit = Math.max(dim?.[i] ? (bright?.[i] ? 2 : 1) : 0, ambient?.[i] || 0);
       let level = far?.[i] ? lit : 0;
@@ -1186,6 +1356,7 @@
     ambientLevels,
     sight,
     sightLevels,
+    sightContext,
     visibilityPolygon,
     inPolygon,
     SHAPES,

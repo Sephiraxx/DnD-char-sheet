@@ -947,17 +947,21 @@
   } catch {}
   const reduceEffects = () => fxPrefs.reduced || reducedMotion.matches;
   const reactionSeconds = () => Math.min(60, Math.max(3, Number(fxPrefs.reactionSeconds) || 10));
-  let wallCache = {};
-  function targetingWalls() {
-    if (wallCache.grid !== S.grid || wallCache.terrain !== S.terrain || wallCache.walls !== S.walls)
-      wallCache = {
-        grid: S.grid,
-        terrain: S.terrain,
-        walls: S.walls,
-        value: BC.sightBlockers(S.grid, S.terrain, S.walls),
-      };
-    return wallCache.value;
+  // Visión precalculada del mapa (segmentos que tapan, polígonos y casillas por fuente). Se reutiliza mientras no
+  // cambien el terreno, las paredes ni el tamaño, aunque el mapa se vuelva a cargar (por ejemplo, al pintar niebla).
+  const sightCtxCache = { refs: [], key: '', value: null };
+  function sightCtx() {
+    const c = sightCtxCache,
+      refs = [S.grid, S.terrain, S.walls];
+    if (!c.value || refs.some((r, i) => r !== c.refs[i])) {
+      const key = `${S.grid.cols}x${S.grid.rows}|${S.terrain}|${JSON.stringify(S.walls)}`;
+      if (!c.value || key !== c.key)
+        Object.assign(c, { key, value: BC.sightContext(S.grid, S.terrain, S.walls, c.value) });
+      c.refs = refs;
+    }
+    return c.value;
   }
+  const targetingWalls = () => sightCtx().segs;
   const burstSpreads = new Set([
     'fireball',
     'fog-cloud',
@@ -2607,11 +2611,11 @@
       ctx.imageSmoothingEnabled = true;
       if (playerView() && mask.grey) {
         ctx.globalCompositeOperation = 'saturation';
-        ctx.drawImage(mask.grey, o.x, o.y, g.cols * c, g.rows * c);
+        drawWindowLayer(mask.grey, mask.win);
         ctx.globalCompositeOperation = 'source-over';
       }
       ctx.globalAlpha = playerView() ? 1 : 0.5;
-      ctx.drawImage(mask.dark, o.x, o.y, g.cols * c, g.rows * c);
+      drawWindowLayer(mask.dark, mask.win);
       ctx.restore();
       if (playerView() && S.img && !S.fogOn) {
         ctx.fillStyle = '#05090b';
@@ -4537,6 +4541,8 @@
       '|' +
       clouds.map(p => [p.x, p.y, p.r].join(',')).join(';');
     const sight = sightCache[Number(ignoreClouds)];
+    // Mientras el DM pinta terreno o zonas de luz con el pincel, se sigue mostrando lo anterior: se recalcula al soltar.
+    if (sight.bits && S.drag?.brush && ['paint', 'light'].includes(S.tool) && sight.mapId === S.mapId) return sight;
     if (
       sight.key !== key ||
       sight.terrain !== S.terrain ||
@@ -4546,9 +4552,11 @@
       const terrain = v.los ? S.terrain : '',
         walls = v.los ? S.walls : [],
         ambient = dark && BC.ambientMatters(S.ambient, !!v.dark) ? BC.ambientLevels(S.grid, S.ambient, !!v.dark) : null,
-        levels = dark ? BC.sightLevels(S.grid, terrain, walls, viewers, lights, clouds, ambient) : null;
+        context = v.los ? sightCtx() : null,
+        levels = dark ? BC.sightLevels(S.grid, terrain, walls, viewers, lights, clouds, ambient, context) : null;
       Object.assign(sight, {
         key,
+        mapId: S.mapId,
         terrain: S.terrain,
         walls: S.walls,
         ambientCells: S.ambient,
@@ -4558,7 +4566,7 @@
         viewers,
         lights,
         levels,
-        bits: levels ? levels.map(l => (l ? 1 : 0)) : BC.visibleCells(S.grid, terrain, walls, viewers, clouds),
+        bits: levels ? levels.map(l => (l ? 1 : 0)) : BC.visibleCells(S.grid, terrain, walls, viewers, clouds, context),
         mask: null,
       });
       if (!ignoreClouds || !clouds.length) remember(sight.bits);
@@ -4623,26 +4631,7 @@
   // Se arma en coordenadas del mapa (unos píxeles por casilla) y solo cuando cambia lo que se ve.
   // «dark» es la oscuridad que va encima del mapa: opaca donde no se ve, a medias en penumbra y nada con buena luz.
   // «grey» marca lo que solo se ve con visión en la oscuridad, que se dibuja sin color.
-  const polyCache = { segs: null, map: new Map() };
-  function sightPolygon(p, range) {
-    const segs = targetingWalls();
-    if (polyCache.segs !== segs || polyCache.map.size > 200) Object.assign(polyCache, { segs, map: new Map() });
-    const key = `${p.x},${p.y},${Number.isFinite(range) ? range : 'all'}`;
-    let poly = polyCache.map.get(key);
-    if (!poly) {
-      const g = S.grid,
-        r = Number.isFinite(range) ? range + 1 : Infinity,
-        box = {
-          x0: Math.max(0, p.x - r),
-          y0: Math.max(0, p.y - r),
-          x1: Math.min(g.cols, p.x + r),
-          y1: Math.min(g.rows, p.y + r),
-        };
-      poly = BC.visibilityPolygon(p.x, p.y, segs, box);
-      polyCache.map.set(key, poly);
-    }
-    return poly;
-  }
+  const sightPolygon = (p, range) => sightCtx().polygon(p.x, p.y, range);
   const maskPool = new Map();
   function maskLayer(name, w, h) {
     let el = maskPool.get(name);
@@ -4655,21 +4644,65 @@
     cx.clearRect(0, 0, w, h);
     return cx;
   }
-  function visionMask(state) {
-    if (state.mask) return state.mask;
+  // ---------- Ventana de las capas de luz ----------
+  // Las capas se arman solo para lo que se ve en pantalla, con un margen, a una resolución parecida a la de la
+  // pantalla: hasta 24 px por casilla y unos 900.000 px en total. Acercada, la sombra sale nítida; alejada, la capa
+  // cubre todo el mapa con menos detalle. Se rehace al salir de la ventana o al acercar bastante la cámara.
+  const MASK_BUDGET = 900000;
+  function screenCells() {
     const g = S.grid,
-      res = Math.max(4, Math.min(24, Math.floor(1600 / Math.max(g.cols, g.rows)))),
-      W = g.cols * res,
-      H = g.rows * res;
+      a = toCellF(toWorld(0, 0)),
+      b = toCellF(toWorld(canvas?.clientWidth || 0, canvas?.clientHeight || 0)),
+      clamp = (v, max) => Math.max(0, Math.min(max, v));
+    return {
+      x0: clamp(Math.floor(a.x), g.cols),
+      y0: clamp(Math.floor(a.y), g.rows),
+      x1: clamp(Math.ceil(b.x), g.cols),
+      y1: clamp(Math.ceil(b.y), g.rows),
+      want: cellPx() * S.view.s * (window.devicePixelRatio || 1),
+    };
+  }
+  function newWindow() {
+    const g = S.grid,
+      sc = screenCells(),
+      mx = Math.ceil((sc.x1 - sc.x0) / 2) + 2,
+      my = Math.ceil((sc.y1 - sc.y0) / 2) + 2,
+      x0 = Math.max(0, sc.x0 - mx),
+      y0 = Math.max(0, sc.y0 - my),
+      x1 = Math.min(g.cols, Math.max(x0 + 1, sc.x1 + mx)),
+      y1 = Math.min(g.rows, Math.max(y0 + 1, sc.y1 + my)),
+      maxRes = Math.max(2, Math.min(24, Math.floor(Math.sqrt(MASK_BUDGET / ((x1 - x0) * (y1 - y0)))))),
+      res = Math.max(2, Math.min(maxRes, Math.ceil(sc.want)));
+    return { map: S.mapId, cols: g.cols, rows: g.rows, x0, y0, x1, y1, res, W: (x1 - x0) * res, H: (y1 - y0) * res };
+  }
+  function windowFits(win) {
+    if (!win || win.map !== S.mapId || win.cols !== S.grid.cols || win.rows !== S.grid.rows) return false;
+    const sc = screenCells();
+    if (sc.x0 < win.x0 || sc.y0 < win.y0 || sc.x1 > win.x1 || sc.y1 > win.y1) return false;
+    return newWindow().res < win.res * 1.5;
+  }
+  // Dibuja una capa de ventana sobre el mapa.
+  function drawWindowLayer(layer, win) {
+    const c = cellPx(),
+      o = origin();
+    ctx.drawImage(layer, o.x + win.x0 * c, o.y + win.y0 * c, (win.x1 - win.x0) * c, (win.y1 - win.y0) * c);
+  }
+  function visionMask(state) {
+    if (state.mask && windowFits(state.mask.win)) return state.mask;
+    const g = S.grid,
+      win = newWindow(),
+      { res, W, H } = win,
+      ox = win.x0 * res,
+      oy = win.y0 * res;
     // Un polígono, opcionalmente hasta un radio con el borde difuminado.
     const fill = (cx, poly, at = null, r = Infinity) => {
       if (poly.length < 3 || r <= 0) return;
       cx.beginPath();
-      poly.forEach(([x, y], i) => (i ? cx.lineTo(x * res, y * res) : cx.moveTo(x * res, y * res)));
+      poly.forEach(([x, y], i) => (i ? cx.lineTo(x * res - ox, y * res - oy) : cx.moveTo(x * res - ox, y * res - oy)));
       cx.closePath();
       if (Number.isFinite(r)) {
         const outer = (r + 0.75) * res,
-          gr = cx.createRadialGradient(at.x * res, at.y * res, 0, at.x * res, at.y * res, outer);
+          gr = cx.createRadialGradient(at.x * res - ox, at.y * res - oy, 0, at.x * res - ox, at.y * res - oy, outer);
         gr.addColorStop(0, '#000');
         gr.addColorStop(Math.max(0, (r + 0.25) / (r + 0.75)), '#000');
         gr.addColorStop(1, 'rgba(0,0,0,0)');
@@ -4677,39 +4710,29 @@
       } else cx.fillStyle = '#000';
       cx.fill();
     };
-    // Casillas que cumplen `keep`, pintadas por tramos de fila.
-    const cellRuns = (cx, keep) => {
-      cx.fillStyle = '#000';
-      for (let y = 0; y < g.rows; y++) {
-        let start = -1;
-        for (let x = 0; x <= g.cols; x++) {
-          const on = x < g.cols && keep(y * g.cols + x);
-          if (on && start < 0) start = x;
-          if (!on && start >= 0) {
-            cx.fillRect(start * res, y * res, (x - start) * res, res);
-            start = -1;
-          }
-        }
-      }
-    };
-    // Lo mismo, con el borde difuminado: se arma en una capa aparte y se pasa entera, sin costuras entre filas.
+    // Casillas que cumplen `keep`, con el borde suave: una imagen de un píxel por casilla, agrandada con suavizado.
+    const cw = win.x1 - win.x0,
+      ch = win.y1 - win.y0;
     const softCells = (cx, keep, alpha = 1) => {
-      const layer = maskLayer('cells', W, H);
-      cellRuns(layer, keep);
+      const layer = maskLayer('cells', cw, ch),
+        img = layer.createImageData(cw, ch);
+      for (let y = 0; y < ch; y++)
+        for (let x = 0; x < cw; x++) if (keep((y + win.y0) * g.cols + x + win.x0)) img.data[(y * cw + x) * 4 + 3] = 255;
+      layer.putImageData(img, 0, 0);
       cx.save();
       cx.globalAlpha = alpha;
-      if ('filter' in cx) cx.filter = `blur(${Math.max(1, res * 0.35)}px)`;
-      cx.drawImage(layer.canvas, 0, 0);
+      cx.imageSmoothingEnabled = true;
+      cx.drawImage(layer.canvas, 0, 0, W, H);
       cx.restore();
     };
     // Las casillas de muro o roca que se ven (su cara) se muestran enteras.
     const solidCells = (cx, min) => {
       cx.fillStyle = '#000';
-      for (let y = 0; y < g.rows; y++)
-        for (let x = 0; x < g.cols; x++) {
+      for (let y = win.y0; y < win.y1; y++)
+        for (let x = win.x0; x < win.x1; x++) {
           const i = y * g.cols + x;
           if ((state.levels ? state.levels[i] : state.bits[i] ? 2 : 0) >= min && BC.terrainType(S.terrain[i]).blocks)
-            cx.fillRect(x * res, y * res, res, res);
+            cx.fillRect(x * res - ox, y * res - oy, res, res);
         }
     };
     const own = name => {
@@ -4743,6 +4766,14 @@
         dv = maskLayer('dv', W, H),
         work = maskLayer('work', W, H);
       for (const l of state.lights) {
+        // Una luz lejos de la ventana no suma nada.
+        if (
+          l.x + l.dim + 1 < win.x0 ||
+          l.x - l.dim - 1 > win.x1 ||
+          l.y + l.dim + 1 < win.y0 ||
+          l.y - l.dim - 1 > win.y1
+        )
+          continue;
         const poly = sightPolygon(l, l.dim);
         fill(dim, poly, l, l.dim);
         fill(bright, poly, l, l.bright);
@@ -4791,37 +4822,68 @@
     }
     dark.globalCompositeOperation = 'source-over';
     dark.globalAlpha = 1;
-    state.mask = { dark: darkEl, grey: grey && grey.canvas };
+    state.mask = { dark: darkEl, grey: grey && grey.canvas, win };
     return state.mask;
   }
   // Resplandor cálido alrededor de cada luz, solo donde realmente alumbra: más fuerte en la luz brillante.
+  // Se arma en una capa de ventana y solo se rehace cuando cambian las luces, las paredes o la ventana. Cada luz se
+  // pinta con «el más claro gana»: varias antorchas juntas no se suman hasta quedar blancas.
+  const glow = { key: '', ctx: null, layer: null, win: null };
   function drawLights() {
     const v = S.grid.vision || {},
       lights = v.los && v.dark ? sceneLights() : lightSources();
     if (!lights.length) return;
-    const c = cellPx(),
-      o = origin();
-    for (const l of lights) {
-      const poly = sightPolygon(l, l.range);
-      if (poly.length < 3) continue;
-      ctx.save();
-      ctx.beginPath();
-      poly.forEach(([x, y], i) => (i ? ctx.lineTo(o.x + x * c, o.y + y * c) : ctx.moveTo(o.x + x * c, o.y + y * c)));
-      ctx.closePath();
-      ctx.clip();
-      const cx = o.x + l.x * c,
-        cy = o.y + l.y * c,
-        rad = (l.range + 0.5) * c,
-        gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
-      gr.addColorStop(0, 'rgba(255,214,130,0.42)');
-      gr.addColorStop(0.45, 'rgba(255,190,100,0.26)');
-      gr.addColorStop(0.55, 'rgba(255,170,80,0.12)');
-      gr.addColorStop(1, 'rgba(255,160,70,0)');
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.fillStyle = gr;
-      ctx.fillRect(cx - rad, cy - rad, rad * 2, rad * 2);
-      ctx.restore();
+    const context = sightCtx(),
+      key = `${S.mapId}|${lights.map(l => `${l.x},${l.y},${l.range}`).join(';')}`;
+    if (glow.key !== key || glow.ctx !== context || !windowFits(glow.win)) {
+      const win = newWindow(),
+        { res, W, H } = win,
+        ox = win.x0 * res,
+        oy = win.y0 * res;
+      glow.layer ||= document.createElement('canvas');
+      if (glow.layer.width !== W || glow.layer.height !== H) Object.assign(glow.layer, { width: W, height: H });
+      const cx = glow.layer.getContext('2d');
+      cx.globalCompositeOperation = 'source-over';
+      cx.fillStyle = '#000';
+      cx.fillRect(0, 0, W, H);
+      cx.globalCompositeOperation = 'lighten';
+      for (const l of lights) {
+        if (
+          l.x + l.range + 1 < win.x0 ||
+          l.x - l.range - 1 > win.x1 ||
+          l.y + l.range + 1 < win.y0 ||
+          l.y - l.range - 1 > win.y1
+        )
+          continue;
+        const poly = sightPolygon(l, l.range);
+        if (poly.length < 3) continue;
+        cx.save();
+        cx.beginPath();
+        poly.forEach(([x, y], i) =>
+          i ? cx.lineTo(x * res - ox, y * res - oy) : cx.moveTo(x * res - ox, y * res - oy),
+        );
+        cx.closePath();
+        cx.clip();
+        const px = l.x * res - ox,
+          py = l.y * res - oy,
+          rad = (l.range + 0.5) * res,
+          gr = cx.createRadialGradient(px, py, 0, px, py, rad);
+        // Colores ya multiplicados por su intensidad, sobre negro: al sumarlos al mapa, el negro no cambia nada.
+        gr.addColorStop(0, 'rgb(107,90,55)');
+        gr.addColorStop(0.45, 'rgb(66,49,26)');
+        gr.addColorStop(0.55, 'rgb(31,20,10)');
+        gr.addColorStop(1, '#000');
+        cx.fillStyle = gr;
+        cx.fillRect(px - rad, py - rad, rad * 2, rad * 2);
+        cx.restore();
+      }
+      Object.assign(glow, { key, ctx: context, win });
     }
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.imageSmoothingEnabled = true;
+    drawWindowLayer(glow.layer, glow.win);
+    ctx.restore();
   }
   const isSeen = (bits, x, y) => !bits || (BC.inside(S.grid, x, y) && bits[y * S.grid.cols + x] === 1);
 
@@ -7274,6 +7336,7 @@
       dock();
     },
     _state: () => S, // para pruebas y depuración
+    _sightContext: () => sightCtx(),
     _vision: () => {
       const st = sightState(!playerView());
       return st && { ...st, mask: st.los ? visionMask(st) : null };

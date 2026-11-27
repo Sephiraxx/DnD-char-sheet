@@ -196,13 +196,15 @@ async function wallsAndDoors(browser, base, errors) {
   const darkness = await player.evaluate(() => {
     Board._state().grid.vision = { los: true, dark: true, light: 20 };
     const { mask } = Board._vision(),
-      res = mask.dark.width / Board._state().grid.cols,
+      { win } = mask,
       cx = mask.dark.getContext('2d');
     return [
       [7.5, 3.5],
       [11.5, 7.5],
       [1.5, 7.5],
-    ].map(([x, y]) => cx.getImageData(Math.floor(x * res), Math.floor(y * res), 1, 1).data[3]);
+    ].map(
+      ([x, y]) => cx.getImageData(Math.floor((x - win.x0) * win.res), Math.floor((y - win.y0) * win.res), 1, 1).data[3],
+    );
   });
   check(
     'Luz: brillante al lado, penumbra lejos (visión en la oscuridad) y oscuridad total detrás de la pared',
