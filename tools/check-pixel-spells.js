@@ -43,7 +43,11 @@ const source = fs.readFileSync(path.join(ROOT, 'board-spells.js'), 'utf8');
 const known = new Set();
 for (const m of source.matchAll(/classify\(\s*'[a-z-]+',\s*'([^']+)'/g))
   for (const id of m[1].split(' ')) known.add(id);
-const sample = kind => [...known].find(id => Spells.kindFor(id) === kind);
+// Prefer a spell with an area template, so area archetypes (cube, column…) are drawn at their real size.
+const sample = kind => {
+  const ids = [...known].filter(id => Spells.kindFor(id) === kind);
+  return ids.find(id => Spells.areaFor({ id, level: 3 }, 3)) || ids[0];
+};
 
 const FORBIDDEN = [
   [/\bMath\.random\b/, 'Math.random (use kit.hash/kit.noise: frames must be deterministic)'],
