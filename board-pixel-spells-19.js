@@ -515,42 +515,6 @@
     },
   });
 
-  // Speak with Dead: pale grave mist opens a corpse's jaw; five question sparks become whispered replies.
-  FX.register('speak-with-dead', {
-    palette: DEAD,
-    travel: 250,
-    beats,
-    end: end(1120),
-    ground: s => seals(s, DEAD),
-    air(s) {
-      const hit = s.hits[0],
-        C = k.P(subject(s)),
-        e = s.c.t - hit.at;
-      delivery(s, hit, C, DEAD);
-      if (e < 0 || e > 1120) return;
-      ring(add(C, 0, 8), 16, 6, DEAD, 2, 7);
-      stamp('talking-skull', SKULL, DEAD, add(C, 0, -4));
-      const jaw = Math.floor(e / 100) % 2;
-      line(add(C, -3, 1 + jaw * 2), add(C, 3, 1 + jaw * 2), DEAD, 4, 1, 4);
-      for (let j = 0; j < 5; j++) {
-        const A = add(C, (j - 2) * 6, -22);
-        ball(A, 1, DEAD, e > 180 + j * 150 ? 2 : 4);
-        const real = s.real(hit) - 140 - j * 150;
-        if (real >= 0 && real < 370) {
-          const q = real / 370;
-          stamp(
-            'dead-word',
-            ['.33333.', '3444443', '3434343', '.33333.', '..3....'],
-            DEAD,
-            add(C, 12 + q * 8, -7 - q * 15),
-          );
-        }
-      }
-      motes(s, C, s.real(hit), DEAD, 7, 14);
-      impact(s, hit, C, DEAD, 24, 5);
-    },
-  });
-
   // Major Image: a violet cube traces its footprint and fills with a convincing, winged dragon illusion.
   FX.register('major-image', {
     palette: IMAGE,
@@ -612,53 +576,6 @@
     },
     air(s) {
       impact(s, s.hits[0], centre(s), IMAGE, 26, 6);
-    },
-  });
-
-  // Incite Greed: a displayed golden gem sends fascination across the circle; golden glances stream inward.
-  FX.register('incite-greed', {
-    palette: GOLD,
-    travel: 240,
-    beats,
-    end: end(1000),
-    ground(s) {
-      const e = s.c.t - k.CAST;
-      if (e < 0 || e > 1240) return;
-      const C = centre(s),
-        R = radius(s, 30);
-      ring(
-        C,
-        R * (0.15 + 0.85 * k.ease(k.clamp(e / 400))),
-        R * (0.15 + 0.85 * k.ease(k.clamp(e / 400))),
-        GOLD,
-        e < 400 ? 4 : 2,
-        e > 400 ? 16 : 0,
-      );
-      const H = k.P(s.pose.hand || s.pose.base || subject(s));
-      s.hits.forEach(hit => {
-        const T = feet(subject(s, hit));
-        if (e > 240 && e < 1050)
-          for (let j = 0; j < 3; j++) {
-            const q = ((e - 240) / 600 + j / 3) % 1;
-            pixel({ x: k.mix(T.x, H.x, q), y: k.mix(T.y, H.y, q) }, GOLD, 3);
-          }
-      });
-    },
-    air(s) {
-      const e = s.c.t - k.CAST;
-      if (e < 0 || e > 1240) return;
-      const H = k.P(s.pose.hand || s.pose.base || subject(s));
-      stamp('greed-gem', GEM, GOLD, add(H, 0, -5));
-      if (e < 750) ring(add(H, 0, -5), 10 + (Math.floor(e / 90) % 3), 10, GOLD, 4, 4);
-      s.hits.forEach((hit, i) => {
-        const C = add(k.P(subject(s, hit)), 0, -11),
-          real = s.real(hit);
-        if (real >= 0 && e < 1130) {
-          stamp('greedy-eye', EYE, GOLD, C);
-          stamp('greedy-gem', GEM, GOLD, add(C, 0, -12));
-        }
-        impact(s, hit, C, GOLD, 22, 5, i);
-      });
     },
   });
 
