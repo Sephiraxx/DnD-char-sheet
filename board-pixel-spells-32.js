@@ -359,35 +359,6 @@
   const flash = (event, e) =>
     e < 30 ? { color: '#eee8ff', alpha: 0.2 } : e < 70 ? { color: '#110d20', alpha: 0.16 } : null;
 
-  // Globe of Invulnerability: a hollow blue-white sphere locks into a golden runic rim and rejects a spark.
-  FX.register('globe-of-invulnerability', {
-    palette: WARD,
-    travel: 180,
-    beats: soft,
-    end: () => 1400,
-    ground: s => globe(s),
-    air(s) {
-      if (!live(s, 1400)) return;
-      const p = s.area ? k.P(s.area) : caster(s),
-        r = Math.round(((s.area?.feet || 10) / (s.grid.feet || 5)) * 16),
-        c = add(p, 0, -r * 0.5),
-        e = s.real(s.hits[0]);
-      ring(c, r, r, WARD, e < 90 ? 4 : 3);
-      ring(c, r * 0.35, r, WARD, 2, 8, s.c.t / 160);
-      ring(c, r, r * 0.32, WARD, 2, 8, -s.c.t / 160);
-      const rim = add(c, r * 0.88, -r * 0.4);
-      if (e >= 0 && e < 180) {
-        const q = e / 180;
-        pixel(add(rim, 16 * (1 - q), -8 * (1 - q)), IMAGE, 4, 2);
-      }
-      k.drawHit(k.hitStyle('b32:globe-reject', WARD, { S: 22, spikes: 4 }), rim, e - 180);
-      k.shards(rim, e - 180, WARD, seed(s), 7, 16);
-    },
-    linger(s) {
-      if (s.linger > 0) globe(s, true);
-    },
-  });
-
   // Guards and Wards: fog fills a warded corridor plan; locks, stair-webs and misleading runes click into place.
   FX.register('guards-and-wards', {
     palette: IMAGE,
