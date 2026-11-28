@@ -937,6 +937,23 @@ const TableUI = (() => {
     const rolled = given || RollUI.readD20(form);
     const r = given || { ...rolled, total: rolled.kept + bonus };
     let done = Promise.resolve();
+    if (p.spellId === 'lightning-lure' && p.board && l && globalThis.BoardPlayer) {
+      const autoFail = RollUI.conditionMods(state, 'save', p.ability).autoFail;
+      const success = !autoFail && r.kept !== 1 && (r.kept === 20 || r.total >= Number(p.dc));
+      const result = { face: r.kept, total: r.total, bonus: r.total - r.kept, success, damage: 0 };
+      result.done = BoardPlayer.resolveSpellSave(l.campaignId, p, { character: l.characterId }, { saved: success })
+        .catch(err => {
+          toast(err.message);
+        })
+        .then(movement => {
+          const resolved = resolveAreaSave(
+            { ...p, board: null, damage: movement?.damageAllowed === false ? 0 : p.damage },
+            { roll: r, silent },
+          );
+          result.damage = resolved.damage;
+        });
+      return result;
+    }
     // Paralizado, aturdido, inconsciente o petrificado: falla sola las salvaciones de FUE y DES.
     const out = RollUI.conditionMods(state, 'save', p.ability).autoFail;
     const success = !out && r.kept !== 1 && (r.kept === 20 || r.total >= Number(p.dc));
@@ -978,8 +995,10 @@ const TableUI = (() => {
       ability: p.ability,
       share: false,
       onDone: r =>
-        setTimeout(() => {
-          const { success, damage: amount } = resolveAreaSave(p, { roll: r });
+        setTimeout(async () => {
+          const result = resolveAreaSave(p, { roll: r });
+          await result.done;
+          const { success, damage: amount } = result;
           if (local || !l) return;
           Cloud.post(
             l.campaignId,

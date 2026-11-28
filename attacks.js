@@ -213,7 +213,12 @@
       // Dados que suma un rasgo activo a los ataques cuerpo a cuerpo (Entidad simbiótica del Círculo de las Esporas).
       bonus: !w.ranged ? root.Spores?.meleeBonus(s) || null : null,
       // Daño extra opcional de la subclase (Golpe divino, Furia divina…): la persona lo marca al tirar daño.
-      riders: root.SubclassFX?.riders(s, { melee }) || [],
+      riders: [
+        ...(root.SubclassFX?.riders(s, { melee }) || []),
+        ...(!item.unarmed && melee && s.concentration === 'thunderous-smite'
+          ? [{ id: 'thunderous-smite', label: 'Castigo atronador', dice: '2d6', type: 'thunder', available: true }]
+          : []),
+      ],
       crit: critOn,
       gwf,
       weapon: w,

@@ -64,10 +64,10 @@ metadata now carries the spell's `point` and, for lines, `dir` and `length`.
 | gust | Push 5 ft (failed save) | Moves |
 | pulse-wave | Push 15 ft (failed save) | Moves (push only; the push-or-pull choice is still to do) |
 | gust-of-wind | Push 15 ft along the line (failed save) | Moves on the cast's saves; the save at each turn start isn't reached yet |
-| lightning-lure | Pull 10 ft toward the caster (failed save) | Moves; damage still uses the existing save flow, without checking distance after the pull |
-| grasping-vine | Pull 20 ft toward the vine (failed Dex save) | Moves on an optional cast target and later board lashes (bonus action) |
-| thunderous-smite | Push 10 ft (failed save), plus prone | Moves and knocks prone after the next melee weapon hit; extra weapon damage is not automated |
-| dust-devil | Push 10 ft away (failed save) | Placed zone, end-of-turn save within 5 ft; bonus-action zone movement is not implemented |
+| lightning-lure | Pull 10 ft toward the caster (failed save) | Pulls first, then applies damage only within 5 ft; a successful save does neither. Off board, the roll reminds the table of the distance requirement |
+| grasping-vine | Pull 20 ft toward the vine (failed Dex save) | Optional cast lash and later bonus-action board lashes; its first-lash action rule is also reused by Dust Devil movement |
+| thunderous-smite | Push 10 ft (failed save), plus prone | First melee weapon hit consumes the spell and offers a default-checked 2d6 thunder rider (4d6 on a crit), including off board; the board save only handles push and prone |
+| dust-devil | Push 10 ft away (failed save) | End-of-turn zone save within 5 ft; Remolino moves it up to 30 ft using the vine's first-use rule, syncing and persisting its area, push origin and art |
 | bigbys-hand | Forceful Hand pushes 5 ft + 5 ft × spellcasting modifier; Grasping Hand can drag | To do |
 | telekinesis | Move the creature up to 30 ft (contest) | To do |
 | catapult | Hurls an object, not a creature | Probably nothing to move |

@@ -130,6 +130,8 @@ const AttackUI = (() => {
     const p = A.profile(state, item, { mode }),
       w = p.weapon,
       n = mode === 'action' ? A.attacksPerAction(state) : 1;
+    const pendingSmite = session.last?.smite && session.last.profile.riders?.find(r => r.id === 'thunderous-smite');
+    if (pendingSmite && !p.riders.some(r => r.id === pendingSmite.id)) p.riders.push(pendingSmite);
     modal(
       (mode === 'reaction' ? 'Ataque de oportunidad con ' : 'Atacar con ') + item.name,
       `<p>${mode === 'action' && n > 1 ? `Tu acción de Atacar permite <b>${n} ataques</b>; podés repartirlos entre objetivos y moverte entre ellos.` : mode === 'bonus' ? 'Ataque con la otra mano: requiere haber atacado con un arma ligera en la otra mano en este turno.' : mode === 'reaction' ? 'Cuando un enemigo sale de tu alcance usando su movimiento.' : 'Un ataque con tu acción de Atacar.'}</p>
@@ -138,7 +140,7 @@ const AttackUI = (() => {
       <div id="attack-ammo">${ammoField(item)}</div>
       ${riderFields(p)}
       ${w.versatile && mode !== 'bonus' ? `<label class="check"><input type="checkbox" name="twoHands">A dos manos (${esc(w.versatile)})</label>` : ''}
-      <details class="physical-dice"><summary>Uso mis propios dados</summary><p class="small">Escribí lo que salió en la mesa y la ficha suma tus bonos. Con ventaja o desventaja, anotá el d20 que conservás. En un crítico, sumá todos los dados duplicados.</p><div class="form-grid">${field('Mi d20', 'myD20', '', 'number', 'min="1" max="20" inputmode="numeric"')}${field('Suma de mis dados de daño', 'myDamage', '', 'number', 'min="0" max="999" inputmode="numeric"')}</div></details>
+      <details class="physical-dice"><summary>Uso mis propios dados</summary><p class="small">Escribí lo que salió en la mesa y la ficha suma tus bonos. Con ventaja o desventaja, anotá el d20 que conservás. En un crítico, sumá todos los dados duplicados.</p><div class="form-grid">${field('Mi d20', 'myD20', '', 'number', 'min="1" max="20" inputmode="numeric"')}${field('Suma de mis dados de daño', 'myDamage', '', 'number', 'min="0" max="999" inputmode="numeric"')}${p.riders.some(r => r.id === 'thunderous-smite') ? `${field('Con dados propios: de ese total, daño de Castigo atronador', 'mySmiteDamage', '', 'number', 'min="0" max="999" inputmode="numeric"')}` : ''}</div></details>
       <div class="attack-log" id="attack-log" aria-live="polite"></div>
       <div class="actions">${button('Tirar daño', 'attack-damage', 'secondary', 'disabled')}</div>`,
       () => {
@@ -216,17 +218,20 @@ const AttackUI = (() => {
         })
       : Promise.resolve(null);
     if (foe) session.last = null;
-    Promise.all([landed, verdict]).then(([, out]) => {
+    Promise.all([landed, verdict]).then(async ([, out]) => {
       if (out) {
         entry.html += out.hit ? ` → <b>impacta a ${esc(out.name)}</b>` : ` → <b>falla contra ${esc(out.name)}</b>`;
         entry.cls = out.hit ? entry.cls || 'hit' : 'fumble';
         session.last = out.hit ? { crit: r.crit, profile: p, attack: { total: r.total, natural: r.kept } } : null;
         session.target = out.hit ? target : null;
-        if (out.hit)
-          globalThis.BoardPlayer?.weaponHit(target, {
+        if (out.hit && session.last) {
+          const last = session.last;
+          last.smitePromise = globalThis.BoardPlayer?.weaponHit(target, {
             melee: !item.unarmed && !p.weapon.ranged,
             reach: p.weapon.reach ? 10 : 5,
           }).catch(err => toast(err.message));
+          last.smite = await last.smitePromise;
+        }
       } else {
         // Sin respuesta del servidor: se resuelve en la mesa como un ataque sin objetivo.
         session.target = null;
@@ -261,9 +266,19 @@ const AttackUI = (() => {
       });
   }
 
-  function damage() {
+  async function damage() {
     if (!session?.last) throw Error('Tirá primero un ataque que no sea pifia.');
     const { item, p } = current();
+    if (session.last.smitePromise) session.last.smite = await session.last.smitePromise;
+    // Tirar daño confirma el impacto cuando lo resuelve la mesa.
+    else if (!session.target && session.last.smite === undefined)
+      session.last.smite = await globalThis.BoardPlayer?.weaponHit(null, {
+        melee: !item.unarmed && !p.weapon.ranged,
+        reach: p.weapon.reach ? 10 : 5,
+      });
+    const smite = session.last.profile.riders?.find(r => r.id === 'thunderous-smite');
+    p.riders = (p.riders || []).filter(r => r.id !== 'thunderous-smite');
+    if (session.last.smite && smite) p.riders.push(smite);
     const crit = session.last.crit,
       mine = takeInput('myDamage', 0, 999),
       picked = [...document.querySelectorAll('#dialog-form [name=rider]:checked')].map(x => x.value),
@@ -273,6 +288,25 @@ const AttackUI = (() => {
         mine === null
           ? A.rollDamage(p, crit, rnd, riders)
           : { parts: [{ rolls: [], sum: mine }], total: Math.max(0, mine + p.dmgMod + flat), physical: true };
+    const smiteRider = riders.find(r => r.id === 'thunderous-smite');
+    let damageParts;
+    if (smiteRider) {
+      let thunder;
+      try {
+        thunder = dmg.physical
+          ? takeInput('mySmiteDamage', 0, mine)
+          : dmg.parts.find(part => part.label === smiteRider.label).sum;
+        if (thunder === null) throw Error('Anotá cuánto del total de tus dados es daño de Castigo atronador.');
+      } catch (err) {
+        const input = document.querySelector('#dialog-form [name=myDamage]');
+        if (input && dmg.physical) input.value = String(mine);
+        throw err;
+      }
+      damageParts = [
+        { amount: Math.max(0, dmg.total - thunder), type: p.type, magical: p.magical },
+        { amount: thunder, type: 'thunder', magical: true },
+      ];
+    }
     // Lo de «una vez por turno» queda gastado y la casilla se apaga.
     // Lo que cuesta un dado de superioridad, ki o Inspiración se descuenta al tirar.
     if (riders.some(r => r.once || r.cost))
@@ -304,6 +338,7 @@ const AttackUI = (() => {
           type: p.type,
           magical: p.magical,
           attack: session.last.attack,
+          ...(damageParts ? { parts: damageParts } : {}),
         }).catch(err => {
           toast(err.message);
           return null;
@@ -393,7 +428,7 @@ const AttackUI = (() => {
   function install() {
     Object.assign(actions, {
       'attack-open': e => open(e.dataset.id, e.dataset.mode),
-      'attack-damage': () => damage(),
+      'attack-damage': () => damage().catch(err => toast(err.message)),
       'attack-settings': e => settingsModal(e.dataset.id),
     });
   }

@@ -54,7 +54,15 @@ function setup() {
   g.window = g;
   g.location.search = '';
   g.spellById = id => g.Rules.allSpells(g.state).find(sp => sp.id === id);
-  vm.runInContext(read('rolls-ui.js'), g);
+  vm.runInContext(
+    read('rolls-ui.js').replace(
+      '    conditionMods,',
+      `
+    test: { spellDamage, setupDamage(sp) { spellSession = { sp, info: spellInfo(sp, 0), slot: 0 }; } },
+    conditionMods,`,
+    ),
+    g,
+  );
   g.RollUI = vm.runInContext('RollUI', g);
   // Expose private geometry/turn entry points only inside this test VM, leaving production API unchanged.
   vm.runInContext(
@@ -62,7 +70,7 @@ function setup() {
       'window.Board = {',
       `window.Board = {
     test: { configure(h) { H = h; shown = true; }, compactPlan, compactTarget, spellBoardMeta,
-      checkZoneTurn, rememberSpellZone },`,
+      checkZoneTurn, rememberSpellZone, zoneArea, spellResolution, addSpellCast, restoreSpellZones },`,
     ),
     g,
   );
@@ -415,4 +423,397 @@ test('Dust Devil save resolution halves damage on success and reports failure to
   await out.done;
   assert.equal(g.state.hp, start - 8);
   assert.equal(boardResults[1][3].saved, false);
+});
+
+test('Thunderous Smite survives the hit profile refresh and pending hit race, rolls once, and also works without a board', async () => {
+  for (const [onBoard, manual, crit, checked, physical, delayed] of [
+    [true, false, false, true],
+    [true, false, true, true],
+    [false, false, false, true],
+    [false, true, true, true],
+    [false, true, false, false],
+    [true, false, false, true, true],
+    [true, false, true, true, true],
+    [false, true, false, true, 'retry'],
+    [true, false, false, true, false, true],
+  ]) {
+    const { g, s, events } = setup();
+    const applied = [],
+      shared = [];
+    g.state.concentration = 'thunderous-smite';
+    s.tokens[0].x = 4;
+    s.spellCasts.push({
+      id: 'thunderous-smite',
+      castId: 'smite',
+      caster: 'caster-token',
+      point: { x: 4.5, y: 5.5 },
+      until: 10000,
+    });
+    if (!onBoard) {
+      g.TableUI.link = () => null;
+      g.Board = undefined;
+    }
+    vm.runInContext(read('board-player.js'), g);
+    let finishHit;
+    let hitCalls = 0;
+    const weaponHit = g.BoardPlayer.weaponHit;
+    const hitPending = delayed
+      ? new Promise(resolve => {
+          finishHit = resolve;
+        })
+      : Promise.resolve();
+    g.BoardPlayer.weaponHit = async (...args) => {
+      hitCalls++;
+      const result = await weaponHit(...args);
+      await hitPending;
+      return result;
+    };
+    g.TableUI.resolveTarget = async () => ({ hit: true, name: 'Enemigo' });
+    g.TableUI.damageTarget = async (...args) => {
+      applied.push(args);
+      return null;
+    };
+    g.TableUI.shareRoll = result => shared.push(result);
+    g.RollFX = { show: async () => {}, dieOf: () => 6 };
+    g.CSS = { escape: String };
+    g.characterD20 = () => (crit ? 20 : 15);
+    g.FormData = class extends FormData {
+      constructor() {
+        super();
+        if (!manual) this.set('target', 'enemy');
+      }
+    };
+    const own = { value: physical ? String(crit ? 36 : 18) : '' };
+    const ownSmite = { value: physical === 'retry' ? '' : String(crit ? 24 : 12) };
+    g.document.querySelector = selector =>
+      selector.includes('[name=myDamage]') ? own : selector.includes('[name=mySmiteDamage]') ? ownSmite : null;
+    g.document.querySelectorAll = selector =>
+      selector.includes('[name=rider]:checked') && checked ? [{ value: 'thunderous-smite' }] : [];
+    g.document.getElementById = () => null;
+    vm.runInContext(
+      read('attack-ui.js').replace(
+        'return { choices, install };',
+        `return { choices, install, attack, damage, riderFields,
+        reset() { session = { itemId: state.inventory[0].id, mode: 'action', attacks: 0, log: [] }; } };`,
+      ),
+      g,
+    );
+    const ui = vm.runInContext('AttackUI', g);
+    const fields = ui.riderFields(g.Attacks.profile(g.state, g.state.inventory[0]));
+    assert.match(fields, /value="thunderous-smite" checked/);
+    ui.reset();
+    ui.attack();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(g.state.concentration, manual ? 'thunderous-smite' : null);
+    if (physical === 'retry') {
+      await assert.rejects(ui.damage(), /cuánto del total/);
+      assert.equal(g.state.concentration, null);
+      assert.equal(own.value, '18');
+      ownSmite.value = '12';
+    }
+    const damagePending = ui.damage();
+    if (delayed) {
+      await new Promise(resolve => setImmediate(resolve));
+      assert.equal(hitCalls, 1);
+      assert.equal(applied.length, 0, 'damage waits for the pending Smite result');
+      finishHit();
+    }
+    await damagePending;
+    assert.equal(hitCalls, 1);
+    const expected = (crit ? 12 : 6) - 1 + (checked ? (crit ? 24 : 12) : 0);
+    assert.equal(manual ? shared.at(-1).total : applied[0][1], expected);
+    if (!manual && checked) {
+      assert.equal(applied[0][3].parts[1].type, 'thunder');
+      assert.equal(applied[0][3].parts[1].amount, crit ? 24 : 12);
+      assert.equal(applied[0][3].parts[0].amount, (crit ? 12 : 6) - 1);
+    }
+    assert.equal(g.state.concentration, null);
+    assert.equal(events.length, onBoard ? 1 : 0);
+    if (onBoard) assert.equal(events[0][2].damage, 0);
+    await assert.rejects(ui.damage(), /Tirá primero/);
+  }
+});
+
+test('off-board Lightning Lure notes the distance requirement even without targets; Smite does not roll on cast', async () => {
+  const { g } = setup();
+  const logs = [];
+  g.RollFX = { show: async () => {} };
+  g.TableUI.link = () => null;
+  g.FormData = class extends FormData {
+    constructor() {
+      super();
+      this.set('spellDice', '1d8');
+    }
+  };
+  g.document.querySelector = () => null;
+  g.document.getElementById = id =>
+    id === 'attack-log' ? { querySelector: () => null, insertAdjacentHTML: (_, html) => logs.push(html) } : null;
+  g.RollUI.test.setupDamage(g.spellById('lightning-lure'));
+  g.RollUI.test.spellDamage();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.match(logs.join(' '), /solo se aplica.*5 pies/);
+  assert.equal(g.RollUI.rollable(g.spellById('thunderous-smite')), false);
+});
+
+test('Lightning Lure computes damage eligibility after pulling, including blocked pulls and large casters', async () => {
+  for (const [saved, blocked, near, large, expected] of [
+    [true, false, false, false, false],
+    [false, false, false, false, true],
+    [false, true, false, false, false],
+    [false, true, true, false, true],
+    [false, false, false, true, true],
+  ]) {
+    const { g, board, s } = setup();
+    if (near) s.tokens[1].x = 3;
+    if (large) {
+      s.tokens[0].size = 2;
+      s.tokens[0].kind = 'monster';
+      delete s.tokens[0].character_id;
+      s.tokens[1].x = 6;
+    }
+    const caster = s.tokens[0];
+    const poses = [];
+    const walls = blocked ? [[s.tokens[1].x, 0, s.tokens[1].x, 20]] : [];
+    g.Cloud.board = async () => ({
+      board: s.board,
+      maps: [{ id: 'map', grid: s.grid, terrain: { walls } }],
+      tokens: s.tokens,
+    });
+    g.Cloud.poseTokens = async (...args) => poses.push(args);
+    const request = {
+      spellId: 'lightning-lure',
+      board: { map: 'map', castId: 'lure', origin: { x: caster.x + caster.size / 2, y: caster.y + caster.size / 2 } },
+    };
+    const result = await board.resolveSpellSave('other-view', request, { combatant: 'enemy' }, { saved });
+    assert.equal(result.damageAllowed, expected, JSON.stringify({ saved, blocked, near, large }));
+    assert.equal(poses.length, saved || blocked || near ? 0 : 1);
+  }
+});
+
+test('Lightning Lure combatant saves await movement and retain lightning defenses and off-board damage', async () => {
+  for (const [saved, allowed, traits, expected] of [
+    [false, true, { resist: ['lightning'] }, 4],
+    [false, true, { immune: ['lightning'] }, 0],
+    [false, false, {}, 0],
+    [true, false, {}, 0],
+    [false, undefined, {}, 8],
+    [true, undefined, {}, 0],
+    [false, 'throws', {}, 8],
+    [true, 'throws', {}, 0],
+  ]) {
+    const { g } = setup();
+    const order = [],
+      errors = [];
+    Object.assign(g, {
+      toast: message => errors.push(message),
+      current: 'campaign',
+      tracker: () => ({ entries: [{ id: 'enemy', hp: 20, max: 20, saves: {}, damageTraits: traits }] }),
+      send: async (_, result) => {
+        order.push('result');
+        assert.equal(result.damage, expected);
+      },
+      Board: {
+        resolveSpellSave: async () => {
+          order.push('pull');
+          await Promise.resolve();
+          if (allowed === 'throws') throw Error('Board unavailable');
+          return allowed === undefined ? undefined : { damageAllowed: allowed };
+        },
+      },
+    });
+    g.Cloud.updateSecret = async (_, patch) => {
+      order.push('hp');
+      assert.equal(patch.hp, 20 - expected);
+    };
+    const dm = read('dm.js');
+    vm.runInContext(dm.slice(dm.indexOf('async function resolveSave('), dm.indexOf('const STATUS_LABEL')), g);
+    const p = {
+      spellId: 'lightning-lure',
+      spell: 'Látigo relampagueante',
+      ability: 'str',
+      dc: 15,
+      damage: 8,
+      types: 'relámpago',
+      board: { map: 'map' },
+      targets: [{ id: 'enemy' }],
+    };
+    const result = await g.resolveSave({ id: 'save', payload: p }, 'enemy', saved ? 20 : 2);
+    assert.equal(result.damage, expected);
+    assert.equal(result.success, saved);
+    assert.deepEqual(errors, allowed === 'throws' ? ['Board unavailable'] : []);
+    assert.deepEqual(order, expected ? ['pull', 'hp', 'result'] : ['pull', 'result']);
+    if (!saved && !allowed) {
+      g.send = async () => {};
+      g.Cloud.updateSecret = async () => {};
+      const off = await g.resolveSave({ id: 'off', payload: { ...p, board: null } }, 'enemy', 2);
+      assert.equal(off.damage, 8);
+    }
+  }
+});
+
+test('Lightning Lure player saves defer HP until final position, apply defenses, and keep off-board behavior', async () => {
+  for (const [saved, allowed, immune, expected] of [
+    [false, true, false, 4],
+    [false, true, true, 0],
+    [false, false, false, 0],
+    [true, false, false, 0],
+    [false, undefined, false, 4],
+    [true, undefined, false, 0],
+    [false, 'throws', false, 4],
+    [true, 'throws', false, 0],
+  ]) {
+    const { g } = setup();
+    const order = [],
+      errors = [];
+    g.state.defenses = immune ? { immune: ['lightning'] } : { resist: ['lightning'] };
+    Object.assign(g, {
+      toast: message => errors.push(message),
+      link: () => ({ campaignId: 'campaign', characterId: 'caster' }),
+      applyCommand: ({ payload }) => {
+        order.push('hp');
+        g.state.hp -= g.Defenses.apply(g.state, payload.parts).total;
+      },
+      BoardPlayer: {
+        resolveSpellSave: async () => {
+          order.push('pull');
+          await Promise.resolve();
+          if (allowed === 'throws') throw Error('Board unavailable');
+          return allowed === undefined ? undefined : { damageAllowed: allowed };
+        },
+      },
+    });
+    const table = read('table-ui.js');
+    vm.runInContext(table.slice(table.indexOf('function resolveAreaSave('), table.indexOf('function areaSave(')), g);
+    const p = {
+      spellId: 'lightning-lure',
+      spell: 'Látigo relampagueante',
+      ability: 'str',
+      dc: 15,
+      damage: 8,
+      types: 'relámpago',
+      board: { map: 'map' },
+    };
+    const start = g.state.hp;
+    const result = g.resolveAreaSave(p, { roll: { kept: saved ? 20 : 2, total: saved ? 20 : 2 }, silent: true });
+    assert.equal(g.state.hp, start);
+    await result.done;
+    assert.equal(result.damage, expected);
+    assert.equal(result.success, saved);
+    assert.deepEqual(errors, allowed === 'throws' ? ['Board unavailable'] : []);
+    assert.equal(g.state.hp, start - expected);
+    assert.deepEqual(order, !saved && allowed !== false ? ['pull', 'hp'] : ['pull']);
+    if (!saved && !allowed) {
+      const off = g.resolveAreaSave({ ...p, board: null }, { roll: { kept: 2, total: 2 }, silent: true });
+      assert.equal(off.damage, 4);
+    }
+  }
+  const { g } = setup();
+  const result = await g.RollUI.resolveBoardCast(g.spellById('lightning-lure'), 0, {
+    placement: { hits: [{ combatant: 'enemy' }] },
+    form: new FormData(),
+  });
+  assert.match(result.rows.join(' '), /solo se aplica.*5 pies/);
+});
+
+test('Dust Devil movement validates destination, reuses the vine first-use rule, syncs and restores the entire zone', async () => {
+  const { g, board, s, events, messages } = setup();
+  g.state.concentration = 'dust-devil';
+  const combat = g.Combat.data(g.state);
+  Object.assign(combat, { active: true, onTurn: true, turn: 3, bonus: 'Diablo de polvo' });
+  vm.runInContext(
+    read('board-player.js').replace('window.BoardPlayer = {', 'window.BoardPlayer = { testHooks: hooks,'),
+    g,
+  );
+  board.test.configure(g.BoardPlayer.testHooks);
+  const area = Spells.makeTemplate(s.grid, Spells.areaFor({ id: 'dust-devil', level: 2 }), null, { x: 6.5, y: 5.5 });
+  const cast = {
+    id: 'dust-devil',
+    name: 'Diablo de polvo',
+    castId: 'dust',
+    map: 'map',
+    caster: 'caster-token',
+    point: area.origin,
+    area,
+    concentration: true,
+    level: 2,
+    rounds: 10,
+    zone: {
+      ...g.RollUI.zoneRoll(g.spellById('dust-devil'), 2),
+      rounds: 10,
+      created: Date.now(),
+      expiry: Date.now() + 60000,
+      excluded: [],
+      included: [],
+    },
+  };
+  board.test.addSpellCast(cast);
+  s.spellCasts[0].summonedTurn = 3;
+  const prepare = g.BoardPlayer.testHooks.prepareDustMove;
+  for (const cell of [
+    { x: 5, y: 5 },
+    { x: 30, y: 5 },
+    { x: -1, y: 5 },
+    { x: 13, y: 5 },
+  ])
+    await assert.rejects(board.moveDustDevil(cell, 'dust', prepare), /casilla libre/);
+  s.walls = [[8, 0, 8, 20]];
+  await assert.rejects(board.moveDustDevil({ x: 9, y: 5 }, 'dust', prepare), /paredes/);
+  s.walls = [[8, 0, 8, 20, BC.WALL.window]];
+  await assert.rejects(board.moveDustDevil({ x: 9, y: 5 }, 'dust', prepare), /paredes/);
+  s.walls = [];
+  const floor = s.terrain;
+  s.terrain = BC.paint(s.grid, floor, [[8, 5]], '#');
+  await assert.rejects(board.moveDustDevil({ x: 9, y: 5 }, 'dust', prepare), /paredes/);
+  s.terrain = floor;
+  const moved = await board.moveDustDevil({ x: 12, y: 5 }, 'dust', prepare);
+  assert.equal(combat.bonus, 'Diablo de polvo'); // same first-use exception as the vine
+  assert.deepEqual(plain(moved.point), { x: 12.5, y: 5.5 });
+  assert.deepEqual(plain(s.spellCasts[0].point), plain(moved.point));
+  assert.deepEqual(plain(s.spellCasts[0].area), plain(moved.area));
+  const snapshot = events.find(e => e[1] === 'spell-zone')[2];
+  assert.equal(snapshot.zone.expiry, cast.zone.expiry);
+  assert.equal(snapshot.castId, cast.castId);
+  assert.deepEqual(plain(snapshot.area.origin), plain(moved.point));
+  assert.equal(messages.at(-1).action, 'dust-move');
+  await assert.rejects(board.moveDustDevil({ x: 11, y: 5 }, 'dust', prepare), /Ya usaste/);
+  Object.assign(combat, { turn: 4, bonus: null });
+  await board.moveDustDevil({ x: 11, y: 5 }, 'dust', prepare);
+  assert.equal(combat.bonus, 'Remolino');
+  await assert.rejects(board.moveDustDevil({ x: 10, y: 5 }, 'dust', prepare), /Ya usaste/);
+  // The moved zone no longer reaches the old target, and does reach a target at its new location.
+  board.test.checkZoneTurn(s.tokens[1], 'end', 'old');
+  assert.equal(events.filter(e => e[1] === 'spell-zone-trigger').length, 0);
+  s.tokens[1].x = 12;
+  board.test.checkZoneTurn(s.tokens[1], 'end', 'new');
+  const trigger = events.find(e => e[1] === 'spell-zone-trigger')[2];
+  assert.deepEqual(plain(trigger.board.point), { x: 11.5, y: 5.5 });
+  const remote = setup();
+  remote.g.state.concentration = 'dust-devil';
+  remote.board.test.addSpellCast(plain(cast));
+  for (const message of messages.filter(m => m.action === 'dust-move'))
+    remote.board.test.spellResolution(plain(message));
+  assert.deepEqual(plain(remote.s.spellCasts[0].area.origin), plain(trigger.board.point));
+  const restored = setup();
+  restored.g.state.concentration = 'dust-devil';
+  const saved = events
+    .filter(e => e[1] === 'spell-zone')
+    .map(e => ({ payload: plain(e[2]) }))
+    .reverse();
+  restored.board.test.restoreSpellZones([...saved, { payload: plain(cast) }]);
+  assert.equal(restored.s.spellCasts.length, 1);
+  assert.deepEqual(plain(restored.s.spellCasts[0].area.origin), plain(trigger.board.point));
+  restored.s.tokens[1].x = 10;
+  restored.board.test.checkZoneTurn(restored.s.tokens[1], 'end', 'reload');
+  assert.deepEqual(plain(restored.events[0][2].board.point), plain(trigger.board.point));
+  restored.g.Cloud.board = async () => ({
+    board: restored.s.board,
+    maps: [{ id: 'map', grid: restored.s.grid }],
+    tokens: restored.s.tokens,
+  });
+  const pushed = [];
+  restored.g.Cloud.poseTokens = async (...args) => pushed.push(args);
+  await restored.board.resolveSpellSave('other-view', restored.events[0][2], { combatant: 'enemy' }, { saved: false });
+  assert.equal(pushed[0][2][0].patch.x, 8); // away from the new centre (the old one would push right)
+  g.state.concentration = null;
+  await assert.rejects(board.moveDustDevil({ x: 10, y: 5 }, 'dust', prepare), /activo/);
 });

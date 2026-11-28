@@ -498,11 +498,20 @@ async function resolveSave(req, targetId, own = null) {
     out =
       ['str', 'dex'].includes(p.ability) &&
       ['Paralizado', 'Aturdido', 'Inconsciente', 'Petrificado'].some(x => (c.conditions || []).includes(x)),
-    success = !out && natural !== 1 && (natural === 20 || total >= Number(p.dc)),
-    damage = Defenses.monsterDamage(
+    success = !out && natural !== 1 && (natural === 20 || total >= Number(p.dc));
+  const lure = p.spellId === 'lightning-lure' && p.board;
+  let movement;
+  if (lure) {
+    try {
+      movement = await globalThis.Board?.resolveSpellSave(current, p, { combatant: targetId }, { saved: success });
+    } catch (err) {
+      toast(err.message);
+    }
+  }
+  const damage = Defenses.monsterDamage(
       c.damageTraits,
       Defenses.partsAfterSave(
-        Defenses.partsOf({ ...p, amount: p.damage }).map(part => ({
+        Defenses.partsOf({ ...p, amount: lure && movement?.damageAllowed === false ? 0 : p.damage }).map(part => ({
           ...part,
           magical: p.magical === true || !!p.spellId,
         })),
@@ -536,7 +545,7 @@ async function resolveSave(req, targetId, own = null) {
     damage,
     status,
   });
-  if (p.board)
+  if (p.board && !lure)
     globalThis.Board?.resolveSpellSave(
       current,
       p,

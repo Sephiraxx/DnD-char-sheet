@@ -18,6 +18,37 @@ const item = (equipmentId, name, extra = {}) => ({
   ...extra,
 });
 
+test('Thunderous Smite offers only melee weapons a default rider and doubles its dice on a crit', () => {
+  const s = wizard();
+  s.concentration = 'thunderous-smite';
+  const p = A.profile(s, s.inventory[0]);
+  const riders = p.riders.filter(r => r.id === 'thunderous-smite');
+  assert.equal(riders.length, 1);
+  assert.equal(riders[0].available, true);
+  assert.notEqual(riders[0].checked, false);
+  assert.equal(riders[0].type, 'thunder');
+  for (const crit of [false, true]) {
+    const damage = A.rollDamage(p, crit, () => 3, riders);
+    assert.deepEqual(Array.from(damage.parts.at(-1).rolls), Array(crit ? 4 : 2).fill(3));
+  }
+  assert.equal(
+    A.profile(
+      s,
+      A.options(s).find(i => i.unarmed),
+    ).riders.some(r => r.id === 'thunderous-smite'),
+    false,
+  );
+  assert.equal(
+    A.profile(s, item('longbow', 'Arco largo')).riders.some(r => r.id === 'thunderous-smite'),
+    false,
+  );
+  s.concentration = null;
+  assert.equal(
+    A.profile(s, s.inventory[0]).riders.some(r => r.id === 'thunderous-smite'),
+    false,
+  );
+});
+
 test('el bastón del mago usa FUE y tiene competencia', () => {
   const s = wizard();
   const p = A.profile(s, s.inventory[0]);

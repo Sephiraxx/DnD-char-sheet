@@ -69,6 +69,9 @@
     prepareVineLash: strike => {
       if (!strike.first) commit('Acción adicional: Enredadera', s => Combat.use(s, 'bonus', 'Enredadera'));
     },
+    prepareDustMove: move => {
+      if (!move.first) commit('Acción adicional: Remolino', s => Combat.use(s, 'bonus', 'Remolino'));
+    },
     vineLash: strike =>
       RollUI.resolveBoardCast(spellById('grasping-vine'), strike.slot, {
         placement: { hits: strike.hits },
@@ -127,18 +130,20 @@
   }
   window.BoardPlayer = {
     async weaponHit(target, { melee, reach = 5 }) {
-      if (!melee || state.concentration !== 'thunderous-smite' || !globalThis.Board) return;
+      if (!melee || state.concentration !== 'thunderous-smite') return false;
       const sp = spellById('thunderous-smite');
       if (!sp) return;
-      const strike = Board.smiteStrike(target, reach);
-      if (!strike) return;
+      const strike = TableUI.link() && globalThis.Board?.smiteStrike(target, reach);
+      if (strike === false) return false;
       commit('Castigo atronador: impacto', s => Combat.endConcentration(s));
-      return RollUI.resolveBoardCast(sp, sp.level, {
-        placement: { hits: strike.hits },
-        boardCast: strike.boardCast,
-        form: new FormData(),
-        trigger: true,
-      });
+      if (strike)
+        await RollUI.resolveBoardCast(sp, sp.level, {
+          placement: { hits: strike.hits },
+          boardCast: strike.boardCast,
+          form: new FormData(),
+          trigger: true,
+        }).catch(err => toast(err.message));
+      return true;
     },
     async openCast(id) {
       const link = TableUI.link();

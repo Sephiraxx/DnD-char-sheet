@@ -407,6 +407,7 @@ const RollUI = (() => {
     );
   };
   const rollable = sp => {
+    if (sp.id === 'thunderous-smite') return false; // Su daño se tira con el arma que impacta.
     const i = spellInfo(sp, sp.level);
     return Boolean(i.attack || i.save || i.dice || (TableUI.link() && isBuff(sp)));
   };
@@ -842,6 +843,8 @@ const RollUI = (() => {
       what = info.heal ? 'Curación' : 'Daño';
     const fxLine = fxText.length ? ' · ' + esc(fxText.join(' · ')) : '';
     let line = `<b>${what}${spellSession.crit ? ' crítico' : ''}:</b> ${dice}${mod ? ' ' + sign(mod) : ''}${fxLine} = <b>${total}</b>${info.types ? ' ' + esc(info.types) : ''}`;
+    if (sp.id === 'lightning-lure' && !spellSession.boardCast)
+      line += ' · El daño solo se aplica si queda a 5 pies o menos de vos.';
     const landedDamage = RollFX.show({
       label: what + ' · ' + sp.name,
       total,
@@ -1103,7 +1106,9 @@ const RollUI = (() => {
     const result = { name: sp.name, slot, castId: boardCast?.castId, rows: [], saves: {} };
     if (sp.id === 'thunderous-smite') {
       if (!options.trigger) {
-        result.rows.push('Castigo activo · tu próximo impacto con un arma cuerpo a cuerpo pide la salvación.');
+        result.rows.push(
+          'Castigo activo · tu próximo impacto con un arma cuerpo a cuerpo suma 2d6 de trueno y pide la salvación.',
+        );
         return result;
       }
       Object.assign(info, { dice: '', attack: false, save: 'str', saveName: 'Fuerza' });
@@ -1132,8 +1137,9 @@ const RollUI = (() => {
       info,
       placement,
       boardCast,
-      selfSave(request) {
+      async selfSave(request) {
         const save = TableUI.resolveAreaSave(request, { silent: true });
+        await save.done;
         result.rows.push(
           'Vos: salvación ' +
             ({ str: 'FUE', dex: 'DES', con: 'CON', int: 'INT', wis: 'SAB', cha: 'CAR' }[request.ability] ||
@@ -1153,6 +1159,8 @@ const RollUI = (() => {
         return save.done;
       },
     };
+    if (sp.id === 'lightning-lure' && !boardCast)
+      result.rows.push('El daño solo se aplica si queda a 5 pies o menos de vos.');
     const keys = spellKeys(session);
     const mode = options.mode || '';
     const damage = crit => {

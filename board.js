@@ -281,6 +281,7 @@
     teleportFrames.clear();
     weaponAim = null;
     vineAim = null;
+    dustAim = null;
     spellClouds = [];
     receivedCasts.clear();
     S.sel = null;
@@ -307,10 +308,7 @@
       Cloud.spellZones(campaign, id)
         .then(events => {
           if (campaign !== S.id || id !== S.mapId) return;
-          for (const { payload } of events.reverse()) {
-            const rounds = zoneRoundsLeft(payload.zone);
-            if (rounds > 0) addSpellCast({ ...payload, rounds, restored: true });
-          }
+          restoreSpellZones(events);
         })
         .catch(err => console.warn('No se pudieron recuperar las zonas de conjuro.', err));
     }
@@ -941,6 +939,7 @@
   const teleportFrames = new Map();
   let weaponAim = null;
   let vineAim = null;
+  let dustAim = null;
   const fxPrefs = { reduced: false, shake: true, pixelMinis: true };
   // Pixel-art figures: art pixels per square for the sprite set in assets/minis-pixel.
   const PIXEL_MINIS = 32;
@@ -1006,6 +1005,14 @@
       event.swing = { at: now, point: m.point };
     } else if (m.action === 'weapon-impact' && event?.id === 'spiritual-weapon' && token) {
       event.attackImpact = { at: now, point: tokenCenter(token), span: BC.tokenSpan(token) };
+    } else if (m.action === 'dust-move' && spellPoint(m.point)) {
+      const zone = spellZones.get(m.castId);
+      if (zone?.id !== 'dust-devil') return;
+      const dx = m.point.x - zone.point.x,
+        dy = m.point.y - zone.point.y;
+      const area = { ...zone.area, x: zone.area.x + dx, y: zone.area.y + dy, origin: m.point };
+      Object.assign(zone, { point: m.point, area, moved: true });
+      if (event) Object.assign(event, { point: m.point, area, moved: true });
     } else if (m.action === 'smite-used' && event?.id === 'thunderous-smite') {
       event.endedAt = now;
     } else if (m.action === 'crumble' && token && !spellCrumbles.has(token.id)) {
@@ -1019,7 +1026,8 @@
     const movement = Spells.forcedMove(request.spellId);
     if (!meta?.map || !meta.castId || (!movement && !['disintegrate', 'bane'].includes(request.spellId))) return;
     if (movement?.on === 'hit' && !result.hit) return;
-    if (result.saved && request.spellId !== 'bane') return;
+    if (result.saved && request.spellId !== 'bane')
+      return request.spellId === 'lightning-lure' ? { damageAllowed: false } : undefined;
     if (request.spellId === 'disintegrate' && !result.destroyed) return;
     const data = await Cloud.board(campaign);
     if (data.board?.map_id !== meta.map) return;
@@ -1064,17 +1072,28 @@
         BC.roomFor(grid, terrain, candidate, others) &&
         Spells.unobstructed(tokenCenter(prior), tokenCenter(candidate), walls),
     );
-    if (!next) return;
-    const patch = { x: next.x, y: next.y };
-    if (
-      S.id === campaign &&
-      S.mapId === meta.map &&
-      tokenById(token.id)?.x === token.x &&
-      tokenById(token.id)?.y === token.y
-    ) {
-      await applyPoses([{ id: token.id, patch }], {});
-      afterMove({ token, start: token, free: true }, next.x, next.y);
-    } else await Cloud.poseTokens(campaign, meta.map, [{ id: token.id, patch, before: token.savedXY }]);
+    const final = next || token;
+    if (next) {
+      const patch = { x: next.x, y: next.y };
+      if (
+        S.id === campaign &&
+        S.mapId === meta.map &&
+        tokenById(token.id)?.x === token.x &&
+        tokenById(token.id)?.y === token.y
+      ) {
+        await applyPoses([{ id: token.id, patch }], {});
+        afterMove({ token, start: token, free: true }, next.x, next.y);
+      } else await Cloud.poseTokens(campaign, meta.map, [{ id: token.id, patch, before: token.savedXY }]);
+    }
+    if (request.spellId === 'lightning-lure') {
+      const caster = tokens.find(
+        t =>
+          t.id !== token.id &&
+          (t.id === meta.caster || (tokenCenter(t).x === meta.origin.x && tokenCenter(t).y === meta.origin.y)),
+      );
+      const source = caster || { x: meta.origin.x - 0.5, y: meta.origin.y - 0.5, size: 1 };
+      return { damageAllowed: Spells.distance(source, final, null, grid.feet) <= 5 };
+    }
   }
 
   /* A spell attack that moves its target on a hit. Only the DM's board may
@@ -1146,6 +1165,15 @@
     row?.data ? row.data.concentration === cast.id : summary(row).concentration === cast.name;
   const spellZones = new Map();
   let zoneTurn = null;
+  function restoreSpellZones(events) {
+    // Cloud returns newest first; a moved zone retains its cast ID and lifetime.
+    const latest = new Map();
+    for (const { payload } of events) if (!latest.has(payload.castId)) latest.set(payload.castId, payload);
+    for (const payload of [...latest.values()].reverse()) {
+      const rounds = zoneRoundsLeft(payload.zone);
+      if (rounds > 0) addSpellCast({ ...payload, rounds, restored: true });
+    }
+  }
   function zoneRoundsLeft(zone) {
     if (!zone) return 0;
     const enc = S.party?.encounter;
@@ -1209,6 +1237,7 @@
     return {
       castId: cast.castId,
       map: S.mapId,
+      caster: cast.caster,
       origin,
       point: point && { x: point.x, y: point.y },
       ...(area?.kind === 'line' ? { dir: area.dir, length: area.feet } : {}),
@@ -1364,6 +1393,8 @@
       rays: Array.isArray(raw.rays) ? raw.rays.filter(id => typeof id === 'string').slice(0, 4) : [],
       weaponForm: Spells.weaponForm(raw.weaponForm),
       wallSide: raw.wallSide === -1 ? -1 : 1,
+      summonedTurn: raw.summonedTurn,
+      moved: raw.moved === true,
       saved: new Map(),
       saveTargets: new Set(
         Array.isArray(raw.saveTargets) ? raw.saveTargets.filter(id => typeof id === 'string').slice(0, 80) : [],
@@ -2213,7 +2244,7 @@
       if (spell.id === 'misty-step') moveMistyStep(placement, cast.castId);
       S.spellAim = null;
       S.dirty = true;
-      if (spell.id === 'spiritual-weapon' || spell.id === 'grasping-vine') {
+      if (['spiritual-weapon', 'grasping-vine', 'dust-devil'].includes(spell.id)) {
         const weapon = S.spellCasts.find(e => e.castId === cast.castId);
         if (weapon) {
           weapon.summonedTurn = H.spiritualTurn?.();
@@ -2273,7 +2304,7 @@
     }, 530);
   }
   function setSpellAim(world) {
-    if (weaponAim || vineAim) return null;
+    if (weaponAim || vineAim || dustAim) return null;
     const sp = S.tool === 'scene' && H.cast && activeSpell();
     const cell = toCell(world);
     if (!sp || !BC.inside(S.grid, cell.x, cell.y)) {
@@ -2307,6 +2338,17 @@
     return placement;
   }
   function castAt(cell, world) {
+    if (dustAim) {
+      moveDustDevil(cell, dustAim, H.prepareDustMove)
+        .then(() => {
+          dustAim = null;
+          if (H.compactCast) S.tool = 'move';
+          tools();
+          panel();
+        })
+        .catch(err => toast(err.message));
+      return;
+    }
     if (vineAim) {
       const t = hitToken(world);
       try {
@@ -2382,6 +2424,61 @@
       Spells.unobstructed(point, tokenCenter(token), targetingWalls())
     );
   }
+  function activeDustDevil() {
+    const me = actor(),
+      now = performance.now();
+    if (!me || (H.compactCast && state.concentration !== 'dust-devil')) return null;
+    return S.spellCasts.findLast(
+      e =>
+        e.id === 'dust-devil' &&
+        e.caster === me.id &&
+        (e.held || e.until > now) &&
+        e.endedAt == null &&
+        spellZones.has(e.castId),
+    );
+  }
+  let dustMoving = false;
+  async function moveDustDevil(cell, castId, beforeMove = null) {
+    const devil = activeDustDevil();
+    if (!devil || devil.castId !== castId) throw Error('El remolino ya no está activo.');
+    if (dustMoving) throw Error('Esperá a que termine de moverse el remolino.');
+    const point = { x: cell.x + 0.5, y: cell.y + 0.5 };
+    const source = { x: devil.point.x - 0.5, y: devil.point.y - 0.5, size: 1 };
+    const destination = { x: cell.x, y: cell.y, size: 1 };
+    if (
+      !Number.isInteger(cell.x) ||
+      !Number.isInteger(cell.y) ||
+      !BC.roomFor(S.grid, S.terrain, destination, mapTokens()) ||
+      Spells.distance(source, destination, null, S.grid.feet) > 30 ||
+      BC.wallOnPath(S.walls, [source, destination]) ||
+      !Spells.unobstructed(devil.point, point, targetingWalls())
+    )
+      throw Error('Elegí una casilla libre a 30 pies o menos del remolino, sin atravesar paredes.');
+    if (point.x === devil.point.x && point.y === devil.point.y)
+      throw Error('Elegí otra casilla para mover el remolino.');
+    dustMoving = true;
+    try {
+      beforeMove?.({ first: !devil.moved && devil.summonedTurn === H.spiritualTurn?.() });
+      const zone = spellZones.get(castId);
+      const dx = point.x - zone.point.x,
+        dy = point.y - zone.point.y;
+      const area = { ...zone.area, x: zone.area.x + dx, y: zone.area.y + dy, origin: point };
+      await Cloud.post(S.id, 'spell-zone', {
+        ...zone,
+        area,
+        point,
+        moved: true,
+        map: S.mapId,
+        summonedTurn: devil.summonedTurn,
+      });
+      const message = { t: 'spell-resolution', action: 'dust-move', map: S.mapId, castId, point };
+      spellResolution(message);
+      await S.channel?.send(message);
+      return { point, area };
+    } finally {
+      dustMoving = false;
+    }
+  }
   function lashGraspingVine(id, castId, beforeLash = null) {
     const vine = activeGraspingVine();
     if (!vine || vine.castId !== castId) throw Error('La enredadera ya no está activa.');
@@ -2405,7 +2502,8 @@
       e => e.id === 'thunderous-smite' && e.caster === me.id && (e.held || e.until > now) && e.endedAt == null,
     );
     const target = visibleTokens().find(t => (t.combatant_id === id || t.character_id === id) && t.kind !== 'object');
-    if (!smite || !target || target.id === me.id || Spells.distance(me, target, null, S.grid.feet) > reach) return null;
+    if (!smite || !target || target.id === me.id) return null;
+    if (Spells.distance(me, target, null, S.grid.feet) > reach) return false;
     const strike = { hits: [castHit(target)], boardCast: spellBoardMeta(smite, tokenCenter(me)) };
     const m = { t: 'spell-resolution', map: S.mapId, castId: smite.castId, action: 'smite-used' };
     spellResolution(m);
@@ -5977,6 +6075,11 @@
         'beforeend',
         button('Enredadera', 'vine-lash', 'secondary', 'aria-label="Azotar con la enredadera"'),
       );
+    if (H.compactCast && activeDustDevil())
+      $('#board-tools').insertAdjacentHTML(
+        'beforeend',
+        button('Remolino', 'dust-move', 'secondary', 'aria-label="Mover el remolino"'),
+      );
     hint(
       {
         move: S.isDM
@@ -6017,6 +6120,7 @@
         if (activeSpiritualWeapon())
           html += button(weaponAim ? 'Cancelar ataque del arma' : 'Atacar con arma espiritual', 'weapon-swing');
         if (activeGraspingVine()) html += button(vineAim ? 'Cancelar azote' : 'Azotar con la enredadera', 'vine-lash');
+        if (activeDustDevil()) html += button(dustAim ? 'Cancelar movimiento' : 'Remolino', 'dust-move');
       } else
         html = `<div class="chips"><span class="small">Conjuro</span>${Object.entries(BoardSceneFX.spells)
           .map(([id, label]) => chip('spell', id, label, S.spell === id))
@@ -6343,7 +6447,16 @@
       } else if (a === 'tv') return tvDialog();
       else if (a === 'go-live') await goLive(S.mapId);
       else if (a === 'spell' && !TV && Object.hasOwn(BoardSceneFX.spells, el.dataset.v)) S.spell = el.dataset.v;
-      else if (a === 'vine-lash' && H.cast) {
+      else if (a === 'dust-move' && H.cast) {
+        dustAim = dustAim ? null : activeDustDevil()?.castId || null;
+        vineAim = weaponAim = null;
+        if (H.compactCast) S.tool = dustAim ? 'scene' : 'move';
+        S.spellAim = null;
+        panel();
+        hint(dustAim ? 'Tocá una casilla libre a 30 pies o menos del remolino.' : '');
+        return;
+      } else if (a === 'vine-lash' && H.cast) {
+        dustAim = null;
         vineAim = vineAim ? null : activeGraspingVine()?.castId || null;
         weaponAim = null;
         if (H.compactCast) S.tool = vineAim ? 'scene' : 'move';
@@ -6352,6 +6465,7 @@
         hint(vineAim ? 'Elegí una criatura a 30 pies o menos de la enredadera.' : '');
         return;
       } else if (a === 'weapon-swing' && H.cast) {
+        dustAim = null;
         vineAim = null;
         weaponAim = weaponAim ? null : activeSpiritualWeapon()?.castId || null;
         if (H.compactCast) S.tool = weaponAim ? 'scene' : 'move';
@@ -7597,6 +7711,7 @@
     swingSpiritualWeapon,
     spiritualImpact,
     lashGraspingVine,
+    moveDustDevil,
     smiteStrike,
     spellHit,
     undoPose,
