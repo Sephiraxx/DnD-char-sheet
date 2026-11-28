@@ -283,22 +283,6 @@
     }
   }
 
-  // Spirit Guardians: seven winged sword-bearing spirits orbit a gold or necrotic violet ward.
-  FX.register('spirit-guardians', {
-    palette: guardianPalette,
-    travel: 100,
-    beats: (event, kit, travel) => beats(event, kit, travel, 85),
-    end: () => 1020,
-    ground(s) {
-      arrival(s, s.ramp);
-      fallback(s, guardians, k.CAST + 100);
-    },
-    air(s) {
-      impacts(s, 'guardians', s.ramp);
-    },
-    linger: guardians,
-  });
-
   function vineTile(variant, frame) {
     return k.sprite(`b41:vine:${variant}:${frame}`, 19, 24, VINE, set => {
       const sway = frame ? 1 : -1;

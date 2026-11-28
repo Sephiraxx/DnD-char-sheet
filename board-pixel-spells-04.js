@@ -277,44 +277,6 @@
     },
   });
 
-  // Minor Illusion: a violet wire cube assembles a banded, obviously illusory treasure chest within the template.
-  FX.register('illusion', {
-    palette: VIOLET,
-    travel: 200,
-    beats: soft,
-    end: finish(1000),
-    ground(s) {
-      const e = s.c.t - k.CAST;
-      if (e < 0 || e > 1200) return;
-      const { v, C, size } = plot(s),
-        lift = Math.min(size * 0.75, 24);
-      if (e < 500) {
-        stroke([...v, v[0]], VIOLET, 3, 1, true);
-        for (const p of v) stroke([p, add(p, 0, -lift)], VIOLET, 2, 1, true);
-        stroke([...v.map(p => add(p, 0, -lift)), add(v[0], 0, -lift)], VIOLET, 4, 1, true);
-      }
-      const w = Math.max(10, Math.floor(size * 0.75)),
-        h = Math.floor(w * 0.7) + 4;
-      const stage = e < 220 ? Math.floor(e / 55) : e > 1030 ? 5 : 4;
-      const img = k.sprite(`04:illusion:${w}:${stage}`, w + 4, h + 4, VIOLET, set => {
-        for (let y = 2; y <= h; y++)
-          for (let x = 2; x <= w; x++) {
-            if (stage < 4 && y % 4 > stage) continue;
-            if (stage === 5 && y % 3 === 0) continue;
-            const lid = y < h * 0.35;
-            if (lid && (x < 4 || x > w - 2) && y < 4) continue;
-            set(x, y, x === 4 || x === w - 2 || Math.abs(y - h * 0.4) < 1 ? 4 : lid ? 3 : 2);
-            if (x === Math.floor(w / 2) && y > h * 0.4 && y < h * 0.7) set(x, y, 5);
-          }
-      });
-      k.blit(img, C.x - w / 2 - 2, C.y - h + size * 0.2);
-    },
-    air(s) {
-      const e = s.real(s.hits[0]);
-      if (e >= 0 && e < 360) k.shards(plot(s).C, e, VIOLET, seed(s), 5, 13);
-    },
-  });
-
   // True Strike: a violet diviner's eye opens over the selected foe and brackets a precise weak point.
   FX.register('true-strike', {
     palette: VIOLET,
@@ -609,80 +571,6 @@
           stroke([add(T, -r, -5), add(T, -r - 2, 0), add(T, -r, 5)], VIOLET, 4);
         }
       }
-    },
-  });
-
-  // Shape Water: the selected square ripples, gathers into a banded blue wave and locks into a little ice cube.
-  FX.register('shape-water', {
-    palette: WATER,
-    travel: 220,
-    beats: soft,
-    end: finish(1100),
-    ground(s) {
-      const e = s.c.t - k.CAST;
-      if (e < 0 || e > 1320) return;
-      const { C, size } = plot(s),
-        stage = Math.min(5, Math.floor(e / 100));
-      patch(s, WATER, true, e < 650 ? stage : 5);
-      const w = Math.max(8, Math.round(size * 0.65)),
-        h = Math.max(8, Math.round(w * 0.9));
-      const f = e < 300 ? 0 : e < 700 ? 1 + Math.floor((e - 300) / 100) : 5;
-      const img = k.sprite(`04:water-form:${w}:${f}`, w + 6, h + 8, WATER, set => {
-        for (let y = 2; y < h + 5; y++)
-          for (let x = 2; x < w + 4; x++) {
-            const top =
-              f < 5 ? h - Math.sin((x / w) * Math.PI) * ((h * (f + 1)) / 7) : 3 + Math.floor(((x - 2) / w) * 4);
-            if (y < top) continue;
-            set(x, y, y < top + 2 ? 4 : x < w * 0.3 ? 3 : x > w * 0.75 ? 1 : 2);
-            if (f === 5 && Math.abs(x - 3 - (h + 3 - y) * 0.55) < 1) set(x, y, 5);
-          }
-      });
-      k.blit(img, C.x - w / 2 - 2, C.y - h - 2 + size * 0.25);
-    },
-    air(s) {
-      const e = s.real(s.hits[0]);
-      if (e >= 0 && e < 360) k.shards(plot(s).C, e, WATER, seed(s), 6, 12);
-    },
-  });
-
-  // Mold Earth: loose soil lifts out of the template in chunky clods, leaving an excavated square and a tidy rim pile.
-  FX.register('mold-earth', {
-    palette: EARTH,
-    travel: 240,
-    beats: soft,
-    end: finish(1080),
-    ground(s) {
-      const e = s.c.t - k.CAST;
-      if (e < 0 || e > 1320) return;
-      const { C, v } = patch(s, EARTH, false, 0);
-      const q = k.ease(k.clamp(e / 650));
-      const rock = i =>
-        k.sprite(`04:earth-clod:${i % 3}`, 13, 11, EARTH, set => {
-          for (let y = 2; y < 9; y++)
-            for (let x = 2; x < 11; x++) {
-              if ((x < 4 || x > 9) && (y < 4 || y > 7)) continue;
-              set(x, y, y < 4 ? 4 : x < 5 ? 3 : y > 6 ? 1 : 2);
-            }
-        });
-      for (let i = 0; i < 6; i++) {
-        const u = (i + 0.5) / 6,
-          to = { x: k.mix(v[2].x, v[3].x, u), y: k.mix(v[2].y, v[3].y, u) };
-        const p = { x: k.mix(C.x, to.x, q), y: k.mix(C.y, to.y, q) - Math.sin(q * Math.PI) * (8 + (i % 3) * 3) };
-        k.blit(rock(i), p.x - 6, p.y - 7);
-      }
-    },
-    air(s) {
-      const e = s.real(s.hits[0]);
-      if (e < 0 || e > 650) return;
-      const { C, size } = plot(s);
-      k.shards(C, e, EARTH, seed(s), 9, Math.min(24, size));
-      if (e > 180)
-        for (let i = 0; i < 4; i++) {
-          const p = add(C, (i - 1.5) * 5, -5 - (e - 180) / 45 - (i % 2) * 3);
-          const r = e < 420 ? 3 : 2;
-          k.disc(p.x, p.y, r + 1, EARTH[0]);
-          k.disc(p.x, p.y, r, EARTH[3]);
-        }
     },
   });
 })(typeof window !== 'undefined' ? window : globalThis);

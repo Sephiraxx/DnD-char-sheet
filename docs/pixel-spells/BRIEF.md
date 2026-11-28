@@ -17,6 +17,26 @@ Attach these files to the conversation: `board-pixel-fx.js` (the engine and refe
 9. **Deterministic.** No `Math.random`; use `kit.hash(i, seed)` and `kit.noise(x, y, seed)` with `event.seed`, so the same frame always looks the same.
 10. **Cheap.** Aim for under ~600 `dot` calls per frame per spell. Anything big and static (a blast frame, a sigil) goes in `kit.sprite(key, w, h, palette, paint)`, which caches it.
 
+## Readability (lessons from batches 01–41)
+
+The weakest spells of the first batches all failed in the same ways. Every new spell must pass these checks too:
+
+1. **Big enough to see at board zoom.** At its peak the spell's main shape covers at least half a square (8 art px)
+   and usually a whole one (16 px). A 2–3 px dot, a 1 px line or a tiny glyph beside a figure disappears on the
+   real board. 1 px lines are only accents; structural strokes are 2 px plus outline.
+2. **Contrast with the map.** Boards are mostly mid-dark green and grey. Build the main read from the ramp's
+   bright, pale and white steps over the dark outline. Dark blues, greens, browns or purples alone vanish on grass.
+3. **One iconic image.** Decide what a player should recognise in a single frame (a heartbeat line, a bubble,
+   a column of water, winged boots) and make the peak frame show exactly that, large and centred on the figure
+   or the area.
+4. **Three acts, with a held peak.** Delivery (from the hand or out of the ground), then a peak where the iconic
+   image is fully on screen for at least 150–250 ms, with a beat (`soft` is fine for non-damaging spells), then a
+   settle that leaves a small residue for a moment. Don't flash for one frame, and don't dissolve into scattered
+   specks.
+5. **Touch the figure.** Buffs, heals and charms happen *on* the creature: wrap, outline, crown or ground it on
+   its token. Don't float a small icon off to the side.
+6. **Utility spells still perform.** No damage is no excuse for no show: a quick flash, the iconic image, a settle.
+
 ## The contract
 
 ```js

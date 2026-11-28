@@ -852,6 +852,23 @@ Batch 41. Read RESERVED.md (attached) as well as BRIEF.md. Write board-pixel-spe
 
 ---
 
+### Batch 42
+
+```text
+Batch 42. These 11 spells looked weak on the contact sheets. Their old definitions have been deleted; write new ones from scratch in board-pixel-spells-42.js. Don't look for or reuse the old code. Read the "Readability" section of BRIEF.md first: every spell here failed it. For spirit-guardians also follow RESERVED.md exactly (it is a lasting spell). Use the archetype and area noted (the board passes that template in s.area).
+- spare-the-dying: Spare the Dying (level 0, heal). Was: one dot and a 1 px dash beside the target, unreadable. Make: a bright heal-green heartbeat line (ECG trace) drawn across the target's body, about 1.5 squares wide, that spikes once with a pulse ring; then a small outlined cross or heart settles on the figure and fades. One soft beat on the target.
+- friends: Friends (level 0, buff). Was: a tiny heart over a head. Make: a pink charm swirl wrapping the head and shoulders of the creature it lands on (wherever the board puts the hit), a big outlined heart that pops out of it at the peak, sparkles, then a faint pink shimmer clinging to the figure.
+- control-flames: Control Flames (level 0, cube). Was: small orange marks. Make: a fire in the cube flares up tall (a full square or more), bends into a shape (a spiral or a reaching hand), then settles back to a small steady flame.
+- druidcraft: Druidcraft (level 0, cube). Was: a tiny flower. Make: a ring of leaves bursts out, a plant sprouts from the ground and grows to about a square, blooms, and a small leaf swirl drifts off.
+- encode-thoughts: Encode Thoughts (level 0, utility, the caster). Was: a tiny glyph. Make: a bright psychic thread pulled out of the caster's head that winds into a glowing spool or crystal held above the caster's hand, then pulses once.
+- illusion: Minor Illusion (level 0, cube). Was: a dashed box that vanished. Make: a shimmer of dithered pixels that resolves into a crate-sized illusory object filling the cube (about one square), drawn with a 50% ordered dither and a flickering scanline glitch at its edges, then holds steady.
+- shape-water: Shape Water (level 0, cube). Was: a tiny cyan bracket. Make: water rises out of the ground in the cube as a column, twists into a shape (a cube, then a wave crest), and splashes back with droplets, leaving a puddle ring for a moment.
+- mold-earth: Mold Earth (level 0, cube). Was: a small brown block. Make: the square of earth heaves up as a block, clods fly out, and it settles into a raised mound with a trench outline.
+- longstrider: Longstrider (level 1, buff). Was: tiny yellow arrows at the feet. Make: the target's feet light up, a pair of small winged-boot glyphs flashes at the feet, and wind streaks and speed lines sweep backward from the figure with a dust kick. One soft beat.
+- air-bubble: Air Bubble (level 2, buff). Was: a thin 1 px circle. Make: a large clear bubble forms around the target's head and upper body (a 2 px pale-blue rim with outline and a white highlight), wobbles as it settles, and small bubbles rise from it.
+- spirit-guardians: Spirit Guardians (level 3, aura-persistent, 15 ft around the caster). Was: the guardians looked like tan wooden posts. Make: clearly spectral guardians, hooded or winged, with wisp tails, drawn with an ordered dither so they read as ghostly, bobbing as they orbit at the radius. Radiant gold-white by default, or necrotic when kit.paletteFor(s.event) is the necrotic ramp. Add a stronger floor ring. Lasting part in linger, per RESERVED.md.
+```
+
 ## Fix prompt (Claude fills in the failures)
 
 ```text

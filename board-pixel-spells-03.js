@@ -242,25 +242,6 @@
     },
   });
 
-  // Friends: rose glamour curls around the caster's face and resolves into a small friendly heart.
-  FX.register('friends', {
-    palette: PSYCHIC,
-    travel: 0,
-    beats: selfBeat,
-    end,
-    air(s) {
-      const e = s.real(s.hits[0]);
-      if (e < 0 || e > 570) return;
-      const p = head(s);
-      if (e < 340) ring(p, 10, 7, PSYCHIC, 3, 4, e / 180);
-      icon('heart', { x: p.x, y: p.y - 9 - Math.min(5, e / 80) }, PSYCHIC);
-      for (let i = 0; i < 4 && e < 430; i++) {
-        const a = (i * k.tau) / 4 + e / 280;
-        ink(p.x + Math.cos(a) * 13, p.y + Math.sin(a) * 8, PSYCHIC, 1, i % 2 ? 4 : 3);
-      }
-    },
-  });
-
   // Vicious Mockery: a sneering psychic mouth at the victim spits jagged magenta verbal barbs.
   FX.register('mockery', {
     palette: PSYCHIC,
@@ -288,39 +269,6 @@
           );
       }
       mark(s, PSYCHIC, 'mockery', 28, 6);
-    },
-  });
-
-  // Control Flames: existing orange flames fold sideways into an ordered spiral inside the chosen cube.
-  FX.register('control-flames', {
-    palette: FIRE,
-    travel: 0,
-    beats: selfBeat,
-    end: () => k.CAST + 780,
-    ground(s) {
-      const e = s.real(s.hits[0]);
-      if (e < 0 || e > 760) return;
-      const c = inCube(s),
-        q = cube(s);
-      if (e < 200) stroke([...q, q[0]], FIRE, 1, 2);
-      const img = flame(Math.floor(e / 75) % 6);
-      if (e < 180 || e > 570) k.blit(img, c.x - 8, c.y - img.height + 3);
-      else {
-        const pts = [];
-        for (let i = 0; i < 22; i++) {
-          const a = i * 0.29 + e / 200,
-            r = 2 + i * 0.26;
-          pts.push({ x: c.x + Math.cos(a) * r, y: c.y - 7 + Math.sin(a) * r });
-        }
-        stroke(pts, FIRE, 2, 3);
-        ink(pts[21].x, pts[21].y, FIRE, 2, 4);
-      }
-    },
-    air(s) {
-      const e = s.real(s.hits[0]),
-        c = inCube(s);
-      if (e < 0 || e > 500) return;
-      for (let i = 0; i < 4; i++) ink(c.x + Math.sin(e / 160 + i) * 7, c.y - 5 - ((e / 30 + i * 4) % 17), FIRE, 1, 4);
     },
   });
 
@@ -373,73 +321,6 @@
     },
   });
 
-  // Druidcraft: a green shoot unfurls leaves and a pink flower, scattering a few seeds over the selected patch.
-  FX.register('druidcraft', {
-    palette: NATURE,
-    travel: 0,
-    beats: selfBeat,
-    end: () => k.CAST + 950,
-    ground(s) {
-      const e = s.real(s.hits[0]);
-      if (e < 0 || e > 940) return;
-      const p = inCube(s),
-        h = 3 + 11 * k.ease(k.clamp(e / 280));
-      if (e < 240) ring(p, 7 + e / 60, 3 + e / 120, NATURE, 2, 5);
-      stroke([p, { x: p.x + 1, y: p.y - h / 2 }, { x: p.x, y: p.y - h }], NATURE, 1, 3);
-      if (e > 110) icon('leaf', { x: p.x + 4, y: p.y - 6 }, NATURE);
-      if (e > 180) {
-        const img = glyph('leaf', NATURE);
-        k.blitRotated(img, p.x - 3, p.y - 9, -Math.PI / 2);
-      }
-      if (e > 280) icon('flower', { x: p.x, y: p.y - h - 3 }, PSYCHIC);
-    },
-    air(s) {
-      const e = s.real(s.hits[0]),
-        p = inCube(s);
-      if (e < 290 || e > 800) return;
-      for (let i = 0; i < 5; i++) {
-        const q = (e - 290) / 510,
-          a = k.hash(i, seed(s)) * k.tau;
-        ink(p.x + Math.cos(a) * q * 12, p.y - 16 - Math.sin(q * Math.PI) * 9 + q * 14, NATURE, 1, 4);
-      }
-    },
-  });
-
-  // Encode Thoughts: a silver-blue memory thread is drawn from the caster's temple into a floating runic ribbon.
-  FX.register('encode-thoughts', {
-    palette: SILVER,
-    travel: 0,
-    beats: selfBeat,
-    end: () => k.CAST + 900,
-    air(s) {
-      const e = s.real(s.hits[0]);
-      if (e < 0 || e > 870) return;
-      const H = k.P(s.pose.hand || s.pose.base),
-        A = head(s),
-        q = k.ease(k.clamp(e / 350));
-      const tip = { x: H.x + 10 * q, y: H.y - 9 * q };
-      const pts = [];
-      for (let i = 0; i < 24; i++) {
-        const u = i / 23;
-        pts.push({
-          x: k.mix(A.x + 4, tip.x, u),
-          y: k.mix(A.y, tip.y, u) + Math.sin(u * k.tau * 1.5 + e / 180) * 3 * q,
-        });
-      }
-      if (e < 480) stroke(pts, SILVER, 1, 4);
-      else {
-        const coil = [];
-        for (let i = 0; i < 24; i++) {
-          const a = (i / 23) * k.tau * 1.5;
-          coil.push({ x: tip.x + Math.cos(a) * 8, y: tip.y + Math.sin(a) * 3 + i * 0.2 });
-        }
-        stroke(coil, SILVER, 1, 4);
-      }
-      for (let i = 0; i < 3; i++)
-        if (e > 130 + i * 80) icon('rune', { x: tip.x - i * 5, y: tip.y - 5 + i * 2 }, SILVER);
-    },
-  });
-
   // Mind Sliver: a violet psychic needle materialises above the skull and drives straight into a fractured mind.
   FX.register('mind-sliver', {
     palette: PSYCHIC,
@@ -476,49 +357,6 @@
           );
       }
       mark(s, PSYCHIC, 'sliver', 26, 8);
-    },
-  });
-
-  // Spare the Dying: a gentle ivory-green touch stills a wavering life-thread into a steady protective pulse.
-  FX.register('spare-the-dying', {
-    palette: HEAL,
-    travel: 90,
-    beats: beats(60, 'soft'),
-    end: () => k.CAST + 900,
-    ground(s) {
-      const e = s.real(s.hits[0]);
-      if (e < 0 || e > 600) return;
-      const t = s.targets[0],
-        p = t ? k.P({ x: t.baseX ?? t.x, y: t.baseY ?? t.y }) : point(s);
-      ring(p, 9, 5, HEAL, 3, e > 420 ? 6 : 0);
-    },
-    air(s) {
-      const t = s.c.t - k.CAST,
-        e = s.real(s.hits[0]),
-        T = point(s);
-      if (t < 0 || e > 760) return;
-      if (e < 0) {
-        const H = k.P(s.pose.hand || s.pose.base),
-          q = k.clamp(t / 90);
-        ink(k.mix(H.x, T.x, q), k.mix(H.y, T.y, q), HEAL, 3, 4);
-      } else {
-        const amp = e < 270 ? 4 * (1 - e / 270) : 0;
-        stroke(
-          [
-            { x: T.x - 10, y: T.y },
-            { x: T.x - 4, y: T.y },
-            { x: T.x - 2, y: T.y - amp },
-            { x: T.x, y: T.y + amp },
-            { x: T.x + 2, y: T.y },
-            { x: T.x + 10, y: T.y },
-          ],
-          HEAL,
-          1,
-          4,
-        );
-        if (e > 160) icon('rune', { x: T.x, y: T.y - 9 }, HEAL);
-        if (e < 450) for (const side of [-1, 1]) ink(T.x + side * 8, T.y - 3 - e / 70, HEAL, 1, 3);
-      }
     },
   });
 

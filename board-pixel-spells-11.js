@@ -504,51 +504,6 @@
     },
   });
 
-  // Longstrider: gold-green boots stamp a lengthening trail of footprints and quick forward chevrons.
-  FX.register('longstrider', {
-    palette: STRIDE,
-    travel: 80,
-    beats: beats(65),
-    end: finish(750),
-    ground(s) {
-      s.hits.forEach(hit => {
-        const t = s.c.t - k.CAST,
-          F = feet(subject(s, hit));
-        if (t < 0 || t > 780) return;
-        const step = Math.min(4, Math.floor(t / 105));
-        for (let i = 0; i <= step; i++) {
-          if (t > 530 + i * 35) continue;
-          const x = F.x - 12 + i * (4 + i),
-            y = F.y + (i % 2 ? 4 : -2);
-          icon('boot', { x, y }, STRIDE, 1, Math.PI / 2);
-        }
-        if (t < 430) ring(F, 12 + Math.floor(t / 80), 5, STRIDE, 3, true);
-      });
-    },
-    air(s) {
-      s.hits.forEach(hit => {
-        const F = feet(subject(s, hit)),
-          e = s.real(hit);
-        impact(s, hit, { x: F.x, y: F.y - 3 }, STRIDE, 'longstrider', 20, 5, 14);
-        if (e < 0 || e > 560) return;
-        for (let i = 0; i < 3; i++) {
-          const x = F.x + 5 + i * 5 + Math.floor(k.ease(k.clamp(e / 560)) * 9);
-          stroke(
-            [
-              { x: x - 3, y: F.y - 12 },
-              { x, y: F.y - 9 },
-              { x: x - 3, y: F.y - 6 },
-            ],
-            STRIDE,
-            i === 2 ? 4 : 3,
-            1,
-            8,
-          );
-        }
-      });
-    },
-  });
-
   // Aganazzar's Scorcher: a full thirty-foot lane snaps white-hot, burns in orange bands, then leaves ash.
   FX.register('aganazzars-scorcher', {
     palette: FIRE,
@@ -676,41 +631,6 @@
           );
         }
         impact(s, hit, { x: F.x, y: F.y - 12 }, SIZE, 'size', 23, 5, 17);
-      });
-    },
-  });
-
-  // Air Bubble: a clear cyan globe snaps around the head, with a bright rim and tiny circulating air beads.
-  FX.register('air-bubble', {
-    palette: AIR,
-    travel: 100,
-    beats: beats(60),
-    end: finish(850),
-    air(s) {
-      const t = s.c.t - k.CAST;
-      if (t < 0 || t > 910) return;
-      s.hits.forEach(hit => {
-        const T = k.P(subject(s, hit)),
-          C = { x: T.x, y: T.y - 7 };
-        const r = Math.round(t < 100 ? 7 + 3 * k.ease(t / 100) : t < 220 ? 10 - k.clamp((t - 100) / 120) : 9);
-        ring(C, r, r + 1, AIR, 3, t > 740);
-        stroke(
-          [
-            { x: C.x - r + 3, y: C.y - 3 },
-            { x: C.x - r + 4, y: C.y - 6 },
-            { x: C.x - r + 7, y: C.y - 8 },
-          ],
-          AIR,
-          5,
-          1,
-          10,
-        );
-        if (t < 730)
-          for (let i = 0; i < 3; i++) {
-            const a = (i * k.tau) / 3 + t / 250;
-            ball(C.x + Math.cos(a) * (r - 3), C.y + Math.sin(a) * (r - 2), 1, AIR, 4);
-          }
-        impact(s, hit, { x: C.x + r, y: C.y }, AIR, 'air-bubble', 16, 4, 10);
       });
     },
   });
