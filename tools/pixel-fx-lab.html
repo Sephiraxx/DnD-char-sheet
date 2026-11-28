@@ -106,6 +106,9 @@
       .label {
         color: var(--muted);
       }
+      .levels {
+        display: contents;
+      }
       .roster {
         margin-top: 22px;
       }
@@ -149,6 +152,21 @@
     <script src="./board-spells.js"></script>
     <script src="./board-ink.js"></script>
     <script src="./board-pixel-fx.js"></script>
+    <script>
+      // Lab only: remember which batch file registered each spell, so the picker can show just the rebuilt ones.
+      (() => {
+        const FX = window.BoardPixelFX;
+        if (!FX) return;
+        FX.labBatch = new Map();
+        const register = FX.register;
+        FX.register = function (id, def) {
+          const m = (document.currentScript?.src || '').match(/board-pixel-spells-(\d+)\.js/);
+          if (m) FX.labBatch.set(id, Number(m[1]));
+          return register.apply(this, arguments);
+        };
+      })();
+    </script>
+    <script src="./catalog.js"></script>
     <script src="./board-spell-fx.js"></script>
     <script src="./board-pixel-spells-00.js"></script>
     <script src="./board-pixel-spells-01.js"></script>
@@ -212,7 +230,14 @@
       </p>
       <div class="bar" id="spells"></div>
       <div class="bar" id="fallbacks"><span class="label">Fallbacks</span></div>
-      <div class="bar" id="signature" hidden><span class="label">Own definitions</span></div>
+      <div class="bar" id="signature" hidden>
+        <span class="label">Own definitions</span>
+        <button id="only-new" aria-pressed="true" title="Only the spells rebuilt from batch 42 on">New only</button>
+        <button id="play-level" aria-pressed="false">Play this level</button>
+        <span class="sep"></span>
+        <span id="levels" class="levels"></span>
+      </div>
+      <div class="bar" id="level-spells" hidden></div>
       <div class="bar">
         <button id="slow" aria-pressed="false">Slow motion ×0.25</button>
         <button id="map" aria-pressed="false">Bright map</button>
@@ -565,17 +590,109 @@
           b.addEventListener('click', () => fire(spell));
           fallbackBar.append(b);
         }
-        // Spells with a definition of their own (batch 00 onwards), minus the reference spells above.
+        // Spells with a definition of their own (batch 00 onwards), minus the reference spells above, grouped by
+        // spell level. "New only" keeps the ones rebuilt from batch 42 on. Lasting spells stay 5 s, like the checker.
         const signatureBar = document.getElementById('signature');
+        const levelBar = document.getElementById('levels');
+        const spellBar = document.getElementById('level-spells');
         const reference = new Set(spells.map(s => s.id));
-        for (const id of [...registered].filter(id => !id.startsWith('kind:') && !reference.has(id)).sort()) {
-          const spell = { label: id, id, level: 3 };
-          const b = document.createElement('button');
-          b.textContent = id;
-          b.addEventListener('click', () => fire(spell));
-          signatureBar.append(b);
-          signatureBar.hidden = false;
+        const catalog = new Map((window.Catalog?.spells || []).map(s => [s.id, s]));
+        const NEW_FROM = 42;
+        // Board spells the catalog doesn't list.
+        const extra = {
+          'freedom-of-the-winds': { english: 'Freedom of the Winds', level: 2 },
+          'freedom-of-the-waves': { english: 'Freedom of the Waves', level: 3 },
+          counterspell: { english: 'Counterspell', level: 3 },
+        };
+        const levelName = l => (l === 0 ? 'Cantrips' : l === 10 ? 'Other' : `Level ${l}`);
+        const own = [...registered]
+          .filter(id => !id.startsWith('kind:') && !reference.has(id))
+          .map(id => {
+            const info = catalog.get(id) || extra[id];
+            const lasting = ['ground', 'air', 'fog'].some(layer => BoardPixelFX.lingers({ id }, layer));
+            return {
+              id,
+              name: info?.english || id,
+              level: Number.isFinite(info?.level) ? info.level : 10,
+              batch: BoardPixelFX.labBatch?.get(id) ?? 0,
+              lasting,
+            };
+          });
+        let onlyNew = true,
+          shownLevel = null,
+          playing = null;
+        const pick = () => own.filter(s => !onlyNew || s.batch >= NEW_FROM);
+        function castOwn(s) {
+          fire({ label: s.name, id: s.id, level: s.level === 10 ? 3 : s.level, lingerMs: s.lasting ? 5000 : 0 });
+          spellBar.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.id === s.id));
         }
+        function stopPlaying() {
+          clearTimeout(playing);
+          playing = null;
+          document.getElementById('play-level').setAttribute('aria-pressed', 'false');
+        }
+        function showLevel(level) {
+          shownLevel = level;
+          levelBar
+            .querySelectorAll('button')
+            .forEach(b => b.setAttribute('aria-pressed', Number(b.dataset.level) === level));
+          spellBar.replaceChildren();
+          for (const s of pick()
+            .filter(s => s.level === level)
+            .sort((a, b) => a.name.localeCompare(b.name))) {
+            const b = document.createElement('button');
+            b.textContent = s.lasting ? `${s.name} ⧗` : s.name;
+            b.title = `${s.id} · batch ${s.batch}${s.lasting ? ' · lasting (stays 5 s)' : ''}`;
+            b.dataset.id = s.id;
+            b.addEventListener('click', () => {
+              stopPlaying();
+              castOwn(s);
+            });
+            spellBar.append(b);
+          }
+          spellBar.hidden = !spellBar.children.length;
+        }
+        function buildLevels() {
+          const counts = new Map();
+          for (const s of pick()) counts.set(s.level, (counts.get(s.level) || 0) + 1);
+          const levels = [...counts.keys()].sort((a, b) => a - b);
+          levelBar.replaceChildren();
+          for (const l of levels) {
+            const b = document.createElement('button');
+            b.dataset.level = l;
+            b.textContent = `${levelName(l)} · ${counts.get(l)}`;
+            b.addEventListener('click', () => {
+              stopPlaying();
+              showLevel(l);
+            });
+            levelBar.append(b);
+          }
+          signatureBar.hidden = !own.length;
+          showLevel(levels.includes(shownLevel) ? shownLevel : levels[0]);
+        }
+        document.getElementById('only-new').addEventListener('click', e => {
+          onlyNew = !onlyNew;
+          e.currentTarget.setAttribute('aria-pressed', onlyNew);
+          stopPlaying();
+          buildLevels();
+        });
+        // Plays every spell of the shown level in turn; lasting spells get their 5 s on the board.
+        document.getElementById('play-level').addEventListener('click', e => {
+          if (playing) return stopPlaying();
+          const list = pick()
+            .filter(s => s.level === shownLevel)
+            .sort((a, b) => a.name.localeCompare(b.name));
+          if (!list.length) return;
+          e.currentTarget.setAttribute('aria-pressed', 'true');
+          let i = 0;
+          const next = () => {
+            const s = list[i++ % list.length];
+            castOwn(s);
+            playing = setTimeout(next, (s.lasting ? 6200 : 3000) / speed);
+          };
+          next();
+        });
+        buildLevels();
         const defeats = new Map();
         document
           .getElementById('defeat')
