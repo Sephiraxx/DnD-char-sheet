@@ -235,44 +235,6 @@
       SOUL,
     );
   }
-  // Magic Jar: a faceted crystal vessel receives a bright, tailed soul torn from the caster.
-  FX.register('magic-jar', {
-    palette: SOUL,
-    travel: 540,
-    beats: e => [{ at: 840, stop: 110, target: e.caster ?? null, kind: 'soft', power: 0.03 }],
-    end: () => 1450,
-    ground(s) {
-      if (s.c.t < k.CAST) return;
-      const p = caster(s);
-      ring({ x: p.x + 17, y: p.y + 1 }, 12, 5, SOUL, life(s.c.t, 1180, 1450));
-    },
-    air(s) {
-      const t = s.c.t;
-      if (t < k.CAST) return;
-      const b = body(s),
-        j = { x: b.x + 17, y: b.y - 3 };
-      put(jarSprite(), j, life(t, 1250, 1450));
-      if (t < 840) {
-        const q = k.clamp((t - 410) / 430);
-        const path = u => ({ x: k.mix(b.x, j.x, u), y: k.mix(b.y, j.y, u) - Math.sin(u * Math.PI) * 21 });
-        for (let i = 8; i >= 0; i--) {
-          const u = q - i * 0.035;
-          if (u < 0) continue;
-          const p = path(u),
-            w = i < 3 ? 5 : 3;
-          k.dot(p.x, p.y, SOUL[0], w + 2);
-          k.dot(p.x, p.y, SOUL[i < 2 ? 5 : 3], w);
-        }
-        const p = path(q);
-        k.disc(p.x, p.y, 5, SOUL[0]);
-        k.disc(p.x, p.y, 4, SOUL[4]);
-        k.dot(p.x - 1, p.y - 1, SOUL[5], 3);
-      } else {
-        impact(s, s.hits[0], j, SOUL, 'jar', 28, 7);
-        put(star(SOUL, 'jar-soul', true), j, life(t, 1170, 1450));
-      }
-    },
-  });
 
   function chainAt(i, n) {
     return 470 + i * Math.min(150, 540 / Math.max(1, n - 1));
@@ -445,47 +407,6 @@
     },
   });
 
-  // Crown of Stars: seven outlined gold-white stars orbit the brow; one becomes a blazing dart.
-  FX.register('crown-of-stars', {
-    palette: STAR,
-    travel: 760,
-    beats: e => [
-      { at: 540, stop: 70, target: e.caster ?? null, kind: 'soft', power: 0.03 },
-      { at: 1060, stop: 100, target: e.targets?.[0] ?? null, kind: 'dart', power: 0.07 },
-    ],
-    end: () => 1610,
-    air(s) {
-      if (s.c.t < k.CAST) return;
-      const b = caster(s),
-        c = { x: b.x, y: b.y - 23 },
-        img = star(STAR, 'crown-star');
-      const release = 760,
-        arrive = 1060,
-        alpha = life(s.c.t, 1400, 1610);
-      for (let i = 0; i < 7; i++) {
-        const a = (i / 7) * k.tau + Math.min(s.c.t, release) / 1600;
-        const grow = 0.5 + 0.5 * k.ease(k.clamp((s.c.t - k.CAST) / 240));
-        const p = { x: c.x + Math.cos(a) * 18 * grow, y: c.y + Math.sin(a) * 8 * grow };
-        if (i !== 0 || s.c.t < release) put(img, p, alpha);
-      }
-      const t = aim(s);
-      if (!t) return;
-      const T = k.P(k.contact(t, s.pose.hand || t)),
-        a = release / 1600;
-      const H = { x: c.x + Math.cos(a) * 18, y: c.y + Math.sin(a) * 8 };
-      if (s.c.t >= release && s.c.t < arrive) {
-        const q = (s.c.t - release) / (arrive - release);
-        for (let j = 7; j >= 0; j--) {
-          const u = q - j * 0.035;
-          if (u < 0) continue;
-          put(img, { x: k.mix(H.x, T.x, u), y: k.mix(H.y, T.y, u) - Math.sin(u * Math.PI) * 12 }, j ? 0.5 : 1);
-        }
-      }
-      impact(s, s.hits[1], T, STAR, 'crown-dart', 42, 10);
-      impact(s, s.hits[0], c, STAR, 'crown-formed', 28, 7);
-    },
-  });
-
   function construct(stage = 4) {
     const rows = [
       '......3443......',
@@ -639,40 +560,6 @@
       VIOLET,
     );
   }
-  // Mordenkainen's Sword: a full-length pale-violet blade manifests, hangs, then cleaves across its prey.
-  FX.register('mordenkainens-sword', {
-    palette: VIOLET,
-    travel: 630,
-    beats: e => [{ at: 930, stop: 140, target: e.targets?.[0] ?? null, kind: 'hit', power: 0.09 }],
-    end: () => 1540,
-    ground(s) {
-      if (s.c.t < k.CAST) return;
-      ring(floorPoint(aim(s)), 18, 9, VIOLET, life(s.c.t, 1260, 1540));
-    },
-    air(s) {
-      if (s.c.t < k.CAST) return;
-      const target = aim(s),
-        T = k.P(target),
-        t = s.c.t;
-      const p = { x: T.x, y: T.y - 16 },
-        img = sword();
-      if (t < 740) {
-        put(img, { x: p.x + 8, y: p.y - Math.sin(((t - k.CAST) / 440) * Math.PI) * 3 }, t < 440 ? 0.5 : 1);
-        motes(s, p, VIOLET, s.c.raw, 6, 16);
-      } else if (t < 1130) {
-        const q = k.clamp((t - 740) / 190),
-          a = -0.7 + q * 2.2;
-        if (t < 980) {
-          for (let i = 2; i > 0; i--) {
-            const back = a - i * 0.22;
-            ring({ x: T.x + Math.sin(back) * 12, y: T.y - Math.cos(back) * 12 }, 5, 3, VIOLET, 0.5);
-          }
-        }
-        k.blitRotated(img, T.x + Math.sin(a) * 9, T.y - Math.cos(a) * 9, a, 0.5, 0.85);
-      } else put(img, { x: T.x + 13, y: T.y - 14 }, life(t, 1310, 1540));
-      impact(s, s.hits[0], T, VIOLET, 'sword', 46, 11);
-    },
-  });
 
   function ghost(frame) {
     return k.sprite('57:ethereal:' + frame, 23, 31, SOUL, set => {

@@ -133,32 +133,6 @@
     k.blit(img, p.x - 24, p.y - 12);
   }
 
-  // Flesh To Stone: pale stone climbs the feet, seals a full statue, and branches into dark cracks.
-  FX.register('flesh-to-stone', {
-    palette: STONE,
-    travel: 600,
-    beats: (e, kit, t) => beats(e, t, 'soft', 120),
-    end: () => 1680,
-    ground(s) {
-      if (age(s) >= 0) for (const t of subjects(s)) cracks(k.P(feet(t)), STONE);
-    },
-    air(s) {
-      const e = age(s);
-      if (e < 0) return;
-      for (const t of subjects(s)) {
-        const b = k.P(feet(t)),
-          stage = Math.min(10, 1 + Math.floor(e / 60));
-        k.blit(statue(stage), b.x - 12, b.y - 29, e > 1150 ? 0.75 : 1);
-        if (e < 620) {
-          const y = b.y - Math.min(28, e / 22);
-          dot(b.x - 9, y, 3, STONE);
-          dot(b.x + 9, y, 3, STONE, 5);
-        }
-      }
-      impact(s, STONE, 'petrify', 24, 8);
-    },
-  });
-
   // Disintegrate: a thick green-white ray pulverises a body-shaped shell into windblown dust billows.
   FX.register('disintegrate', {
     palette: GREEN,
@@ -504,39 +478,6 @@
         if (q > 0.5) dot(x, y + 4, 2, VIOLET, 4);
       }
       impact(s, VIOLET, 'fissure', 35, 9);
-    },
-  });
-
-  // Investiture Of Stone: broad pale stone plates clad the caster while orbiting boulders crack the floor.
-  FX.register('investiture-of-stone', {
-    palette: STONE,
-    travel: 400,
-    beats: (e, kit, t) => [{ at: k.CAST + t, stop: 120, target: null, kind: 'soft', power: 0 }],
-    end: () => 1500,
-    ground(s) {
-      if (age(s) >= 0 && s.pose.base) cracks(k.P(s.pose.base), STONE, 2);
-    },
-    air(s) {
-      const e = age(s);
-      if (e < 0 || !s.pose.base) return;
-      const t = caster(s),
-        B = k.P(feet(t));
-      k.blit(statue(Math.min(10, 2 + Math.floor(e / 45)), true), B.x - 12, B.y - 29, e > 1000 ? 0.75 : 1);
-      for (let i = 0; i < 5; i++) {
-        const a = s.c.raw / 380 + (i / 5) * k.tau;
-        const x = B.x + Math.cos(a) * 21,
-          y = B.y - 12 + Math.sin(a) * 9;
-        const rock = picture('orbit-rock:' + (i % 2), 12, 12, STONE, (set, rect, line) => {
-          rect(3, 2, 6, 8, 3);
-          rect(2, 4, 8, 4, 3);
-          rect(3, 3, 4, 3, 4);
-          line(7, 6, 8, 8, 1, 2);
-        });
-        k.blit(rock, x - 6, y - 6);
-      }
-      const real = s.real(s.hits[0]);
-      k.drawHit(k.hitStyle('56:stone-armor', STONE, { S: 32, spikes: 5 }), k.P(t), real);
-      k.shards(B, real, STONE, s.event.seed, 10, 26);
     },
   });
 

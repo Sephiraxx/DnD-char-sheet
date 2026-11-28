@@ -469,40 +469,6 @@
     const img = pixels('flower:' + (i % 2), ['..4..', '.434.', '43434', '.434.', '..2..', '.22..'], i % 2 ? GOLD : FEY);
     centered(img, C.x, C.y);
   }
-  // Conjure Fey: a flower-and-mote fairy ring bursts open around a full-cell crowned leaf fey.
-  FX.register('conjure-fey', {
-    palette: FEY,
-    travel: 260,
-    beats: event => beat(event, k.CAST + 260, 110),
-    end: () => 1620,
-    ground(s) {
-      const e = age(s),
-        C = summonAt(s);
-      if (e < 0) return;
-      ring(C, 20, 11, FEY, 3, alphaOut(e, 850, 1250));
-      if (e < 1100)
-        for (let i = 0; i < 9; i++) {
-          const a = (i * k.tau) / 9;
-          flower({ x: C.x + Math.cos(a) * 19, y: C.y + Math.sin(a) * 10 }, i);
-        }
-    },
-    air(s) {
-      const C = summonAt(s),
-        e = age(s) - 260;
-      if (age(s) >= 0 && e < 0) motes(s, C, FEY, 19 * (1 - k.clamp(age(s) / 400)), 8);
-      if (e < 0) return;
-      const h = s.hits[0];
-      if (h) {
-        k.drawHit(k.hitStyle('55:fey-bloom', FEY, { S: 44, spikes: 5 }), C, s.real(h));
-        k.shards(C, s.real(h), GOLD, s.event.seed || 0, 12, 27);
-      }
-      const q = k.clamp(e / 170),
-        frame = Math.min(4, Math.floor(q * 4));
-      const img = pixels('fey', FEY_ROWS, FEY, frame / 4);
-      k.blit(img, C.x - img.width / 2, C.y - img.height + 3 + (1 - q) * FEY_ROWS.length, alphaOut(e, 780, 1060));
-      if (e > 100 && e < 850) motes(s, { x: C.x, y: C.y - 12 }, GOLD, 18, 5);
-    },
-  });
 
   function clockwork(frame) {
     return k.sprite('55:clockwork:' + frame, 53, 53, GOLD, set => {

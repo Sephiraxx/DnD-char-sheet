@@ -359,52 +359,6 @@
     },
   });
 
-  // Regenerate: a broad green-white helix climbs the body, carrying medical crosses and fresh leaf shoots.
-  FX.register('regenerate', {
-    palette: GREEN,
-    travel: 240,
-    beats: (e, kit, t) => beats(e, kit, t, 100),
-    end: () => 1530,
-    ground(s) {
-      const t = elapsed(s);
-      if (t < 0) return;
-      bodies(s).forEach(tar => ring(feet(tar), 14, 7, GREEN, life(t, 850, 1220)));
-    },
-    air(s) {
-      const t = elapsed(s);
-      if (t < 0) return;
-      bodies(s).forEach((tar, i) => {
-        const B = feet(tar),
-          q = k.clamp(t / 240),
-          alpha = life(t, 780, 1180);
-        const img = k.sprite(`58:regen:${Math.floor(t / 75) % 8}`, 38, 48, GREEN, set => {
-          const { line, rect } = pen(set);
-          for (let y = 5; y < 44; y++) {
-            const x = 19 + Math.sin(y / 5 - ((Math.floor(t / 75) % 8) * Math.PI) / 4) * 13;
-            rect(x, y, 3, 2, y % 10 < 5 ? 4 : 3);
-          }
-          for (const [x, y] of [
-            [8, 15],
-            [26, 28],
-          ]) {
-            rect(x - 1, y - 4, 3, 9, 5);
-            rect(x - 4, y - 1, 9, 3, 5);
-          }
-          line(19, 43, 19, 34, 4, 2);
-          line(19, 38, 13, 34, 3, 3);
-          line(19, 37, 25, 32, 4, 3);
-        });
-        k.blit(img, B.x - 19, B.y - 38 + (1 - q) * 12, alpha);
-        impact(s, k.P(tar), GREEN, 'regenerate', 28, i);
-        if (t > 240 && t < 850)
-          for (let j = 0; j < 3; j++) {
-            const phase = (s.c.raw / 650 + j / 3) % 1;
-            spark({ x: B.x + Math.sin(j * 2 + phase * 3) * 15, y: B.y - phase * 29 }, GREEN, 1);
-          }
-      });
-    },
-  });
-
   // Sequester: a soft, banded violet cocoon closes around the creature and seals with a large hourglass.
   FX.register('sequester', {
     palette: VIOLET,

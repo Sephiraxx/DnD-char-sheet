@@ -302,58 +302,6 @@
     }
     place(fissures(r, stage, s.event.seed || 0), p, alpha);
   }
-  // Earthquake: branching black fault lines tear across the entire area with tan rims, rocks and dust.
-  FX.register('earthquake', {
-    palette: EARTH,
-    travel: 200,
-    beats: (event, kit, travel) => [
-      ...beat(event, travel, 180, 'blast', true),
-      ...beat(event, travel + 360, 130, 'blast', true),
-    ],
-    end: () => 1790,
-    ground(s) {
-      if (s.c.t < 300) return;
-      const t = s.c.t - 500;
-      quakeFloor(s, 1, Math.min(3, Math.max(0, Math.floor((t + 200) / 120))), true);
-      if (t >= 0 && t < 620) {
-        const p = centre(s),
-          r = radius(s, 100);
-        ring(
-          p,
-          r * (0.25 + 0.75 * k.ease(k.clamp(t / 620))),
-          r * (0.25 + 0.75 * k.ease(k.clamp(t / 620))),
-          EARTH,
-          0.75,
-          4,
-          3,
-        );
-      }
-    },
-    air(s) {
-      const p = centre(s),
-        r = radius(s, 100);
-      impacts(s, p, EARTH, 'quake', 44);
-      for (const hit of [s.hits[0], s.hits.find(h => h.at > 500)]) {
-        if (!hit) continue;
-        const e = s.real(hit);
-        if (e < 0 || e > 750) continue;
-        const q = e / 750;
-        for (let i = 0; i < 34; i++) {
-          const a = k.hash(i, s.event.seed, 4) * k.tau,
-            d = r * Math.sqrt(k.hash(i, 3, s.event.seed));
-          const x = p.x + Math.cos(a) * d,
-            y = p.y + Math.sin(a) * d - Math.sin(q * Math.PI) * (8 + k.hash(i, 9) * 16);
-          if (i % 3) {
-            k.disc(x, y, 3 + q * 4, EARTH[0]);
-            k.disc(x, y - 1, 2 + q * 4, EARTH[q < 0.6 ? 3 : 2]);
-          } else pixel(x, y, EARTH, 4, 4);
-        }
-      }
-    },
-    linger(s) {
-      if (s.c.t >= 1790) quakeFloor(s, s.linger);
-    },
-  });
 
   function waterWall(s, alpha, advance = 0, calm = false) {
     const a = s.area,
