@@ -148,23 +148,30 @@ function serve() {
     const rows = [];
     for (const key of batch.keys) {
       const id = key.startsWith('kind:') ? sample(key.slice(5)) : key;
+      // A "kind:" fallback is cast as a made-up spell of that kind (with a real one's area), since most real
+      // spells now have their own art and would show that instead.
+      const cast = key.startsWith('kind:')
+        ? { id: 'fallback-' + key.slice(5), kind: key.slice(5), areaFrom: id }
+        : { id };
       if (!id) {
         fail(batch.file, `${key}: no hay ningún conjuro de ese arquetipo para probar`);
         continue;
       }
-      const total = await page.evaluate(id => {
+      const total = await page.evaluate(c => {
         lab.at(0);
+        const id = c.id;
+        const spell = c.kind ? { id, kind: c.kind, area: lab.areaOf({ id: c.areaFrom, level: 3 }) } : { id };
         // Spells with lasting art stay 5 s after the cast (past the last shot at total + 1.9 s) so the linger, lingerAir and fog hooks run.
         const def =
-          BoardPixelFX.lingers({ id }, 'ground') ||
-          BoardPixelFX.lingers({ id }, 'air') ||
-          BoardPixelFX.lingers({ id }, 'fog');
-        lab.fire({ id, element: 'magic', level: 3, lingerMs: def ? 5000 : 0 });
+          BoardPixelFX.lingers({ id, kind: c.kind }, 'ground') ||
+          BoardPixelFX.lingers({ id, kind: c.kind }, 'air') ||
+          BoardPixelFX.lingers({ id, kind: c.kind }, 'fog');
+        lab.fire({ ...spell, element: 'magic', level: 3, lingerMs: def ? 5000 : 0 });
         const event = lab.boards[1].events[0];
         const t = BoardSpellFX.phase(event, 0, false);
         const timing = BoardPixelFX.timing(event);
         return { total: 300 + timing.travel + timing.impact, handled: BoardPixelFX.handles(event), lasting: !!def, t };
-      }, id);
+      }, cast);
       if (!total.handled) fail(batch.file, `${key}: el tablero no lo toma (¿id o arquetipo?)`);
       if (total.total > 3200) fail(batch.file, `${key}: dura ${Math.round(total.total)} ms (máximo 3200)`);
       const shots = [];
@@ -176,7 +183,7 @@ function serve() {
         await page.evaluate(t => lab.at(t), Math.round(at));
         shots.push(await page.locator('#new').screenshot());
       }
-      const broken = await page.evaluate(id => BoardPixelFX.failed.has(id), id);
+      const broken = await page.evaluate(id => BoardPixelFX.failed.has(id), cast.id);
       if (broken) fail(batch.file, `${key}: lanzó una excepción al dibujar (ver consola)`);
       rows.push({ key, id, shots, ms: Math.round(total.total) });
       console.log(`ok    ${key}${key !== id ? ` (probado con ${id})` : ''} · ${Math.round(total.total)} ms`);
