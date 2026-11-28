@@ -347,54 +347,6 @@
     },
   });
 
-  // Witch Bolt: a sustained blue-violet lightning tether lashes, pulses again and snaps into sparks.
-  FX.register('witch-bolt', {
-    palette: WITCH,
-    travel: 45,
-    beats: (event, kit, travel) =>
-      [0, 310].map(offset => ({
-        at: kit.CAST + travel + offset,
-        stop: offset ? 85 : 95,
-        target: event.targets?.[0] ?? null,
-        kind: 'beam',
-        power: 0.065,
-      })),
-    end: finish(850),
-    air(s) {
-      const hit = s.hits[0],
-        H = s.pose.hand && k.P(s.pose.hand),
-        T = contact(s, hit);
-      const e = s.c.t - k.CAST;
-      if (H && e >= 0 && e < 820) {
-        const dx = T.x - H.x,
-          dy = T.y - H.y,
-          L = Math.hypot(dx, dy) || 1;
-        const tick = Math.floor(s.c.raw / 45),
-          points = [];
-        for (let i = 0; i <= 12; i++) {
-          const q = i / 12,
-            off = i === 0 || i === 12 ? 0 : (k.hash(i, seed(s), tick) - 0.5) * 12;
-          points.push({ x: k.mix(H.x, T.x, q) - (dy / L) * off, y: k.mix(H.y, T.y, q) + (dx / L) * off });
-        }
-        if (e < 640) {
-          stroke(points, WITCH, 2, 3, 64);
-          stroke(points, WITCH, tick % 2 ? 4 : 5, 1, 64);
-          const m = points[5];
-          stroke([m, { x: m.x - (dy / L) * 8, y: m.y + (dx / L) * 8 }, points[8]], WITCH, 3, 1, 24);
-          ball(H.x, H.y, 3, WITCH, tick % 2 ? 4 : 2);
-        } else {
-          for (let i = 1; i < points.length; i += 2) {
-            const p = points[i],
-              drift = (e - 640) / 50;
-            pixel(p.x - (dy / L) * drift, p.y + (dx / L) * drift, WITCH, 3);
-          }
-        }
-      }
-      s.hits.forEach(h => impact(s, h, T, WITCH, 30, 7));
-    },
-    flash: (event, e) => (e < 24 ? { color: WITCH[4], alpha: 0.12 } : e < 55 ? { color: WITCH[0], alpha: 0.08 } : null),
-  });
-
   // Ray of Sickness: a sickly green needle trails coiling droplets, then splatters into a poison skull.
   FX.register('ray-of-sickness', {
     palette: POISON,
@@ -503,50 +455,6 @@
     flash: (event, e) => (e < 30 ? { color: FIRE[4], alpha: 0.19 } : e < 75 ? { color: FIRE[0], alpha: 0.13 } : null),
   });
 
-  // Tasha's Hideous Laughter: a rocking magenta grin sheds tumbling mirth sparks and crooked psychic ripples.
-  FX.register('laughter', {
-    palette: MIND,
-    travel: 180,
-    beats: beats(95),
-    end: finish(720),
-    ground(s) {
-      aura(s, MIND, false, 720);
-    },
-    air(s) {
-      for (const hit of s.hits) {
-        const T = k.P(subject(s, hit)),
-          top = { x: T.x, y: T.y - 15 };
-        voice(s, hit, top, MIND);
-        impact(s, hit, top, MIND, 27, 6);
-        const e = s.real(hit);
-        if (e < 0 || e >= 780) continue;
-        stamp(
-          'grin',
-          { x: top.x + Math.sin(e / 55) * 2, y: top.y + Math.abs(Math.sin(e / 95)) * 3 },
-          MIND,
-          (Math.sin(e / 65) * Math.PI) / 8,
-        );
-        for (const side of [-1, 1]) {
-          const q = (e % 220) / 220;
-          stroke(
-            [
-              { x: T.x + side * (9 + q * 5), y: T.y - 8 },
-              { x: T.x + side * (12 + q * 5), y: T.y - 3 },
-              { x: T.x + side * (9 + q * 5), y: T.y + 1 },
-            ],
-            MIND,
-            3,
-          );
-        }
-        for (let i = 0; i < 4; i++) {
-          const q = (e / 680 + i / 4) % 1;
-          if (e > 540 && q < 0.4) continue;
-          pixel(T.x + Math.sin(q * 8 + i) * 14, T.y - 15 + q * 24, MIND, i % 2 ? 4 : 3, 2);
-        }
-      }
-    },
-  });
-
   function cone(s) {
     if (s.area?.kind === 'cone') return s.area;
     const B = s.pose.base || s.pose.hand || { x: 0, y: 0 },
@@ -633,100 +541,6 @@
           stamp('star', { x: T.x + Math.cos(a) * 11, y: T.y - 13 + Math.sin(a) * 4 }, SPECTRUM[(i + j * 2) % 6]);
         }
       });
-    },
-  });
-
-  // Jump: a lime spring compresses at the feet, releases into an upward arc and drops ghost boot prints.
-  FX.register('jump', {
-    palette: JUMP,
-    travel: 90,
-    beats: beats(75),
-    end: finish(730),
-    ground(s) {
-      aura(s, JUMP, true, 730);
-      for (const hit of s.hits) {
-        const B = feet(subject(s, hit, true)),
-          e = s.real(hit);
-        if (e < 0 || e > 510) continue;
-        const spread = e < 110 ? 2 : 2 + Math.sin(k.clamp((e - 110) / 400) * Math.PI) * 4;
-        for (let i = 0; i < 3; i++) ring({ x: B.x, y: B.y - i * spread }, 8 - i, 3, JUMP, i ? 3 : 4);
-      }
-    },
-    air(s) {
-      for (const hit of s.hits) {
-        const T = k.P(subject(s, hit, true)),
-          B = feet(subject(s, hit, true)),
-          e = s.real(hit);
-        impact(s, hit, B, JUMP, 25, 6);
-        if (e < 0 || e >= 790) continue;
-        const q = k.clamp((e - 100) / 560),
-          h = Math.sin(q * Math.PI) * 21;
-        stamp('boot', { x: T.x + q * 10 - 5, y: B.y - 6 - h }, JUMP, -Math.PI / 8);
-        if (e > 110 && e < 580) {
-          const y = B.y - 8 - k.ease(k.clamp((e - 110) / 200)) * 18;
-          stroke(
-            [
-              { x: B.x - 5, y: y + 5 },
-              { x: B.x, y },
-              { x: B.x + 5, y: y + 5 },
-            ],
-            JUMP,
-            4,
-          );
-        }
-        for (let i = 0; i < 3; i++) {
-          const u = q - (i + 1) * 0.12;
-          if (u < 0 || q > 0.9) continue;
-          pixel(T.x + u * 10 - 5, B.y - 6 - Math.sin(u * Math.PI) * 21, JUMP, 2, 2);
-        }
-      }
-    },
-  });
-
-  // Sanctuary: an ivory dove seals a quiet blue shrine arch; approaching hostile sparks bend away.
-  FX.register('sanctuary', {
-    palette: WARD,
-    travel: 90,
-    beats: beats(80),
-    end: finish(760),
-    ground(s) {
-      aura(s, WARD, true, 760);
-    },
-    air(s) {
-      for (const hit of s.hits) {
-        const T = k.P(subject(s, hit, true)),
-          B = feet(subject(s, hit, true)),
-          e = s.real(hit);
-        impact(s, hit, { x: T.x, y: T.y - 13 }, WARD, 25, 5);
-        if (e < 0 || e >= 820) continue;
-        // An open shrine silhouette leaves the protected miniature visible.
-        if (e < 680)
-          stroke(
-            [
-              { x: T.x - 13, y: B.y - 1 },
-              { x: T.x - 13, y: T.y - 10 },
-              { x: T.x - 8, y: T.y - 18 },
-              { x: T.x, y: T.y - 22 },
-              { x: T.x + 8, y: T.y - 18 },
-              { x: T.x + 13, y: T.y - 10 },
-              { x: T.x + 13, y: B.y - 1 },
-            ],
-            WARD,
-            e < 110 ? 5 : 3,
-            1,
-            68,
-          );
-        stamp('dove', { x: T.x, y: T.y - 16 }, WARD);
-        if (e > 120 && e < 620)
-          for (const side of [-1, 1]) {
-            const q = (e - 120) / 500,
-              x = T.x + side * (26 - Math.sin(q * Math.PI) * 12);
-            const y = T.y + 6 - q * 22;
-            pixel(x, y, q < 0.5 ? BANE : WARD, q < 0.5 ? 2 : 4, 2);
-            pixel(x + side * 3, y + 3, WARD, 2);
-          }
-        if (e > 400) ring({ x: T.x, y: T.y - 18 }, 7, 2, WARD, 4, e > 660);
-      }
     },
   });
 })(typeof window !== 'undefined' ? window : globalThis);

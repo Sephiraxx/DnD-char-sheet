@@ -203,48 +203,6 @@
     });
   }
 
-  // Earthbind: yellow force straps rise from earthen anchors, cinch the airborne body and drag downward.
-  FX.register('earthbind', {
-    palette: GOLD,
-    travel: 210,
-    beats: soft,
-    end: () => 1300,
-    ground(s) {
-      subjects(s).forEach((t, i) => {
-        const e = s.c.t - k.CAST;
-        if (e < 0 || e > 900) return;
-        const F = feet(t);
-        for (let j = 0; j < 3; j++) {
-          const a = (j / 3) * k.tau + 0.4;
-          const x = F.x + Math.cos(a) * 13,
-            y = F.y + Math.sin(a) * 6;
-          pixel(x, y, GOLD, 1, 5);
-          pixel(x - 1, y - 1, GOLD, 3, 2);
-        }
-        k.shards(F, s.real(beat(s, i)), GOLD, (s.event.seed || 0) + i, 5, 13);
-      });
-    },
-    air(s) {
-      subjects(s).forEach((t, i) => {
-        const h = beat(s, i),
-          e = s.c.t - k.CAST;
-        if (e < 0 || e > 900) return;
-        const F = feet(t),
-          T = body(t),
-          q = k.ease(k.clamp(e / 210));
-        const C = { x: T.x, y: T.y + k.clamp((e - 210) / 450) * 5 };
-        for (let j = 0; j < 3; j++) {
-          const a = (j / 3) * k.tau + 0.4;
-          const A = { x: F.x + Math.cos(a) * 13, y: F.y + Math.sin(a) * 6 };
-          const B = { x: k.mix(A.x, C.x + (j - 1) * 5, q), y: k.mix(A.y, C.y, q) };
-          stroke(A, B, GOLD, e > 700 ? 2 : 4, 2);
-        }
-        if (e >= 210) ring(C, 7, 3, GOLD, e > 700 ? 2 : 4);
-        spark(s, h, C, GOLD, 24, 4);
-      });
-    },
-  });
-
   // Augury: engraved ivory casting bones tumble into a reading, revealing paired sun and shadow omens.
   FX.register('augury', {
     palette: GOLD,
@@ -273,31 +231,6 @@
       icon('sun', { x: C.x - 10, y }, GOLD);
       icon('moon', { x: C.x + 10, y }, INK);
       if (e > 490) pixel(C.x, C.y - 5, GOLD, 5, 2);
-    },
-  });
-
-  // Nystul's Magic Aura: a lavender false signature turns mint as a theatrical mask seals over its eye sigil.
-  FX.register('nystuls-magic-aura', {
-    palette: ARCANE,
-    travel: 210,
-    beats: soft,
-    end: () => 1210,
-    ground(s) {
-      blessingGround(s, s.c.t < 710 ? ARCANE : CALM);
-    },
-    air(s) {
-      subjects(s).forEach((t, i) => {
-        packet(s, t, ARCANE, 7);
-        const e = s.c.t - beat(s, i).at,
-          C = body(t);
-        spark(s, beat(s, i), C, ARCANE, 20, 4);
-        if (e < 0 || e > 610) return;
-        const p = e < 200 ? ARCANE : CALM;
-        ring(C, 12, 14, p, 3, 6, Math.floor(e / 100));
-        const A = { x: C.x, y: C.y - 11 };
-        if (e < 150) icon('eye', A, ARCANE);
-        else icon('mask', A, p);
-      });
     },
   });
 
@@ -360,109 +293,6 @@
     },
   });
 
-  // Wristpocket: a coin slips into a tiny violet slit at the caster's wrist; the slit zips shut into a cuff sparkle.
-  FX.register('wristpocket', {
-    palette: ARCANE,
-    travel: 300,
-    beats: (event, kit, travel) => single({ targets: [] }, kit, travel),
-    end: () => 1160,
-    air(s) {
-      const a = s.pose.hand || s.pose.base;
-      if (!a) return;
-      const C = k.P(a),
-        t = s.c.t - k.CAST,
-        e = s.c.t - beat(s).at;
-      if (t < 0 || t > 710) return;
-      const rx = e < 0 ? 9 : Math.max(1, 9 * (1 - k.ease(k.clamp(e / 220))));
-      ring(C, rx, 3, ARCANE, 3);
-      if (e < 0) {
-        const x = C.x + 15 * (1 - k.ease(k.clamp(t / 300)));
-        k.disc(x, C.y - 4, 4, GOLD[0]);
-        k.disc(x, C.y - 4, 3, GOLD[3]);
-        pixel(x - 1, C.y - 5, GOLD, 5);
-      }
-      spark(s, beat(s), C, ARCANE, 22, 5);
-      if (e > 250) {
-        pixel(C.x - 3, C.y + 3, ARCANE, 3, 2);
-        pixel(C.x + 3, C.y + 3, ARCANE, 4, 2);
-        if (e < 380) pixel(C.x, C.y, ARCANE, 5);
-      }
-    },
-  });
-
-  // Heat Metal: the target's metal blade turns iron-red, orange, then white-hot, shedding sparks and heat ripples.
-  FX.register('heat-metal', {
-    palette: HEAT,
-    travel: 230,
-    beats: (event, kit, travel) => [
-      { at: kit.CAST + travel, stop: 100, target: event.targets?.[0] ?? null, kind: 'hit', power: 0.045 },
-    ],
-    end: () => 1370,
-    ground(s) {
-      blessingGround(s, HEAT);
-    },
-    air(s) {
-      const t = subjects(s)[0];
-      if (!t) return;
-      packet(s, t, HEAT);
-      const C = body(t),
-        A = { x: C.x + 7, y: C.y + 1 },
-        e = s.c.t - beat(s).at;
-      spark(s, beat(s), A, HEAT, 32, 9);
-      if (e < 0 || e > 750) return;
-      const p = e < 130 ? [HEAT[0], HEAT[1], HEAT[1], HEAT[2], HEAT[3], HEAT[4]] : HEAT;
-      icon('sword', A, p, 0.4);
-      for (let j = 0; j < 3; j++) {
-        const u = (e / 620 + j / 3) % 1;
-        const x = A.x + (j - 1) * 5 + Math.sin(u * 9 + j) * 2;
-        stroke({ x, y: A.y - u * 17 }, { x: x + 2, y: A.y - u * 17 - 3 }, HEAT, u < 0.5 ? 4 : 2);
-      }
-      if (e > 560) pixel(A.x, A.y - 4, HEAT, 3, 2);
-    },
-  });
-
-  // Calm Emotions: a full-radius mint wave flattens agitated rose zigzags into quiet level lines beneath the figures.
-  FX.register('calm-emotions', {
-    palette: CALM,
-    travel: 180,
-    beats: soft,
-    end: () => 1480,
-    reach: (event, grid) => ({ r: (event.area?.feet || 20) / (grid.feet || 5) + 0.5, up: 1 }),
-    ground(s) {
-      const a = s.area || anchor(s);
-      if (!a) return;
-      const e = s.c.t - k.CAST;
-      if (e < 0 || e > 1100) return;
-      const C = k.P(a),
-        R = ((s.area?.feet || 20) / (s.grid.feet || 5)) * k.PX;
-      // The sparse, cached field uses the template's true circular footprint, without obscuring tokens.
-      const r = Math.max(1, Math.round(R)),
-        frame = Math.min(5, Math.floor(e / 90));
-      const img = k.sprite('b12:calm:' + r + ':' + frame, r * 2 + 5, r * 2 + 5, CALM, set => {
-        const rr = r * (0.18 + (0.82 * frame) / 5);
-        for (let y = 2; y < r * 2 + 3; y++)
-          for (let x = 2; x < r * 2 + 3; x++) {
-            const d = Math.hypot(x - r - 2, y - r - 2);
-            if (Math.abs(d - rr) < 1.2) set(x, y, 3);
-            else if (d < rr - 4 && y % 13 === 0 && x % 17 < 4) set(x, y, 1);
-          }
-      });
-      if (e < 850) k.blit(img, C.x - r - 2, C.y - r - 2);
-      else ring(C, R, R, CALM, 2, 12);
-    },
-    air(s) {
-      subjects(s).forEach((t, i) => {
-        const h = beat(s, i),
-          C = body(t),
-          e = s.c.t - h.at;
-        spark(s, h, { x: C.x, y: C.y - 5 }, CALM, 18, 3);
-        if (s.c.t < k.CAST || e > 710) return;
-        const amp = 4 * (1 - k.ease(k.clamp((e + 180) / 420)));
-        for (let j = 0; j < 5; j++) pixel(C.x - 8 + j * 4, C.y - 12 + (j % 2 ? amp : -amp), e < 0 ? MIND : CALM, 3);
-      });
-    },
-  });
-
   // Branding Smite: a radiant weapon slash lands in a white-gold star, leaving an unmistakable luminous brand.
   FX.register('branding-smite', {
     palette: GOLD,
@@ -494,69 +324,6 @@
     },
   });
 
-  // Enthrall: a rose speaking sigil at the caster sends rhythmic word-ribbons to eyes that turn toward the voice.
-  FX.register('enthrall', {
-    palette: MIND,
-    travel: 300,
-    beats: soft,
-    end: () => 1370,
-    air(s) {
-      if (!s.pose.hand || s.c.t < k.CAST) return;
-      const H = k.P(s.pose.hand),
-        e = s.c.t - k.CAST;
-      if (e > 950) return;
-      icon('mouth', { x: H.x, y: H.y - 3 }, MIND);
-      subjects(s).forEach((t, i) => {
-        const C = body(t),
-          h = beat(s, i);
-        if (e < 580)
-          for (let j = 0; j < 7; j++) {
-            const u = e / 300 - j * 0.055;
-            if (u < 0 || u > 1) continue;
-            pixel(
-              k.mix(H.x, C.x, u),
-              k.mix(H.y, C.y - 10, u) + Math.sin(u * k.tau * 2 - e / 65) * 3,
-              MIND,
-              j % 2 ? 3 : 4,
-              2,
-            );
-          }
-        spark(s, h, { x: C.x, y: C.y - 10 }, MIND, 20, 4);
-        if (s.c.t >= h.at && e < 900) {
-          const A = { x: C.x, y: C.y - 11 };
-          icon('eye', A, MIND);
-          pixel(A.x + Math.sign(H.x - C.x) * 3, A.y, MIND, 1, 2);
-        }
-      });
-    },
-  });
-
-  // Blindness / Deafness: ink shutters snap over an eye while a barred ear sheds broken sound marks.
-  FX.register('blindness-deafness', {
-    palette: INK,
-    travel: 170,
-    beats: soft,
-    end: () => 1240,
-    air(s) {
-      subjects(s).forEach((t, i) => {
-        packet(s, t, INK);
-        const C = body(t),
-          h = beat(s, i),
-          e = s.c.t - h.at;
-        spark(s, h, { x: C.x, y: C.y - 7 }, INK, 26, 6);
-        if (e < 0 || e > 670) return;
-        const A = { x: C.x - 5, y: C.y - 10 },
-          B = { x: C.x + 10, y: C.y - 5 };
-        icon('eye', A, INK);
-        icon('ear', B, INK);
-        const q = k.ease(k.clamp(e / 100));
-        stroke({ x: A.x - 6, y: A.y - 3 * (1 - q) }, { x: A.x + 6, y: A.y - 3 * (1 - q) }, INK, 1, 3);
-        stroke({ x: B.x - 5, y: B.y + 6 }, { x: B.x + 5, y: B.y - 6 }, INK, 4, 2);
-        if (e < 280) for (let j = 0; j < 3; j++) pixel(B.x + 9 + e / 30, B.y + (j - 1) * 5 + e / 40, INK, 2);
-      });
-    },
-  });
-
   // Arcane Lock: violet jamb runes clamp inward; a gold padlock clicks shut and the final key-spark vanishes.
   FX.register('arcane-lock', {
     palette: ARCANE,
@@ -580,38 +347,6 @@
         const x = C.x + 8 * (1 - k.ease(k.clamp(e / 160)));
         pixel(x, C.y + 1, GOLD, 5, 2);
       }
-    },
-  });
-
-  // Borrowed Knowledge: an ivory spectral book opens, releasing orderly violet script into a crown above the reader.
-  FX.register('borrowed-knowledge', {
-    palette: ARCANE,
-    travel: 280,
-    beats: soft,
-    end: () => 1390,
-    air(s) {
-      subjects(s).forEach((t, i) => {
-        const h = beat(s, i),
-          C = body(t),
-          e = s.c.t - h.at,
-          t0 = s.c.t - k.CAST;
-        if (t0 < 0 || e > 700) return;
-        const B = { x: C.x, y: C.y + 4 };
-        if (e < 480) icon('book', B, ARCANE);
-        for (let j = 0; j < 5; j++) {
-          const q = k.clamp((t0 - j * 45) / 420);
-          if (q <= 0 || q >= 1) continue;
-          const x = C.x + Math.sin(q * Math.PI * 1.5 + j) * 8;
-          const y = C.y + 3 - q * 23;
-          pixel(x, y, ARCANE, 4, 2);
-          pixel(x + 3, y + (j % 2 ? 2 : -2), ARCANE, 3);
-        }
-        spark(s, h, { x: C.x, y: C.y - 13 }, ARCANE, 22, 5);
-        if (e >= 120) {
-          ring({ x: C.x, y: C.y - 13 }, 9, 3, ARCANE, 4, e > 500 ? 5 : 0);
-          for (let j = 0; j < 3; j++) pixel(C.x + (j - 1) * 6, C.y - 18 - (j === 1 ? 3 : 0), ARCANE, 4, 2);
-        }
-      });
     },
   });
 
