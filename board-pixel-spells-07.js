@@ -409,48 +409,6 @@
     },
   });
 
-  // Create or Destroy Water: rain fills the actual cube footprint; its pool then lifts away as vaporous droplets.
-  FX.register('create-or-destroy-water', {
-    palette: WATER,
-    travel: 180,
-    beats: beats(65, 'soft', 0),
-    end: end(1000),
-    ground(s) {
-      const e = s.real(s.hits[0]);
-      if (e < 0 || e > 1040) return;
-      const poly = areaPoints(s, 'cube', 5);
-      const q = e < 120 ? 0.35 + k.ease(e / 120) * 0.65 : e < 570 ? 1 : 1 - k.ease(k.clamp((e - 570) / 420));
-      if (q < 0.04) return;
-      const C = { x: poly.reduce((a, p) => a + p.x, 0) / 4, y: poly.reduce((a, p) => a + p.y, 0) / 4 };
-      const pool = poly.map(p => ({ x: C.x + (p.x - C.x) * q, y: C.y + (p.y - C.y) * q }));
-      surface(pool, WATER, 'water', e < 70 ? 0 : e < 600 ? 1 : 2);
-      if (e < 570) ring(C, 3 + (Math.floor(e / 70) % 5), 2 + (Math.floor(e / 140) % 3), WATER, 4);
-    },
-    air(s) {
-      const hit = s.hits[0],
-        e = s.real(hit),
-        t = s.c.t - k.CAST;
-      if (t < 0 || e > 1040) return;
-      const poly = areaPoints(s, 'cube', 5);
-      const up = e >= 570;
-      for (let i = 0; i < 14; i++) {
-        const u = k.hash(i, seed(s), 1),
-          v = k.hash(i, seed(s), 2);
-        const p = {
-          x: poly[0].x + (poly[1].x - poly[0].x) * u + (poly[3].x - poly[0].x) * v,
-          y: poly[0].y + (poly[1].y - poly[0].y) * u + (poly[3].y - poly[0].y) * v,
-        };
-        if (e > 880 && i % 2) continue;
-        const q = (((up ? e - 570 : t) + i * 29) % 330) / 330;
-        const drop = add(p, up ? Math.sin(q * 3 + i) * 2 : 0, up ? -q * 23 : -23 + q * 23);
-        stroke([drop, add(drop, 0, up ? 2 : -3)], WATER, up ? 4 : 3, 1, 4);
-      }
-      const C = { x: (poly[0].x + poly[2].x) / 2, y: (poly[0].y + poly[2].y) / 2 };
-      k.drawHit(k.hitStyle('07:water', WATER, { S: 24, spikes: 6 }), C, e);
-      k.shards(C, e, WATER, seed(s), 6, 15);
-    },
-  });
-
   // Ice Knife: a faceted piercing dagger hits first, then detonates into the exact five-foot cold circle.
   FX.register('ice-knife', {
     palette: ICE,

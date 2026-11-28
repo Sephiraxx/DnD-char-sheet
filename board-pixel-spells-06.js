@@ -275,40 +275,6 @@
       }
   }
 
-  // Chill Touch: a violet-white skeletal hand flies out, closes on flesh, and sheds necrotic bone splinters.
-  FX.register('chill-touch', {
-    palette: DEATH,
-    travel: 290,
-    beats: beats(100),
-    end: end(520),
-    air(s) {
-      const hit = s.hits[0];
-      if (!hit) return;
-      const H = k.P(s.pose.hand || caster(s)),
-        T = body(s),
-        e = s.c.t - k.CAST;
-      if (e >= 0 && s.c.t < hit.at) {
-        const q = e / (hit.at - k.CAST);
-        for (let i = 7; i > 0; i--) {
-          const u = q - i * 0.035;
-          if (u < 0) continue;
-          pixel({ x: k.mix(H.x, T.x, u), y: k.mix(H.y, T.y, u) + Math.sin(u * 11) * 2 }, DEATH, i < 3 ? 3 : 1, 2);
-        }
-        show(handSprite(false), { x: k.mix(H.x, T.x, q), y: k.mix(H.y, T.y, q) - Math.sin(q * Math.PI) * 5 });
-      }
-      const real = s.real(hit);
-      if (real >= 0 && real < 500) {
-        show(handSprite(real > 55), add(T, 0, real > 320 ? (real - 320) / 35 : 0));
-        if (real > 180)
-          for (let j = 0; j < 4; j++) {
-            const q = (real - 180) / 320;
-            pixel(add(T, (j - 1.5) * 4, -5 - q * (8 + j * 2)), DEATH, 2, 2);
-          }
-      }
-      impact(s, 0, DEATH, 'chill-touch', 30, 5);
-    },
-  });
-
   // Absorb Elements: elemental sparks collapse into a faceted ward, leaving energy stored by the weapon hand.
   FX.register('absorb-elements', {
     palette: event =>
@@ -349,103 +315,6 @@
           spark(stored, ramp, 2);
         }
       });
-    },
-  });
-
-  // Alarm: a copper-gold ward traces the cube perimeter; corner seals lock and a small bell rings above it.
-  FX.register('alarm', {
-    palette: GOLD,
-    travel: 240,
-    beats: () => [{ at: k.CAST + 240, stop: 55, target: null, kind: 'soft', power: 0 }],
-    end: end(600),
-    ground(s) {
-      const e = s.c.t - k.CAST,
-        pts = corners(s);
-      if (e < 0 || e > 840 || pts.length < 4) return;
-      const xs = pts.map(p => p.x),
-        ys = pts.map(p => p.y);
-      const x0 = Math.floor(Math.min(...xs)) - 3,
-        y0 = Math.floor(Math.min(...ys)) - 3;
-      const local = pts.map(p => ({ x: Math.round(p.x - x0), y: Math.round(p.y - y0) }));
-      const w = Math.ceil(Math.max(...xs) - x0) + 4,
-        h = Math.ceil(Math.max(...ys) - y0) + 4;
-      const frame = Math.min(4, Math.floor(e / 60));
-      const img = k.sprite(`06:alarm:${JSON.stringify(local)}:${frame}`, w, h, GOLD, set => {
-        for (let j = 0; j < 4; j++) {
-          const a = local[j],
-            b = local[(j + 1) % 4],
-            n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y));
-          const reach = k.clamp(frame - j + 1);
-          for (let d = 0; d <= n * reach; d++) {
-            const q = d / Math.max(1, n);
-            set(k.mix(a.x, b.x, q), k.mix(a.y, b.y, q), d % 9 < 3 ? 4 : 2);
-          }
-        }
-      });
-      k.blit(img, x0, y0);
-      pts.forEach(p => {
-        show(icon('alarm-seal', ['..4..', '.424.', '42324', '.424.', '..4..'], GOLD), p);
-        if (e < 450) spark(add(p, 0, -4), GOLD, 2);
-      });
-    },
-    air(s) {
-      const e = s.c.t - k.CAST,
-        pts = corners(s);
-      if (e < 0 || e > 840) return;
-      const p = pts.length
-        ? { x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length - 12 }
-        : k.P(s.pose.target || caster(s));
-      if (e > 140 && e < 720) {
-        const img = icon(
-          'bell',
-          ['....4....', '...454...', '..43334..', '..43334..', '.4333334.', '.4444444.', '....3....', '...44....'],
-          GOLD,
-        );
-        k.blitRotated(img, p.x, p.y, e < 400 ? Math.sin(e / 40) * 0.4 : 0);
-        if (e > 240 && e < 550) {
-          ring(p, 10 + Math.floor((e - 240) / 65), 7, GOLD, 3, true);
-        }
-      }
-      impact(s, 0, GOLD, 'alarm', 18, 4, p);
-    },
-  });
-
-  // Animal Friendship: a green musical ribbon carries pink hearts to the beast and settles into a friendly paw seal.
-  FX.register('animal-friendship', {
-    palette: NATURE,
-    travel: 260,
-    beats: soft,
-    end: end(530),
-    ground(s) {
-      groundSeal(s, NATURE, s.c.t - k.CAST - 170);
-    },
-    air(s) {
-      const e = s.c.t - k.CAST,
-        h = s.hits[0];
-      if (e < 0 || !h) return;
-      const H = k.P(s.pose.hand || caster(s)),
-        T = body(s);
-      const heart = icon('heart', ['.33.33.', '3443443', '3444443', '.34443.', '..343..', '...3...'], BERRY);
-      if (s.c.t < h.at) {
-        const q = e / 260;
-        for (let j = 0; j < 3; j++) {
-          const u = Math.max(0, q - j * 0.12);
-          const p = { x: k.mix(H.x, T.x, u), y: k.mix(H.y, T.y, u) - Math.sin(u * Math.PI) * 9 };
-          if (j === 0) show(heart, p);
-          else show(icon('note', ['..444', '..4.4', '..4.4', '334.4', '34333', '.3.43'], NATURE), p);
-        }
-      }
-      const real = s.real(h);
-      if (real >= 0 && real < 570) {
-        for (let j = 0; j < 3; j++)
-          show(heart, add(T, (j - 1) * 9, -10 - Math.min(12, real / 35) + Math.sin(j + real / 100) * 2));
-        if (real > 100)
-          show(
-            icon('paw', ['.3...3.', '343.343', '.3.3.3.', '..343..', '.34443.', '.34443.', '..333..'], NATURE),
-            add(T, 0, 4),
-          );
-      }
-      impact(s, 0, NATURE, 'friendship', 18, 4);
     },
   });
 
@@ -549,35 +418,6 @@
           show(icon('armor-rune', ['..4..', '.434.', '43.34', '.434.', '..4..', '..4..'], MAGIC), add(p, 0, 1));
         }
         impact(s, i, MAGIC, 'mage-armor', 20, 4, p);
-      });
-    },
-  });
-
-  // Bless: warm gold motes descend onto each ally, resolve into holy four-point stars, and leave a small foot halo.
-  FX.register('bless', {
-    palette: GOLD,
-    travel: 210,
-    beats: soft,
-    end: end(600),
-    ground(s) {
-      groundSeal(s, GOLD, s.c.t - k.CAST - 100);
-    },
-    air(s) {
-      const e = s.c.t - k.CAST;
-      if (e < 0 || e > 810) return;
-      recipients(s).forEach((t, i) => {
-        const p = k.P(t);
-        if (e < 210)
-          for (let j = 0; j < 3; j++) {
-            const q = k.clamp(e / 210),
-              a = (j * k.tau) / 3 + q * 2;
-            pixel(add(p, Math.cos(a) * 9 * (1 - q), -22 + q * 14), GOLD, 4, 2);
-          }
-        if (e > 180 && e < 700) {
-          spark(add(p, 0, -13), GOLD, e < 290 ? 5 : 3);
-          for (let j = 0; j < 3; j++) pixel(add(p, (j - 1) * 8, 3 - ((e + j * 65) % 250) / 20), GOLD, 3);
-        }
-        impact(s, i, GOLD, 'bless', 20, 4, add(p, 0, -8));
       });
     },
   });
@@ -750,38 +590,6 @@
       }
       if (e > 500 && e < 700) spark(add(H, 0, -14), GOLD, 2);
       impact(s, 0, NATURE, 'goodberry', 18, 5, H);
-    },
-  });
-
-  // Feather Fall: ivory feathers drift down beside each recipient and a soft air cushion visibly brakes their descent.
-  FX.register('feather', {
-    palette: THUNDER,
-    travel: 180,
-    beats: soft,
-    end: end(690),
-    ground(s) {
-      const e = s.c.t - k.CAST;
-      if (e < 100 || e > 760) return;
-      recipients(s).forEach(t => {
-        const p = feet(t),
-          q = k.clamp((e - 100) / 250);
-        ring(p, 8 + q * 6, 3 + q * 2, THUNDER, 3, e > 470);
-        if (e < 480) ring(add(p, 0, -3), 7 + q * 4, 2, THUNDER, 2);
-      });
-    },
-    air(s) {
-      const e = s.c.t - k.CAST;
-      if (e < 0 || e > 870) return;
-      recipients(s).forEach((t, i) => {
-        const p = k.P(t),
-          q = k.clamp(e / 760),
-          fall = 22 * (1 - (1 - q) ** 2);
-        for (let j = 0; j < 3; j++) {
-          const x = (j - 1) * 11 + Math.sin(e / 150 + j + k.hash(i, seed(s))) * 3;
-          k.blitRotated(featherSprite(), p.x + x, p.y - 19 + fall - j * 4, Math.sin(e / 180 + j) * 0.4);
-        }
-        impact(s, i, THUNDER, 'feather', 16, 4, add(p, 0, 6));
-      });
     },
   });
 
