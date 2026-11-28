@@ -64,10 +64,10 @@ metadata now carries the spell's `point` and, for lines, `dir` and `length`.
 | gust | Push 5 ft (failed save) | Moves |
 | pulse-wave | Push 15 ft (failed save) | Moves (push only; the push-or-pull choice is still to do) |
 | gust-of-wind | Push 15 ft along the line (failed save) | Moves on the cast's saves; the save at each turn start isn't reached yet |
-| lightning-lure | Pull 10 ft toward the caster (failed save) | In the table, not reached: its "Personal" targeting picks the caster |
-| grasping-vine | Pull 20 ft toward the vine (failed Dex save) | In the table, not reached: the vine is a summon with no later save flow |
-| thunderous-smite | Push 10 ft (failed save), plus prone | In the table, not reached: the smite's save after a weapon hit isn't linked to the board |
-| dust-devil | Push 10 ft away (failed save) | In the table, not reached: no end-of-turn trigger, and its point lands on the victim |
+| lightning-lure | Pull 10 ft toward the caster (failed save) | Moves; damage still uses the existing save flow, without checking distance after the pull |
+| grasping-vine | Pull 20 ft toward the vine (failed Dex save) | Moves on an optional cast target and later board lashes (bonus action) |
+| thunderous-smite | Push 10 ft (failed save), plus prone | Moves and knocks prone after the next melee weapon hit; extra weapon damage is not automated |
+| dust-devil | Push 10 ft away (failed save) | Placed zone, end-of-turn save within 5 ft; bonus-action zone movement is not implemented |
 | bigbys-hand | Forceful Hand pushes 5 ft + 5 ft × spellcasting modifier; Grasping Hand can drag | To do |
 | telekinesis | Move the creature up to 30 ft (contest) | To do |
 | catapult | Hurls an object, not a creature | Probably nothing to move |

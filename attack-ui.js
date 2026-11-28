@@ -222,6 +222,11 @@ const AttackUI = (() => {
         entry.cls = out.hit ? entry.cls || 'hit' : 'fumble';
         session.last = out.hit ? { crit: r.crit, profile: p, attack: { total: r.total, natural: r.kept } } : null;
         session.target = out.hit ? target : null;
+        if (out.hit)
+          globalThis.BoardPlayer?.weaponHit(target, {
+            melee: !item.unarmed && !p.weapon.ranged,
+            reach: p.weapon.reach ? 10 : 5,
+          }).catch(err => toast(err.message));
       } else {
         // Sin respuesta del servidor: se resuelve en la mesa como un ataque sin objetivo.
         session.target = null;

@@ -325,7 +325,12 @@ const RollUI = (() => {
     };
   }
   function spellInfo(sp, slot) {
-    const noDamageSave = { bane: ['cha', 'Carisma'], hold: ['wis', 'Sabiduría'], entangle: ['str', 'Fuerza'] }[sp.id];
+    const noDamageSave = {
+      bane: ['cha', 'Carisma'],
+      hold: ['wis', 'Sabiduría'],
+      entangle: ['str', 'Fuerza'],
+      'grasping-vine': ['dex', 'Destreza'],
+    }[sp.id];
     if (noDamageSave) {
       const [save, saveName] = noDamageSave;
       return { dice: '', notes: [], attack: false, save, saveName, types: '', heal: false };
@@ -1096,9 +1101,20 @@ const RollUI = (() => {
     const st = spellStats(sp);
     const mod = info.addMod ? st.mods[Classes.casting(caster(sp)).ability] || 0 : 0;
     const result = { name: sp.name, slot, castId: boardCast?.castId, rows: [], saves: {} };
+    if (sp.id === 'thunderous-smite') {
+      if (!options.trigger) {
+        result.rows.push('Castigo activo · tu próximo impacto con un arma cuerpo a cuerpo pide la salvación.');
+        return result;
+      }
+      Object.assign(info, { dice: '', attack: false, save: 'str', saveName: 'Fuerza' });
+    }
     const zoneRule = boardCast?.zone && BoardSpells.zoneRule(sp.id);
     if (zoneRule && !zoneRule.initial) {
       result.rows.push('Zona activa · el DM recibe los avisos para resolver sus efectos.');
+      return result;
+    }
+    if (sp.id === 'grasping-vine' && !placement?.hits?.length) {
+      result.rows.push('Enredadera invocada · podés azotar desde el tablero mientras dure el conjuro.');
       return result;
     }
     const selected = TableUI.targets();

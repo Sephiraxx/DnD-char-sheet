@@ -66,6 +66,15 @@
       const sp = spellById('spiritual-weapon');
       if (sp) RollUI.spell(sp, strike.slot, { placement: { hits: strike.hits }, spiritualStrike: strike });
     },
+    prepareVineLash: strike => {
+      if (!strike.first) commit('Acción adicional: Enredadera', s => Combat.use(s, 'bonus', 'Enredadera'));
+    },
+    vineLash: strike =>
+      RollUI.resolveBoardCast(spellById('grasping-vine'), strike.slot, {
+        placement: { hits: strike.hits },
+        boardCast: strike.boardCast,
+        form: new FormData(),
+      }),
     pick: c => TableUI.setBoardContext(c),
     dock: () => (state && typeof combatCompact === 'function' ? combatCompact() : ''),
     reach: t => (mine(t) ? reach() : null),
@@ -117,6 +126,20 @@
     return loading;
   }
   window.BoardPlayer = {
+    async weaponHit(target, { melee, reach = 5 }) {
+      if (!melee || state.concentration !== 'thunderous-smite' || !globalThis.Board) return;
+      const sp = spellById('thunderous-smite');
+      if (!sp) return;
+      const strike = Board.smiteStrike(target, reach);
+      if (!strike) return;
+      commit('Castigo atronador: impacto', s => Combat.endConcentration(s));
+      return RollUI.resolveBoardCast(sp, sp.level, {
+        placement: { hits: strike.hits },
+        boardCast: strike.boardCast,
+        form: new FormData(),
+        trigger: true,
+      });
+    },
     async openCast(id) {
       const link = TableUI.link();
       if (!link) return cast(id);

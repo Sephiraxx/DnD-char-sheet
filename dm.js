@@ -512,6 +512,8 @@ async function resolveSave(req, targetId, own = null) {
     ),
     hp = Math.max(0, (c.hp ?? 0) - damage);
   if (damage) await Cloud.updateSecret(c.id, { hp });
+  if (!success && p.spellId === 'thunderous-smite')
+    await Cloud.updateCombatant(c.id, { conditions: [...new Set([...(c.conditions || []), 'Derribado'])] });
   const max = c.max || 1,
     status =
       hp <= 0

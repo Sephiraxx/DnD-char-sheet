@@ -5,6 +5,40 @@ const spells = require('../board-spells.js');
 const grid = { cols: 20, rows: 15, feet: 5 };
 const includes = (cells, x, y) => cells.some(([cx, cy]) => cx === x && cy === y);
 
+test('Lightning Lure overrides only its Personal range; placed spells use free squares', () => {
+  assert.equal(spells.targetRange({ id: 'lightning-lure', range: 'Personal · radio de 15 pies' }), 15);
+  for (const [id, range, expected] of [
+    ['thunderous-smite', 'Personal', 0],
+    ['thunderwave', 'Personal', 0],
+    ['thorn-whip', '30 pies', 30],
+    ['grasping-vine', '30 pies', 30],
+    ['dust-devil', '60 pies', 60],
+  ])
+    assert.equal(spells.targetRange({ id, range }), expected);
+  assert.equal(spells.placedSquare('grasping-vine'), true);
+  assert.equal(spells.placedSquare('dust-devil'), true);
+  assert.equal(spells.placedSquare('flaming-sphere'), false);
+});
+
+test('Dust Devil occupies one cube and triggers at turn end in all adjacent squares', () => {
+  const rule = spells.zoneRule('dust-devil');
+  assert.deepEqual(rule, { end: true, adjacent: 5 });
+  const area = spells.makeTemplate(grid, spells.areaFor({ id: 'dust-devil', level: 2 }), null, { x: 6.5, y: 5.5 });
+  assert.deepEqual(area.origin, { x: 6.5, y: 5.5 });
+  assert.deepEqual(spells.affectedCells(grid, area), [[6, 5]]);
+  for (const x of [5, 6, 7])
+    for (const y of [4, 5, 6])
+      assert.equal(spells.zoneContains(grid, area, { x, y, size: 1 }, rule), true, `${x},${y}`);
+  for (const [x, y] of [
+    [4, 5],
+    [8, 5],
+    [6, 3],
+    [6, 7],
+  ])
+    assert.equal(spells.zoneContains(grid, area, { x, y, size: 1 }, rule), false);
+  assert.deepEqual(spells.zoneRule('flaming-sphere'), { end: true, adjacent: 5 });
+});
+
 test('persistent zones distinguish start, entry, end, and damage on cast', () => {
   for (const id of ['spirit-guardians', 'moonbeam', 'cloud-of-daggers']) {
     const rule = spells.zoneRule(id);

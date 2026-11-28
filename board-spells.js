@@ -138,7 +138,7 @@
   ])
     shapes[id] = { kind: 'cylinder', feet, height, self: false };
   area('cube', 15, 0, true, 'thunderwave');
-  area('cube', 5, 0, false, 'cloud-of-daggers create-bonfire');
+  area('cube', 5, 0, false, 'cloud-of-daggers create-bonfire dust-devil');
   area('cube', 20, 0, false, 'entangle faeriefire web');
   for (const [id, feet, width, height] of [
     ['blade-barrier', 100, 5, 20],
@@ -187,6 +187,8 @@
   });
   const weaponForm = value => (['mace', 'axe'].includes(value) ? value : 'hammer');
   const destinationRange = id => ({ 'misty-step': 30, 'far-step': 60 })[id] || 0;
+  const targetRange = spell => (spell.id === 'lightning-lure' ? 15 : rangeFor(spell.range));
+  const placedSquare = id => ['grasping-vine', 'dust-devil'].includes(id);
   const forcedMoves = Object.freeze({
     thunderwave: { move: 'push', feet: 10, on: 'save', from: 'caster' },
     'thorn-whip': { move: 'pull', feet: 10, on: 'hit', from: 'caster' },
@@ -214,6 +216,7 @@
     'sickening-radiance': { enter: true, start: true },
     'incendiary-cloud': { initial: true, enter: true, end: true, spreads: true },
     'flaming-sphere': { end: true, adjacent: 5 },
+    'dust-devil': { end: true, adjacent: 5 },
     'insect-plague': { initial: true, enter: true, end: true, spreads: true },
     'maddening-darkness': { start: true, spreads: true },
     'dark-star': { enter: true, start: true },
@@ -511,11 +514,13 @@
         Math.min(...across) < (hot ? reach : thickness)
       );
     }
-    return (
-      affectedTokens(affectedCells(grid, adjacent ? { ...area, feet: area.feet + adjacent } : area, walls, spreads), [
-        token,
-      ]).length > 0
-    );
+    const expanded =
+      adjacent && area.kind === 'cube'
+        ? { ...area, x: area.x - adjacent / grid.feet, feet: area.feet + 2 * adjacent }
+        : adjacent
+          ? { ...area, feet: area.feet + adjacent }
+          : area;
+    return affectedTokens(affectedCells(grid, expanded, walls, spreads), [token]).length > 0;
   }
   function zoneMovement(grid, area, token, path, rule) {
     let enters = false,
@@ -625,6 +630,8 @@
     repeatable,
     weaponForm,
     destinationRange,
+    targetRange,
+    placedSquare,
     forcedMove,
     forcedDestination,
     nearestPointOnSegment,

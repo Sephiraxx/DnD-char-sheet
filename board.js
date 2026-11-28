@@ -280,6 +280,7 @@
     spellCrumbles.clear();
     teleportFrames.clear();
     weaponAim = null;
+    vineAim = null;
     spellClouds = [];
     receivedCasts.clear();
     S.sel = null;
@@ -939,6 +940,7 @@
   const spellCrumbles = new Map();
   const teleportFrames = new Map();
   let weaponAim = null;
+  let vineAim = null;
   const fxPrefs = { reduced: false, shake: true, pixelMinis: true };
   // Pixel-art figures: art pixels per square for the sprite set in assets/minis-pixel.
   const PIXEL_MINIS = 32;
@@ -1004,6 +1006,8 @@
       event.swing = { at: now, point: m.point };
     } else if (m.action === 'weapon-impact' && event?.id === 'spiritual-weapon' && token) {
       event.attackImpact = { at: now, point: tokenCenter(token), span: BC.tokenSpan(token) };
+    } else if (m.action === 'smite-used' && event?.id === 'thunderous-smite') {
+      event.endedAt = now;
     } else if (m.action === 'crumble' && token && !spellCrumbles.has(token.id)) {
       globalThis.BoardInk?.prepare('disintegrate', 'beam');
       spellCrumbles.set(token.id, { at: now, point: tokenCenter(token), span: BC.tokenSpan(token) });
@@ -1647,17 +1651,24 @@
     const legacy = Rules.spellImpact(sp, slot).area;
     const shape = Spells.areaFor(sp, slot, legacy);
     const travelRange = Spells.destinationRange(sp.id);
-    const range = travelRange || Spells.rangeFor(sp.range) + (sp.id === 'produce-flame' ? 30 : 0);
+    const range = travelRange || Spells.targetRange(sp) + (sp.id === 'produce-flame' ? 30 : 0);
     const self = range === 0 || shape?.self === true;
     const subject = tokens.find(t => t.id === tokenId) || tokens.find(t => BC.inFootprint(t, aim.x, aim.y));
     const base = t => ({ x: t.x + BC.tokenSpan(t) / 2, y: t.y + BC.tokenSpan(t) / 2 });
-    const aimPoint = shape && !self && shape.kind !== 'wall' ? Spells.snapIntersection(aim, S.grid) : aim;
-    const destination = travelRange || Spells.kindFor(sp.id) === 'summon';
+    const square = Spells.placedSquare(sp.id);
+    const aimPoint = square
+      ? { x: cell.x + 0.5, y: cell.y + 0.5 }
+      : shape && !self && shape.kind !== 'wall'
+        ? Spells.snapIntersection(aim, S.grid)
+        : aim;
+    const destination = travelRange || Spells.kindFor(sp.id) === 'summon' || square;
     const teleport = sp.id === 'misty-step' && me && mistyDestination(me, aim);
     const targetPoint = destination
       ? teleport
         ? base(teleport)
-        : aim
+        : square
+          ? aimPoint
+          : aim
       : self && !shape && me
         ? base(me)
         : !shape && subject
@@ -1681,6 +1692,12 @@
       allies: [],
     };
     if (!me) return { ...placement, error: 'Primero ubicá tu ficha lanzadora en el mapa activo.' };
+    if (square) {
+      const space = { x: cell.x, y: cell.y, size: 1 };
+      if (!BC.roomFor(S.grid, S.terrain, space, tokens)) return { ...placement, error: 'Elegí una casilla libre.' };
+    }
+    if (sp.id === 'lightning-lure' && (!subject || subject.id === me.id || subject.kind === 'object'))
+      return { ...placement, error: 'Elegí otra criatura visible a 15 pies o menos.' };
     if (sp.id === 'misty-step') {
       if (!canMove(me)) return { ...placement, error: 'No tenés permiso para mover la ficha lanzadora.' };
       if (!BC.roomFor(S.grid, S.terrain, teleport, []) || overlapsPieces(teleport, tokens))
@@ -1690,6 +1707,7 @@
     if (!canSeeGround(targetPoint) && !self) return { ...placement, error: 'Elegí un punto visible del mapa activo.' };
     const area = Spells.makeTemplate(S.grid, shape && { ...shape, self }, me, aimPoint);
     placement.area = area;
+    if (square && area) placement.cells = Spells.affectedCells(S.grid, area, targetingWalls());
     const distance = self
       ? 0
       : Spells.distance(me, teleport || (shape || destination ? null : subject), targetPoint, S.grid.feet);
@@ -1761,6 +1779,16 @@
   }
   function prepareCompactCast(p, spell, level, s) {
     const visible = visibleTokens();
+    if (spell.id === 'grasping-vine') {
+      const targets = s.selected.map(id => visible.find(t => t.id === id));
+      if (targets.length > 1 || targets.some(t => !vineTarget(p.point, t)))
+        throw Error('Elegí una criatura visible a 30 pies o menos de la enredadera.');
+      p.hits = targets.map(castHit);
+      p.tokens = targets.map(t => t.id);
+      p.saveTargets = p.tokens;
+      p.allies = targets.filter(t => t.kind === 'pc' && t.id !== p.caster).map(t => t.id);
+      return p;
+    }
     if (p.area?.kind === 'wall') {
       if (s.ring) p.area = { ...p.area, ring: true, feet: 10, width: 1 };
       else if (s.wallEnd) {
@@ -1813,8 +1841,8 @@
       center = tokenCenter(me),
       shape = Spells.areaFor(sp, slot.level, Rules.spellImpact(sp, slot.level).area);
     const destination = Spells.destinationRange(sp.id),
-      range = destination || Spells.rangeFor(sp.range);
-    const groundPoint = !destination && Spells.kindFor(sp.id) === 'summon';
+      range = destination || Spells.targetRange(sp);
+    const groundPoint = !destination && (Spells.kindFor(sp.id) === 'summon' || Spells.placedSquare(sp.id));
     const allowObject =
       ['fire-bolt', 'light', 'heat-metal', 'disintegrate'].includes(sp.id) ||
       /criatura (?:u|o) objeto/i.test(sp.text || '');
@@ -1843,23 +1871,30 @@
         ready = false;
       }
     }
-    const prompt = destination
-      ? 'Tocá un destino libre'
-      : groundPoint
-        ? 'Tocá un punto de invocación'
-        : castDirection(shape)
-          ? 'Arrastrá el control para apuntar'
-          : shape?.kind === 'wall'
-            ? 'Arrastrá para dibujar el muro'
-            : sp.id === 'spirit-guardians'
-              ? 'Tocá una ficha para incluirla o excluirla'
-              : shape && !shape.self
-                ? 'Arrastrá el área para moverla'
-                : tokenSpell
-                  ? s.object
-                    ? 'Elegí un objeto'
-                    : 'Tocá las fichas para elegir'
-                  : 'Sobre vos';
+    const prompt =
+      sp.id === 'grasping-vine'
+        ? s.aim
+          ? 'Tocá una criatura a 30 pies de la enredadera (opcional) y confirmá'
+          : 'Tocá una casilla libre para la enredadera'
+        : sp.id === 'dust-devil'
+          ? 'Tocá una casilla libre para el remolino'
+          : destination
+            ? 'Tocá un destino libre'
+            : groundPoint
+              ? 'Tocá un punto de invocación'
+              : castDirection(shape)
+                ? 'Arrastrá el control para apuntar'
+                : shape?.kind === 'wall'
+                  ? 'Arrastrá para dibujar el muro'
+                  : sp.id === 'spirit-guardians'
+                    ? 'Tocá una ficha para incluirla o excluirla'
+                    : shape && !shape.self
+                      ? 'Arrastrá el área para moverla'
+                      : tokenSpell
+                        ? s.object
+                          ? 'Elegí un objeto'
+                          : 'Tocá las fichas para elegir'
+                        : 'Sobre vos';
     const warn = (Rules.spellImpact(sp).types.length && (shape || rays)) || sp.id === 'spirit-guardians';
     return {
       ready,
@@ -1897,6 +1932,12 @@
       p = compactPlan(s, max);
     if (!p.center || !BC.inside(S.grid, cell.x, cell.y)) return false;
     const id = hitToken(w)?.id;
+    if (s.sp.id === 'grasping-vine' && s.aim && id) {
+      const token = visibleTokens().find(t => t.id === id);
+      if (drag || !vineTarget(p.placement?.point, token)) return false;
+      s.selected = s.selected.includes(id) ? [] : [id];
+      return true;
+    }
     if (p.valid) {
       if (drag || !p.valid.has(id)) return false;
       const at = s.selected.lastIndexOf(id);
@@ -1934,6 +1975,7 @@
     const test = spellPlacement(s.sp, castCell(next), s.slot.level, next);
     if (!test || test.error) return false;
     s.aim = next;
+    if (s.sp.id === 'grasping-vine') s.selected = [];
     if (p.shape?.kind === 'wall' && drag && !s.ring) s.wallEnd = aim;
     return true;
   }
@@ -1947,7 +1989,7 @@
       size = worldSize();
     const min = Math.max(canvas.clientWidth / size.w, canvas.clientHeight / size.h);
     const range = sp
-      ? (Spells.destinationRange(sp.id) || Spells.rangeFor(sp.range)) / S.grid.feet
+      ? (Spells.destinationRange(sp.id) || Spells.targetRange(sp)) / S.grid.feet
       : Math.max(S.grid.cols, S.grid.rows);
     const span = Math.max(6, Math.min(Math.max(S.grid.cols, S.grid.rows), range * 2 + 2));
     const scale = Math.max(min, canvas.clientWidth / (Math.min(13, span) * c));
@@ -2038,7 +2080,7 @@
   }
   function selectedPlacement(sp, slot = sp.level) {
     if (Spells.destinationRange(sp.id)) return null;
-    const t = tokenById(S.target) || (Spells.rangeFor(sp.range) === 0 ? actor() : null);
+    const t = tokenById(S.target) || (Spells.targetRange(sp) === 0 ? actor() : null);
     if (!t || t.map_id !== S.mapId) return null;
     const aim = { x: t.x + BC.tokenSpan(t) / 2, y: t.y + BC.tokenSpan(t) / 2 };
     return spellPlacement(sp, { x: Math.floor(aim.x), y: Math.floor(aim.y) }, slot, aim, t.id);
@@ -2171,9 +2213,12 @@
       if (spell.id === 'misty-step') moveMistyStep(placement, cast.castId);
       S.spellAim = null;
       S.dirty = true;
-      if (spell.id === 'spiritual-weapon') {
+      if (spell.id === 'spiritual-weapon' || spell.id === 'grasping-vine') {
         const weapon = S.spellCasts.find(e => e.castId === cast.castId);
-        if (weapon) weapon.summonedTurn = H.spiritualTurn?.();
+        if (weapon) {
+          weapon.summonedTurn = H.spiritualTurn?.();
+          if (spell.id === 'grasping-vine') weapon.lashed = placement.hits.length > 0;
+        }
         panel();
         tools();
       }
@@ -2228,7 +2273,7 @@
     }, 530);
   }
   function setSpellAim(world) {
-    if (weaponAim) return null;
+    if (weaponAim || vineAim) return null;
     const sp = S.tool === 'scene' && H.cast && activeSpell();
     const cell = toCell(world);
     if (!sp || !BC.inside(S.grid, cell.x, cell.y)) {
@@ -2262,6 +2307,24 @@
     return placement;
   }
   function castAt(cell, world) {
+    if (vineAim) {
+      const t = hitToken(world);
+      try {
+        const strike = lashGraspingVine(t?.id, vineAim, H.prepareVineLash);
+        Promise.resolve(H.vineLash?.(strike))
+          .then(result => {
+            if (result) casting?.showResult(result);
+          })
+          .catch(err => toast(err.message));
+        vineAim = null;
+        if (H.compactCast) S.tool = 'move';
+        tools();
+        panel();
+      } catch (err) {
+        toast(err.message);
+      }
+      return;
+    }
     if (weaponAim) {
       const t = hitToken(world);
       if (!t) return toast('Elegí una criatura junto al arma espiritual.');
@@ -2302,6 +2365,52 @@
         e => e.id === 'spiritual-weapon' && e.caster === me.id && (e.held || e.until > now) && !e.endedAt,
       )
     );
+  }
+  function activeGraspingVine() {
+    const me = actor(),
+      now = performance.now();
+    if (!me || (H.compactCast && state.concentration !== 'grasping-vine')) return null;
+    return S.spellCasts.findLast(
+      e => e.id === 'grasping-vine' && e.caster === me.id && (e.held || e.until > now) && e.endedAt == null,
+    );
+  }
+  function vineTarget(point, token) {
+    if (!point || !token || token.kind === 'object' || info(token).dead) return false;
+    const source = { x: point.x - 0.5, y: point.y - 0.5, size: 1 };
+    return (
+      Spells.distance(source, token, point, S.grid.feet) <= 30 &&
+      Spells.unobstructed(point, tokenCenter(token), targetingWalls())
+    );
+  }
+  function lashGraspingVine(id, castId, beforeLash = null) {
+    const vine = activeGraspingVine();
+    if (!vine || vine.castId !== castId) throw Error('La enredadera ya no está activa.');
+    const token = visibleTokens().find(t => t.id === id);
+    if (!vineTarget(vine.point, token)) throw Error('Elegí una criatura visible a 30 pies o menos de la enredadera.');
+    const strike = {
+      slot: vine.slot,
+      first: !vine.lashed && vine.summonedTurn === H.spiritualTurn?.(),
+      hits: [castHit(token)],
+      boardCast: spellBoardMeta(vine, tokenCenter(actor())),
+    };
+    beforeLash?.(strike);
+    vine.lashed = true;
+    return strike;
+  }
+  function smiteStrike(id, reach = 5) {
+    const me = actor(),
+      now = performance.now();
+    if (!me) return null;
+    const smite = S.spellCasts.findLast(
+      e => e.id === 'thunderous-smite' && e.caster === me.id && (e.held || e.until > now) && e.endedAt == null,
+    );
+    const target = visibleTokens().find(t => (t.combatant_id === id || t.character_id === id) && t.kind !== 'object');
+    if (!smite || !target || target.id === me.id || Spells.distance(me, target, null, S.grid.feet) > reach) return null;
+    const strike = { hits: [castHit(target)], boardCast: spellBoardMeta(smite, tokenCenter(me)) };
+    const m = { t: 'spell-resolution', map: S.mapId, castId: smite.castId, action: 'smite-used' };
+    spellResolution(m);
+    S.channel?.send(m);
+    return strike;
   }
   function swingSpiritualWeapon(id, castId, beforeSwing = null) {
     const weapon = activeSpiritualWeapon();
@@ -5863,6 +5972,11 @@
         'beforeend',
         button('Arma', 'weapon-swing', 'secondary', 'aria-label="Atacar con arma espiritual"'),
       );
+    if (H.compactCast && activeGraspingVine())
+      $('#board-tools').insertAdjacentHTML(
+        'beforeend',
+        button('Enredadera', 'vine-lash', 'secondary', 'aria-label="Azotar con la enredadera"'),
+      );
     hint(
       {
         move: S.isDM
@@ -5902,6 +6016,7 @@
           : '<p>Tu ficha no tiene conjuros disponibles.</p>';
         if (activeSpiritualWeapon())
           html += button(weaponAim ? 'Cancelar ataque del arma' : 'Atacar con arma espiritual', 'weapon-swing');
+        if (activeGraspingVine()) html += button(vineAim ? 'Cancelar azote' : 'Azotar con la enredadera', 'vine-lash');
       } else
         html = `<div class="chips"><span class="small">Conjuro</span>${Object.entries(BoardSceneFX.spells)
           .map(([id, label]) => chip('spell', id, label, S.spell === id))
@@ -6228,7 +6343,16 @@
       } else if (a === 'tv') return tvDialog();
       else if (a === 'go-live') await goLive(S.mapId);
       else if (a === 'spell' && !TV && Object.hasOwn(BoardSceneFX.spells, el.dataset.v)) S.spell = el.dataset.v;
-      else if (a === 'weapon-swing' && H.cast) {
+      else if (a === 'vine-lash' && H.cast) {
+        vineAim = vineAim ? null : activeGraspingVine()?.castId || null;
+        weaponAim = null;
+        if (H.compactCast) S.tool = vineAim ? 'scene' : 'move';
+        S.spellAim = null;
+        panel();
+        hint(vineAim ? 'Elegí una criatura a 30 pies o menos de la enredadera.' : '');
+        return;
+      } else if (a === 'weapon-swing' && H.cast) {
+        vineAim = null;
         weaponAim = weaponAim ? null : activeSpiritualWeapon()?.castId || null;
         if (H.compactCast) S.tool = weaponAim ? 'scene' : 'move';
         S.spellAim = null;
@@ -7472,6 +7596,8 @@
     resolveSpellSave,
     swingSpiritualWeapon,
     spiritualImpact,
+    lashGraspingVine,
+    smiteStrike,
     spellHit,
     undoPose,
     aimSpell: id => {

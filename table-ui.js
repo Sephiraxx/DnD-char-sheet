@@ -940,6 +940,8 @@ const TableUI = (() => {
     // Paralizado, aturdido, inconsciente o petrificado: falla sola las salvaciones de FUE y DES.
     const out = RollUI.conditionMods(state, 'save', p.ability).autoFail;
     const success = !out && r.kept !== 1 && (r.kept === 20 || r.total >= Number(p.dc));
+    if (!success && p.spellId === 'thunderous-smite')
+      commit('Castigo atronador: derribado', s => Combat.condition(s, 'Derribado', true));
     const parts = Defenses.partsAfterSave(Defenses.partsOf({ ...p, amount: p.damage }), success, p.half);
     const amount = parts.reduce((sum, part) => sum + part.amount, 0);
     const resolved = Defenses.apply(state, parts).total;

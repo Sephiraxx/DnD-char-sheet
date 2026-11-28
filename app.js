@@ -822,7 +822,7 @@ function cast(id, ritual = false, placement = null, boardCastOptions = null) {
     if (
       !ritual &&
       RollUI.rollable(sp) &&
-      !(point && sp.id === 'spiritual-weapon') &&
+      !(point && ['spiritual-weapon', 'thunderous-smite'].includes(sp.id)) &&
       !(boardCast?.zone && !BoardSpells.zoneRule(sp.id).initial)
     )
       setTimeout(() =>
