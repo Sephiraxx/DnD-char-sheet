@@ -161,45 +161,6 @@
     '........333..333.........',
   ];
 
-  // Freedom of the Winds: white-teal vortices snap shut at departure and burst open at arrival.
-  FX.register('freedom-of-the-winds', {
-    palette: WIND,
-    travel: 180,
-    beats: selfBeat,
-    end: () => k.CAST + 900,
-    ground(s) {
-      const e = s.c.t - k.CAST;
-      if (e < 0 || e > 850) return;
-      const from = k.P(s.event.teleport?.from || s.pose.base || subject(s));
-      const to = k.P(s.event.teleport?.to || s.pose.target || subject(s));
-      if (e < 260) ring(from, 16 * (1 - k.clamp(e / 280)) + 2, 5, WIND, 4, true, e / 40);
-      if (e >= 180) ring(to, 8 + k.ease(k.clamp((e - 180) / 240)) * 13, 8, WIND, 3, e > 500, e / 70);
-    },
-    air(s) {
-      const e = s.c.t - k.CAST;
-      if (e < 0 || e > 880) return;
-      const points = [
-        k.P(s.event.teleport?.from || s.pose.base || subject(s)),
-        k.P(s.event.teleport?.to || s.pose.target || subject(s)),
-      ];
-      points.forEach((C, j) => {
-        const t = e - j * 180;
-        if (t < 0 || t > (j ? 650 : 270)) return;
-        const q = k.clamp(t / (j ? 650 : 270)),
-          r = j ? 7 + k.ease(q) * 12 : 18 * (1 - q) + 2;
-        for (let band = 0; band < 3; band++) {
-          const y = C.y - band * 8 - (j ? q * 9 : 0);
-          for (let i = 0; i < 14; i++) {
-            const a = (i / 14) * k.tau + t / 65 + band;
-            if (i % 7 > 4 || (q > 0.7 && i % 2)) continue;
-            pixel(C.x + Math.cos(a) * r, y + Math.sin(a) * 4, WIND, i % 3 ? 3 : 5, 2);
-          }
-        }
-      });
-      impact(s, s.hits[0], { x: points[1].x, y: points[1].y - 10 }, WIND, 30, 10);
-    },
-  });
-
   // Phantasmal Force: a violet wire-cube contains a false fanged maw and a staring psychic eye.
   FX.register('phantasmal-force', {
     palette: MIND,
@@ -482,36 +443,6 @@
         if (e < 650) spark({ x: x + 7, y: y - 8 }, ARCANE, 2);
       }
       impact(s, s.hits[0], { x: C.x, y: C.y - 8 }, ARCANE, 24, 6);
-    },
-  });
-
-  // Hold Person: gold bands clamp the wrists and ankles; a locked sigil snaps shut over the head.
-  FX.register('hold', {
-    palette: GOLD,
-    travel: 200,
-    beats: (e, kit, t) => beats(e, kit, t, 'hit', 110),
-    end: () => k.CAST + 1120,
-    ground(s) {
-      const e = s.c.t - s.hits[0].at;
-      if (e < 0 || e > 850) return;
-      s.targets.forEach(t => ring(feet(t), 11, 6, GOLD, 3, true));
-    },
-    air(s) {
-      mote(s, k.P(subject(s)), GOLD);
-      s.hits.forEach((hit, i) => {
-        const T = k.P(subject(s, hit)),
-          e = s.c.t - hit.at;
-        impact(s, hit, T, GOLD, 28, 5, i);
-        if (e < 0 || e > 850) return;
-        const clamp = 9 * (1 - k.ease(k.clamp(e / 100)));
-        for (let j = 0; j < 3; j++) ring({ x: T.x, y: T.y - 5 + j * 6 }, 8 + clamp, 2, GOLD, 4);
-        stamp(
-          'hold-lock',
-          ['...333...', '..34443..', '..34.43..', '.3333333.', '.3444443.', '.3442443.', '.3442443.', '.3333333.'],
-          GOLD,
-          { x: T.x, y: T.y - 17 },
-        );
-      });
     },
   });
 
