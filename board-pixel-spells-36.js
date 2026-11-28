@@ -164,46 +164,6 @@
     return { p, R };
   }
 
-  // Antipathy / Sympathy: a red forbidding mask repels, then a rose heart draws motes into the warded cube.
-  FX.register('antipathy-sympathy', {
-    palette: MIND,
-    travel: 260,
-    beats: (e, kit, t) =>
-      ids(e).flatMap(target => [
-        { at: C + t, stop: 90, target, kind: 'soft', power: 0.03 },
-        { at: 1020, stop: 80, target, kind: 'soft', power: 0.03 },
-      ]),
-    end: () => 1660,
-    reach: reach(60),
-    ground(s) {
-      if (!live(s, 1600)) return;
-      const p = center(s, true),
-        second = s.c.t >= 1020,
-        ramp = second ? MIND : DREAD;
-      border(s, ramp, s.c.t < 1300 ? 10 : 0);
-      ring(p, 20, 12, ramp, 3, 6, s.c.raw / 100);
-      for (let i = 0; i < 8; i++) {
-        const a = (i * k.tau) / 8,
-          q = ((s.c.t - C) % 420) / 420;
-        const r = 18 + (second ? 1 - q : q) * 30;
-        const at = add(p, Math.cos(a) * r, Math.sin(a) * r * 0.65);
-        const dir = second ? -1 : 1;
-        line(at, add(at, Math.cos(a + 0.5) * -dir * 6, Math.sin(a + 0.5) * -dir * 6), ramp, 4);
-        line(at, add(at, Math.cos(a - 0.5) * -dir * 6, Math.sin(a - 0.5) * -dir * 6), ramp, 4);
-      }
-    },
-    air(s) {
-      if (!live(s, 1660)) return;
-      const p = add(center(s, true), 0, -17);
-      stamp(s.c.t < 1020 ? mask() : heart(), p);
-      s.hits.forEach(h => {
-        const ramp = h.at < 1020 ? DREAD : MIND;
-        impact(s, h, point(s, h), ramp, 'antipathy', 23, 4);
-        motes(s, p, ramp, s.real(h), 10, 35, h.at >= 1020);
-      });
-    },
-  });
-
   // Holy Aura: a thirty-foot golden sanctuary, white winged shields and steady halos over the protected figures.
   FX.register('holy-aura', {
     palette: GOLD,
@@ -236,48 +196,6 @@
         const a = (i * k.tau) / 8;
         stamp(shield(), add(p, Math.cos(a) * (R - 10), Math.sin(a) * (R - 10)));
       }
-    },
-  });
-
-  // Antimagic Field: a ten-foot steel-grey null dome snaps shut, shearing coloured runes into inert chips.
-  FX.register('antimagic-field', {
-    palette: NULL,
-    travel: 200,
-    beats: soft,
-    end: () => 1400,
-    reach: reach(10),
-    ground(s) {
-      if (!live(s, 1400) || (s.pose.linger > 0 && s.c.t >= 500)) return;
-      aura(s, NULL, 10);
-      const p = base(s),
-        R = radius(s, 10);
-      ring(add(p, 0, -8), R, R * 0.48, NULL, 2);
-    },
-    air(s) {
-      if (!live(s, 1400)) return;
-      const p = base(s),
-        R = radius(s, 10);
-      for (let i = 0; i < 5; i++) {
-        const a = (i * k.tau) / 5,
-          at = add(p, Math.cos(a) * R * 0.72, Math.sin(a) * R * 0.5 - 10);
-        if (s.c.t < 500) {
-          stamp(eye(), at);
-          line(add(at, -6, 6), add(at, 6, -6), NULL, 5, 2);
-        } else if (s.c.t < 850) {
-          const q = (s.c.t - 500) / 350;
-          pixel(add(at, -3 - q * 5, q * 11), NULL, 2, 2);
-          pixel(add(at, 3 + q * 5, q * 9), NULL, 3, 2);
-        }
-      }
-      if (s.c.t < 1060) ring(add(p, 0, -8), R * 0.75, R, NULL, 3, 8, 0);
-      s.hits.forEach(h => impact(s, h, base(s), NULL, 'null', 24, 5));
-    },
-    linger(s) {
-      if (s.linger <= 0) return;
-      const { p, R } = aura(s, NULL, 10, true);
-      stamp(rune(), p);
-      line(add(p, -7, 7), add(p, 7, -7), NULL, 4, 2);
-      ring(add(p, 0, -7), R * 0.8, R * 0.46, NULL, 2, 8, s.c.raw / 240);
     },
   });
 
@@ -666,35 +584,6 @@
             ];
     return icon(`animal:${type % 3}`, LIFE, rows);
   }
-  // Animal Shapes: leafy transformation cocoons break into bear, wolf and eagle silhouettes around the chosen allies.
-  FX.register('animal-shapes', {
-    palette: LIFE,
-    travel: 360,
-    beats: soft,
-    end: () => 1590,
-    ground(s) {
-      if (!live(s, 1590)) return;
-      subjects(s).forEach(t => ring(feet(t), 18, 9, LIFE, 3, 6, s.c.raw / 110));
-    },
-    air(s) {
-      if (!live(s, 1590)) return;
-      subjects(s).forEach((t, i) => {
-        const p = k.P(t),
-          q = k.clamp((s.c.t - C) / 360);
-        if (s.c.t < 660) {
-          ring(p, 10 + q * 3, 18, LIFE, 3, 6, s.c.raw / 75);
-          for (let j = 0; j < 5; j++) {
-            const a = (j * k.tau) / 5 + q * 3;
-            pixel(add(p, Math.cos(a) * 14, Math.sin(a) * 18), LIFE, 4, 3);
-          }
-        } else {
-          stamp(beast(i), add(p, 0, -17));
-          if (s.c.t < 1060) stamp(beast((i + 1) % 3), add(p, 16, 4));
-        }
-      });
-      s.hits.forEach(h => impact(s, h, point(s, h), LIFE, 'animal-shapes', 29, 9));
-    },
-  });
 
   function fortress(stage) {
     return k.sprite(`b36:fortress:${stage}`, 93, 77, STONE, paint => {
@@ -751,51 +640,6 @@
           if (q > 0.7 && i % 2) continue;
           ring(at, 4 + q * 6, 3 + q * 3, WITHER, 3, q > 0.5 ? 5 : 0, i);
         }
-    },
-  });
-
-  // Abi-Dalzim's Horrid Wilting: a necrotic cube wrings blue moisture from bodies while green leaves curl into brown ash.
-  FX.register('abi-dalzims-horrid-wilting', {
-    palette: WITHER,
-    travel: 350,
-    beats: blast,
-    end: () => 1700,
-    reach: reach(30),
-    ground(s) {
-      if (!live(s, 1700)) return;
-      border(s, WITHER, s.c.t < 650 ? 15 : 0);
-      const ps = corners(s),
-        q = k.clamp((s.c.t - C) / 350);
-      for (let i = 0; i < 15; i++) {
-        const u = k.hash(i, seed(s), 1),
-          v = k.hash(i, seed(s), 2);
-        const p = {
-          x: ps[0].x + (ps[1].x - ps[0].x) * u + (ps[3].x - ps[0].x) * v,
-          y: ps[0].y + (ps[1].y - ps[0].y) * u + (ps[3].y - ps[0].y) * v,
-        };
-        const ramp = q < 0.8 ? LIFE : WITHER;
-        line(add(p, 0, 4), add(p, q * 5, -5 + q * 4), ramp, q < 0.8 ? 3 : 2);
-        pixel(add(p, -3 + q * 7, -2), ramp, 3, q < 0.8 ? 3 : 1);
-      }
-      if (s.c.t > 1000 && s.c.t < 1460) ring(center(s, true), 30, 15, WITHER, 2, 12, 0);
-    },
-    air(s) {
-      if (!live(s, 1700)) return;
-      s.hits.forEach((h, j) => {
-        const p = point(s, h),
-          e = s.real(h);
-        impact(s, h, p, WITHER, 'wilting', 37, 9);
-        if (e >= -200 && e < 650)
-          for (let i = 0; i < 6; i++) {
-            const q = k.clamp((e + 200) / 850),
-              x = (k.hash(i, seed(s) + j) - 0.5) * 26;
-            const at = add(p, x + Math.sin(q * 4 + i) * 4, -q * 45);
-            if (q < 0.65) {
-              orb(at, 2, GLASS, 3);
-              pixel(add(at, 0, -3), GLASS, 4);
-            } else pixel(at, WITHER, 3, q < 0.85 ? 2 : 1);
-          }
-      });
     },
   });
 
@@ -872,33 +716,4 @@
       '....3443.....',
       '.....33......',
     ]);
-  // Glibness: a silver tongue and confident smile appear in a gold speech seal; crisp silver syllables roll outward.
-  FX.register('glibness', {
-    palette: SILVER,
-    travel: 180,
-    beats: soft,
-    end: () => 1280,
-    ground(s) {
-      if (!live(s, 1280)) return;
-      ring(base(s), 15, 7, GOLD, 3, 6, s.c.raw / 160);
-    },
-    air(s) {
-      if (!live(s, 1280)) return;
-      subjects(s).forEach(t => {
-        const p = add(k.P(t), 10, -15);
-        ring(p, 17, 12, GOLD, 3);
-        line(add(p, -8, 10), add(p, -13, 16), GOLD, 3);
-        line(add(p, -13, 16), add(p, -1, 11), GOLD, 3);
-        stamp(lips(), p);
-        if (s.c.t >= 480)
-          for (let i = 0; i < 3; i++) {
-            const q = ((s.c.t - 480) / 500 + i / 3) % 1;
-            const at = add(p, 20 + q * 22, (i - 1) * 7 - q * 5);
-            line(at, add(at, 5, 0), SILVER, 4);
-            pixel(add(at, 2, -3), GOLD, 4);
-          }
-      });
-      s.hits.forEach(h => impact(s, h, add(point(s, h), 10, -15), SILVER, 'glibness', 23, 4));
-    },
-  });
 })(typeof window !== 'undefined' ? window : globalThis);

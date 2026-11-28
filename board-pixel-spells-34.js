@@ -419,65 +419,6 @@
     },
   });
 
-  // Mirage Arcane: a tiled landscape rolls into water, wooded hills and a miniature keep behind a shimmering seam.
-  FX.register('mirage-arcane', {
-    palette: MIRAGE,
-    travel: 540,
-    beats: soft,
-    end: () => 1580,
-    ground(s) {
-      if (!live(s, 1580)) return;
-      const p = center(s),
-        f = Math.min(6, Math.floor((s.c.t - C) / 90));
-      const img = k.sprite(`b34:mirage:${f}:${seed(s) % 4}`, 43, 37, MIRAGE, set => {
-        for (let y = 2; y < 35; y++)
-          for (let x = 2; x < 41; x++) {
-            const tx = Math.floor(x / 5),
-              ty = Math.floor(y / 5);
-            if (tx > f + 1) continue;
-            const river = 20 + Math.round(Math.sin(y / 8) * 5);
-            let index = Math.abs(x - river) < 4 ? 1 : 2;
-            if (Math.abs(x - river) < 2) index = 3;
-            if (y > 27 && x < 16) index = 4;
-            if (tx === f + 1) index = (x + y) % 3 ? 4 : 5;
-            if (index === 2 && (tx + ty) % 3 === 0) index = 3;
-            set(x, y, index);
-          }
-      });
-      stamp(img, p);
-      if (s.c.t >= 840) {
-        const hill = icon('mirage-hills', MIRAGE, [
-          '...........33...........',
-          '..........3333..........',
-          '...33....332233.........',
-          '..3333..33222233........',
-          '.3322333322222233.......',
-          '332222333222222233......',
-          '222222222222222222......',
-        ]);
-        stamp(hill, add(p, -5, -8));
-      }
-    },
-    air(s) {
-      if (!live(s, 1580)) return;
-      const p = center(s),
-        h = s.hits[0];
-      if (s.c.t >= 840) {
-        stamp(
-          icon('mirage-keep', MIRAGE, ['4.4.4', '44444', '.444.', '.414.', '.444.', '.444.', '.414.', '44444']),
-          add(p, 10, -8),
-        );
-        for (let i = 0; i < 3; i++) {
-          const x = -13 + i * 9;
-          stamp(icon('mirage-tree', MIRAGE, ['..3..', '.333.', '33333', '.333.', '..1..']), add(p, x, 8 - (i % 2) * 4));
-        }
-      }
-      const q = k.clamp((s.c.t - C) / 540);
-      if (q < 1) line(add(p, -20 + q * 40, -17), add(p, -20 + q * 40, 17), MIRAGE, 1, 5);
-      impact(s, h, p, MIRAGE, 'mirage-lock', 24, 5);
-    },
-  });
-
   function cage(s, front) {
     const p = center(s),
       corners = s.area ? k.outline(s.area, s.grid) : [];
@@ -510,31 +451,6 @@
     }
     if (q === 1 && front) pts.forEach(at => star(add(at, 0, -h), FORCE, 2));
   }
-  // Forcecage: violet force bars shoot upward from the exact cube footprint and lock across the roof.
-  FX.register('forcecage', {
-    palette: FORCE,
-    travel: 450,
-    beats: soft,
-    end: () => 1490,
-    reach: (e, g) => ({
-      r: (e.area?.feet || 20) / (g.feet || 5) + 1,
-      up: (e.area?.height || e.area?.feet || 20) / (g.feet || 5) + 1,
-    }),
-    ground(s) {
-      if (live(s, 1490)) cage(s, false);
-    },
-    air(s) {
-      if (!live(s, 1490)) return;
-      cage(s, true);
-      impact(s, s.hits[0], center(s), FORCE, 'cage-lock', 28, 7);
-    },
-    linger(s) {
-      if (s.linger > 0 && s.c.t >= 1490) {
-        cage(s, false);
-        cage(s, true);
-      }
-    },
-  });
 
   // Magnificent Mansion: an ornate freestanding doorway opens onto a warm hall with columns, carpet and chandelier.
   FX.register('mordenkainens-magnificent-mansion', {
@@ -571,51 +487,6 @@
     },
     linger(s) {
       if (s.linger > 0 && s.c.t >= 1620) stamp(doorway('mansion', GOLD, 0, true), center(s));
-    },
-  });
-
-  // Divine Word: one white-gold utterance becomes an expanding sacred ring and descending judgment seals.
-  FX.register('divine-word', {
-    palette: GOLD,
-    travel: 220,
-    beats: (e, kit, travel) => ids(e).map(id => beat(C + travel, 110, id, 'soft', 0.04)),
-    end: () => 1280,
-    flash: (e, t) => (t < 35 ? { color: GOLD[4], alpha: 0.2 } : t < 65 ? { color: GOLD[0], alpha: 0.12 } : null),
-    ground(s) {
-      if (!live(s, 1280)) return;
-      const p = base(s),
-        t = s.c.t - C;
-      const R = s.area ? (s.area.feet / (s.grid.feet || 5)) * k.PX : 20;
-      if (t < 650)
-        ring(
-          p,
-          7 + (R - 7) * k.ease(k.clamp(t / 480)),
-          (7 + (R - 7) * k.ease(k.clamp(t / 480))) * 0.65,
-          GOLD,
-          t < 220 ? 4 : 2,
-          t < 300 ? 0 : 16,
-          0,
-        );
-      s.hits.forEach(h => {
-        const target = s.targets.find(t => t.id === h.id),
-          p = target ? feet(target) : center(s);
-        if (s.real(h) >= 0) sigil(p, GOLD, 0, 11);
-      });
-    },
-    air(s) {
-      if (!live(s, 1280)) return;
-      const word = icon('divine-word', GOLD, ['..5..', '.454.', '54545', '..5..', '.454.', '4.5.4']);
-      if (s.c.t < 620) stamp(word, add(k.P(s.pose.hand || s.pose.base || aim(s)), 0, -8));
-      s.hits.forEach(h => {
-        const T = contact(s, h),
-          e = s.real(h);
-        impact(s, h, T, GOLD, 'divine-judgment', 34, 8);
-        if (e >= 0 && e < 650) {
-          const p = add(T, 0, -13 + 5 * k.ease(k.clamp(e / 180)));
-          ring(p, 8, 4, GOLD, 4);
-          star(add(p, 0, -3), GOLD, 2);
-        }
-      });
     },
   });
 })(typeof window !== 'undefined' ? window : globalThis);

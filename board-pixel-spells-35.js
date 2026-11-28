@@ -222,35 +222,6 @@
     },
   });
 
-  // Regenerate: green spirals sew a missing forearm back together, finishing in a bright pulse of life.
-  FX.register('regenerate', {
-    palette: LIFE,
-    travel: 240,
-    beats: soft,
-    end: () => 1480,
-    ground(s) {
-      if (!live(s, 1480)) return;
-      sigil(add(body(s), 0, 12), LIFE, 15, s.c.t);
-    },
-    air(s) {
-      if (!live(s, 1480)) return;
-      const p = body(s),
-        h = s.hits[0],
-        q = k.clamp((s.c.t - C) / 740);
-      for (let strand = 0; strand < 2; strand++)
-        for (let i = 0; i < 12; i++) {
-          const a = i * 0.48 + s.c.t / 115 + strand * Math.PI;
-          pixel(add(p, Math.cos(a) * 12, 15 - i * 2.6), LIFE, i % 4 ? 3 : 5);
-        }
-      const arm = add(p, 15, 1);
-      stroke(add(arm, -4, -5), add(arm, -4, 6), LIFE, 3, 2);
-      stroke(add(arm, -4, 6), add(arm, -4 + Math.round(q * 9), 6 - Math.round(q * 5)), LIFE, 3, 4);
-      if (q >= 1) diamond(add(arm, 5, 1), LIFE, 3);
-      impact(s, h, p, LIFE, 'regrowth', 28, 6);
-      if (s.c.t > 1050) sparks(s, p, LIFE, s.c.t - 1050, 10, 19, 18);
-    },
-  });
-
   // Resurrection: a faceted diamond shatters as a golden soul rises from a prone echo into a standing halo.
   FX.register('resurrection', {
     palette: GOLD,
@@ -347,42 +318,6 @@
         const ramp = RAYS[Math.floor(k.hash(i, seed(s), 7) * 7)];
         impact(s, h, hitPoint(s, h), ramp, `prism-${RAYS.indexOf(ramp)}`, 36, 9);
       });
-    },
-  });
-
-  // Sequester: a silver outline is erased in horizontal bands; an hourglass locks with its last grain suspended.
-  FX.register('sequester', {
-    palette: SILVER,
-    travel: 340,
-    beats: soft,
-    end: () => 1410,
-    ground(s) {
-      if (!live(s, 1410)) return;
-      const p = add(body(s), 0, 13);
-      ring(p, 18, 9, SILVER, 3, s.c.t > 800 ? 8 : 0);
-      if (s.c.t > 1100) diamond(p, SILVER, 3);
-    },
-    air(s) {
-      if (!live(s, 1410)) return;
-      const p = body(s),
-        h = s.hits[0];
-      const stage = Math.min(6, Math.floor(Math.max(0, s.c.t - 500) / 95));
-      const img = k.sprite(`b35:sequestered:${stage}`, 29, 39, SILVER, set => {
-        for (let y = 2; y < 36; y++)
-          for (let x = 2; x < 27; x++) {
-            const d = Math.hypot((x - 14) / 11, (y - 19) / 16);
-            if (d < 0.87 || d > 1.02 || (y + stage) % 7 < stage) continue;
-            set(x, y, x < 14 ? 4 : 2);
-          }
-      });
-      if (stage < 6) stamp(img, p);
-      stamp(hourglass(), add(p, 0, -22));
-      if (s.c.t < h.at) {
-        pixel(add(p, 0, -22 + (Math.floor(s.c.t / 70) % 4)), GOLD, 5);
-      } else {
-        pixel(add(p, 0, -22), GOLD, 5);
-        impact(s, h, p, SILVER, 'sequester-seal', 26, 7);
-      }
     },
   });
 
@@ -494,41 +429,6 @@
         pixel(add(soul, 4, -28), BLUE, 5);
       }
       impact(s, h, add(to, 0, -8), BLUE, 'blue-veil-crossing', 30, 8);
-    },
-  });
-
-  // Teleport: simultaneous violet rune locks collapse at departure and snap open at the destination, leaving silver fragments.
-  FX.register('teleport', {
-    palette: ARCANE,
-    travel: 260,
-    beats: soft,
-    end: () => 1220,
-    ground(s) {
-      if (!live(s, 1220)) return;
-      const { from, to } = portals(s),
-        h = s.hits[0];
-      const q = k.clamp((s.c.t - h.at) / 420);
-      sigil(from, ARCANE, s.c.t < h.at ? 19 : Math.max(3, 19 * (1 - k.ease(q))), s.c.t);
-      if (s.c.t >= h.at) sigil(to, ARCANE, 20 + 8 * k.ease(q), s.c.t);
-    },
-    air(s) {
-      if (!live(s, 1220)) return;
-      const { from, to } = portals(s),
-        h = s.hits[0];
-      if (s.c.t < h.at) {
-        for (let i = 0; i < 4; i++) {
-          const a = (i * k.tau) / 4 + s.c.t / 140;
-          diamond(add(from, Math.cos(a) * 15, -12 + Math.sin(a) * 7), ARCANE, 3);
-        }
-      } else {
-        impact(s, h, add(from, 0, -10), ARCANE, 'teleport-out', 38, 9);
-        impact(s, h, add(to, 0, -10), SILVER, 'teleport-in', 40, 12);
-        sparks(s, add(to, 0, -10), ARCANE, s.real(h), 14, 23, 21);
-        if (s.real(h) < 320) {
-          const r = 16 + s.real(h) / 40;
-          ring(add(to, 0, -12), r, r * 0.5, ARCANE, 4, 6);
-        }
-      }
     },
   });
 
@@ -749,61 +649,6 @@
         impact(s, h, p, DRAGON, 'dragon-wings', 36, 10);
       } else {
         diamond(p, DRAGON, 5);
-      }
-    },
-  });
-
-  // Tether Essence: a silver double helix binds two beating rose hearts, sending matching pulses along both strands.
-  FX.register('tether-essence', {
-    palette: SILVER,
-    travel: 310,
-    beats: (e, kit, travel) =>
-      ids(e)
-        .slice(0, 2)
-        .map(id => beat(C + travel, 85, id)),
-    end: () => 1530,
-    ground(s) {
-      if (!live(s, 1530)) return;
-      const ts = s.targets.slice(0, 2);
-      if (!ts.length) {
-        sigil(add(center(s), 0, 12), SILVER, 14, s.c.t);
-        return;
-      }
-      ts.forEach(t => sigil(feet(t), SILVER, 13, s.c.t));
-    },
-    air(s) {
-      if (!live(s, 1530)) return;
-      const list = s.targets.slice(0, 2);
-      const a = list.length > 1 ? k.P(list[0]) : k.P(s.pose.hand || s.pose.base || aim(s));
-      const b = list.length ? k.P(list[list.length - 1]) : center(s);
-      const dx = b.x - a.x,
-        dy = b.y - a.y,
-        L = Math.hypot(dx, dy) || 1;
-      const nx = -dy / L,
-        ny = dx / L,
-        h = s.hits[0];
-      const reach = s.c.t < h.at ? k.clamp((s.c.t - C) / 310) : 1;
-      for (let strand = 0; strand < 2; strand++) {
-        const path = u => {
-          const o = Math.sin(u * Math.PI * 4 + s.c.t / 130 + strand * Math.PI) * 4;
-          return { x: a.x + dx * u + nx * o, y: a.y + dy * u + ny * o };
-        };
-        for (let i = 0; i < 14; i++) {
-          const u = (i / 14) * reach,
-            v = ((i + 1) / 14) * reach;
-          stroke(path(u), path(v), SILVER, 1, strand ? 4 : 2);
-        }
-        if (s.c.t >= h.at) {
-          const u = (s.real(h) % 500) / 500;
-          diamond(path(strand ? 1 - u : u), RUNE, 3);
-        }
-      }
-      if (s.c.t >= h.at) {
-        const bounce = Math.floor(s.real(h) / 100) % 2;
-        stamp(heart(), add(a, 0, -15 - bounce));
-        stamp(heart(), add(b, 0, -15 - bounce));
-        impact(s, h, a, SILVER, 'tether-lock', 26, 5);
-        impact(s, s.hits[1] || h, b, SILVER, 'tether-lock', 26, 5);
       }
     },
   });
