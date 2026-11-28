@@ -466,55 +466,6 @@
     },
   });
 
-  // Speak with Plants: rooted leafy faces turn toward the caster and answer in little rustling speech marks.
-  FX.register('speak-with-plants', {
-    palette: LEAF,
-    travel: 200,
-    beats: (event, kit, travel) => [{ at: kit.CAST + travel, stop: 65, target: null, kind: 'soft', power: 0 }],
-    end: end(1050),
-    ground(s) {
-      const e = s.c.t - k.CAST;
-      if (e < 0 || e > 1250) return;
-      const B = k.P(s.pose.base || subject(s));
-      ring(B, 10 + k.ease(k.clamp(e / 500)) * 13, 7 + k.ease(k.clamp(e / 500)) * 9, LEAF, 3, 8);
-      for (let j = 0; j < 3; j++) {
-        const C = add(B, (j - 1) * 16, j === 1 ? -24 : -8),
-          f = Math.floor(e / 170 + j) % 2;
-        stamp(
-          `plant-face:${f}`,
-          [
-            '...33...33...',
-            '..3443.3443..',
-            '.34444344443.',
-            '..344434443..',
-            '...3434343...',
-            f ? '...3454543...' : '...3414143...',
-            '....34343....',
-            f ? '....34443....' : '.....343.....',
-            '.....343.....',
-            '...3333333...',
-          ],
-          LEAF,
-          C,
-        );
-        if (e > 260 && e < 1050) {
-          const q = ((e - 260 + j * 160) % 650) / 650;
-          stamp(
-            'leaf-word',
-            ['...3..', '..343.', '.3443.', '3443..', '.33...'],
-            LEAF,
-            add(C, (1 - q) * (B.x - C.x) * 0.35, -12 - q * 10),
-          );
-          pixel(add(C, 7, -10 - q * 8), LEAF, 4);
-        }
-      }
-    },
-    air(s) {
-      const C = add(k.P(s.pose.base || subject(s)), 0, -17);
-      impact(s, s.hits[0], C, LEAF, 20, 5);
-    },
-  });
-
   // Major Image: a violet cube traces its footprint and fills with a convincing, winged dragon illusion.
   FX.register('major-image', {
     palette: IMAGE,
@@ -576,81 +527,6 @@
     },
     air(s) {
       impact(s, s.hits[0], centre(s), IMAGE, 26, 6);
-    },
-  });
-
-  // Nondetection: diamond dust seals a silver veil; a scrying eye strikes the veil and breaks apart.
-  FX.register('nondetection', {
-    palette: VEIL,
-    travel: 200,
-    beats,
-    end: end(940),
-    ground: s => seals(s, VEIL),
-    air(s) {
-      s.hits.forEach((hit, i) => {
-        const C = k.P(subject(s, hit)),
-          e = s.c.t - hit.at;
-        delivery(s, hit, C, VEIL);
-        if (e < 0 || e > 940) return;
-        const f = Math.min(5, Math.floor(e / 150));
-        const img = k.sprite(`19:veil:${f}`, 39, 43, VEIL, set => {
-          for (let y = 3; y < 39; y++)
-            for (let x = 3; x < 36; x++) {
-              const dx = (x - 19) / 16,
-                dy = (y - 22) / 19,
-                d = Math.hypot(dx, dy);
-              if (d > 0.88 && d < 1.02 && (f < 4 || (x + y) % 7 < 3)) set(x, y, x < 19 ? 4 : 3);
-              if (f < 2 && Math.abs(y - (36 - f * 13)) < 1 && Math.abs(dx) < 0.8) set(x, y, 4);
-            }
-        });
-        k.blit(img, C.x - 19, C.y - 22);
-        if (e < 420) stamp('scrying-eye', EYE, VEIL, add(C, 21 - k.ease(k.clamp(e / 420)) * 7, -17));
-        if (e >= 420 && e < 760) {
-          const real = s.real(hit) - hit.stop - 420;
-          k.shards(add(C, 14, -17), real, VEIL, seed(s) + i, 7, 15);
-          line(add(C, 10, -22), add(C, 19, -13), VEIL, 4, 1, 7);
-        }
-        motes(s, C, s.real(hit), VEIL, 10, 18);
-        impact(s, hit, C, VEIL, 22, 5, i);
-      });
-    },
-  });
-
-  // Blink: a silver silhouette splits into the Ethereal Plane, leaves an empty interval, then snaps back.
-  FX.register('blink', {
-    palette: VEIL,
-    travel: 130,
-    beats(event, kit, travel) {
-      return [
-        { at: kit.CAST + travel, stop: 75, target: event.caster ?? null, kind: 'soft', power: 0 },
-        { at: kit.CAST + 720, stop: 90, target: event.caster ?? null, kind: 'soft', power: 0 },
-      ];
-    },
-    end: () => 1490,
-    ground(s) {
-      const t = s.c.t - k.CAST;
-      if (t < 0 || t > 1190) return;
-      const from = k.P(s.event.teleport?.from || s.pose.base || subject(s));
-      const to = k.P(s.event.teleport?.to || s.pose.base || subject(s));
-      if (t < 390) ring(from, 12 + k.ease(k.clamp(t / 390)) * 7, 6, VEIL, 4, t > 200 ? 8 : 0);
-      if (t > 650) ring(to, 19 - k.ease(k.clamp((t - 650) / 400)) * 7, 6, VEIL, 3, t > 1000 ? 8 : 0);
-    },
-    air(s) {
-      const t = s.c.t - k.CAST;
-      if (t < 0 || t > 1190) return;
-      const A = add(k.P(s.event.teleport?.from || s.pose.base || subject(s)), 0, -12);
-      const B = add(k.P(s.event.teleport?.to || s.pose.base || subject(s)), 0, -12);
-      if (t < 280) {
-        const d = Math.floor(t / 60) * 3;
-        stamp('ethereal-person', PERSON, VEIL, add(A, -d, 0));
-        stamp('ethereal-person', PERSON, VEIL, add(A, d, -1));
-      } else if (t > 650 && t < 900) {
-        const d = Math.max(0, 9 - Math.floor((t - 650) / 35));
-        stamp('ethereal-person', PERSON, VEIL, add(B, d, 0));
-        stamp('ethereal-person', PERSON, VEIL, add(B, -d, 0));
-      }
-      impact(s, s.hits[0], A, VEIL, 30, 7);
-      impact(s, s.hits[1], B, VEIL, 30, 7, 1);
     },
   });
 
