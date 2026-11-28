@@ -707,8 +707,8 @@ const RollUI = (() => {
         line += out.hit ? ` → <b>impacta a ${esc(out.name)}</b>` : ` → <b>falla contra ${esc(out.name)}</b>`;
         spellSession.hitTarget = out.hit ? target : null;
       }
-      // Thorn Whip pulls a creature it hits up to 10 ft toward the caster: the board moves the figure.
-      if (out?.hit && sp.id === 'thorn-whip' && session.boardCast) {
+      // Resolve movement from spell attacks on the DM's board.
+      if (out?.hit && globalThis.BoardSpells?.forcedMove(sp.id)?.on === 'hit' && session.boardCast) {
         const player = TableUI.targets().monsters.find(e => e.id === target && e.player);
         globalThis.BoardPlayer?.spellHit(
           TableUI.link()?.campaignId,
@@ -1172,6 +1172,13 @@ const RollUI = (() => {
         let verdict = null;
         if (id) verdict = await TableUI.resolveTarget(id, total, r.kept, 'Ataque con ' + sp.name, crit);
         const hit = r.kept !== 1 && verdict?.hit !== false;
+        if (verdict?.hit && BoardSpells.forcedMove(sp.id)?.on === 'hit' && boardCast)
+          globalThis.BoardPlayer?.spellHit(
+            TableUI.link()?.campaignId,
+            boardCast,
+            target.combatant ? { combatant: target.combatant } : { character: target.character },
+            sp.id,
+          ).catch(() => toast('No se pudo mover la figura en el tablero.'));
         const row =
           (target.name || 'Objetivo ' + (i + 1)) +
           ': ' +

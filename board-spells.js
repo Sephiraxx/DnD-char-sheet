@@ -187,6 +187,20 @@
   });
   const weaponForm = value => (['mace', 'axe'].includes(value) ? value : 'hammer');
   const destinationRange = id => ({ 'misty-step': 30, 'far-step': 60 })[id] || 0;
+  const forcedMoves = Object.freeze({
+    thunderwave: { move: 'push', feet: 10, on: 'save', from: 'caster' },
+    'thorn-whip': { move: 'pull', feet: 10, on: 'hit', from: 'caster' },
+    'lightning-lure': { move: 'pull', feet: 10, on: 'save', from: 'caster' },
+    'grasping-vine': { move: 'pull', feet: 20, on: 'save', from: 'point' },
+    'thunderous-smite': { move: 'push', feet: 10, on: 'save', from: 'caster' },
+    gust: { move: 'push', feet: 5, on: 'save', from: 'caster' },
+    'gust-of-wind': { move: 'push', feet: 15, on: 'save', from: 'line' },
+    'dust-devil': { move: 'push', feet: 10, on: 'save', from: 'point' },
+    'pulse-wave': { move: 'push', feet: 15, on: 'save', from: 'caster' },
+    'gravity-sinkhole': { move: 'pull', feet: 5, on: 'save', from: 'point' },
+    'gravity-fissure': { move: 'pull', feet: 10, on: 'save', from: 'line' },
+  });
+  const forcedMove = id => (Object.hasOwn(forcedMoves, id) ? forcedMoves[id] : null);
   const zoneRules = Object.freeze({
     'spirit-guardians': { enter: true, start: true, hostile: true },
     moonbeam: { enter: true, start: true },
@@ -517,16 +531,17 @@
     return { enters, feet };
   }
 
-  function pushDestination(grid, from, target, fits) {
+  // An explicit direction is the travel angle in radians; otherwise push radially away from `from`.
+  function pushDestination(grid, from, target, fits, feet = 10, dir) {
     const f = footprint(target);
     const dx = target.x + (f.right - f.x) / 2 - from.x;
     const dy = target.y + (f.bottom - f.y) / 2 - from.y;
-    if (Math.hypot(dx, dy) < EPS) return null;
-    const angle = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4);
+    if (!Number.isFinite(dir) && Math.hypot(dx, dy) < EPS) return null;
+    const angle = Math.round((Number.isFinite(dir) ? dir : Math.atan2(dy, dx)) / (Math.PI / 4)) * (Math.PI / 4);
     const vx = Math.round(Math.cos(angle));
     const vy = Math.round(Math.sin(angle));
     let last = null;
-    for (let step = 1; step <= 10 / grid.feet; step++) {
+    for (let step = 1; step <= feet / grid.feet; step++) {
       const next = { ...target, x: target.x + vx * step, y: target.y + vy * step };
       if (!fits(next, last || target)) break;
       last = next;
@@ -534,18 +549,68 @@
     return last;
   }
 
-  // Thorn Whip: up to 10 ft straight toward the caster, stopping where the next step no longer fits
-  // (the caster, another creature or a wall).
-  function pullDestination(grid, toward, target, fits) {
+  // Straight toward a point, stopping where the next step no longer fits (a creature or a wall).
+  function pullDestination(grid, toward, target, fits, feet = 10, dir) {
     const f = footprint(target);
     const dx = toward.x - (target.x + (f.right - f.x) / 2);
     const dy = toward.y - (target.y + (f.bottom - f.y) / 2);
-    if (Math.hypot(dx, dy) < EPS) return null;
+    if (!Number.isFinite(dir) && Math.hypot(dx, dy) < EPS) return null;
     return pushDestination(
       grid,
       { x: target.x + (f.right - f.x) / 2 - dx, y: target.y + (f.bottom - f.y) / 2 - dy },
       target,
       fits,
+      feet,
+      dir,
+    );
+  }
+
+  function nearestPointOnSegment(point, start, end) {
+    const dx = end.x - start.x,
+      dy = end.y - start.y;
+    const length2 = dx * dx + dy * dy;
+    const t = length2 ? clamp(((point.x - start.x) * dx + (point.y - start.y) * dy) / length2, 0, 1) : 0;
+    return { x: start.x + dx * t, y: start.y + dy * t };
+  }
+
+  function forcedDestination(grid, id, meta, target, fits) {
+    const rule = forcedMove(id);
+    const point = p => Number.isFinite(p?.x) && Number.isFinite(p?.y);
+    if (!rule || !point(meta?.origin)) return null;
+    let from = meta.origin,
+      dir;
+    if (rule.from === 'point' && point(meta.point)) from = meta.point;
+    if (rule.from === 'line' && Number.isFinite(meta.dir)) {
+      if (rule.move === 'push') dir = meta.dir;
+      else {
+        const f = footprint(target);
+        const length = (Number.isFinite(meta.length) && meta.length > 0 ? meta.length : shapes[id].feet) / grid.feet;
+        from = nearestPointOnSegment({ x: (f.x + f.right) / 2, y: (f.y + f.bottom) / 2 }, meta.origin, {
+          x: meta.origin.x + Math.cos(meta.dir) * length,
+          y: meta.origin.y + Math.sin(meta.dir) * length,
+        });
+      }
+    }
+    const move = rule.move === 'pull' ? pullDestination : pushDestination;
+    // Point/line pulls must stop at their destination, even when no creature occupies it.
+    // Caster pulls retain the original Thorn Whip path and collision checks.
+    const offset = t => {
+      const f = footprint(t);
+      return { x: (f.x + f.right) / 2 - from.x, y: (f.y + f.bottom) / 2 - from.y };
+    };
+    const start = offset(target);
+    const approaches = (next, prior) => {
+      const a = offset(next),
+        b = offset(prior);
+      return a.x * start.x + a.y * start.y >= -EPS && a.x ** 2 + a.y ** 2 < b.x ** 2 + b.y ** 2 - EPS;
+    };
+    return move(
+      grid,
+      from,
+      target,
+      (next, prior) => (rule.move !== 'pull' || rule.from === 'caster' || approaches(next, prior)) && fits(next, prior),
+      rule.feet,
+      dir,
     );
   }
 
@@ -560,6 +625,9 @@
     repeatable,
     weaponForm,
     destinationRange,
+    forcedMove,
+    forcedDestination,
+    nearestPointOnSegment,
     wardCount,
     pushDestination,
     clipRay,

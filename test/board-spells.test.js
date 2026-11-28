@@ -198,3 +198,183 @@ test('el látigo de espinas acerca al objetivo hasta 10 pies hacia quien lanza, 
     null,
   );
 });
+
+test('forced movement rules specify the trigger, source, direction and distance for each spell', () => {
+  for (const [id, move, feet, on, from] of [
+    ['thunderwave', 'push', 10, 'save', 'caster'],
+    ['thorn-whip', 'pull', 10, 'hit', 'caster'],
+    ['lightning-lure', 'pull', 10, 'save', 'caster'],
+    ['grasping-vine', 'pull', 20, 'save', 'point'],
+    ['thunderous-smite', 'push', 10, 'save', 'caster'],
+    ['gust', 'push', 5, 'save', 'caster'],
+    ['gust-of-wind', 'push', 15, 'save', 'line'],
+    ['dust-devil', 'push', 10, 'save', 'point'],
+    ['pulse-wave', 'push', 15, 'save', 'caster'],
+    ['gravity-sinkhole', 'pull', 5, 'save', 'point'],
+    ['gravity-fissure', 'pull', 10, 'save', 'line'],
+  ])
+    assert.deepEqual(spells.forcedMove(id), { move, feet, on, from }, id);
+  for (const id of ['fireball', 'eldritch-blast', 'disintegrate', 'bane', 'toString', ''])
+    assert.equal(spells.forcedMove(id), null, id);
+});
+
+test('pushes and pulls use 5, 15 and 20 feet on a 5-foot grid', () => {
+  const target = { x: 8, y: 4, size: 1 };
+  for (const feet of [5, 15, 20]) {
+    const pushed = spells.pushDestination(grid, { x: 2.5, y: 4.5 }, target, () => true, feet);
+    const pulled = spells.pullDestination(grid, { x: 2.5, y: 4.5 }, target, () => true, feet);
+    assert.deepEqual(pushed, { ...target, x: 8 + feet / 5 });
+    assert.deepEqual(pulled, { ...target, x: 8 - feet / 5 });
+  }
+  assert.equal(
+    spells.pushDestination(grid, { x: 2.5, y: 4.5 }, target, () => true, 0),
+    null,
+  );
+});
+
+test('Gust of Wind pushes along the line direction rather than radially, snapping to eight directions', () => {
+  const target = { x: 7, y: 8, size: 1 };
+  const meta = { origin: { x: 2.5, y: 4.5 }, dir: 0, length: 60 };
+  assert.deepEqual(
+    spells.forcedDestination(grid, 'gust-of-wind', meta, target, () => true),
+    {
+      ...target,
+      x: 10,
+    },
+  );
+  assert.deepEqual(
+    spells.forcedDestination(grid, 'gust-of-wind', { ...meta, dir: Math.PI / 3 }, target, () => true),
+    {
+      ...target,
+      x: 10,
+      y: 11,
+    },
+  );
+  // A direction also works when the token is centred on the origin.
+  assert.equal(spells.pushDestination(grid, { x: 7.5, y: 8.5 }, target, () => true, 15, 0).x, 10);
+  assert.equal(spells.pullDestination(grid, { x: 7.5, y: 8.5 }, target, () => true, 5, Math.PI).x, 6);
+});
+
+test('point movement uses the vine or area centre and pulls stop before crossing it', () => {
+  const target = { x: 5, y: 4, size: 1 };
+  const meta = { origin: { x: 1.5, y: 4.5 }, point: { x: 12.5, y: 4.5 } };
+  assert.deepEqual(
+    spells.forcedDestination(grid, 'grasping-vine', meta, target, () => true),
+    { ...target, x: 9 },
+  );
+  assert.deepEqual(
+    spells.forcedDestination(grid, 'gravity-sinkhole', meta, target, () => true),
+    { ...target, x: 6 },
+  );
+  assert.deepEqual(
+    spells.forcedDestination(grid, 'dust-devil', meta, target, () => true),
+    { ...target, x: 3 },
+  );
+  const near = { ...meta, point: { x: 6.1, y: 4.5 } };
+  assert.equal(
+    spells.forcedDestination(grid, 'grasping-vine', near, target, () => true),
+    null,
+  );
+  assert.deepEqual(
+    spells.forcedDestination(grid, 'grasping-vine', { ...meta, point: { x: 6.5, y: 4.5 } }, target, () => true),
+    { ...target, x: 6 },
+  );
+  assert.equal(
+    spells.forcedDestination(grid, 'gravity-sinkhole', meta, { ...target, x: 12 }, () => true),
+    null,
+  );
+});
+
+test('Gravity Fissure pulls toward the nearest point on its finite line and stops at it', () => {
+  const meta = { origin: { x: 2.5, y: 4.5 }, dir: 0, length: 50 };
+  const target = { x: 7, y: 8, size: 1 };
+  assert.deepEqual(
+    spells.forcedDestination(grid, 'gravity-fissure', meta, target, () => true),
+    { ...target, y: 6 },
+  );
+  assert.deepEqual(
+    spells.forcedDestination(grid, 'gravity-fissure', meta, { ...target, y: 5 }, () => true),
+    {
+      ...target,
+      y: 4,
+    },
+  );
+  assert.equal(
+    spells.forcedDestination(grid, 'gravity-fissure', meta, { ...target, y: 4 }, () => true),
+    null,
+  );
+  // Beyond the end, pull toward the endpoint, rather than the infinite line.
+  assert.deepEqual(
+    spells.forcedDestination(grid, 'gravity-fissure', meta, { ...target, x: 15, y: 7 }, () => true),
+    {
+      ...target,
+      x: 13,
+      y: 5,
+    },
+  );
+  const vertical = { ...meta, dir: Math.PI / 2 };
+  assert.deepEqual(
+    spells.forcedDestination(grid, 'gravity-fissure', vertical, target, () => true),
+    {
+      ...target,
+      x: 5,
+    },
+  );
+});
+
+test('nearest point on a segment handles diagonal projections, endpoints and a zero-length segment', () => {
+  const start = { x: 2, y: 2 },
+    end = { x: 6, y: 6 };
+  assert.deepEqual(spells.nearestPointOnSegment({ x: 2, y: 6 }, start, end), { x: 4, y: 4 });
+  assert.deepEqual(spells.nearestPointOnSegment({ x: 0, y: 0 }, start, end), start);
+  assert.deepEqual(spells.nearestPointOnSegment({ x: 8, y: 8 }, start, end), end);
+  assert.deepEqual(spells.nearestPointOnSegment({ x: 8, y: 8 }, start, start), start);
+});
+
+test('legacy movement metadata falls back to the caster and leaves other spells alone', () => {
+  const meta = { origin: { x: 2.5, y: 4.5 } };
+  const target = { x: 8, y: 4, size: 1 };
+  for (const id of ['thunderwave', 'thorn-whip', 'grasping-vine', 'dust-devil', 'gust-of-wind', 'gravity-fissure']) {
+    const rule = spells.forcedMove(id);
+    const move = rule.move === 'pull' ? spells.pullDestination : spells.pushDestination;
+    assert.deepEqual(
+      spells.forcedDestination(grid, id, meta, target, () => true),
+      move(grid, meta.origin, target, () => true, rule.feet),
+      id,
+    );
+  }
+  assert.equal(
+    spells.forcedDestination(grid, 'fireball', meta, target, () => true),
+    null,
+  );
+  assert.equal(
+    spells.forcedDestination(grid, 'gust', {}, target, () => true),
+    null,
+  );
+});
+
+test('longer movement checks each step and stops at creatures, map edges and walls', () => {
+  const bc = require('../board-core.js');
+  const target = { x: 5, y: 4, size: 1 };
+  const terrain = bc.cells(grid, '');
+  const other = { x: 8, y: 4, size: 1 };
+  const fits = at => bc.roomFor(grid, terrain, at, [other]);
+  assert.equal(spells.pushDestination(grid, { x: 2.5, y: 4.5 }, target, fits, 20).x, 7);
+  assert.equal(spells.pullDestination(grid, { x: 12.5, y: 4.5 }, target, fits, 20).x, 7);
+  assert.equal(spells.pushDestination(grid, { x: 2.5, y: 4.5 }, { ...target, x: 18 }, fits, 20).x, 19);
+  const walls = [[7, 3, 7, 6]];
+  const clear = (at, prior) =>
+    spells.unobstructed({ x: prior.x + 0.5, y: prior.y + 0.5 }, { x: at.x + 0.5, y: at.y + 0.5 }, walls);
+  assert.equal(spells.pushDestination(grid, { x: 2.5, y: 4.5 }, target, clear, 20).x, 6);
+  assert.equal(spells.pullDestination(grid, { x: 12.5, y: 4.5 }, target, clear, 20).x, 6);
+  assert.equal(
+    spells.forcedDestination(
+      grid,
+      'grasping-vine',
+      { origin: { x: 2, y: 2 }, point: { x: 12.5, y: 4.5 } },
+      target,
+      clear,
+    ).x,
+    6,
+  );
+});

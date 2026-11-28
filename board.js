@@ -1012,8 +1012,9 @@
   }
   async function resolveSpellSave(campaign, request, subject, result) {
     const meta = request.board;
-    if (!meta?.map || !meta.castId || !['thunderwave', 'thorn-whip', 'disintegrate', 'bane'].includes(request.spellId))
-      return;
+    const movement = Spells.forcedMove(request.spellId);
+    if (!meta?.map || !meta.castId || (!movement && !['disintegrate', 'bane'].includes(request.spellId))) return;
+    if (movement?.on === 'hit' && !result.hit) return;
     if (result.saved && request.spellId !== 'bane') return;
     if (request.spellId === 'disintegrate' && !result.destroyed) return;
     const data = await Cloud.board(campaign);
@@ -1050,10 +1051,10 @@
     const terrain = BC.cells(grid, map.terrain?.cells || '');
     const walls = BC.sightBlockers(grid, terrain, map.terrain?.walls || []);
     const others = tokens.filter(t => t.id !== token.id && t.kind !== 'object');
-    const move = request.spellId === 'thorn-whip' ? Spells.pullDestination : Spells.pushDestination;
-    const next = move(
+    const next = Spells.forcedDestination(
       grid,
-      meta.origin,
+      request.spellId,
+      meta,
       token,
       (candidate, prior) =>
         BC.roomFor(grid, terrain, candidate, others) &&
@@ -1072,35 +1073,40 @@
     } else await Cloud.poseTokens(campaign, meta.map, [{ id: token.id, patch, before: token.savedXY }]);
   }
 
-  /* A spell attack that moves its target on a hit (Thorn Whip pulls 10 ft). Only the DM's board may
+  /* A spell attack that moves its target on a hit. Only the DM's board may
      move creature tokens, so a player's hit is sent to the DM's board, which applies it. */
   async function spellHit(campaign, meta, subject, spellId) {
-    if (spellId !== 'thorn-whip' || !meta?.map || !meta.castId || !subject) return;
+    if (Spells.forcedMove(spellId)?.on !== 'hit' || !meta?.map || !meta.castId || !subject) return;
     const m = {
       t: 'spell-resolution',
       map: meta.map,
       castId: meta.castId,
       action: 'pull',
+      spellId,
       origin: meta.origin,
+      point: meta.point,
       subject,
     };
     if (S.id === campaign && dmView()) return applySpellPull(m);
     await Cloud.broadcastBoardSpell(campaign, m);
   }
   function applySpellPull(m) {
-    if (!S.id || !dmView() || !m.origin || !m.subject) return;
+    // Older Thorn Whip messages did not include the spell ID.
+    const spellId = m.spellId || 'thorn-whip';
+    if (!S.id || !dmView() || !m.origin || !m.subject || Spells.forcedMove(spellId)?.on !== 'hit') return;
     const subject = m.subject.combatant
       ? { combatant: String(m.subject.combatant) }
       : { character: String(m.subject.character) };
-    // Let the whip land and go taut before the figure moves.
+    // Let the hit land before the figure moves.
     setTimeout(
       () =>
         resolveSpellSave(
           S.id,
-          { spellId: 'thorn-whip', board: { map: m.map, castId: m.castId, origin: m.origin } },
+          { spellId, board: { map: m.map, castId: m.castId, origin: m.origin, point: m.point } },
           subject,
           {
             saved: false,
+            hit: true,
           },
         ).catch(err => toast(err.message)),
       150,
@@ -1194,6 +1200,16 @@
     if (token.id === cast.caster || cast.zone.excluded.includes(token.id)) return false;
     return cast.zone.included.includes(token.id) || enemies(tokenById(cast.caster), token);
   }
+  function spellBoardMeta(cast, origin, area = cast.area) {
+    const point = area?.origin || cast.point;
+    return {
+      castId: cast.castId,
+      map: S.mapId,
+      origin,
+      point: point && { x: point.x, y: point.y },
+      ...(area?.kind === 'line' ? { dir: area.dir, length: area.feet } : {}),
+    };
+  }
   function postZoneTrigger(cast, token, phase, turn, id, units = 1) {
     const rule = Spells.zoneRule(cast.id),
       zone = cast.zone;
@@ -1205,6 +1221,7 @@
     if (zoneTriggers.has(key)) return;
     zoneTriggers.add(key);
     if (zoneTriggers.size > 2500) zoneTriggers.delete(zoneTriggers.values().next().value);
+    const source = tokenById(cast.caster);
     Cloud.post(
       S.id,
       'spell-zone-trigger',
@@ -1214,7 +1231,11 @@
         caster: zone.caster,
         spell: cast.name,
         spellId: cast.id,
-        board: { castId: cast.castId, map: S.mapId, origin: cast.area.origin },
+        board: spellBoardMeta(
+          cast,
+          source ? tokenCenter(source) : cast.area.origin,
+          source ? zoneArea(cast) : cast.area,
+        ),
         formula,
         ability,
         dc: zone.dc,
@@ -2156,7 +2177,7 @@
         panel();
         tools();
       }
-      return { castId: cast.castId, map: S.mapId, origin: placement.casterBase, zone: Boolean(cast.zone) };
+      return { ...spellBoardMeta(cast, placement.casterBase), zone: Boolean(cast.zone) };
     }
     for (const type of kinds) {
       const msg = {

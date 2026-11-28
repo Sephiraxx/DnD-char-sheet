@@ -52,21 +52,26 @@ The three kinds of work:
 
 ### 1. Pushes and pulls away from or toward the caster
 
-Extend the existing push/pull path, using the distances given by each spell's rules.
+Done for the first slice (2026-11-28): `Spells.forcedMove(id)` in `board-spells.js` is the table (push or pull, feet,
+on a failed save or a hit, from the caster, the spell's point or its line), `Spells.forcedDestination` works out the
+square, and `resolveSpellSave` / `spellHit` in `board.js` use it for every spell in the table. The cast's board
+metadata now carries the spell's `point` and, for lines, `dir` and `length`.
 
-| Spell | Movement |
-|---|---|
-| lightning-lure | Pull 10 ft toward the caster (failed save) |
-| grasping-vine | Pull 20 ft toward the vine (hit) |
-| thunderous-smite | Push 10 ft (failed save), plus prone |
-| gust | Push 5 ft (failed save) |
-| gust-of-wind | Push 15 ft along the line (failed save) |
-| pulse-wave | Push or pull 15 ft (caster's choice, failed save) |
-| bigbys-hand | Forceful Hand pushes 5 ft + 5 ft × spellcasting modifier; Grasping Hand can drag |
-| telekinesis | Move the creature up to 30 ft (contest) |
-| catapult | Hurls an object, not a creature (probably nothing to move) |
-| eldritch-blast | Only with the Repelling Blast invocation: push 10 ft per beam |
-| dust-devil | Push 10 ft away (failed save) |
+| Spell | Movement | Status |
+|---|---|---|
+| thunderwave | Push 10 ft (failed save) | Moves |
+| thorn-whip | Pull 10 ft toward the caster (hit) | Moves |
+| gust | Push 5 ft (failed save) | Moves |
+| pulse-wave | Push 15 ft (failed save) | Moves (push only; the push-or-pull choice is still to do) |
+| gust-of-wind | Push 15 ft along the line (failed save) | Moves on the cast's saves; the save at each turn start isn't reached yet |
+| lightning-lure | Pull 10 ft toward the caster (failed save) | In the table, not reached: its "Personal" targeting picks the caster |
+| grasping-vine | Pull 20 ft toward the vine (failed Dex save) | In the table, not reached: the vine is a summon with no later save flow |
+| thunderous-smite | Push 10 ft (failed save), plus prone | In the table, not reached: the smite's save after a weapon hit isn't linked to the board |
+| dust-devil | Push 10 ft away (failed save) | In the table, not reached: no end-of-turn trigger, and its point lands on the victim |
+| bigbys-hand | Forceful Hand pushes 5 ft + 5 ft × spellcasting modifier; Grasping Hand can drag | To do |
+| telekinesis | Move the creature up to 30 ft (contest) | To do |
+| catapult | Hurls an object, not a creature | Probably nothing to move |
+| eldritch-blast | Repelling Blast: push 10 ft per beam | To do |
 
 ### 2. Pulls toward an area's centre and area pushes
 
@@ -74,8 +79,8 @@ These need a new helper: a pull toward a point, or a push away from a point, app
 
 | Spell | Movement |
 |---|---|
-| gravity-sinkhole | Pull 5 ft toward the centre (failed save) |
-| gravity-fissure | Pull 10 ft toward the line (failed save) |
+| gravity-sinkhole | Pull 5 ft toward the centre (failed save) — moves (forcedMove table) |
+| gravity-fissure | Pull 10 ft toward the line (failed save) — moves on the cast's saves; creatures next to the line but outside it aren't selected yet |
 | maelstrom | Pull 10 ft toward the centre (failed save, at turn start) |
 | whirlwind | Pulls creatures in and lifts them |
 | tsunami | Carries creatures along with the wave |
