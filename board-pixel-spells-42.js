@@ -531,83 +531,91 @@
     },
   });
 
-  // Minor Illusion: ordered shimmer assembles a full-sized spectral crate with a scanning edge glitch.
+  // Minor Illusion: a lavender scan assembles a solid wooden crate, with brief horizontal glitches.
   FX.register('illusion', {
     palette: MAGIC,
-    travel: 350,
+    travel: 250,
     beats: soft,
-    end: () => 1900,
+    end: () => 1850,
     ground(s) {
-      if (!active(s, 1600)) return;
-      const p = cube(s),
-        t = age(s),
-        stage = Math.min(4, Math.floor(t / 85));
-      const pal = [MAGIC[0], MAGIC[0], MAGIC[2], MAGIC[3], MAGIC[4], MAGIC[5]];
-      const crate = image(
-        'illusion-crate:' + stage,
-        25,
-        28,
-        pal,
-        set => {
-          const cells = new Set();
-          poly(
-            (x, y) => cells.add(x + ':' + y),
-            [
-              [3, 8],
-              [10, 4],
-              [22, 7],
-              [22, 21],
-              [16, 25],
-              [3, 22],
-            ],
-            1,
-          );
-          const mask = (x, y) => cells.has(x + ':' + y);
-          for (let y = 2; y < 26; y++) {
-            for (let x = 1; x < 24; x++) {
-              if (!mask(x, y)) continue;
-              if (stage < 4 && k.dith(x, y) > (stage + 1) / 5) continue;
-              const edge = !mask(x - 1, y) || !mask(x + 1, y) || !mask(x, y - 1) || !mask(x, y + 1);
-              if (edge) set(x, y, 1);
-              else if (k.dith(x, y) < 0.5) {
-                const top = y < 8 + ((x - 3) * 3) / 13;
-                const frontY = y - 9 - ((x - 3) * 3) / 13;
-                const brace = x < 17 && (Math.abs(frontY - (x - 4)) < 1.5 || Math.abs(frontY - (16 - x)) < 1.5);
-                const rim = frontY < 2 || frontY > 11 || Math.abs(x - 16) < 1.5 || x < 6;
-                set(x, y, top ? 4 : brace || rim ? 5 : x >= 17 ? 2 : 3);
+      if (!active(s, 1550)) return;
+      const t = age(s),
+        corners = s.area ? k.outline(s.area, s.grid).map(([x, y]) => k.P({ x, y })) : [],
+        p = cube(s);
+      const left = Math.round(corners.length ? Math.min(...corners.map(v => v.x)) : p.x - k.PX / 2),
+        top = Math.round(corners.length ? Math.min(...corners.map(v => v.y)) : p.y - k.PX / 2),
+        right = Math.round(corners.length ? Math.max(...corners.map(v => v.x)) : left + k.PX),
+        bottom = Math.round(corners.length ? Math.max(...corners.map(v => v.y)) : top + k.PX),
+        w = Math.max(1, right - left),
+        h = Math.max(1, bottom - top);
+      const pal = [MAGIC[3], '#66402b', '#a76b3b', '#d8a05e', '#f4cc88', MAGIC[4]];
+      const entering = t < 250,
+        leaving = t >= 1300,
+        visible = entering ? Math.floor((t / 250) * h) : leaving ? Math.ceil(((1550 - t) / 250) * h) : h;
+
+      // Cached opaque rows let the scan reveal real wood and the glitch displace whole rows.
+      const cycle = Math.floor((t - 250) / 400),
+        glitch = !entering && !leaving && cycle > 0 && (t - 250) % 400 < 32,
+        glitchY = 3 + Math.floor(k.hash(cycle, s.event.seed || 0) * Math.max(1, h - 6)),
+        shift = cycle % 2 ? 2 : -1;
+      for (let y = 0; y < visible; y++) {
+        const row = k.sprite(
+          'b42:illusion-wood:' + w + ':' + h + ':' + y,
+          w,
+          1,
+          pal,
+          set => {
+            for (let x = 0; x < w; x++) {
+              const edge = Math.min(x, y, w - 1 - x, h - 1 - y);
+              let color;
+              if (edge === 0)
+                color = 0; // Explicit one-pixel lavender outline, with no dark halo.
+              else if (edge <= 2) color = x <= 2 || y <= 2 ? 2 : 1;
+              else {
+                const plank = Math.floor((x - 3) / 4),
+                  diagonal = ((y - 3) * Math.max(1, w - 7)) / Math.max(1, h - 7),
+                  brace = Math.abs(x - 3 - diagonal) <= 1 || Math.abs(w - 4 - x - diagonal) <= 1;
+                color = (x - 3) % 4 === 3 ? 2 : plank % 2 ? 4 : 3;
+                // Dark timber cross braces sit over the light, solid vertical planks.
+                if (brace) color = 1;
+                else if ((y === 5 || y === h - 6) && (x - 3) % 4 < 2) color = 2;
               }
+              if ((x === 2 || x === w - 3) && (y === 2 || y === h - 3)) color = 4;
+              set(x, 0, color);
             }
-          }
-        },
-        false,
-      );
-      k.blit(crate, p.x - 12, p.y - 20, fade(t, 1350, 1600));
-      if (t < 900) {
-        const scan = Math.floor(s.c.raw / 70) % 17;
-        stroke(
-          [
-            [p.x - 10, p.y - 14 + scan],
-            [p.x - 7, p.y - 14 + scan],
-          ],
-          MAGIC,
-          5,
-          1,
+          },
+          false,
         );
-        stroke(
-          [
-            [p.x + 8, p.y - 17 + scan],
-            [p.x + 12, p.y - 17 + scan],
-          ],
-          MAGIC,
-          4,
-          1,
-        );
+        const offset = glitch && y >= glitchY && y < glitchY + 2 ? shift : 0;
+        k.blit(row, left + offset, top + y);
       }
-    },
-    air(s) {
-      if (!active(s, 1600)) return;
-      const p = cube(s);
-      impact(s, { x: p.x, y: p.y - 8 }, MAGIC, 'illusion', 15, 5);
+
+      if (entering || leaving) {
+        const scanY = Math.min(h - 1, leaving ? visible - 1 : visible);
+        for (const dy of [0, leaving ? 2 : -2]) {
+          const y = scanY + dy;
+          if (y < 0 || y >= h) continue;
+          for (let x = 0; x < w; x++) k.dot(left + x, top + y, MAGIC[dy === 0 ? 4 : 3]);
+        }
+        // Three small glints travel with the sweep; none are hit stars.
+        for (let i = 0; i < 3; i++) {
+          const x = left + Math.round(((i + 0.5) * (w - 1)) / 3),
+            y = top + Math.max(0, Math.min(h - 1, scanY + (i % 2 ? -1 : 1)));
+          k.dot(x, y, MAGIC[5]);
+          k.dot(x - 1, y, MAGIC[3]);
+          k.dot(x + 1, y, MAGIC[3]);
+        }
+      } else {
+        // Sparse sparkle only on the perimeter; the wooden body has no dither or transparency.
+        const tick = Math.floor(s.c.raw / 100);
+        for (let i = 0; i < 3; i++) {
+          const side = (tick + i) % 4,
+            n = Math.floor(k.hash(tick, i, s.event.seed || 0) * (side % 2 ? h : w)),
+            x = side === 1 ? w - 1 : side === 3 ? 0 : n,
+            y = side === 0 ? 0 : side === 2 ? h - 1 : n;
+          if (k.dith(x + tick, y) < 0.25) k.dot(left + x, top + y, MAGIC[4]);
+        }
+      }
     },
   });
 
