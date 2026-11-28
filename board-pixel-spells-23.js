@@ -472,40 +472,6 @@
     },
   });
 
-  // Death Ward: an ivory hourglass shield locks shut over a violet death's-head and leaves a gold seal.
-  FX.register('death-ward', {
-    palette: GOLD,
-    travel: 170,
-    beats: (event, kit, travel) => beat(event, kit, travel, 'soft', 90),
-    end: () => 1250,
-    ground(s) {
-      const e = s.c.t - 470;
-      if (e < 0 || e > 740) return;
-      recipients(s).forEach(t => {
-        const p = foot(t);
-        ring(p, 13, 6, GOLD, 3, e > 550 ? 4 : 0);
-        if (e < 230) ring(p, 14 + e / 18, 7 + e / 36, GOLD, 4, 6);
-      });
-    },
-    air(s) {
-      marks(s, GOLD, 'death-ward', 25, 5);
-      const e = s.c.t - 470;
-      if (e < 0 || e > 740) return;
-      recipients(s).forEach(t => {
-        const p = k.P(t);
-        if (e < 140) icon('skull', { x: p.x, y: p.y - 12 }, VOID);
-        icon('shield', { x: p.x, y: p.y - 13 - Math.min(4, e / 60) }, GOLD);
-        if (e < 340) {
-          const q = e / 340;
-          for (let i = 0; i < 4; i++) {
-            const a = (i * k.tau) / 4 + q;
-            speck(p.x + Math.cos(a) * (15 - q * 4), p.y + Math.sin(a) * 14 - 4, GOLD, 4);
-          }
-        }
-      });
-    },
-  });
-
   // Banishment: a violet planar iris cages the target, folds inward, and snaps into a four-point rift.
   FX.register('banishment', {
     palette: VOID,

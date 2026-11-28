@@ -397,36 +397,6 @@
     flash: (event, e) => (e < 30 ? { color: EARTH[5], alpha: 0.2 } : e < 65 ? { color: EARTH[0], alpha: 0.18 } : null),
   });
 
-  // Vampiric Touch: a black-burgundy spectral hand claws the body, then stolen red life returns to the caster.
-  FX.register('vampiric-touch', {
-    palette: NECRO,
-    travel: 130,
-    beats: (event, kit, travel) => beats({ targets: event.targets?.slice(0, 1) }, travel, 110, 'hit', 0.065),
-    end: () => 1140,
-    air(s) {
-      const e = age(s),
-        hit = s.hits[0];
-      if (e < 0 || e > 820) return;
-      const T = impact(s, hit),
-        H = k.P(s.pose.hand || s.pose.base || centre(s));
-      if (e < 330) {
-        const q = k.ease(k.clamp(e / 130));
-        icon('claw', { x: T.x - 11 * (1 - q), y: T.y - 5 }, NECRO, 2);
-      }
-      marks(s, NECRO, 'vampire', 32, 7);
-      const real = s.real(hit);
-      if (real >= 60 && real < 700) {
-        for (let i = 0; i < 6; i++) {
-          const q = (real - 60 - i * 35) / 380;
-          if (q < 0 || q > 1) continue;
-          const p = { x: k.mix(T.x, H.x, k.ease(q)), y: k.mix(T.y, H.y, k.ease(q)) - Math.sin(q * Math.PI) * 9 };
-          speck(p, NECRO, i % 2 ? 3 : 4, 2);
-          if (q > 0.86) ring(H, 5 + q * 3, 5, LIFE, 3);
-        }
-      }
-    },
-  });
-
   function sleet(s, persistent) {
     const e = age(s);
     if (!persistent && (e < 0 || e > 1400)) return;
@@ -486,88 +456,6 @@
     },
   });
 
-  // Life Transference: the caster's crimson heart fractures; a golden-green life stream mends one ally.
-  FX.register('life-transference', {
-    palette: LIFE,
-    travel: 120,
-    beats: event => [
-      { at: k.CAST + 120, stop: 100, target: null, kind: 'hit', power: 0.05 },
-      { at: k.CAST + 530, stop: 80, target: event.targets?.[0] ?? null, kind: 'soft', power: 0.03 },
-    ],
-    end: () => 1370,
-    ground(s) {
-      const e = age(s);
-      if (e < 500 || e > 1040) return;
-      const T = impact(s, s.hits[1]);
-      ring(T, 7 + k.ease(k.clamp((e - 500) / 280)) * 12, 5, LIFE, e < 700 ? 4 : 2, 6);
-    },
-    air(s) {
-      const e = age(s);
-      if (e < 0 || e > 1070) return;
-      const H = k.P(s.pose.hand || s.pose.base || centre(s)),
-        T = impact(s, s.hits[1]);
-      if (e < 220) {
-        icon('heart', { x: H.x, y: H.y - 5 }, NECRO, 2);
-        if (e >= 120)
-          stroke(
-            [
-              { x: H.x - 2, y: H.y - 13 },
-              { x: H.x + 2, y: H.y - 6 },
-              { x: H.x - 2, y: H.y + 1 },
-            ],
-            NECRO,
-            1,
-            2,
-            18,
-          );
-      }
-      const sacrifice = s.real(s.hits[0]),
-        heal = s.real(s.hits[1]);
-      k.drawHit(k.hitStyle('b22:sacrifice', NECRO, { S: 28, spikes: 5, void: true }), H, sacrifice);
-      k.shards(H, sacrifice, NECRO, seed(s), 7, 16);
-      for (let i = 0; i < 9; i++) {
-        const q = (e - 160 - i * 21) / 300;
-        if (q < 0 || q > 1) continue;
-        const p = { x: k.mix(H.x, T.x, q), y: k.mix(H.y, T.y, q) - Math.sin(q * Math.PI) * 14 };
-        speck(p, q < 0.28 ? NECRO : LIFE, q < 0.28 ? 3 : 4, i % 3 ? 2 : 3);
-      }
-      k.drawHit(k.hitStyle('b22:transference', LIFE, { S: 32, spikes: 4 }), T, heal);
-      k.shards(T, heal, LIFE, seed(s) + 14, 7, 20);
-      if (heal > 80 && heal < 420) icon('heart', { x: T.x, y: T.y - 8 - heal / 50 }, LIFE);
-    },
-  });
-
-  // Fly: airy blue-white feathers spiral upward, lifting a pair of wind wings above the recipient's feet.
-  FX.register('fly', {
-    palette: WIND,
-    travel: 170,
-    beats: (event, kit, travel) => beats(event, travel, 75, 'soft', 0.03),
-    end: () => 1140,
-    ground(s) {
-      const e = age(s);
-      if (e < 0 || e > 820) return;
-      recipients(s).forEach(t => ring(foot(t), 9 + k.ease(k.clamp(e / 360)) * 6, 4, WIND, e < 500 ? 3 : 2, 5));
-    },
-    air(s) {
-      const e = age(s);
-      if (e < 0 || e > 830) return;
-      recipients(s).forEach(t => {
-        const F = foot(t),
-          rise = k.ease(k.clamp(e / 400)) * 14;
-        for (let side = -1; side <= 1; side += 2) {
-          icon('feather', { x: F.x + side * 11, y: F.y - 5 - rise }, WIND, 1, side < 0 ? -0.5 : 1.1);
-          if (e < 620) ring({ x: F.x + side * 4, y: F.y - rise - 4 }, 10, 4, WIND, 3, 5, Math.floor(e / 110));
-        }
-        for (let i = 0; i < 4; i++) {
-          const a = e / 110 + (i * k.tau) / 4;
-          const q = (e / 650 + i / 4) % 1;
-          speck({ x: F.x + Math.cos(a) * 12, y: F.y - q * 25 }, WIND, 4);
-        }
-      });
-      softBurst(s, WIND, 'fly');
-    },
-  });
-
   function strideGround(s, persistent) {
     const e = age(s);
     if (persistent ? s.linger < 0.2 : e < 0 || e > 940) return;
@@ -585,34 +473,6 @@
       icon('boot', p, FIRE, 1, dir);
     }
   }
-
-  // Ashardalon's Stride: dragon-orange fire wraps the caster's boots, leaving racing footprints in a tight five-foot aura.
-  FX.register('ashardalons-stride', {
-    palette: FIRE,
-    travel: 100,
-    beats: () => [{ at: k.CAST + 100, stop: 70, target: null, kind: 'soft', power: 0.03 }],
-    end: () => 1250,
-    ground(s) {
-      strideGround(s, false);
-    },
-    air(s) {
-      const e = age(s);
-      if (e < 0 || e > 940) return;
-      const C = base(s);
-      for (let i = 0; i < 10; i++) {
-        const a = (i * k.tau) / 10 + Math.floor(s.c.raw / 65) * 0.3;
-        const q = (s.c.raw / 350 + i * 0.17) % 1;
-        const p = { x: C.x + Math.cos(a) * 11, y: C.y + Math.sin(a) * 5 - q * 13 };
-        speck(p, FIRE, q < 0.4 ? 4 : 3, q < 0.6 ? 2 : 1);
-      }
-      const real = s.real(s.hits[0]);
-      k.drawHit(k.hitStyle('b22:stride', FIRE, { S: 26, spikes: 5 }), C, real);
-      k.shards(C, real, FIRE, seed(s), 6, 17);
-    },
-    linger(s) {
-      strideGround(s, true);
-    },
-  });
 
   // Divination: incense curls into a golden watching eye; four omen stars align, then leave a single clear sign.
   FX.register('divination', {
@@ -738,40 +598,6 @@
       }
   }
 
-  // Aura of Purity: a pearl-white sanctuary expands to the exact thirty-foot circle, guarded by eight silver shields.
-  FX.register('aura-of-purity', {
-    palette: PURE,
-    travel: 240,
-    beats: () => [{ at: k.CAST + 240, stop: 90, target: null, kind: 'soft', power: 0.03 }],
-    end: () => 1350,
-    ground(s) {
-      holyAura(s, PURE, false, false);
-    },
-    air(s) {
-      auraAir(s, PURE, false);
-    },
-    linger(s) {
-      holyAura(s, PURE, false, true);
-    },
-  });
-
-  // Aura of Life: a warm green-gold thirty-foot circle blossoms with upright shoots and small renewing stars.
-  FX.register('aura-of-life', {
-    palette: LIFE,
-    travel: 240,
-    beats: () => [{ at: k.CAST + 240, stop: 90, target: null, kind: 'soft', power: 0.03 }],
-    end: () => 1350,
-    ground(s) {
-      holyAura(s, LIFE, true, false);
-    },
-    air(s) {
-      auraAir(s, LIFE, true);
-    },
-    linger(s) {
-      holyAura(s, LIFE, true, true);
-    },
-  });
-
   // Staggering Smite: a rose-violet weapon crescent strikes once, followed by a broken halo of disorienting psychic shards.
   FX.register('staggering-smite', {
     palette: MIND,
@@ -805,48 +631,6 @@
       }
     },
     flash: (event, e) => (e < 30 ? { color: MIND[4], alpha: 0.15 } : e < 65 ? { color: MIND[0], alpha: 0.14 } : null),
-  });
-
-  // Leomund's Secret Chest: a tiny ivory replica links to a brass-bound chest that slips sideways into the Ethereal Plane.
-  FX.register('leomunds-secret-chest', {
-    palette: ARCANE,
-    travel: 440,
-    beats: () => [{ at: k.CAST + 440, stop: 100, target: null, kind: 'soft', power: 0.03 }],
-    end: () => 1470,
-    ground(s) {
-      const e = age(s);
-      if (e < 0 || e > 1150) return;
-      const C = k.P(centre(s));
-      ring({ x: C.x, y: C.y + 6 }, 19, 7, ARCANE, e < 740 ? 3 : 2, 8);
-    },
-    air(s) {
-      const e = age(s);
-      if (e < 0 || e > 1160) return;
-      const H = k.P(s.pose.hand || s.pose.base || centre(s)),
-        C = k.P(centre(s));
-      const recall = s.event.teleport?.recall === true;
-      icon('chest', { x: H.x, y: H.y - 4 }, PURE);
-      const q = k.clamp((e - 250) / 500),
-        visible = recall ? q : 1 - q;
-      if (visible > 0.03) {
-        const step = visible > 0.72 ? 2 : 1;
-        const P = { x: C.x + (1 - visible) * 10, y: C.y - 7 - (1 - visible) * 13 };
-        icon('chest', P, visible > 0.72 ? GOLD : ARCANE, step);
-      }
-      if (e >= 100 && e < 920) {
-        const P = { x: C.x + 13, y: C.y - 7 };
-        ring(P, e < 740 ? 8 : 4, 22, ARCANE, e < 440 ? 3 : 4, 6, Math.floor(e / 110));
-        for (let i = 0; i < 5; i++) {
-          const t = (e / 700 + i / 5) % 1;
-          speck({ x: k.mix(C.x, H.x, t), y: k.mix(C.y - 6, H.y - 4, t) - Math.sin(t * Math.PI) * 8 }, ARCANE, 4);
-        }
-      }
-      const real = s.real(s.hits[0]),
-        P = { x: C.x + 10, y: C.y - 10 };
-      k.drawHit(k.hitStyle('b22:secret-chest', ARCANE, { S: 30, spikes: 4, void: true }), P, real);
-      k.shards(P, real, ARCANE, seed(s), 6, 21);
-      if (e > 920) icon('star', { x: H.x + 9, y: H.y - 9 }, GOLD);
-    },
   });
 
   // Compulsion: pink enchantment coils catch the minds, then repeated bright arrows order every recipient the same way.

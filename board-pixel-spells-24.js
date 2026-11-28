@@ -582,34 +582,6 @@
     },
   });
 
-  // Charm Monster: rose-pink enchantment curls into a heart above the creature's head.
-  FX.register('charm-monster', {
-    palette: MIND,
-    travel: 260,
-    beats: soft,
-    end: () => 1310,
-    ground(s) {
-      buffGround(s, MIND);
-    },
-    air(s) {
-      marks(s, MIND, 'charm', null, 24, 4);
-      const e = s.c.t - k.CAST;
-      if (e < 0 || e >= 940) return;
-      recipients(s).forEach(t => {
-        const p = k.P(t);
-        if (e < 260 && s.pose.hand) {
-          const h = k.P(s.pose.hand),
-            q = e / 260;
-          icon('heart', { x: k.mix(h.x, p.x, q), y: k.mix(h.y, p.y - 14, q) - Math.sin(q * Math.PI) * 8 }, MIND);
-        } else {
-          const rise = k.clamp((e - 700) / 240) * 8;
-          icon('heart', { x: p.x, y: p.y - 17 - rise }, MIND);
-          ring({ x: p.x, y: p.y - 11 - rise }, 12, 4, MIND, 3, 3, e / 120);
-        }
-      });
-    },
-  });
-
   // Giant Insect: a tiny scorpion jumps to giant size, raising claws and a poison stinger.
   FX.register('giant-insect', {
     palette: NATURE,
