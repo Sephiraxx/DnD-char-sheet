@@ -160,65 +160,6 @@
     },
   });
 
-  // Mass Heal: green-gold streams branch to every ally; opening lotus seals and white cleansing sparks crown the heal.
-  FX.register('mass-heal', {
-    palette: LIFE,
-    travel: 300,
-    beats: (event, kit, travel) => beats(event, kit.CAST + travel, 125, 'soft', 0.04),
-    end: () => 1350,
-    flash: (event, e) => (e < 45 ? { color: LIFE[4], alpha: 0.14 } : null),
-    ground(s) {
-      if (s.c.t < k.CAST || s.c.t >= 1280) return;
-      s.hits.forEach(hit => {
-        const t = subject(s, hit);
-        if (!t) return;
-        const e = s.c.t - hit.at,
-          F = feet(t);
-        const r = e < 0 ? 10 : 10 + Math.floor(k.ease(k.clamp(e / 330)) * 10);
-        ring(F, r, r * 0.6, LIFE, e < 65 ? 4 : 3, e > 380);
-        if (e >= 0 && e < 540) icon('lotus', LIFE, F);
-      });
-    },
-    air(s) {
-      if (s.c.t < k.CAST || s.c.t >= 1350) return;
-      const H = s.pose.hand && k.P(s.pose.hand);
-      const n = Math.max(4, Math.min(20, Math.floor(100 / Math.max(1, s.hits.length))));
-      s.hits.forEach((hit, i) => {
-        const t = subject(s, hit);
-        if (!t) return;
-        const T = k.P(t),
-          e = s.c.t - hit.at;
-        if (e < 0 && H) {
-          const q = (s.c.t - k.CAST) / 300;
-          const at = u => ({
-            x: k.mix(H.x, T.x, u),
-            y: k.mix(H.y, T.y, u) - Math.sin(u * Math.PI) * (12 + (i % 3) * 4),
-          });
-          for (let j = 0; j <= n; j++) {
-            const u = q * (1 - (j / (n + 1)) * 0.65),
-              P = at(u);
-            pixel(P.x, P.y, LIFE, j < 3 ? 4 : j < n / 2 ? 3 : 2, j < 3 ? 2 : 1);
-          }
-          const P = at(q);
-          k.disc(P.x, P.y, 4, LIFE[0]);
-          k.disc(P.x, P.y, 3, LIFE[4]);
-          pixel(P.x, P.y, GOLD, 5, 1);
-        }
-        const real = s.real(hit);
-        if (real >= 0 && real < 600) {
-          ring({ x: T.x, y: T.y - 17 - Math.floor(real / 130) }, 6, 2, GOLD, 4, real > 420);
-          const count = Math.min(6, Math.max(2, Math.floor(36 / s.hits.length)));
-          for (let j = 0; j < count; j++) {
-            const q = k.clamp(real / 600),
-              a = (j / count) * k.tau + i;
-            pixel(T.x + Math.cos(a) * (7 + q * 15), T.y + Math.sin(a) * 10 - q * 23, LIFE, q < 0.35 ? 2 : 5);
-          }
-        }
-      });
-      marks(s, LIFE, 'mass-heal', 32, 5, 18);
-    },
-  });
-
   function stormHeight(s) {
     return Math.max(24, Math.min(48, ((s.area?.height || 15) / (s.grid.feet || 5)) * k.PX));
   }

@@ -298,51 +298,6 @@
     },
   });
 
-  // Buff: a seal snaps under the recipient's feet as bright motes rise to a gentle blessing spark.
-  FX.register('kind:buff', {
-    travel: 0,
-    beats: (event, kit, travel) => beats(event, travel, 'soft', 55, 0),
-    end: () => k.CAST + 650,
-    ground: s => supportGround(s, false),
-    air: s => supportAir(s, false),
-  });
-
-  // Heal: green and pale-gold ramp motes spiral upwards, capped by a soft, outlined plus sign.
-  FX.register('kind:heal', {
-    travel: 0,
-    beats: (event, kit, travel) => beats(event, travel, 'soft', 60, 0),
-    end: () => k.CAST + 650,
-    ground: s => supportGround(s, true),
-    air: s => supportAir(s, true),
-  });
-
-  // Summon: an open rune circle, a banded pillar of light, then a low puff and settling sparks.
-  FX.register('kind:summon', {
-    travel: 0,
-    beats: () => [],
-    end: () => k.CAST + 800,
-    ground(s) {
-      const point = destination(s),
-        e = s.c.raw - k.CAST;
-      if (!point || e < 0 || e >= 740) return;
-      const C = k.P(point),
-        r = Math.max(12, Math.min(32, radius(s)));
-      rune(C, r, s.ramp, e < 100 ? 0 : e < 470 ? 1 : 2);
-      pillar(C, e - 90, s.ramp, Math.round(r * 0.8));
-    },
-    air(s) {
-      const point = destination(s),
-        e = s.c.raw - k.CAST;
-      if (!point || e < 0 || e >= 800) return;
-      const C = k.P(point);
-      puff(C, e - 300, s.ramp, seed(s), 16);
-      for (let i = 0; i < 5; i++) {
-        const age = e - 390 - i * 28;
-        sparkle({ x: C.x + (k.hash(i, seed(s)) - 0.5) * 28, y: C.y - 12 - i * 3 }, age, s.ramp, false, 2, 190);
-      }
-    },
-  });
-
   // Teleport: the departure seal pinches shut in mist; a displaced arrival seal bursts into sharp stars.
   FX.register('kind:teleport', {
     travel: 160,
@@ -430,23 +385,6 @@
         }
         mark(s, hit, T, 'multi', 26, 5, 16);
       });
-    },
-  });
-
-  // Utility: a quiet hand-sized rune answers with one tiny twinkle at the aimed body or point.
-  FX.register('kind:utility', {
-    cast: false,
-    travel: 100,
-    beats: (event, kit, travel) => [
-      { at: kit.CAST + travel, stop: 0, target: event.targets?.[0] ?? null, kind: 'soft', power: 0 },
-    ],
-    end: () => k.CAST + 400,
-    air(s) {
-      const e = s.c.raw - k.CAST;
-      if (s.pose.hand && e >= 0 && e < 150) rune(k.P(s.pose.hand), 4, s.ramp, e < 60 ? 0 : 2);
-      const hit = s.hits[0],
-        point = hit && body(s, hit);
-      if (point) sparkle(k.P(point), s.real(hit), s.ramp, false, 3, 240);
     },
   });
 })(typeof window !== 'undefined' ? window : globalThis);

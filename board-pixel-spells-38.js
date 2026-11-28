@@ -309,37 +309,6 @@
     },
   });
 
-  // Invulnerability: a white-gold ward locks into facets; incoming red chips shatter off its untouched rim.
-  FX.register('invulnerability', {
-    palette: GOLD,
-    travel: 270,
-    beats: (e, kit, t) => beats(e, kit, t, 100),
-    end: () => 1350,
-    ground(s) {
-      halo(s, GOLD);
-    },
-    air(s) {
-      if (!active(s, 750)) return;
-      for (const t of subjects(s)) {
-        const T = k.P(t),
-          e = age(s);
-        if (e < 550) {
-          ring(T, 18, 23, GOLD, e < 50 ? 5 : 3);
-          icon('shield', { x: T.x, y: T.y - 10 }, GOLD);
-        }
-        const real = s.real(s.hits[0]);
-        if (real >= 0 && real < 360) {
-          const Q = { x: T.x + 19, y: T.y - 5 };
-          k.drawHit(k.hitStyle('b38:deflect', GOLD, { S: 22, spikes: 4 }), Q, real);
-          k.shards(Q, real, ROCK, seed(s), 6, 20);
-        }
-      }
-    },
-    linger(s) {
-      for (const t of subjects(s)) ring(foot(t), 16, 8, GOLD, s.linger > 0.5 ? 3 : 2, true);
-    },
-  });
-
   function meteorSites(s) {
     const { C, R } = zone(s, 40);
     return [0, 1, 2, 3].map(i => {
@@ -509,63 +478,6 @@
     },
   });
 
-  // Power Word Kill: one crimson-black word appears at the victim; a death seal snaps inward without a missile.
-  FX.register('power-word-kill', {
-    palette: DEATH,
-    travel: 160,
-    beats: (e, kit, t) => beats(e, kit, t, 220, 'hit', 0.09),
-    end: () => 1120,
-    flash,
-    ground(s) {
-      if (!active(s, 550)) return;
-      const e = age(s),
-        F = foot(subject(s));
-      if (e < 320)
-        ring(F, 8 + 17 * (1 - k.clamp((e + 160) / 480)), 5 + 9 * (1 - k.clamp((e + 160) / 480)), DEATH, e < 0 ? 3 : 1);
-    },
-    air(s) {
-      if (!active(s, 550)) return;
-      const T = k.P(subject(s)),
-        e = age(s),
-        real = s.real(s.hits[0]);
-      if (e < 0) icon('word', { x: T.x, y: T.y - 8 }, DEATH);
-      else if (e < 300) icon('skull', { x: T.x, y: T.y - 4 }, DEATH);
-      if (real >= 0 && real < 130) {
-        stroke({ x: T.x - 15, y: T.y - 15 }, { x: T.x + 15, y: T.y + 15 }, DEATH, real < 40 ? 5 : 2, 2, 18);
-        stroke({ x: T.x + 15, y: T.y - 15 }, { x: T.x - 15, y: T.y + 15 }, DEATH, real < 40 ? 5 : 2, 2, 18);
-      }
-      impacts(s, DEATH, 'power-word-kill', 42, 9);
-    },
-  });
-
-  // Power Word Heal: an emerald-gold spoken rune restores a broken halo, releasing clean upward life sparks.
-  FX.register('power-word-heal', {
-    palette: LIFE,
-    travel: 210,
-    beats: (e, kit, t) => beats(e, kit, t, 95),
-    end: () => 1320,
-    ground(s) {
-      halo(s, LIFE);
-    },
-    air(s) {
-      if (!active(s, 750)) return;
-      const e = age(s);
-      for (const t of subjects(s)) {
-        const T = k.P(t),
-          real = s.real(s.hits[0]);
-        if (e < 400) icon('word', { x: T.x, y: T.y - 9 - Math.max(0, e) / 70 }, LIFE);
-        if (e >= 0 && e < 560) ring(T, 18, 22, LIFE, e < 80 ? 5 : 3, e > 400);
-        if (real >= 0 && real < 640)
-          for (let i = 0; i < 9; i++) {
-            const q = real / 640,
-              x = T.x + (k.hash(i, seed(s)) - 0.5) * 30;
-            pixel(x, T.y + 16 - q * (30 + k.hash(i, seed(s), 1) * 15), LIFE, i % 2 ? 4 : 3, 2);
-          }
-      }
-      impacts(s, LIFE, 'power-word-heal', 30, 5);
-    },
-  });
-
   function transmuteGround(s, mass) {
     if (!active(s, 850)) return;
     for (const t of subjects(s)) {
@@ -594,34 +506,6 @@
     });
     impacts(s, CHANGE, mass ? 'mass-polymorph' : 'true-polymorph', 34, 6);
   }
-
-  // True Polymorph: gold and violet coils seal a cocoon, which cracks into a clear winged dragon silhouette.
-  FX.register('true-polymorph', {
-    palette: CHANGE,
-    travel: 390,
-    beats: (e, kit, t) => beats(e, kit, t, 120),
-    end: () => 1530,
-    ground(s) {
-      transmuteGround(s, false);
-    },
-    air(s) {
-      transmuteAir(s, false);
-    },
-  });
-
-  // Mass Polymorph: synchronized violet cocoons burst into a menagerie of butterflies, frogs and tiny dragons.
-  FX.register('mass-polymorph', {
-    palette: CHANGE,
-    travel: 390,
-    beats: (e, kit, t) => beats(e, kit, t, 120),
-    end: () => 1530,
-    ground(s) {
-      transmuteGround(s, true);
-    },
-    air(s) {
-      transmuteAir(s, true);
-    },
-  });
 
   function portal(C, open, tick) {
     const rx = Math.max(2, Math.round(19 * open)),
@@ -666,35 +550,6 @@
     linger(s) {
       const T = k.P(s.event.teleport?.to || s.pose.target || subject(s));
       portal(T, s.linger, Math.floor(s.c.raw / 160));
-    },
-  });
-
-  // Foresight: a golden third eye opens above the subject while three future echoes converge into one path.
-  FX.register('foresight', {
-    palette: GOLD,
-    travel: 310,
-    beats: (e, kit, t) => beats(e, kit, t, 85),
-    end: () => 1460,
-    ground(s) {
-      halo(s, GOLD);
-    },
-    air(s) {
-      if (!active(s, 800)) return;
-      const e = age(s);
-      for (const t of subjects(s)) {
-        const T = k.P(t),
-          merge = 1 - k.ease(k.clamp((e + 310) / 650));
-        if (e < 360)
-          for (let i = -1; i <= 1; i++)
-            icon('eye', { x: T.x + i * 17 * merge, y: T.y - 12 - Math.abs(i) * merge * 4 }, GOLD);
-        if (e >= 360 && e < 690) icon('eye', { x: T.x, y: T.y - 14 }, GOLD);
-        const real = s.real(s.hits[0]);
-        if (real >= 0 && real < 400) ring(T, 18 + Math.round(real / 45), 9 + Math.round(real / 90), GOLD, 4, true);
-      }
-      impacts(s, GOLD, 'foresight', 26, 5);
-    },
-    linger(s) {
-      for (const t of subjects(s)) ring(foot(t), 15, 7, GOLD, 3, true, s.c.raw / 220);
     },
   });
 
