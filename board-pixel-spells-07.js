@@ -208,87 +208,6 @@
     }
   }
 
-  // Wrathful Smite: a weapon snaps through a magenta psychic crescent; a dreadful face follows the wound.
-  FX.register('wrathful-smite', {
-    palette: DREAD,
-    travel: 100,
-    beats: beats(115),
-    end: end(640),
-    air(s) {
-      const hit = s.hits[0],
-        p = aim(s),
-        t = s.c.t - k.CAST,
-        e = s.real(hit);
-      if (t >= 0 && t < 250) {
-        const q = k.clamp(t / 100);
-        const angle = -2.4 + q * 2.9;
-        const tip = add(p, Math.cos(angle) * 12, Math.sin(angle) * 12);
-        const hilt = add(tip, -8, 9);
-        stroke([hilt, tip], STONE, 4, 2, 14);
-        stroke([add(hilt, -3, -2), add(hilt, 2, 3)], DREAD, 3, 2, 8);
-        const sweep = [];
-        for (let i = 0; i < 10; i++) {
-          const a = -2.4 + (q * 2.9 * i) / 9;
-          sweep.push(add(p, Math.cos(a) * 14, Math.sin(a) * 14));
-        }
-        stroke(sweep, DREAD, 4, e < 60 ? 3 : 1, 30);
-      }
-      mark(s, hit, p, DREAD, 'wrath', 36);
-      if (e >= 140 && e < 650) {
-        const face = add(p, 0, -13 - Math.floor((e - 140) / 100));
-        skull(face, DREAD);
-        if (e < 430) {
-          stroke([add(face, -6, -2), add(face, -10, -7)], DREAD, 2, 1, 6);
-          stroke([add(face, 6, -2), add(face, 10, -7)], DREAD, 2, 1, 6);
-        }
-      }
-    },
-  });
-
-  // Catapult: a chipped stone is ripped from beside the caster and hurled straight into a dusty physical impact.
-  FX.register('catapult', {
-    palette: STONE,
-    travel: 320,
-    beats: beats(125),
-    end: end(440),
-    ground(s) {
-      const hit = s.hits[0],
-        e = s.real(hit);
-      if (e < 0 || e > 450) return;
-      const p = feet(recipient(s));
-      ring(p, 4 + k.ease(k.clamp(e / 300)) * 17, 3 + e / 70, STONE, 2, e > 130);
-      for (let i = 0; i < 4; i++) {
-        const x = (k.hash(i, seed(s)) - 0.5) * 25;
-        ball(add(p, x, -e / 90 - (i % 2) * 3), e < 180 ? 3 : 2, STONE, 1);
-      }
-    },
-    air(s) {
-      const hit = s.hits[0];
-      if (s.pose.hand && s.c.t >= k.CAST && s.c.t < hit.at) {
-        const H = add(k.P(s.pose.hand), 2, 8),
-          T = aim(s);
-        const q = k.clamp((s.c.t - k.CAST) / (hit.at - k.CAST));
-        const p = { x: k.mix(H.x, T.x, q), y: k.mix(H.y, T.y, q) };
-        for (let i = 0; i < 4; i++) {
-          const u = q - 0.055 * (i + 1);
-          if (u < 0) continue;
-          const a = { x: k.mix(H.x, T.x, u), y: k.mix(H.y, T.y, u) + (i % 2 ? 3 : -3) };
-          const dx = T.x - H.x,
-            dy = T.y - H.y,
-            len = Math.hypot(dx, dy) || 1;
-          stroke([a, add(a, (-dx / len) * 7, (-dy / len) * 7)], STONE, 2, 1, 6);
-        }
-        const rock = icon(
-          'catapult-rock',
-          ['...333...', '..34432..', '.3443322.', '.3433222.', '..33221..', '...221...'],
-          STONE,
-        );
-        k.blitRotated(rock, p.x, p.y, (Math.floor(q * 8) * Math.PI) / 4);
-      }
-      mark(s, hit, aim(s), STONE, 'catapult', 40, 10, 28);
-    },
-  });
-
   // Cause Fear: a horned spectral skull opens above the victim with black, retreating fear ripples.
   FX.register('cause-fear', {
     palette: DREAD,
@@ -474,56 +393,6 @@
           const p = add(C, Math.cos(a) * q * 23, Math.sin(a) * q * 16 + q * q * 8);
           k.blitRotated(icon('ice-splinter', ['..4..', '.454.', '..3..', '..2..'], ICE), p.x, p.y, a);
         }
-    },
-  });
-
-  // Cure Wounds: a luminous healing hand closes a red wound into green stitches and rising restorative crosses.
-  FX.register('cure', {
-    palette: HEAL,
-    travel: 80,
-    beats: beats(60, 'soft', 0),
-    end: end(720),
-    ground: s => groundSeal(s, HEAL),
-    air(s) {
-      s.hits.forEach(hit => {
-        const e = s.real(hit),
-          p = aim(s, hit);
-        if (e < 0 || e > 760) return;
-        if (e < 270) {
-          const wound = ['#280e16', '#723044', '#af5564', '#e18c83', '#ffe1b5', '#ffffff'];
-          const width = 6 * (1 - k.clamp(e / 260));
-          stroke([add(p, -width, -3), add(p, width, 3)], wound, 3, 1, 12);
-        }
-        if (e < 390) {
-          show(
-            icon(
-              'healing-hand',
-              [
-                '...4.4.4...',
-                '...4.4.4.4.',
-                '...4343434.',
-                '.4.4333334.',
-                '.443333334.',
-                '..4333334..',
-                '...43334...',
-                '...43334...',
-              ],
-              HEAL,
-            ),
-            add(p, -5, 4),
-          );
-          for (let i = 0; i < 3; i++)
-            if (e >= 60 + i * 70) stroke([add(p, -4 + i * 4, -3), add(p, -6 + i * 4, 2)], HEAL, 4, 1, 5);
-        }
-        k.drawHit(k.hitStyle('07:cure', HEAL, { S: 26, spikes: 4, jag: 0 }), p, e);
-        k.shards(p, e, HEAL, seed(s), 6, 13);
-        for (let i = 0; i < 3; i++) {
-          const age = e - i * 110;
-          if (age < 120 || age > 620) continue;
-          const q = add(p, (i - 1) * 9, -age / 35);
-          show(icon('healing-cross', ['.44.', '4554', '.44.'], HEAL), q);
-        }
-      });
     },
   });
 
@@ -733,23 +602,4 @@
       k.shards(p, e, FORCE, seed(s), 5, 12);
     }
   }
-
-  // Tenser's Floating Disk: a three-foot blue force platter lifts clear of its shadow and settles into a gentle hover.
-  FX.register('tensers-floating-disk', {
-    palette: FORCE,
-    travel: 120,
-    beats: beats(60, 'soft', 0),
-    end: end(980),
-    ground(s) {
-      disk(s);
-    },
-    air(s) {
-      const e = s.real(s.hits[0]);
-      const p = diskBase(s);
-      k.drawHit(k.hitStyle('07:disk', FORCE, { S: 24, spikes: 4, jag: 0 }), add(p, 0, -10), e);
-    },
-    linger(s) {
-      if (s.c.t >= s.hits[0].at + 980) disk(s, true);
-    },
-  });
 })(typeof window !== 'undefined' ? window : globalThis);
