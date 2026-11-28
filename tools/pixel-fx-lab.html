@@ -243,7 +243,7 @@
         <button id="map" aria-pressed="false">Bright map</button>
         <button id="loop" aria-pressed="false">Auto-repeat</button>
         <span class="sep"></span>
-        <button id="layout" aria-pressed="false">Pixel only (large)</button>
+        <button id="layout" aria-pressed="false">Compare with old</button>
         <span class="sep"></span>
         <span class="label">Figures</span>
         <button data-figures="32" aria-pressed="true">32 px</button>
@@ -254,8 +254,8 @@
         <button id="down">Knock out the druid</button>
         <button id="revive">Stand everyone up</button>
       </div>
-      <div class="boards" id="boards">
-        <figure id="old-fig">
+      <div class="boards" id="boards" style="grid-template-columns: 1fr">
+        <figure id="old-fig" hidden>
           <figcaption>Current <span>soft glow sprites</span></figcaption>
           <canvas id="old" width="832" height="512"></canvas>
         </figure>
@@ -715,9 +715,10 @@
           ground = terrain(on);
         });
         toggle('loop', on => (loop = on));
+        // The old soft-glow board is hidden by default; this brings it back side by side for comparison.
         toggle('layout', on => {
-          document.getElementById('old-fig').hidden = on;
-          document.getElementById('boards').style.gridTemplateColumns = on ? '1fr' : '';
+          document.getElementById('old-fig').hidden = !on;
+          document.getElementById('boards').style.gridTemplateColumns = on ? '' : '1fr';
         });
         // ---------------------------------------------------------------- render
         function poseOf(tok, board, now) {
