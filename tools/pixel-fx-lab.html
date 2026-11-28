@@ -523,10 +523,12 @@
           const kind = spell.kind || BoardSpells.kindFor(spell.id);
           const friendly = ['heal', 'buff'].includes(kind);
           const area = spell.area === undefined ? areaOf(spell) : spell.area;
+          // Spells that pick several creatures without an area (Mass Heal, Chain Lightning…) get three, as on the board.
+          const multi = /^mass-/.test(spell.id) || ['chain-lightning', 'aid', 'bless', 'bane'].includes(spell.id);
           const targets =
             spell.targets ||
             (spell.darts || spell.rays ? [...new Set(spell.darts || spell.rays)] : null) ||
-            (friendly ? ['orc'] : area ? ['goblin', 'bugbear', 'orc'] : ['bugbear']);
+            (multi || (area && !friendly) ? ['goblin', 'bugbear', 'orc'] : friendly ? ['orc'] : ['bugbear']);
           for (const board of boards) {
             const event = {
               level: 1,
