@@ -534,55 +534,6 @@
     },
   });
 
-  // Healing Spirit: a green-white wisp with eyes and tiny arms floats over its cube, offering healing crosses.
-  FX.register('healing-spirit', {
-    palette: HEAL,
-    travel: 260,
-    beats,
-    end: () => 1550,
-    ground(s) {
-      if (s.c.t >= 560 && !s.pose.linger) spiritFloor(s, 0.75);
-    },
-    air(s) {
-      const t = s.c.t - k.CAST;
-      if (t < 0) return;
-      const p = spiritPosition(s);
-      delivery(s, p, HEAL, 560);
-      if (t < 260) return;
-      if (!s.pose.linger) stamp(spirit(), p, t > 1000 ? 0.5 : 1);
-      impact(s, { x: p.x, y: p.y + 7 }, HEAL, 25, 7);
-      const target = subject(s);
-      if (!target) return;
-      const to = k.P(target);
-      for (let i = 0; i < 5; i++) {
-        const q = k.clamp((t - 320 - i * 50) / 390);
-        if (q <= 0 || q >= 1) continue;
-        ball(k.mix(p.x, to.x, q), k.mix(p.y, to.y, q) - Math.sin(q * Math.PI) * 7, 2, HEAL, i % 2 ? 4 : 3);
-      }
-      if (t >= 650) stamp(plus(), { x: to.x, y: to.y - 4 - k.clamp((t - 650) / 500) * 9 }, t > 1000 ? 0.5 : 1);
-    },
-    linger(s) {
-      spiritFloor(s, s.linger * 0.6);
-    },
-    lingerAir(s) {
-      const p = spiritPosition(s);
-      stamp(spirit(), p, s.linger);
-      const q = (s.c.raw / 2400) % 1;
-      stamp(plus(), { x: p.x + 8, y: p.y + 7 - q * 13 }, s.linger * (q < 0.75 ? 0.75 : 0.25));
-      const mote = k.sprite('b47:healing-mote', 5, 5, HEAL, set => {
-        set(2, 1, 4);
-        set(1, 2, 4);
-        set(2, 2, 5);
-        set(3, 2, 4);
-        set(2, 3, 4);
-      });
-      for (let i = 0; i < 3; i++) {
-        const a = s.c.raw / 1600 + (i * k.tau) / 3;
-        stamp(mote, { x: p.x + Math.cos(a) * 10, y: p.y + 6 + Math.sin(a) * 4 }, s.linger * 0.75);
-      }
-    },
-  });
-
   // Fortune's Favor: a broad gold coin flips above the head, catches a star, then showers the figure in gold.
   FX.register('fortunes-favor', {
     palette: GOLD,

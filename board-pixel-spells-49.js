@@ -191,40 +191,6 @@
     else stroke({ x: p.x - 5, y: p.y }, { x: p.x + 5, y: p.y }, pal);
   }
 
-  // Lesser Restoration: green-white helixes wash the body clean, lifting black motes beneath a bright cross.
-  FX.register('lesser-restoration', {
-    palette: GREEN,
-    travel: 200,
-    beats: soft,
-    end: finish,
-    ground(s) {
-      const e = age(s);
-      if (e < -120) return;
-      ring(feet(s), e < 400 ? 9 : 6, 4, GREEN, 2, e < 400 ? 4 : 3);
-    },
-    air(s) {
-      const p = body(s),
-        e = age(s);
-      delivery(s, p, GREEN);
-      if (e < 0) return;
-      impact(s, p, GREEN, 'cleanse');
-      if (e < 440) {
-        for (let j = 0; j < 2; j++) {
-          const y = p.y + 6 - ((e / 420 + j * 0.5) % 1) * 17;
-          arc({ x: p.x, y }, 8, 3, s.c.t / 110 + j * Math.PI, Math.PI * 1.45, GREEN, 2, j ? 3 : 5);
-        }
-        for (let i = 0; i < 6; i++) {
-          const u = k.clamp(s.real(s.hits[0]) / 490),
-            side = i % 2 ? 1 : -1;
-          const m = { x: p.x + side * (4 + u * (6 + k.hash(i, s.event.seed) * 5)), y: p.y + 3 - i * 2 - u * 13 };
-          k.dot(m.x, m.y, GREEN[0], 4);
-          k.dot(m.x, m.y, u < 0.55 ? '#655477' : GREEN[4], 2);
-        }
-      }
-      icon('restoration-cross', PLUS, GREEN, { x: p.x, y: p.y - 9 }, e < 480 ? 1 : 0.75);
-    },
-  });
-
   // Beast Sense: a square-wide golden animal eye opens on the beast and answers an eye across a bright link.
   FX.register('beast-sense', {
     palette: GOLD,
@@ -351,53 +317,6 @@
     },
   });
 
-  // See Invisibility: a large golden eye crowns the caster as a pale sweep traces hidden silhouettes.
-  FX.register('see-invisibility', {
-    palette: GOLD,
-    travel: 160,
-    beats: soft,
-    end: finish,
-    ground(s) {
-      const e = age(s);
-      if (e < 0 || e > 490) return;
-      const p = caster(s),
-        r = 7 + k.ease(k.clamp(e / 420)) * 15;
-      arc({ x: p.x, y: p.y + 9 }, r, r * 0.5, -Math.PI + e / 350, Math.PI * 1.4, GOLD);
-    },
-    air(s) {
-      const p = caster(s),
-        e = age(s);
-      delivery(s, p, GOLD);
-      if (e < 0) return;
-      impact(s, p, GOLD, 'reveal');
-      openEye(s, { x: p.x, y: p.y - 8 }, GOLD, 'seeing-eye', e);
-      const silhouette = k.sprite('b49:hidden-outline', 10, 14, GOLD, set => {
-        FIGURE.forEach((row, y) =>
-          [...row].forEach((ch, x) => {
-            if (ch === '.') return;
-            if (
-              x === 0 ||
-              x === row.length - 1 ||
-              row[x - 1] === '.' ||
-              row[x + 1] === '.' ||
-              !FIGURE[y - 1] ||
-              FIGURE[y - 1][x] === '.' ||
-              !FIGURE[y + 1] ||
-              FIGURE[y + 1][x] === '.'
-            )
-              set(x + 1, y + 1, 4);
-          }),
-        );
-      });
-      if (e > 90)
-        for (let i = 0; i < 3; i++) {
-          if (e < 100 + i * 70) continue;
-          const a = i * 2.1 - 1.3;
-          k.blit(silhouette, p.x + Math.cos(a) * 19 - 5, p.y + Math.sin(a) * 9 - 5, e < 470 ? 0.75 : 0.5);
-        }
-    },
-  });
-
   function windWall(s, alpha, casting) {
     const area = s.area;
     const center = area || s.pose.base || target(s),
@@ -500,47 +419,6 @@
     },
   });
 
-  // Darkvision: emerald eyes flare as an outlined dark cone sweeps out with bright green scanning edges.
-  FX.register('darkvision', {
-    palette: GREEN,
-    travel: 170,
-    beats: soft,
-    end: finish,
-    ground(s) {
-      const e = age(s);
-      if (e < 0 || e > 490) return;
-      const p = body(s),
-        a = (s.area?.dir ?? 0) - 0.6 + k.clamp(e / 360) * 1.1;
-      const f = Math.floor((a + 1) * 12),
-        w = 51;
-      const img = k.sprite('b49:vision-cone:' + f, w, w, GREEN, set => {
-        const angle = f / 12 - 1;
-        for (let y = 1; y < w - 1; y++)
-          for (let x = 1; x < w - 1; x++) {
-            const dx = x - 25,
-              dy = y - 25,
-              r = Math.hypot(dx, dy);
-            const d = Math.atan2(Math.sin(Math.atan2(dy, dx) - angle), Math.cos(Math.atan2(dy, dx) - angle));
-            if (r > 3 && r < 23 && Math.abs(d) < 0.42) set(x, y, Math.abs(d) > 0.34 || r > 20 ? 4 : r > 17 ? 2 : 1);
-          }
-      });
-      k.blit(img, p.x - 25, p.y - 25, e < 400 ? 1 : 0.75);
-    },
-    air(s) {
-      const p = body(s),
-        e = age(s);
-      delivery(s, p, GREEN);
-      if (e < 0) return;
-      impact(s, p, GREEN, 'night-sight');
-      const eyes = { x: p.x, y: p.y - 5 };
-      if (e < 420) openEye(s, { x: p.x, y: p.y - 10 }, GREEN, 'night-eye', e);
-      for (const x of [-2, 2]) {
-        bead({ x: eyes.x + x, y: eyes.y }, GREEN, 2, 5);
-        if (e < 400) stroke({ x: eyes.x + x, y: eyes.y }, { x: eyes.x + x + 4, y: eyes.y }, GREEN, 1, 3);
-      }
-    },
-  });
-
   function vortex(p, e, pal, phase) {
     const r = phase === 'close' ? Math.max(2, 10 * (1 - k.clamp(e / 200))) : 10;
     for (let i = 0; i < 3; i++) {
@@ -585,67 +463,6 @@
       impact(s, to, VIOLET, 'warp-out', s.hits[1], 28);
       if (out >= 0 && out < 320) icon('warped-figure', FIGURE, VIOLET, to, out < 220 ? 1 : 0.5);
       if (out > 340) ring({ x: to.x, y: to.y + 8 }, 6, 3, VIOLET, 2, 3);
-    },
-  });
-
-  // Animate Dead: a sickly green rune circle cracks open, a bony hand erupts, and a dark-outlined skeleton rises.
-  FX.register('animate-dead', {
-    palette: GREEN,
-    travel: 300,
-    beats: (event, kit, travel) => [
-      { at: kit.CAST + travel, stop: 100, target: event.targets?.[0] ?? null, kind: 'soft', power: 0.04 },
-      { at: kit.CAST + travel + 300, stop: 100, target: event.targets?.[0] ?? null, kind: 'soft', power: 0.03 },
-    ],
-    end: (event, travel) => k.CAST + travel + 1000,
-    ground(s) {
-      const e = age(s);
-      if (e < -240) return;
-      const f = feet(s);
-      const img = k.sprite('b49:death-circle', 31, 19, GREEN, set => {
-        for (let y = 1; y < 18; y++)
-          for (let x = 1; x < 30; x++) {
-            const dx = x - 15,
-              dy = (y - 9) * 1.7,
-              r = Math.hypot(dx, dy);
-            if (Math.abs(r - 13) < 1.3 || Math.abs(r - 9) < 0.8) set(x, y, dy < 0 ? 4 : 3);
-            if (r < 9 && (Math.abs(dy - dx * 0.6) < 0.9 || Math.abs(dy + dx * 0.6) < 0.9 || Math.abs(dx) < 1))
-              set(x, y, 3);
-          }
-        for (let i = 0; i < 6; i++) {
-          const a = (i * k.tau) / 6,
-            x = 15 + Math.cos(a) * 11,
-            y = 9 + Math.sin(a) * 6;
-          set(x, y, 5);
-          set(x + 1, y, 4);
-          set(x, y - 1, 4);
-        }
-      });
-      k.blit(img, f.x - 15, f.y - 9, e < 750 ? 1 : 0.75);
-      if (e >= 0) {
-        stroke({ x: f.x - 6, y: f.y }, { x: f.x + 5, y: f.y - 1 }, BONE, 3, 1);
-        stroke({ x: f.x - 2, y: f.y }, { x: f.x - 5, y: f.y + 4 }, BONE, 2, 1);
-      }
-    },
-    air(s) {
-      const f = feet(s),
-        e = age(s);
-      if (e < 0) return;
-      impact(s, f, BONE, 'grave-break', s.hits[0], 26);
-      if (e < 280) icon('skeletal-hand', HAND, BONE, { x: f.x, y: f.y - 2 - k.ease(k.clamp(e / 180)) * 5 });
-      if (e >= 200) {
-        const rise = k.ease(k.clamp((e - 200) / 260));
-        // Cached emergence frames reveal bone rows from the feet upwards, without a clipping API.
-        const rows = Math.max(1, Math.round(SKELETON.length * rise));
-        const img = k.sprite('b49:skeleton-rise:' + rows, 12, 16, BONE, set => {
-          for (let y = 0; y < rows; y++)
-            [...SKELETON[y]].forEach((ch, x) => {
-              if (ch !== '.') set(x + 1, y + 1, Number(ch));
-            });
-        });
-        k.blit(img, f.x - 6, f.y - rows - 1, 1);
-        if (rise < 1) arc({ x: f.x, y: f.y - 2 }, 7, 3, 0, Math.PI, GREEN, 2, 4);
-      }
-      impact(s, { x: f.x, y: f.y - 9 }, GREEN, 'unlife', s.hits[1], 22);
     },
   });
 })(typeof window !== 'undefined' ? window : globalThis);

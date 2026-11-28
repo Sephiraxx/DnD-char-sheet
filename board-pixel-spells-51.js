@@ -752,54 +752,6 @@
     },
   });
 
-  // Remove Curse: dark chains wrench free from the body and burst into sharp gold fragments.
-  FX.register('remove-curse', {
-    palette: GOLD,
-    travel: 410,
-    beats,
-    end: () => 1450,
-    ground(s) {
-      const e = elapsed(s);
-      if (e < 410) return;
-      recipients(s).forEach(t => image(floorSprite(15, 6, GOLD), k.P(feet(t)), tail(e, 800, 1150)));
-    },
-    air(s) {
-      const e = elapsed(s);
-      if (e < 0) return;
-      const link = k.sprite('b51:chain', 10, 12, CHAIN, set => {
-        for (let y = 2; y < 10; y++)
-          for (let x = 2; x < 8; x++) if (x < 4 || x > 5 || y < 4 || y > 7) set(x, y, x < 4 ? 4 : 2);
-      });
-      recipients(s).forEach(t => {
-        const p = k.P(t);
-        if (e < 410) {
-          const q = k.ease(k.clamp(e / 250));
-          for (const side of [-1, 1]) {
-            for (let j = 0; j < 3; j++)
-              image(link, {
-                x: p.x + side * (4 + q * (7 + j * 4)),
-                y: p.y + 5 - j * 7 - q * j * 2,
-              });
-            stroke({ x: p.x + side * 5, y: p.y + 10 }, { x: p.x + side * (10 + q * 14), y: p.y - q * 13 }, CHAIN, 2, 3);
-          }
-        }
-        if (e >= 410 && e < 800) {
-          const q = (e - 410) / 390;
-          ring(p, 9 + q * 12, 12 - q * 5, GOLD, q < 0.5 ? 5 : 3);
-        }
-      });
-      s.hits.forEach((hit, i) => {
-        const t = s.targets.find(t => t.id === hit.id) || recipients(s)[i % recipients(s).length];
-        const p = k.P(t),
-          real = s.real(hit);
-        k.drawHit(k.hitStyle('b51:curse-break', GOLD, { S: 36, spikes: 7, jag: 0.3 }), p, real);
-        k.shards(p, real, GOLD, (s.event.seed || 0) + i, 12, 28);
-        for (const side of [-1, 1])
-          k.shards({ x: p.x + side * 18, y: p.y - 7 }, real, GOLD, (s.event.seed || 0) + i + side * 13, 5, 14);
-      });
-    },
-  });
-
   // Slow: broad pale-blue time waves crawl over the cube beneath large arrested clocks and drag marks.
   FX.register('slow', {
     palette: TIME,
