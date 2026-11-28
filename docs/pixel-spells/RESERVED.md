@@ -14,7 +14,7 @@ Read `BRIEF.md` first. Everything there applies; this file adds the lasting hook
 
 `air` and `ground` still draw the cast and the impact. Lasting hooks start once the impact begins (`CAST + travel`). Multiply your alphas by `s.linger` (or `s.fogAlpha`) so the effect fades out when the board ends it. Keep lasting loops calm and cheap: they run every frame for minutes. Loop on `s.c.raw` (for example `(s.c.raw / 2400) % 1`), well under 300 `dot` calls per frame, and big static parts in cached `sprite`s.
 
-The test lab keeps lasting spells on the board 2.5 s after the cast, and the checker's last two shots fall in that phase.
+The test lab keeps lasting spells on the board 5 s after the cast, and the checker's last two shots fall in that phase.
 
 ## The spells
 

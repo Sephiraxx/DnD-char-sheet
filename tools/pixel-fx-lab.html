@@ -658,8 +658,9 @@
               target: event.area ? event.point : targets[0],
               targets,
               linger,
-              // The board fades its obscuring layer in after the impact (Fog Cloud and friends).
-              fogAlpha: p.hit ? Math.min(1, p.elapsed / 450) * (linger || (p.done ? 0 : 1)) : 0,
+              // The board fades its obscuring layer in after the impact; today only Fog Cloud obscures (board.js).
+              fogAlpha:
+                event.id === 'fog-cloud' && p.hit ? Math.min(1, p.elapsed / 450) * (linger || (p.done ? 0 : 1)) : 0,
               swing: event.swing,
               allies: new Set(),
               top: 0,

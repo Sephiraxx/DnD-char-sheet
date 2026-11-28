@@ -154,12 +154,12 @@ function serve() {
       }
       const total = await page.evaluate(id => {
         lab.at(0);
-        // Spells with lasting art stay 2.5 s after the cast so the linger, lingerAir and fog hooks run.
+        // Spells with lasting art stay 5 s after the cast (past the last shot at total + 1.9 s) so the linger, lingerAir and fog hooks run.
         const def =
           BoardPixelFX.lingers({ id }, 'ground') ||
           BoardPixelFX.lingers({ id }, 'air') ||
           BoardPixelFX.lingers({ id }, 'fog');
-        lab.fire({ id, element: 'magic', level: 3, lingerMs: def ? 2500 : 0 });
+        lab.fire({ id, element: 'magic', level: 3, lingerMs: def ? 5000 : 0 });
         const event = lab.boards[1].events[0];
         const t = BoardSpellFX.phase(event, 0, false);
         const timing = BoardPixelFX.timing(event);
