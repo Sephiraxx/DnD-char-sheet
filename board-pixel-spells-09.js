@@ -255,40 +255,6 @@
     '.2.........',
   ];
 
-  // Grease: a honey-brown slick splats across the cube, with oily highlights and bouncing droplets.
-  FX.register('grease', {
-    palette: OIL,
-    travel: 180,
-    beats: soft,
-    end: end(720),
-    ground(s) {
-      if (s.c.t >= s.hits[0].at) greaseFloor(s);
-    },
-    air(s) {
-      const hit = s.hits[0],
-        area = shape(s, 'cube', 10),
-        C = local(s, area, 0.5, 0);
-      flight(s, hit, C, OIL, 12, 4);
-      const e = s.real(hit);
-      impact(s, hit, C, OIL, 28, 9);
-      if (e < 0 || e > 500) return;
-      for (let i = 0; i < 8; i++) {
-        const a = k.hash(i, seed(s)) * k.tau,
-          q = e / 500;
-        const r = k.ease(q) * (12 + k.hash(i, seed(s), 1) * 16);
-        ball(
-          { x: C.x + Math.cos(a) * r, y: C.y + Math.sin(a) * r * 0.55 - Math.sin(q * Math.PI) * 15 },
-          q < 0.65 ? 2 : 1,
-          OIL,
-          i % 2 ? 3 : 4,
-        );
-      }
-    },
-    linger(s) {
-      if (s.linger >= 0.25) greaseFloor(s, s.linger);
-    },
-  });
-
   // Speak with Animals: green speech bubbles trade a paw print and a bird above the caster.
   FX.register('speak-with-animals', {
     palette: LEAF,
@@ -323,68 +289,6 @@
       if (e > 240 && e < 670) {
         for (let i = 0; i < 3; i++)
           pixel({ x: T.x - 4 + i * 4, y: T.y - 16 + ((i + Math.floor(e / 100)) % 2) * 2 }, LEAF, 4);
-      }
-    },
-  });
-
-  // Charm Person: a rose heart reaches the subject, then two heart-shaped motes orbit their head.
-  FX.register('charm-person', {
-    palette: ROSE,
-    travel: 240,
-    beats: soft,
-    end: end(640),
-    ground: s => aura(s, ROSE),
-    air(s) {
-      for (const hit of s.hits) {
-        const T = k.P(subject(s, hit));
-        flight(s, hit, T, ROSE, 9, 2);
-        if (s.pose.hand && s.c.t >= k.CAST && s.c.t < hit.at) {
-          const H = k.P(s.pose.hand),
-            q = (s.c.t - k.CAST) / (hit.at - k.CAST);
-          stamp('heart', HEART, ROSE, { x: k.mix(H.x, T.x, q), y: k.mix(H.y, T.y, q) - Math.sin(q * Math.PI) * 9 });
-        }
-        const e = s.real(hit);
-        impact(s, hit, { x: T.x, y: T.y - 10 }, ROSE, 20, 4);
-        if (e < 0 || e > 650) continue;
-        for (let i = 0; i < 2; i++) {
-          const a = e / 180 + i * Math.PI;
-          stamp('heart', HEART, ROSE, {
-            x: T.x + Math.cos(a) * 11,
-            y: T.y - 14 + Math.sin(a) * 4 - k.clamp((e - 420) / 230) * 7,
-          });
-        }
-      }
-    },
-  });
-
-  // Heroism: a golden shield locks onto the chest; a rising crown of rays signals fearless courage.
-  FX.register('heroism', {
-    palette: GOLD,
-    travel: 100,
-    beats: soft,
-    end: end(730),
-    ground: s => aura(s, GOLD),
-    air(s) {
-      for (const hit of s.hits) {
-        const T = k.P(subject(s, hit, true)),
-          e = s.real(hit);
-        flight(s, hit, T, GOLD, 0, 2);
-        impact(s, hit, T, GOLD, 24, 5);
-        if (e < 0 || e > 760) continue;
-        if (e < 620) stamp('courage-shield', SHIELD, GOLD, { x: T.x, y: T.y - k.ease(k.clamp(e / 160)) * 2 });
-        for (let i = 0; i < 5; i++) {
-          const a = Math.PI + ((i + 0.5) * Math.PI) / 5,
-            r = 12 + k.ease(k.clamp(e / 350)) * 7;
-          if (e > 580 && i % 2 === 0) continue;
-          stroke(
-            [
-              { x: T.x + Math.cos(a) * r, y: T.y + Math.sin(a) * r - 3 },
-              { x: T.x + Math.cos(a) * (r + 4), y: T.y + Math.sin(a) * (r + 4) - 3 },
-            ],
-            GOLD,
-            i % 2 ? 4 : 3,
-          );
-        }
       }
     },
   });
@@ -512,48 +416,6 @@
     },
   });
 
-  // Inflict Wounds: an open black-violet hand clamps on contact, leaving spreading necrotic fissures.
-  FX.register('inflict-wounds', {
-    palette: DEATH,
-    travel: 100,
-    beats: beats(150),
-    end: end(620),
-    flash: (event, e) =>
-      e < 30 ? { color: '#e6bbdc', alpha: 0.15 } : e < 75 ? { color: '#160c20', alpha: 0.2 } : null,
-    air(s) {
-      const hit = s.hits[0],
-        T = contact(s, hit),
-        e = s.real(hit);
-      if (s.c.t >= k.CAST && s.c.t < hit.at) {
-        const q = (s.c.t - k.CAST) / 100;
-        // Touch stays local to the victim; no ranged bolt connects distant tokens.
-        stamp('necrotic-palm', PALM, DEATH, { x: T.x - 4 * (1 - q), y: T.y + 3 * (1 - q) });
-      }
-      impact(s, hit, T, DEATH, 42, 9);
-      if (e < 0 || e > 650) return;
-      if (e < 130) stamp('necrotic-palm', PALM, DEATH, T);
-      for (let i = 0; i < 5; i++) {
-        const a = (i * k.tau) / 5 + k.hash(i, seed(s)) * 0.4,
-          r = 4 + k.ease(k.clamp(e / 220)) * 10;
-        if (e > 470 && i % 2) continue;
-        stroke(
-          [
-            { x: T.x + Math.cos(a) * 2, y: T.y + Math.sin(a) * 2 },
-            { x: T.x + Math.cos(a + 0.22) * r * 0.65, y: T.y + Math.sin(a + 0.22) * r * 0.65 },
-            { x: T.x + Math.cos(a) * r, y: T.y + Math.sin(a) * r },
-          ],
-          DEATH,
-          e < 180 ? 4 : 1,
-        );
-      }
-      for (let i = 0; i < 4; i++) {
-        const q = k.clamp((e - i * 25) / 500);
-        if (q <= 0 || q >= 1) continue;
-        ball({ x: T.x + (i - 1.5) * 5 + Math.sin(q * 7 + i) * 2, y: T.y - q * 18 }, q < 0.6 ? 2 : 1, DEATH, 2);
-      }
-    },
-  });
-
   // Jim's Magic Missile: blue-violet, star-tipped force darts corkscrew separately and burst into glitter.
   FX.register('jims-magic-missile', {
     palette: JIM,
@@ -660,41 +522,6 @@
     },
   });
 
-  // Hex: a crooked violet curse sigil brands the victim while a skull and six black motes seal it.
-  FX.register('hex', {
-    palette: DEATH,
-    travel: 180,
-    beats: soft,
-    end: end(730),
-    ground: s => aura(s, DEATH),
-    air(s) {
-      const hit = s.hits[0],
-        T = k.P(subject(s, hit)),
-        e = s.real(hit);
-      flight(s, hit, T, DEATH, -6, 2);
-      impact(s, hit, T, DEATH, 26, 6);
-      if (e < 0 || e > 760) return;
-      const p = { x: T.x, y: T.y - 14 };
-      if (e < 650) stamp('hex-skull', SKULL, DEATH, p);
-      for (let i = 0; i < 6; i++) {
-        const a = (i * k.tau) / 6 + Math.floor(e / 100) * 0.18;
-        const r = e < 200 ? 16 - k.ease(e / 200) * 5 : 11;
-        pixel({ x: p.x + Math.cos(a) * r, y: p.y + Math.sin(a) * r * 0.7 }, DEATH, i % 2 ? 1 : 3, 2);
-      }
-      if (e < 500)
-        stroke(
-          [
-            { x: T.x - 6, y: T.y + 6 },
-            { x: T.x + 2, y: T.y - 5 },
-            { x: T.x - 1, y: T.y + 4 },
-            { x: T.x + 7, y: T.y - 4 },
-          ],
-          DEATH,
-          3,
-        );
-    },
-  });
-
   // Burning Hands: two splayed palms release a full fifteen-foot orange fan, then black ash and embers.
   FX.register('burning-hands', {
     palette: FIRE,
@@ -738,105 +565,6 @@
           q = real / 540;
         const p = local(s, area, u, (k.hash(i, seed(s), 2) - 0.5) * u * 0.8);
         pixel({ x: p.x + Math.sin(i + q * 5) * 3, y: p.y - q * (7 + (i % 4)) }, FIRE, q < 0.3 ? 5 : q < 0.65 ? 4 : 2);
-      }
-    },
-  });
-
-  // Hunter's Mark: green antlers frame a precise tracking reticle; an arrowhead locks onto the quarry.
-  FX.register('hunters-mark', {
-    palette: HUNT,
-    travel: 140,
-    beats: soft,
-    end: end(720),
-    ground(s) {
-      const e = s.c.t - s.hits[0].at;
-      if (e >= 0 && e < 620) ring(feet(subject(s)), 13, 6, HUNT, 3, true, 0);
-    },
-    air(s) {
-      const hit = s.hits[0],
-        T = k.P(subject(s, hit)),
-        e = s.real(hit);
-      flight(s, hit, T, HUNT, 0, 1);
-      impact(s, hit, T, HUNT, 22, 4);
-      if (e < 0 || e > 750) return;
-      const r = 10 + (1 - k.ease(k.clamp(e / 180))) * 9;
-      if (e < 530) {
-        ring(T, r, r, HUNT, 3, true);
-        for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5])
-          stroke(
-            [
-              { x: T.x + Math.cos(a) * (r - 3), y: T.y + Math.sin(a) * (r - 3) },
-              { x: T.x + Math.cos(a) * (r + 3), y: T.y + Math.sin(a) * (r + 3) },
-            ],
-            HUNT,
-            4,
-          );
-      }
-      stamp(
-        'hunter-antlers',
-        [
-          '3.........3',
-          '34.3...3.43',
-          '.343...343.',
-          '..43...34..',
-          '...43.34...',
-          '....434....',
-          '.....4.....',
-          '....444....',
-          '.....4.....',
-        ],
-        HUNT,
-        { x: T.x, y: T.y - 18 },
-      );
-      pixel(T, HUNT, 4);
-    },
-  });
-
-  // Thunderwave: a caster-origin square pressure front punches through the fifteen-foot cube and shatters.
-  FX.register('thunderwave', {
-    palette: THUNDER,
-    travel: 120,
-    beats: beats(180, 'blast', true),
-    end: end(650),
-    flash: (event, e) =>
-      e < 28 ? { color: '#eef6ff', alpha: 0.24 } : e < 70 ? { color: '#141a26', alpha: 0.19 } : null,
-    ground(s) {
-      if (s.c.t < k.CAST) return;
-      const hit = s.hits[0],
-        e = s.c.t < hit.at ? s.c.t - k.CAST : 120 + s.real(hit);
-      if (e > 670) return;
-      const area = shape(s, 'cube', 15, true),
-        frame = Math.min(13, Math.floor(e / 50));
-      field(s, area, 'pressure-cube', frame, THUNDER, (u, v) => {
-        const q = Math.min(1, (frame + 1) / 3),
-          side = Math.abs(v) * 2;
-        if (u > q || side > q) return 0;
-        const wall = Math.min(q - u, (q - side) / 2, u);
-        if (frame < 4) return wall < 0.045 ? 5 : wall < 0.09 ? 3 : 0;
-        if (frame > 8 && (Math.floor(u * 18 + v * 14) + frame) % 4 < 2) return 0;
-        return wall < 0.035 ? 3 : wall < 0.075 && frame < 8 ? 2 : 0;
-      });
-    },
-    air(s) {
-      for (const hit of s.hits) impact(s, hit, contact(s, hit), THUNDER, 40, 7);
-      const e = s.real(s.hits[0]);
-      if (e < 0 || e > 600) return;
-      const area = shape(s, 'cube', 15, true),
-        C = local(s, area, 0.5, 0);
-      for (let i = 0; i < 12; i++) {
-        const u = i < 6 ? 1 : k.hash(i, seed(s)),
-          v = i < 6 ? i / 5 - 0.5 : i % 2 ? 0.5 : -0.5;
-        const p = local(s, area, u, v),
-          q = e / 600;
-        const dx = p.x - C.x,
-          dy = p.y - C.y,
-          L = Math.hypot(dx, dy) || 1;
-        ball(
-          { x: p.x + (dx / L) * k.ease(q) * 15, y: p.y + (dy / L) * k.ease(q) * 15 - Math.sin(q * Math.PI) * 6 },
-          q < 0.5 ? 2 : 1,
-          q < 0.3 ? THUNDER : SMOKE,
-          q < 0.3 ? 4 : 2,
-        );
       }
     },
   });
