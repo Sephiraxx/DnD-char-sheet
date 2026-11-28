@@ -152,47 +152,6 @@
     k.blit(img, p.x - w / 2, p.y - h + 4);
   }
 
-  // Awaken: an amber agate sprouts green leaves; two golden eyes and a thinking spark open above the creature.
-  FX.register('awaken', {
-    palette: LEAF,
-    travel: 330,
-    beats: (event, kit, travel) => [beat(C + travel, 85, first(event))],
-    end: () => C + 980,
-    ground(s) {
-      if (!live(s, C + 980)) return;
-      const p = feet(target(s)),
-        e = s.c.t - C;
-      ring(p, 13 + Math.min(7, e / 40), 7, LEAF, 3, e > 780 ? 8 : 0);
-      pulse(s, p, GOLD, 17);
-    },
-    air(s) {
-      if (!live(s, C + 980)) return;
-      const p = body(s),
-        e = s.c.t - C;
-      if (e < 330) {
-        const h = k.P(s.pose.hand || target(s)),
-          q = e / 330;
-        const a = { x: k.mix(h.x, p.x, q), y: k.mix(h.y, p.y - 6, q) - Math.sin(q * Math.PI) * 9 };
-        stamp(icon('agate', GOLD, ['..44..', '.4554.', '345543', '.3443.', '..33..']), a);
-      } else {
-        for (let i = 0; i < 4; i++) {
-          const a = (i * k.tau) / 4 + 0.4,
-            r = 9 + k.ease(k.clamp((e - 330) / 230)) * 6;
-          stamp(
-            icon('awaken-leaf', LEAF, ['...4', '..43', '.432', '332.']),
-            at(p, Math.cos(a) * r, Math.sin(a) * 9 - 7),
-          );
-        }
-        if (s.real(s.hits[0]) > 110) {
-          eye(at(p, -7, -10), GOLD, 'awaken-eye');
-          eye(at(p, 7, -10), GOLD, 'awaken-eye');
-          spark(at(p, 0, -23), GOLD, 3);
-        }
-      }
-      impact(s, s.hits[0], at(p, 0, -6), GOLD, 'awaken', 24, 6);
-    },
-  });
-
   // Mislead: a lilac double steps away as a broken outline and empty footprints mark the invisible caster.
   FX.register('mislead', {
     palette: ILLUSION,
@@ -261,37 +220,6 @@
     },
   });
 
-  // Dispel Evil and Good: silver-white ward ribs and a gold halo sweep hostile planar sigils outward into fragments.
-  FX.register('dispel-evil-and-good', {
-    palette: SILVER,
-    travel: 200,
-    beats: () => [beat(C + 200, 85)],
-    end: () => C + 1060,
-    ground(s) {
-      if (!live(s, C + 1060)) return;
-      const p = caster(s);
-      ring(p, 19, 10, SILVER, 4);
-      ring(p, 23, 12, GOLD, 3, 8);
-      pulse(s, p, SILVER, 24);
-    },
-    air(s) {
-      if (!live(s, C + 1060)) return;
-      const p = at(caster(s), 0, -13),
-        t = s.c.t - C;
-      ring(p, 17, 23, SILVER, t < 200 ? 3 : 4, t > 850 ? 10 : 0);
-      ring(at(p, 0, -19), 12, 4, GOLD, 4);
-      if (t < 790)
-        for (let i = 0; i < 4; i++) {
-          const a = (i * k.tau) / 4 + 0.3,
-            q = k.ease(k.clamp((t - 200) / 450));
-          const pt = at(p, Math.cos(a) * (18 + q * 9), Math.sin(a) * 16);
-          if (t < 410) stamp(icon('planar-bane', NECRO, ['3.3', '.4.', '3.3', '.2.']), pt);
-          else pixel(pt, SILVER, 4, t < 590 ? 2 : 1);
-        }
-      impact(s, s.hits[0], p, SILVER, 'dispel-evil-and-good', 27, 7);
-    },
-  });
-
   // Dominate Person: a magenta puppet crown clamps over the mind, with taut strings leading back to the caster's hand.
   FX.register('dominate-person', {
     palette: MIND,
@@ -321,48 +249,6 @@
         eye(at(p, 0, 8), MIND, 'dominate-eye');
       }
       impact(s, s.hits[0], p, MIND, 'dominate-person', 30, 6);
-    },
-  });
-
-  // Enervation: a black-violet tendril snaps into the body, then pulls pale life motes upstream into the caster.
-  FX.register('enervation', {
-    palette: NECRO,
-    travel: 90,
-    beats: (event, kit, travel) => [beat(C + travel, 105, first(event), 'beam', 0.07), beat(C + 540, 65)],
-    end: () => C + 1050,
-    flash: (event, e) => (e < 35 ? { color: NECRO[0], alpha: 0.17 } : null),
-    air(s) {
-      if (!live(s, C + 1050)) return;
-      const h = k.P(s.pose.hand || target(s)),
-        p = k.P(k.contact(target(s), s.pose.hand || target(s))),
-        t = s.c.t - C;
-      const dx = p.x - h.x,
-        dy = p.y - h.y,
-        len = Math.hypot(dx, dy) || 1;
-      const nx = -dy / len,
-        ny = dx / len,
-        q = Math.min(1, t / 90);
-      const curve = u => {
-        const wave = Math.sin(u * Math.PI) * Math.sin(u * 10 - t / 75) * 4;
-        return { x: k.mix(h.x, p.x, u) + nx * wave, y: k.mix(h.y, p.y, u) + ny * wave };
-      };
-      if (t < 760) {
-        for (let pass = 0; pass < 3; pass++)
-          for (let i = 0; i <= 64; i++) {
-            const u = (i / 64) * q,
-              pt = curve(u);
-            k.dot(pt.x, pt.y, NECRO[pass === 0 ? 0 : pass === 1 ? 2 : 1], pass === 0 ? 7 : pass === 1 ? 5 : 3);
-          }
-        if (t >= 90)
-          for (let i = 0; i < 7; i++) {
-            const u = 1 - (((t - 90) / 420 + i / 7) % 1);
-            const pt = curve(u);
-            orb(pt, i % 2 ? 1 : 2, NECRO, 4);
-          }
-      }
-      if (t >= 90 && t < 700) ring(p, 9, 12, NECRO, 2, 6, t / 90);
-      impact(s, s.hits[0], p, NECRO, 'enervation-bite', 34, 8);
-      impact(s, s.hits[1], h, NECRO, 'enervation-drain', 22, 5);
     },
   });
 
@@ -474,54 +360,6 @@
             at(pt, 0, -17),
           );
       }
-    },
-  });
-
-  // Geas: a golden written command closes into a wax-red oath seal, fastening a short chain around the subject's brow.
-  FX.register('geas', {
-    palette: GOLD,
-    travel: 370,
-    beats: (event, kit, travel) => [beat(C + travel, 100, first(event))],
-    end: () => C + 1090,
-    ground(s) {
-      if (live(s, C + 1090)) pulse(s, feet(target(s)), GOLD, 18);
-    },
-    air(s) {
-      if (!live(s, C + 1090)) return;
-      const p = at(body(s), 0, -11),
-        t = s.c.t - C;
-      const h = k.P(s.pose.hand || target(s)),
-        q = k.clamp(t / 370);
-      if (t < 370) {
-        const pt = { x: k.mix(h.x, p.x, q), y: k.mix(h.y, p.y, q) - Math.sin(q * Math.PI) * 7 };
-        stamp(
-          icon('oath-scroll', GOLD, [
-            '33333333333',
-            '34544444443',
-            '34422224443',
-            '34444444443',
-            '34422222443',
-            '34444444443',
-            '34422244443',
-            '33333333333',
-          ]),
-          pt,
-        );
-      } else {
-        ring(p, 12, 5, GOLD, 3);
-        chain(at(p, -11, 0), at(p, -4, 5), GOLD);
-        chain(at(p, 11, 0), at(p, 4, 5), GOLD);
-        stamp(
-          icon(
-            'geas-seal',
-            ['#291218', '#6e2533', '#a54349', '#d66e58', '#f8cb86', '#fff1c6'],
-            ['..333..', '.34443.', '3454543', '3445443', '3454543', '.34443.', '..333..', '..2.2..'],
-          ),
-          at(p, 0, 4),
-        );
-        if (t < 870) spark(at(p, 0, -13), GOLD, 3);
-      }
-      impact(s, s.hits[0], p, GOLD, 'geas', 27, 6);
     },
   });
 
@@ -705,61 +543,6 @@
           else if (i < 4) orb(pt, 3, SMOKE, 2);
         }
       s.hits.forEach(h => impact(s, h, p, FIRE, 'immolation', h === s.hits[0] ? 34 : 26, 7));
-    },
-  });
-
-  // Hold Monster: violet runic shackles snap shut around any-sized body; crossed chains lock under a heavy arcane padlock.
-  FX.register('hold-monster', {
-    palette: ILLUSION,
-    travel: 230,
-    beats: (event, kit, travel) => ids(event).map(id => beat(C + travel, 110, id)),
-    end: () => C + 1050,
-    ground(s) {
-      if (!live(s, C + 1050)) return;
-      for (const h of s.hits) {
-        const p = feet(target(s, h)),
-          r = Math.min(25, 13 * (target(s, h).span || 1));
-        ring(p, r, r * 0.5, ILLUSION, 3);
-        for (let i = 0; i < 4; i++) {
-          const a = Math.PI / 4 + (i * k.tau) / 4;
-          stamp(
-            icon('hold-rune', ILLUSION, ['.4.', '343', '.3.', '343', '.4.']),
-            at(p, Math.cos(a) * r, Math.sin(a) * r * 0.5),
-          );
-        }
-      }
-    },
-    air(s) {
-      if (!live(s, C + 1050)) return;
-      for (const h of s.hits) {
-        const p = body(s, h),
-          t = s.c.t - C,
-          r = Math.min(23, 11 * (target(s, h).span || 1));
-        const q = k.ease(k.clamp(t / 230)),
-          spread = r + (1 - q) * 9;
-        for (const side of [-1, 1]) {
-          stroke(at(p, side * spread, -16), at(p, side * spread, 10), ILLUSION, 2, 1, 18);
-          stamp(icon('hold-clasp', ILLUSION, ['44444', '32.23', '32.23', '44444']), at(p, side * spread, 3));
-        }
-        if (t >= 230) {
-          chain(at(p, -r, -12), at(p, r, 7), ILLUSION);
-          chain(at(p, r, -12), at(p, -r, 7), ILLUSION);
-          stamp(
-            icon('hold-lock', ILLUSION, [
-              '..444..',
-              '.42.24.',
-              '.4...4.',
-              '3444443',
-              '3455543',
-              '3451543',
-              '3451543',
-              '.33333.',
-            ]),
-            at(p, 0, -2),
-          );
-        }
-        impact(s, h, p, ILLUSION, 'hold-monster', 28, 6);
-      }
     },
   });
 

@@ -155,56 +155,6 @@
     },
   });
 
-  // Commune with Nature: roots connect a spectral tree to three visions of mountains, water and wildlife.
-  FX.register('commune-with-nature', {
-    palette: NATURE,
-    travel: 400,
-    beats: () => [beat(C + 400, 70), beat(C + 660, 70), beat(C + 920, 70)],
-    end: () => C + 1390,
-    ground(s) {
-      if (!active(s, C + 1390)) return;
-      const p = caster(s),
-        q = k.ease(k.clamp(local(s) / 380));
-      for (let i = 0; i < 6; i++) {
-        const a = (i * k.tau) / 6 + (seed(s) % 6);
-        const end = { x: p.x + Math.cos(a) * 26 * q, y: p.y + Math.sin(a) * 14 * q };
-        stroke(p, end, NATURE, 2, 2, 12);
-        pixel(end.x, end.y, NATURE, 4, 2);
-      }
-      pulse(s, p, NATURE, 25);
-    },
-    air(s) {
-      if (!active(s, C + 1390)) return;
-      const p = caster(s);
-      stamp(
-        icon('world-tree', NATURE, [
-          '.......4.......',
-          '.....34443.....',
-          '...34444443....',
-          '..2344344432...',
-          '...23333332....',
-          '.2344444444432.',
-          '..23333333332..',
-          '......222......',
-          '......232......',
-          '.....22322.....',
-          '....222.222....',
-        ]),
-        { x: p.x, y: p.y - 20 },
-      );
-      const visions = [
-        ['....4....', '...454...', '..43334..', '.4332334.', '433222334'],
-        ['33....33.', '.3443344.', '..33333..', '44....44.', '.3443344.'],
-        ['.4....4..', '.44..44..', '..4444...', '...43....', '..2332...', '..2..2...'],
-      ];
-      s.hits.forEach((h, i) => {
-        const at = { x: p.x + (i - 1) * 23, y: p.y - 34 - (i === 1 ? 12 : 0) };
-        if (s.real(h) >= 0) stamp(icon('nature-vision-' + i, NATURE, visions[i]), at);
-        impact(s, h, at, NATURE, 'nature-answer', 20, 4);
-      });
-    },
-  });
-
   function elementalRamp(event) {
     const e = event.element || '';
     return e === 'water' || e === 'frost'
@@ -410,45 +360,6 @@
     }
   }
 
-  // Contact Other Plane: a vertical violet aperture opens an alien slit-eye; five cold stars answer it.
-  FX.register('contact-other-plane', {
-    palette: PLANE,
-    travel: 480,
-    beats: () => [beat(C + 480, 85), beat(C + 790, 85)],
-    end: () => C + 1440,
-    ground(s) {
-      if (!active(s, C + 1440)) return;
-      const p = caster(s);
-      ring(p, 21, 10, PLANE, 3, 5);
-      ring(p, 13, 6, PLANE, 2, 3);
-    },
-    air(s) {
-      if (!active(s, C + 1440)) return;
-      const p = caster(s),
-        at = { x: p.x, y: p.y - 27 },
-        t = local(s);
-      ring(at, 13, 22, PLANE, 3, 7, Math.floor(t / 140) % 2);
-      stamp(
-        icon('alien-eye', PLANE, [
-          '....33333....',
-          '..332222233..',
-          '.32224442223.',
-          '3222445442223',
-          '.32224442223.',
-          '..332222233..',
-          '....33333....',
-        ]),
-        at,
-      );
-      for (let i = 0; i < 5; i++) {
-        const a = (i * k.tau) / 5 - Math.PI / 2;
-        const q = { x: at.x + Math.cos(a) * 23, y: at.y + Math.sin(a) * 26 };
-        if (t > 190 + i * 110) pixel(q.x, q.y, PLANE, 4, 2);
-      }
-      s.hits.forEach((h, i) => impact(s, h, { x: at.x, y: at.y + (i ? -15 : 0) }, PLANE, 'planar-answer', 24, 5));
-    },
-  });
-
   function windField(s, lingering = false) {
     const pts = footprint(s, 100),
       t = local(s);
@@ -486,42 +397,6 @@
     ]);
     stamp(img, { x: p.x, y: p.y - 7 });
   }
-
-  // Creation: violet shadow threads weave a five-foot volume, snapping into a tangible wooden coffer.
-  FX.register('creation', {
-    palette: PLANE,
-    travel: 620,
-    beats: () => [beat(C + 620, 110)],
-    end: () => C + 1330,
-    ground(s) {
-      if (!active(s, C + 1330)) return;
-      const pts = footprint(s, 5);
-      if (local(s) < 800) for (let i = 0; i < 4; i++) stroke(pts[i], pts[(i + 1) % 4], PLANE, 2, 1, 14);
-      if (local(s) >= 620) coffer(s);
-    },
-    air(s) {
-      if (!active(s, C + 1330)) return;
-      const pts = footprint(s, 5),
-        t = local(s);
-      if (t < 620) {
-        const q = k.clamp(t / 620);
-        for (let i = 0; i < 6; i++) {
-          const a = quad(pts, i / 5, 0),
-            b = quad(pts, i / 5, q);
-          a.y -= 10;
-          b.y -= 10;
-          stroke(a, b, PLANE, i % 2 ? 3 : 2, 1, 12);
-          const d = quad(pts, 0, i / 5),
-            e = quad(pts, q, i / 5);
-          d.y -= 10;
-          e.y -= 10;
-          stroke(d, e, PLANE, 3, 1, 12);
-        }
-      }
-      const p = quad(pts, 0.5, 0.5);
-      impact(s, s.hits[0], { x: p.x, y: p.y - 7 }, PLANE, 'creation', 32, 8);
-    },
-  });
 
   // Create Spelljamming Helm: astral filaments crown a high-backed chair with a small orbiting star globe.
   FX.register('create-spelljamming-helm', {
@@ -578,59 +453,6 @@
     },
   });
 
-  // Mass Cure Wounds: six green-gold ribbons arc together into allies, blooming as upward healing crosses.
-  FX.register('mass-cure-wounds', {
-    palette: k.palettes.heal,
-    travel: 360,
-    beats: event => group(event, C + 360, 95, 'soft', 6),
-    end: () => C + 1130,
-    ground(s) {
-      if (!active(s, C + 1130)) return;
-      const ramp = s.ramp;
-      s.hits.forEach(h => {
-        const target = targetOf(s, h);
-        const p = target ? k.P({ x: target.baseX ?? target.x, y: target.baseY ?? target.y }) : centre(s);
-        const e = s.real(h);
-        if (e >= 0 && e < 580)
-          ring(
-            p,
-            10 + Math.floor(Math.min(e, 300) / 70),
-            5 + Math.floor(Math.min(e, 300) / 140),
-            ramp,
-            e < 80 ? 5 : 3,
-            e > 260 ? 6 : 0,
-          );
-      });
-    },
-    air(s) {
-      if (!active(s, C + 1130)) return;
-      const ramp = s.ramp,
-        H = s.pose.hand ? k.P(s.pose.hand) : caster(s),
-        t = local(s);
-      s.hits.forEach((h, i) => {
-        const target = targetOf(s, h),
-          T = target ? k.P(target) : centre(s);
-        if (t < 360) {
-          const q = t / 360;
-          for (let j = 0; j < 6; j++) {
-            const u = q - j * 0.045;
-            if (u < 0) continue;
-            pixel(
-              k.mix(H.x, T.x, u),
-              k.mix(H.y, T.y, u) - Math.sin(u * Math.PI) * (14 + i * 2),
-              ramp,
-              j < 2 ? 4 : 3,
-              j ? 1 : 3,
-            );
-          }
-        }
-        impact(s, h, T, ramp, 'mass-cure', 25, 4);
-        const e = s.real(h);
-        if (e >= 110 && e < 650) cross({ x: T.x, y: T.y - 5 - Math.floor((e - 110) / 55) }, ramp, e < 390 ? 4 : 3);
-      });
-    },
-  });
-
   function dancerAt(s, i) {
     const list = s.targets.filter(t => t.id != null);
     const target = list[i];
@@ -672,35 +494,4 @@
         });
     }
   }
-
-  // Danse Macabre: five bone-white skeletons rise from green grave sigils, tugged upright by a conductor's notes.
-  FX.register('danse-macabre', {
-    palette: DEAD,
-    travel: 520,
-    beats: event => group(event, C + 520, 140, 'soft', 5),
-    end: () => C + 1490,
-    ground(s) {
-      if (active(s, C + 1490)) dancers(s);
-    },
-    air(s) {
-      if (!active(s, C + 1490)) return;
-      const p = centre(s),
-        t = local(s),
-        H = s.pose.hand ? k.P(s.pose.hand) : caster(s);
-      const note = icon('death-note', DEAD, ['..3333', '..3..3', '..3..3', '..3.43', '.43.44', '.44...']);
-      for (let i = 0; i < 5; i++) {
-        const q = (t / 850 + i / 5) % 1;
-        stamp(note, {
-          x: k.mix(H.x, p.x, q) + Math.sin(i + q * 5) * 14,
-          y: k.mix(H.y, p.y - 25, q) - Math.sin(q * Math.PI) * 14,
-        });
-      }
-      const count = Math.min(5, s.targets.filter(t => t.id != null).length || 5);
-      for (let i = 0; i < count; i++) {
-        const h = s.hits[i] || s.hits[0],
-          at = dancerAt(s, i);
-        impact(s, h, { x: at.x, y: at.y - 9 }, DEAD, 'danse', 27, 5);
-      }
-    },
-  });
 })(typeof window !== 'undefined' ? window : globalThis);

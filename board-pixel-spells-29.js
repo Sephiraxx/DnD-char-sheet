@@ -549,60 +549,6 @@
     reach: () => ({ r: 3, up: 4 }),
   });
 
-  // Wrath of Nature: grasping grass, lashing trees and hurled rocks awaken across the cube.
-  FX.register('wrath-of-nature', {
-    palette: LEAF,
-    travel: 240,
-    beats: event =>
-      [240, 480, 720].flatMap((delay, i) =>
-        ids(event).map(id => beat(C + delay, [80, 100, 125][i], id, i === 0 ? 'pull' : 'hit', 0.065)),
-      ),
-    end: () => 1670,
-    ground(s) {
-      if (!live(s, 1670)) return;
-      const points = corners(s, 60),
-        t = s.c.t - C;
-      const grow = k.ease(k.clamp(t / 240));
-      points.forEach((p, i) => stroke(p, points[(i + 1) % 4], LEAF, 2));
-      for (let i = 0; i < 12; i++) {
-        const u = 0.08 + k.hash(i, seed(s)) * 0.84,
-          v = 0.08 + k.hash(i, seed(s), 1) * 0.84;
-        const p = patchPoint(points, u, v),
-          tip = offset(p, (i % 2 ? 1 : -1) * grow * 11, -grow * (7 + (i % 3) * 3));
-        stroke(p, tip, LEAF, 3, 2);
-        pixel(offset(tip, i % 2 ? 3 : -3, -2), LEAF, 4, 3);
-      }
-      if (t >= 300)
-        for (let i = 0; i < 4; i++) {
-          const p = patchPoint(points, i % 2 ? 0.82 : 0.18, i < 2 ? 0.2 : 0.8),
-            img = tree(Math.floor(t / 180) % 2);
-          k.blit(img, p.x - 14, p.y - 37);
-        }
-      if (t >= 720)
-        for (let i = 0; i < 6; i++) {
-          const p = patchPoint(points, k.hash(i, seed(s), 4), k.hash(i, seed(s), 5));
-          orb(p, 3 + (i % 2), STONE, 2);
-        }
-    },
-    air(s) {
-      if (!live(s, 1670)) return;
-      const points = corners(s, 60);
-      s.hits.forEach((h, i) => {
-        const p = k.P(target(s, h)),
-          phase = Math.floor(i / ids(s.event).length),
-          e = s.real(h);
-        impact(s, h, p, phase === 2 ? STONE : LEAF, 'nature-' + phase, phase === 2 ? 34 : 26, 5);
-        if (phase === 2 && s.c.t >= h.at - 160 && s.c.t < h.at) {
-          const from = patchPoint(points, ((i % 3) + 1) / 4, 0.8),
-            q = (s.c.t - h.at + 160) / 160;
-          orb({ x: k.mix(from.x, p.x, q), y: k.mix(from.y, p.y, q) - Math.sin(q * Math.PI) * 22 }, 5, STONE);
-        }
-        if (phase === 0 && e >= 0 && e < 330) ring(offset(p, 0, 5), 10, 5, LEAF, 3, 6, e / 90);
-      });
-    },
-    reach: (event, grid) => ({ r: (event.area?.feet || 60) / (grid.feet || 5) + 1, up: 3 }),
-  });
-
   // Infernal Calling: a horned, cloven-hoofed devil steps from a red pentacle with snapping chains.
   FX.register('infernal-calling', {
     palette: HELL,
@@ -635,48 +581,6 @@
     ground: s => summon(s, 'hand'),
     air: s => summonAir(s, FORCE, 'bigby-palm'),
     reach: () => ({ r: 2.5, up: 4 }),
-  });
-
-  // Modify Memory: a pink hypnotic spiral extracts a picture, rewrites it, then locks it into the mind.
-  FX.register('modify-memory', {
-    palette: MIND,
-    travel: 340,
-    beats: event => [beat(C + 340, 65, event.targets?.[0] ?? null)],
-    end: () => 1460,
-    ground(s) {
-      if (!live(s, 1460)) return;
-      const p = feet(target(s));
-      ring(p, 14, 7, MIND, 2, 8, s.c.raw / 140);
-    },
-    air(s) {
-      if (!live(s, 1460)) return;
-      const p = offset(k.P(target(s)), 0, -12),
-        t = s.c.t - C;
-      if (t < 340) {
-        const h = k.P(s.pose.hand || target(s)),
-          q = t / 340;
-        for (let i = 0; i < 7; i++) {
-          const u = q - i * 0.05;
-          if (u >= 0)
-            pixel({ x: k.mix(h.x, p.x, u), y: k.mix(h.y, p.y, u) - Math.sin(u * Math.PI) * 9 }, MIND, i < 2 ? 4 : 2, 2);
-        }
-      } else {
-        const e = s.real(s.hits[0]);
-        if (t < 840) {
-          ring(p, 13, 9, MIND, 3, 10, s.c.raw / 100);
-          for (let i = 0; i < 3; i++) {
-            const a = t / 180 + (i * k.tau) / 3;
-            memoryTile(offset(p, Math.cos(a) * 18, Math.sin(a) * 8), t >= 620 ? 1 : 0);
-          }
-        } else {
-          const q = k.clamp((t - 840) / 160);
-          memoryTile(offset(p, 0, -15 * (1 - q)), 1);
-          if (t > 1030) ring(p, 8, 6, MIND, 4);
-        }
-        impact(s, s.hits[0], p, MIND, 'memory-edit', 24, 5);
-        if (e < 100) orb(p, 3, MIND, 5);
-      }
-    },
   });
 
   // Wall of Force: an almost invisible pane snaps upright, traced by blue edges and refraction facets.
