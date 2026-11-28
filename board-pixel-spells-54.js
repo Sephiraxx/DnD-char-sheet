@@ -432,42 +432,6 @@
     },
   });
 
-  // Awaken: a falling green-gold mind spark opens a large living eye directly over the creature.
-  FX.register('awaken', {
-    palette: LIFE,
-    travel: 300,
-    beats: (event, kit, travel) => beats(event, travel, 'soft', 100),
-    end: () => 1390,
-    ground(s) {
-      const t = s.c.t - k.CAST;
-      if (t < 0) return;
-      people(s).forEach(target => ring(feet(target), t < 300 ? 7 : 12, 5, LIFE, 'awaken', t > 850 ? 0.5 : 1));
-    },
-    air(s) {
-      const t = s.c.t - k.CAST;
-      if (t < 0) return;
-      people(s).forEach(target => {
-        const p = k.P(target),
-          hit = s.hits.find(h => h.id === target.id) || s.hits[0];
-        if (t < 300) {
-          const q = t / 300,
-            y = p.y - 34 * (1 - q * q);
-          for (let j = 4; j > 0; j--) bead({ x: p.x + Math.sin(j + q * 8) * 2, y: y - j * 4 }, LIFE, 2, 3);
-          k.disc(p.x, y, 5, LIFE[0]);
-          k.disc(p.x, y, 4, LIFE[4]);
-          k.disc(p.x, y, 2, LIFE[5]);
-        }
-        impact(s, p, LIFE, 'awaken', 29, hit);
-        if (t >= 260 && t < 800) {
-          stamp(eye(Math.min(3, Math.floor((t - 260) / 55)), LIFE, 'awaken'), { x: p.x, y: p.y - 4 });
-          if (t > 420)
-            for (let j = 0; j < 3; j++) bead({ x: p.x + (j - 1) * 9, y: p.y - 17 - (j === 1 ? 4 : 0) }, LIFE, 2, 4);
-        }
-        if (hit) leaves(s, p, 8, 20, s.real(hit), 750);
-      });
-    },
-  });
-
   function chain(rx, ry, phase, key) {
     return image('chain:' + key + ':' + rx + ':' + ry + ':' + phase, rx * 2 + 12, ry * 2 + 12, GOLD, a => {
       const cx = rx + 6,

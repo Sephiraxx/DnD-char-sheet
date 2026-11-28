@@ -312,42 +312,6 @@
       for (let y = 11; y < 14; y++) for (let x = 9; x < 16; x++) set(x, y, y === 12 ? 2 : 5);
     });
   }
-  // Animal Messenger: an outlined white bird carries its rolled letter through a loop and a swift departure.
-  FX.register('animal-messenger', {
-    palette: WIND,
-    travel: 230,
-    beats: (event, kit, travel) => [{ at: kit.CAST + travel, stop: 70, target: null, kind: 'soft', power: 0 }],
-    end: () => 1740,
-    air(s) {
-      const e = s.c.t - k.CAST;
-      if (e < 0 || !s.pose.hand) return;
-      const h = k.P(s.pose.hand);
-      const path = ms => {
-        if (ms < 230) return { x: h.x + ms / 46, y: h.y - 16 * k.ease(ms / 230) };
-        if (ms < 810) {
-          const a = ((ms - 230) / 580) * k.tau;
-          return { x: h.x + 5 + Math.sin(a) * 14, y: h.y - 22 + Math.cos(a) * 6 };
-        }
-        const q = k.clamp((ms - 810) / 480);
-        return { x: h.x + 5 + 29 * k.ease(q), y: h.y - 16 - q * 23 };
-      };
-      for (let i = 7; i >= 1; i--)
-        if (e > i * 25 && e < 1330) {
-          const p = path(e - i * 25);
-          point(p.x, p.y + 4, i < 4 ? WIND[4] : WIND[3], i < 4 ? 2 : 1, WIND);
-        }
-      if (e < 1340) {
-        const p = path(e);
-        stamp(bird(Math.floor(s.c.raw / 90) % 2), p.x, p.y, e > 1240 ? 0.5 : 1);
-      }
-      const hit = s.hits[0];
-      if (hit) {
-        const p = path(230);
-        k.drawHit(k.hitStyle('48:bird', WIND, { S: 18, spikes: 4 }), p, s.real(hit));
-        k.shards(p, s.real(hit), WIND, s.event.seed || 0, 4, 11);
-      }
-    },
-  });
 
   function dagger() {
     return k.sprite('48:dagger', 5, 10, SILVER, set => {
@@ -475,37 +439,6 @@
         k.drawHit(k.hitStyle('48:anchor', VIOLET, { S: 29, spikes: 4 }), p, s.real(h));
         k.shards(p, s.real(h), VIOLET, s.event.seed || 0, 8, 20);
       });
-    },
-  });
-
-  // Pass Without Trace: pale sage mist curls round feet; luminous tracks vanish behind a leaf seal.
-  FX.register('pass-without-trace', {
-    palette: MIST,
-    travel: 260,
-    beats,
-    end: () => 1450,
-    ground(s) {
-      const e = s.c.t - k.CAST;
-      if (e < 0) return;
-      subjects(s).forEach(t => {
-        const p = feet(t);
-        for (let j = 0; j < 4; j++) {
-          const vanish = 470 + j * 140;
-          if (e < vanish + 100)
-            stamp(icon('foot', MIST), p.x - 12 + j * 5, p.y + 4 + (j % 2) * 3, e > vanish ? 0.25 : 1);
-        }
-        stamp(puff(e > 850 ? 2 : 0, MIST), p.x + Math.sin(e / 210) * 2, p.y - 1, e > 950 ? 0.5 : 0.75);
-      });
-    },
-    air(s) {
-      const e = s.c.t - k.CAST;
-      if (e < 0) return;
-      subjects(s).forEach(t => {
-        const p = feet(t);
-        arc(p.x, p.y - 4, 11, 4, e / 250, Math.PI * 1.4, MIST, MIST[4]);
-        if (e > 170) stamp(icon('leaf', LEAF), p.x, p.y - 23, e > 850 ? 0.5 : 1);
-      });
-      impact(s, MIST, 17, 4);
     },
   });
 

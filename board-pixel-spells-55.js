@@ -586,51 +586,6 @@
     '.2..34.43....',
     '..222........',
   ];
-  // Create Homunculus: an outlined bat-winged familiar lifts from a crimson-violet alchemical flash.
-  FX.register('create-homunculus', {
-    palette: ALCHEMY,
-    travel: 240,
-    beats: event => beat(event, k.CAST + 240, 110),
-    end: () => 1510,
-    ground(s) {
-      const e = age(s),
-        C = summonAt(s);
-      if (e < 0) return;
-      ring(C, 14, 8, ALCHEMY, 3, alphaOut(e, 730, 1050));
-      if (e < 800)
-        for (let i = 0; i < 3; i++) {
-          const a = -Math.PI / 2 + (i * k.tau) / 3,
-            b = a + k.tau / 3;
-          line(
-            { x: C.x + Math.cos(a) * 11, y: C.y + Math.sin(a) * 6 },
-            { x: C.x + Math.cos(b) * 11, y: C.y + Math.sin(b) * 6 },
-            ALCHEMY,
-            3,
-          );
-        }
-    },
-    air(s) {
-      const C = summonAt(s),
-        e = age(s) - 240;
-      if (age(s) >= 0 && e < 0) delivery(s, ALCHEMY, C, 240);
-      if (e < 0) return;
-      const h = s.hits[0];
-      if (h) {
-        k.drawHit(k.hitStyle('55:alchemical-flash', ALCHEMY, { S: 44, spikes: 6 }), C, s.real(h));
-        k.shards(C, s.real(h), ALCHEMY, s.event.seed || 0, 12, 28);
-      }
-      const q = k.ease(k.clamp(e / 210)),
-        reveal = Math.min(4, Math.floor(q * 4)) / 4;
-      const img = pixels('homunculus', HOMUNCULUS, ALCHEMY, reveal);
-      k.blit(
-        img,
-        C.x - img.width / 2,
-        C.y - 8 - img.height / 2 - q * 9 + Math.round(Math.sin(s.c.raw / 110) * 1.5),
-        alphaOut(e, 750, 950),
-      );
-      if (e > 540 && e < 1000) spark(C.x, C.y + 1, ALCHEMY, 2);
-    },
-  });
 
   const GHOUL_ROWS = [
     '....33333....',

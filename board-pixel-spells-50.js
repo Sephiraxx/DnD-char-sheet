@@ -280,46 +280,6 @@
     },
   });
 
-  // Water Walk: broad blue ripples, luminous soles and little arcs of water at every pair of feet.
-  FX.register('water-walk', {
-    palette: WATER,
-    travel: 200,
-    beats: soft,
-    end,
-    ground(s) {
-      if (s.c.t < k.CAST) return;
-      for (const t of list(s)) {
-        const F = feet(t),
-          e = age(s, t);
-        const q = k.clamp((s.c.t - k.CAST) / 200);
-        ring(F.x, F.y, e < 0 ? 5 + q * 9 : 18, e < 0 ? 3 + q * 4 : 8, WATER, 1, 3, 2);
-        if (e >= 0) {
-          ring(F.x, F.y + 1, 10 + Math.floor((e % 360) / 90) * 3, 5, WATER, e > 700 ? 0.5 : 1);
-          sole(F.x - 6, F.y - 1);
-          sole(F.x + 6, F.y - 1);
-        }
-      }
-    },
-    air(s) {
-      for (const t of list(s)) {
-        const e = age(s, t);
-        if (e < 0) continue;
-        const F = feet(t),
-          real = s.real(beat(s, t));
-        k.drawHit(k.hitStyle('b50:water-feet', WATER, { S: 26, spikes: 4 }), F, real);
-        k.shards(F, real, WATER, s.event.seed, 6, 17);
-        if (e < 620)
-          for (let i = 0; i < 4; i++) {
-            const q = (s.c.raw / 420 + i / 4) % 1,
-              side = i % 2 ? 1 : -1;
-            const x = F.x + side * (8 + q * 9),
-              y = F.y - Math.sin(q * Math.PI) * 8;
-            dot(x, y, WATER, 4, 3);
-          }
-      }
-    },
-  });
-
   // Blinding Smite: a white-gold weapon slash detonates into stabbing rays and a barred eye.
   FX.register('blinding-smite', {
     palette: GOLD,

@@ -438,46 +438,6 @@
     },
   });
 
-  // Detect Thoughts: a luminous pink brain sends a broad psychic ripple into squiggled thought bubbles.
-  FX.register('detect-thoughts', {
-    palette: PINK,
-    travel: 500,
-    beats,
-    end: () => 1810,
-    air(s) {
-      const t = s.c.t - k.CAST,
-        caster = self(s),
-        target = subject(s);
-      if (t < 0 || !caster || !target) return;
-      const h = head(caster),
-        p = head(target);
-      if (t < 1050) stamp(brain(), { x: h.x, y: h.y - 3 }, t > 900 ? 0.5 : 1);
-      if (t >= 140 && t < 590) {
-        const q = k.clamp((t - 140) / 360),
-          a = { x: k.mix(h.x, p.x, q), y: k.mix(h.y, p.y, q) };
-        const angle = Math.atan2(p.y - h.y, p.x - h.x);
-        for (let i = 0; i < 3; i++) {
-          const x = a.x - Math.cos(angle) * i * 5,
-            y = a.y - Math.sin(angle) * i * 5;
-          stroke(
-            [
-              { x: x - Math.sin(angle) * 8, y: y + Math.cos(angle) * 8 },
-              { x: x + Math.cos(angle) * 3, y: y + Math.sin(angle) * 3 },
-              { x: x + Math.sin(angle) * 8, y: y - Math.cos(angle) * 8 },
-            ],
-            PINK,
-            i ? 3 : 5,
-          );
-        }
-      }
-      impact(s, { x: p.x, y: p.y + 5 }, PINK, 20, 5);
-      if (t >= 500) {
-        stamp(bubble(false), { x: p.x, y: p.y - 4 - Math.sin(s.c.raw / 230) }, t > 1250 ? 0.5 : 1);
-        if (t > 670 && t < 1220) stamp(bubble(false), { x: p.x + 17, y: p.y - 13 }, 0.75);
-      }
-    },
-  });
-
   // Find Traps: a gold radar fan scans the floor and stamps large red-orange warning triangles in range.
   FX.register('find-traps', {
     palette: GOLD,
@@ -531,37 +491,6 @@
         stamp(warning(), { x: q.x, y: q.y - Math.sin(pop * Math.PI) * 3 }, t > 1110 ? 0.5 : 1);
       }
       impact(s, { x: p.x, y: p.y - 8 }, GOLD, 22, 6);
-    },
-  });
-
-  // Fortune's Favor: a broad gold coin flips above the head, catches a star, then showers the figure in gold.
-  FX.register('fortunes-favor', {
-    palette: GOLD,
-    travel: 350,
-    beats,
-    end: () => 1700,
-    air(s) {
-      const t = s.c.t - k.CAST,
-        target = subject(s);
-      if (t < 0 || !target) return;
-      const h = head(target),
-        p = { x: h.x, y: h.y - 5 };
-      delivery(s, p, GOLD, 650);
-      if (t > 100 && t < 1040) {
-        const frame = t < 350 ? Math.floor(t / 65) % 4 : t < 700 ? 0 : Math.floor(t / 80) % 4;
-        stamp(coin(frame), { x: p.x, y: p.y - Math.sin(k.clamp((t - 100) / 250) * Math.PI) * 8 }, t > 900 ? 0.5 : 1);
-      }
-      impact(s, p, GOLD, 28, 9);
-      if (t >= 350 && t < 780) spark({ x: p.x + 10, y: p.y - 8 }, GOLD, 5);
-      if (t >= 480)
-        for (let i = 0; i < 10; i++) {
-          const q = (t - 480 - i * 40) / 520;
-          if (q < 0 || q > 1) continue;
-          const x = h.x + (k.hash(i, s.event.seed || 0) - 0.5) * 24;
-          const y = p.y + q * 32;
-          if (i % 3 === 0) spark({ x, y }, GOLD, 2);
-          else ball(x, y, 1, GOLD, 4);
-        }
     },
   });
 
@@ -679,53 +608,6 @@
         const y = p.y - 3 + Math.sin(a) * 12 * spread + Math.sin(s.c.raw / 130 + i) * (type === 'cat' ? 1 : 2);
         stamp(familiar(type, Math.floor(s.c.raw / 120) % 2), { x, y }, t > 1200 ? 0.5 : 1);
       });
-    },
-  });
-
-  // Gift of Gab: an oversized luminous speech balloon spills sparks, then leaves a glowing speaking mouth.
-  FX.register('gift-of-gab', {
-    palette: PINK,
-    travel: 210,
-    beats: casterBeat,
-    end: () => 1560,
-    air(s) {
-      const t = s.c.t - k.CAST,
-        caster = self(s);
-      if (t < 0 || !caster) return;
-      const h = head(caster),
-        p = { x: h.x, y: h.y - 3 };
-      if (t >= 90 && t < 840)
-        stamp(
-          bubble(true),
-          { x: p.x, y: p.y - (t < 210 ? Math.sin(((t - 90) / 120) * Math.PI) * 3 : 0) },
-          t > 710 ? 0.5 : 1,
-        );
-      impact(s, { x: p.x, y: p.y + 4 }, PINK, 25, 9);
-      if (t >= 210 && t < 820)
-        for (let i = 0; i < 6; i++) {
-          const q = k.clamp((t - 210 - i * 25) / 460),
-            a = k.hash(i, s.event.seed || 0) * k.tau;
-          if (q <= 0 || q >= 1) continue;
-          spark({ x: p.x + Math.cos(a) * (10 + q * 13), y: p.y + Math.sin(a) * (7 + q * 9) }, PINK, 2);
-        }
-      if (t >= 720) {
-        const mouth = art(
-          'mouth',
-          ['..33333333..', '.3444444443.', '345555555543', '.3111111113.', '..34444443..', '...333333...'],
-          PINK,
-        );
-        stamp(mouth, { x: h.x, y: h.y + 5 }, t > 1040 ? 0.5 : 1);
-        if (t < 1060)
-          stroke(
-            [
-              { x: h.x + 9, y: h.y + 2 },
-              { x: h.x + 12, y: h.y + 5 },
-              { x: h.x + 9, y: h.y + 8 },
-            ],
-            PINK,
-            4,
-          );
-      }
     },
   });
 

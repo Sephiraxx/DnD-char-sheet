@@ -458,42 +458,6 @@
     },
   });
 
-  // Wristpocket: a palm-sized violet spatial vortex gulps a bright trinket and snaps shut with a pop.
-  FX.register('wristpocket', {
-    palette: VIOLET,
-    travel: 210,
-    beats: event => [...beats(event, 510, 65, 'soft', true), ...beats(event, 1010, 75, 'soft', true)],
-    end: () => 1290,
-    air(s) {
-      if (s.c.t < k.CAST || !s.pose.hand) return;
-      const H = k.P(s.pose.hand),
-        e = s.c.t - k.CAST,
-        close = k.clamp((s.c.t - 900) / 110);
-      if (e < 710) {
-        const rx = Math.max(2, Math.round(8 * (1 - close)));
-        const portal = k.sprite('46:pocket:' + rx, rx * 2 + 8, 25, VIOLET, set => {
-          for (let y = 1; y < 24; y++)
-            for (let x = 1; x < rx * 2 + 7; x++) {
-              const d = Math.hypot((x - rx - 4) / rx, (y - 12) / 9);
-              if (d < 1) set(x, y, d < 0.65 ? 1 : d < 0.81 ? 3 : 5);
-            }
-        });
-        stamp(portal, H);
-        spiral(H, VIOLET, s.c.raw / 100, rx - 1, 1.2);
-        if (s.c.t < 850) {
-          const q = k.clamp((s.c.t - 490) / 360);
-          const p = { x: H.x + (1 - q) * 17, y: H.y - Math.sin(q * Math.PI) * 8 - (1 - q) * 3 };
-          stamp(glyph('star', GOLD, 1), p, q > 0.9 ? 0.5 : 1);
-        }
-      }
-      for (const hit of s.hits) {
-        k.drawHit(k.hitStyle('46:pocket-pop', VIOLET, { S: hit.at === 1010 ? 26 : 17, spikes: 4 }), H, s.real(hit));
-        k.shards(H, s.real(hit), VIOLET, s.event.seed || 0, 5, 13);
-      }
-      if (s.c.t > 1100) stamp(glyph('star', VIOLET, 1), H, 0.5);
-    },
-  });
-
   // Heat Metal: white-orange plate armour and a blazing weapon flare over the gear, hissing sparks and heat.
   FX.register('heat-metal', {
     palette: HOT,

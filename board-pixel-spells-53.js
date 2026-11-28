@@ -354,56 +354,6 @@
     flash: (event, e) => (e >= 0 && e < 65 ? { color: GOLD[4], alpha: 0.18 } : null),
   });
 
-  // Seeming: a lavender curtain sweeps each creature, revealing a large mask and a violet body contour.
-  FX.register('seeming', {
-    palette: VIOLET,
-    travel: 240,
-    beats: beats(C + 240, 85),
-    end: () => 1440,
-    air(s) {
-      const e = s.c.t - C;
-      if (e < 0) return;
-      const mask = glyph(
-        'mask',
-        [
-          '.444444444444.',
-          '45555555555554',
-          '45555555555554',
-          '45..45554..454',
-          '45..45554..454',
-          '.45555555554.',
-          '..455555554..',
-          '...44..444...',
-          '....44444....',
-        ],
-        VIOLET,
-        2,
-      );
-      people(s).forEach(t => {
-        const p = k.P(t),
-          f = feet(t);
-        if (e < 540) {
-          const x = p.x - 18 + 36 * k.clamp(e / 360);
-          const veil = k.sprite('53:veil', 19, 43, VIOLET, set => {
-            for (let y = 2; y < 41; y++)
-              for (let u = 2; u < 17; u++) {
-                if (u < 5 && k.dith(u, y) < 0.5) continue;
-                set(u + Math.round(Math.sin(y / 6)), y, u > 13 ? 5 : u > 9 ? 4 : 3);
-              }
-          });
-          k.blit(veil, x - 9, f.y - 39, 0.75);
-        }
-        if (e >= 180 && e < 710) centered(mask, { x: p.x, y: p.y - 6 }, e > 570 ? 0.5 : 1);
-        if (e > 450) k.blit(silhouette(VIOLET, 1, true), p.x - 13, f.y - 34, 0.5);
-        const hit = s.hits.find(h => h.id === t.id) || s.hits[0];
-        if (hit) {
-          motes(s, p, VIOLET, s.real(hit), 10, 21);
-          k.shards(p, s.real(hit), VIOLET, s.event.seed, 5, 18);
-        }
-      });
-    },
-  });
-
   // Holy Weapon: an immense white-gold sword ignites beside the wielder, shedding long rays and sparks.
   FX.register('holy-weapon', {
     palette: GOLD,
@@ -837,24 +787,4 @@
       k.blit(leaf, p.x - 12 + q * 24, p.y - Math.sin(q * Math.PI) * 12, alpha * 0.75);
     }
   }
-
-  // Control Winds: broad cyan-white gust curls cross the cube amid swirling leaves and dust devils.
-  FX.register('control-winds', {
-    palette: WIND,
-    travel: 180,
-    beats: beats(C + 180, 100, 'soft'),
-    end: () => 1510,
-    ground(s) {
-      const e = s.c.t - C;
-      if (e < 0) return;
-      if (e < 180 || !s.pose.linger) windZone(s, e > 920 ? 0.5 : 1, true);
-      else if (e < 680) windZone(s, 0.5, true);
-    },
-    air(s) {
-      impacts(s, WIND, 'wind', 32);
-    },
-    linger(s) {
-      windZone(s, s.linger);
-    },
-  });
 })(typeof window !== 'undefined' ? window : globalThis);
