@@ -253,52 +253,6 @@
     k.blit(img, x0, y0);
   }
 
-  // Protection from Poison: a mint-green shield seals shut and spits poisoned droplets outside its rim.
-  FX.register('protection-from-poison', {
-    palette: POISON,
-    travel: 170,
-    beats: (event, kit, travel) => beatList(event, kit, travel),
-    end: () => k.CAST + 940,
-    ground: s => softGround(s, POISON),
-    air(s) {
-      const C = k.P(subject(s)),
-        hit = s.hits[0],
-        e = s.c.t - hit.at;
-      mote(s, C, POISON);
-      impact(s, hit, C, POISON, 22, 5);
-      if (e < 0 || e > 700) return;
-      const rise = e > 530 ? (e - 530) / 25 : 0;
-      stamp(
-        'poison-shield',
-        [
-          '.333333333.',
-          '34444444443',
-          '34433333443',
-          '343..3..343',
-          '343.343.343',
-          '.343443343.',
-          '.344443443.',
-          '..3444443..',
-          '...34443...',
-          '....343....',
-          '.....3.....',
-        ],
-        POISON,
-        { x: C.x, y: C.y - 13 - rise },
-      );
-      const real = s.real(hit);
-      if (real < 500)
-        for (let i = 0; i < 4; i++) {
-          const q = k.clamp(real / 500),
-            a = (i / 4) * k.tau + 0.4;
-          stamp('poison-drop', DROP, POISON, {
-            x: C.x + Math.cos(a) * (11 + q * 14),
-            y: C.y + Math.sin(a) * 8 + q * q * 15,
-          });
-        }
-    },
-  });
-
   // Mind Spike: a psionic crystal snaps into the brow; concentric pain rings leave a tracking eye.
   FX.register('mind-spike', {
     palette: MIND,
@@ -408,68 +362,6 @@
     },
   });
 
-  // Lesser Restoration: a warm green cleansing helix lifts a violet affliction out and breaks it into clean sparks.
-  FX.register('lesser-restoration', {
-    palette: HEAL,
-    travel: 180,
-    beats: (event, kit, travel) => beatList(event, kit, travel, 'soft', 70),
-    end: () => k.CAST + 1030,
-    ground: s => softGround(s, HEAL),
-    air(s) {
-      const hit = s.hits[0],
-        C = k.P(subject(s)),
-        e = s.c.t - hit.at;
-      mote(s, C, HEAL);
-      impact(s, hit, C, HEAL, 28, 8);
-      if (e < 0 || e > 790) return;
-      for (let i = 0; i < 3; i++) {
-        const q = k.clamp((e - i * 90) / 440);
-        if (e < i * 90 || q >= 1) continue;
-        ring({ x: C.x, y: C.y + 10 - q * 31 }, 12 - q * 3, 5, HEAL, 4, true, e / 75 + i);
-      }
-      const real = s.real(hit);
-      if (real < 330) {
-        const D = { x: C.x, y: C.y - 11 - k.clamp(real / 330) * 9 };
-        stamp('affliction', DROP, ROT, D);
-        if (real > 110) stroke({ x: D.x - 5, y: D.y + 4 }, { x: D.x + 5, y: D.y - 4 }, HEAL, 5, 1, 7);
-      }
-      k.shards({ x: C.x, y: C.y - 20 }, real - 300, HEAL, (s.event.seed || 0) + 61, 7, 16);
-      if (e > 350 && e < 710)
-        stamp('restored-cross', ['..44..', '..45..', '444544', '455554', '..54..', '..44..'], GOLD, {
-          x: C.x,
-          y: C.y - 14,
-        });
-    },
-  });
-
-  // Beast Sense: amber animal pupils and a paw form on the beast while a fine sensory thread joins its caster.
-  FX.register('beast-sense', {
-    palette: GOLD,
-    travel: 220,
-    beats: (event, kit, travel) => beatList(event, kit, travel),
-    end: () => k.CAST + 1050,
-    ground: s => softGround(s, GOLD),
-    air(s) {
-      const hit = s.hits[0],
-        C = k.P(subject(s)),
-        e = s.c.t - hit.at;
-      mote(s, C, GOLD);
-      impact(s, hit, C, GOLD, 20, 4);
-      if (e < 0 || e > 760) return;
-      stamp('beast-eye', EYE, GOLD, { x: C.x, y: C.y - 15 });
-      stamp('beast-paw', PAW, POISON, { x: C.x, y: C.y + 4 });
-      if (!s.pose.hand) return;
-      const H = k.P(s.pose.hand);
-      stamp('caster-eye', EYE, GOLD, { x: H.x, y: H.y - 9 });
-      if (e < 610)
-        for (let i = 1; i < 12; i++) {
-          if ((i + Math.floor(e / 95)) % 3 === 0) continue;
-          const u = i / 12;
-          pixel(k.mix(H.x, C.x, u), k.mix(H.y - 9, C.y - 15, u) - Math.sin(u * Math.PI) * 7, GOLD, 3);
-        }
-    },
-  });
-
   function cardSprite(suit, back) {
     return k.sprite(`16:card:${suit}:${back}`, 9, 13, CARD, set => {
       for (let y = 1; y < 12; y++) for (let x = 1; x < 8; x++) set(x, y, back ? ((x + y) % 2 ? 1 : 2) : 4);
@@ -528,54 +420,6 @@
           );
         }
       s.hits.forEach((hit, i) => impact(s, hit, k.P(subject(s, hit)), FORCE, 30, 7, i));
-    },
-  });
-
-  // Suggestion: rose-gold whisper curls travel from the caster and close into a hypnotic speech spiral by the ear.
-  FX.register('suggestion', {
-    palette: MIND,
-    travel: 240,
-    beats: (event, kit, travel) => beatList(event, kit, travel, 'soft', 65),
-    end: () => k.CAST + 1060,
-    ground: s => softGround(s, MIND),
-    air(s) {
-      const hit = s.hits[0],
-        C = k.P(subject(s)),
-        T = { x: C.x + 10, y: C.y - 11 },
-        e = s.c.t - k.CAST;
-      if (s.pose.hand && e >= 0 && e < 310) {
-        const H = k.P(s.pose.hand);
-        for (let i = 0; i < 3; i++) {
-          const q = k.clamp((e - i * 30) / 210);
-          if (e < i * 30 || q >= 1) continue;
-          const P = { x: k.mix(H.x, T.x, q), y: k.mix(H.y, T.y, q) - Math.sin(q * Math.PI) * 4 };
-          ring(P, 4, 3, i % 2 ? MIND : GOLD, 4, true, q * 5);
-        }
-      }
-      impact(s, hit, T, GOLD, 18, 4);
-      const real = s.real(hit);
-      if (real < 0 || real > 800) return;
-      stamp(
-        'whisper-bubble',
-        [
-          '..3333333..',
-          '.344444443.',
-          '34.......43',
-          '34.......43',
-          '34.......43',
-          '.344444443.',
-          '..3334333..',
-          '....43.....',
-          '...3.......',
-        ],
-        MIND,
-        T,
-      );
-      for (let i = 0; i < 18; i++) {
-        const a = (i / 17) * Math.PI * 3 + (Math.floor(real / 90) * Math.PI) / 8,
-          r = 0.5 + (i / 17) * 3;
-        pixel(T.x + Math.cos(a) * r, T.y - 1 + Math.sin(a) * r, GOLD, 4);
-      }
     },
   });
 
@@ -688,36 +532,6 @@
     pixel(C.x - 1, C.y - 4, SPIDER, 5);
     pixel(C.x + 1, C.y - 4, SPIDER, 5);
   }
-  // Spider Climb: an eight-legged climbing sigil sinks into the boots; paired sticky footprints climb beside the body.
-  FX.register('spider-climb', {
-    palette: SPIDER,
-    travel: 160,
-    beats: (event, kit, travel) => beatList(event, kit, travel),
-    end: () => k.CAST + 1030,
-    ground(s) {
-      softGround(s, SPIDER);
-      const e = s.c.t - s.hits[0].at;
-      if (e >= 0 && e < 710) spider(feet(subject(s)), e);
-    },
-    air(s) {
-      const t = subject(s),
-        C = k.P(t),
-        F = feet(t),
-        hit = s.hits[0],
-        e = s.c.t - hit.at;
-      mote(s, C, SPIDER);
-      impact(s, hit, F, SPIDER, 22, 5);
-      if (e < 0 || e > 780) return;
-      for (const side of [-1, 1]) stamp('climbing-boot', BOOT, SPIDER, { x: F.x + side * 5, y: F.y - 3 });
-      for (let i = 0; i < 5; i++) {
-        if (e < i * 85 || e > 500 + i * 50) continue;
-        const x = C.x + (i % 2 ? 14 : 20),
-          y = F.y - 5 - i * 6;
-        pixel(x, y, SILK, 4, 2);
-        pixel(x - 1, y - 3, SILK, 3);
-      }
-    },
-  });
 
   function rope(s, persistent = false) {
     const hit = s.hits[0],

@@ -182,35 +182,6 @@
     }
   }
 
-  // See Invisibility: a golden third eye opens, scanning through broken violet ethereal contours.
-  FX.register('see-invisibility', {
-    palette: GOLD,
-    travel: 190,
-    beats,
-    end: (event, travel) => k.CAST + travel + 680,
-    ground: s => seal(s, GOLD),
-    air(s) {
-      const first = k.P(subject(s));
-      deliver(s, first, GOLD);
-      for (const [i, hit] of s.hits.entries()) {
-        const T = k.P(subject(s, hit)),
-          e = s.real(hit);
-        if (e < 0 || e > 720) continue;
-        impact(s, hit, { x: T.x, y: T.y - 7 }, GOLD, 20, 4, i);
-        if (e < 600) {
-          const y = T.y - 9 + Math.min(3, Math.floor(e / 130));
-          stamp('seeing-eye', EYE, GOLD, { x: T.x, y });
-          for (let j = 0; j < 2; j++) {
-            const x = T.x + (j ? 1 : -1) * 11;
-            ring({ x, y: T.y + 2 }, 4, 8, WARP, e < 220 ? 2 : 4, 18, 0);
-          }
-          const sweep = Math.floor(e / 65) % 8;
-          for (let j = -2; j <= 2; j++) pixel(T.x + j * 4, T.y - 6 + sweep * 2, GOLD, 4);
-        }
-      }
-    },
-  });
-
   function windField(s, ending = false) {
     const e = s.c.t - s.hits[0].at;
     if (e < 0) return;
@@ -242,96 +213,6 @@
     }
   }
 
-  // Warding Wind: a ten-foot wall of silver-white helices sweeps grit around the caster.
-  FX.register('warding-wind', {
-    palette: WIND,
-    travel: 70,
-    beats: (event, kit, travel) => [{ at: kit.CAST + travel, stop: 65, target: null, kind: 'soft', power: 0 }],
-    end: (event, travel) => k.CAST + travel + 920,
-    ground(s) {
-      if (s.c.t < s.hits[0].at + 920) windField(s);
-    },
-    air(s) {
-      const { C } = area(s, 10);
-      impact(s, s.hits[0], C, WIND, 26, 8);
-    },
-    linger(s) {
-      if (s.c.t >= s.hits[0].at + 920) windField(s, true);
-    },
-    reach: (event, grid) => ({ r: (event.area?.feet || 10) / (grid.feet || 5) + 0.6, up: 1.5 }),
-  });
-
-  // Warding Bond: paired platinum rings lock together, linking two silver protective shields.
-  FX.register('warding-bond', {
-    palette: SILVER,
-    travel: 230,
-    beats,
-    end: (event, travel) => k.CAST + travel + 720,
-    ground(s) {
-      const e = s.c.t - k.CAST;
-      if (e < 0 || e > 950) return;
-      const A = feet(s.pose.base || subject(s)),
-        B = feet(subject(s));
-      for (let j = 0; j < 24; j++) {
-        if (e > 740 && j % 3) continue;
-        const q = j / 23;
-        pixel(
-          k.mix(A.x, B.x, q),
-          k.mix(A.y, B.y, q) + Math.sin(q * Math.PI) * 5,
-          SILVER,
-          (j + Math.floor(s.c.raw / 60)) % 7 < 2 ? 4 : 2,
-        );
-      }
-      for (const C of [A, B]) {
-        ring({ x: C.x - 3, y: C.y }, 6, 4, SILVER, 3);
-        ring({ x: C.x + 3, y: C.y }, 6, 4, SILVER, 4);
-      }
-    },
-    air(s) {
-      const hit = s.hits[0],
-        T = k.P(subject(s)),
-        e = s.real(hit);
-      deliver(s, T, SILVER);
-      if (e < 0 || e > 760) return;
-      const A = k.P(s.pose.hand || s.pose.base || subject(s));
-      impact(s, hit, T, SILVER, 22, 6);
-      if (e < 610) for (const C of [A, T]) stamp('bond-shield', SHIELD, SILVER, { x: C.x, y: C.y - 10 });
-      sparks(T, e, SILVER, s.event.seed || 0, 5, 11);
-    },
-  });
-
-  // Darkvision: amber slit pupils ignite beneath a grey crescent; monochrome sight bands sweep down.
-  FX.register('darkvision', {
-    palette: NIGHT,
-    travel: 170,
-    beats,
-    end: (event, travel) => k.CAST + travel + 650,
-    ground: s => seal(s, NIGHT),
-    air(s) {
-      deliver(s, k.P(subject(s)), NIGHT);
-      for (const [i, hit] of s.hits.entries()) {
-        const T = k.P(subject(s, hit)),
-          e = s.real(hit);
-        if (e < 0 || e > 710) continue;
-        impact(s, hit, { x: T.x, y: T.y - 6 }, NIGHT, 18, 4, i);
-        if (e < 560) {
-          stamp(
-            'night-crescent',
-            ['...3333.', '..344...', '.344....', '344.....', '344.....', '.344....', '..344...', '...3333.'],
-            NIGHT,
-            { x: T.x, y: T.y - 13 },
-          );
-          for (const side of [-1, 1]) {
-            ring({ x: T.x + side * 4, y: T.y - 3 }, 3, 2, AMBER, 4);
-            pixel(T.x + side * 4, T.y - 3, NIGHT, 1, 1);
-          }
-          const y = T.y + Math.floor(e / 70) * 2;
-          for (let j = -2; j <= 2; j++) pixel(T.x + j * 4, y, NIGHT, j % 2 ? 2 : 3);
-        }
-      }
-    },
-  });
-
   function warpPoints(s) {
     const t = subject(s),
       jump = s.event.teleport;
@@ -351,32 +232,6 @@
       pixel(C.x + Math.cos(a) * d, C.y - 7 + Math.sin(a) * d, WARP, j % 3 ? 3 : 5, j % 3 ? 1 : 2);
     }
   }
-
-  // Vortex Warp: violet space spirals inward at the subject, then snaps outward at the destination.
-  FX.register('vortex-warp', {
-    palette: WARP,
-    travel: 250,
-    beats: (event, kit, travel) => [
-      { at: kit.CAST + travel, stop: 100, target: event.targets?.[0] ?? null, kind: 'soft', power: 0 },
-    ],
-    end: (event, travel) => k.CAST + travel + 690,
-    ground(s) {
-      const [A, B] = warpPoints(s),
-        e = s.c.t - k.CAST;
-      if (e < 0 || e > 940) return;
-      if (e < 360) ring(A, Math.max(2, 16 - Math.floor(e / 24)), 5, WARP, 3, 18, e / 50);
-      if (e >= 250 && e < 850)
-        ring(B, 3 + Math.floor(k.ease(k.clamp((e - 250) / 210)) * 13), 7, WARP, e < 650 ? 4 : 2, e > 650 ? 18 : 0);
-    },
-    air(s) {
-      const [A, B] = warpPoints(s),
-        hit = s.hits[0],
-        e = s.real(hit);
-      vortex(A, s.c.t - k.CAST, false);
-      vortex(B, e, true);
-      impact(s, hit, { x: B.x, y: B.y - 7 }, WARP, 30, 9);
-    },
-  });
 
   // Warp Sense: concentric divination sweeps resolve into a small planar gate and its key sigil.
   FX.register('warp-sense', {
@@ -458,49 +313,6 @@
     reach: (event, grid) => ({ r: (event.area?.feet || 15) / (grid.feet || 5) + 0.6, up: 1 }),
   });
 
-  // Haste: a turquoise clock spins faster, then bursts into doubled boot prints and sharp speed chevrons.
-  FX.register('haste', {
-    palette: SPEED,
-    travel: 180,
-    beats,
-    end: (event, travel) => k.CAST + travel + 720,
-    ground(s) {
-      seal(s, SPEED);
-      const e = s.c.t - s.hits[0].at;
-      if (e < 60 || e > 700) return;
-      for (const hit of s.hits) {
-        const C = feet(subject(s, hit));
-        for (let i = 0; i < 3; i++) {
-          const x = C.x - 12 + i * 7 + (Math.floor(e / 65) % 3);
-          stamp('haste-boot', BOOT, SPEED, { x, y: C.y + (i % 2 ? 3 : -2) });
-        }
-      }
-    },
-    air(s) {
-      deliver(s, k.P(subject(s)), SPEED);
-      for (const [i, hit] of s.hits.entries()) {
-        const T = k.P(subject(s, hit)),
-          e = s.real(hit);
-        if (e < 0 || e > 770) continue;
-        impact(s, hit, T, SPEED, 24, 7, i);
-        const C = { x: T.x, y: T.y - 10 };
-        if (e < 360) {
-          ring(C, 8, 8, SPEED, 4);
-          const a = (Math.floor(e / 55 + (e * e) / 14000) * Math.PI) / 4;
-          stroke(C, { x: C.x + Math.cos(a) * 5, y: C.y + Math.sin(a) * 5 }, SPEED, 5, 1, 6);
-          stroke(C, { x: C.x, y: C.y - 3 }, SPEED, 3, 1, 3);
-        } else if (e < 650) {
-          const run = Math.floor((e - 360) / 40) % 4;
-          for (let j = 0; j < 3; j++) {
-            const x = T.x - 14 + j * 8 + run * 2,
-              y = T.y - 5 + (j % 2) * 5;
-            stamp('speed-chevron', ['3..', '.4.', '..5', '.4.', '3..'], SPEED, { x, y });
-          }
-        }
-      }
-    },
-  });
-
   function skeleton(C, phase) {
     const rows = [
       '...34443...',
@@ -527,53 +339,6 @@
     });
     k.blit(img, C.x - 7, C.y - 17);
   }
-
-  // Animate Dead: green-violet grave magic pulls ivory bones upright, ending in an alert skeleton.
-  FX.register('animate-dead', {
-    palette: ROT,
-    travel: 260,
-    beats: (event, kit, travel) => beats(event, kit, travel, 'soft', 90),
-    end: (event, travel) => k.CAST + travel + 1080,
-    ground(s) {
-      const e = s.c.t - k.CAST;
-      if (e < 0 || e > 1340) return;
-      for (const hit of s.hits) {
-        const C = feet(subject(s, hit));
-        ring(C, 13, 7, ROT, e < 900 ? 3 : 2, e > 1030 ? 18 : 0, 0);
-        for (let j = 0; j < 4; j++) {
-          const a = (j * Math.PI) / 2;
-          stroke(
-            { x: C.x + Math.cos(a) * 5, y: C.y + Math.sin(a) * 3 },
-            { x: C.x + Math.cos(a) * 11, y: C.y + Math.sin(a) * 6 },
-            ROT,
-            2,
-            1,
-            5,
-          );
-        }
-      }
-    },
-    air(s) {
-      deliver(s, feet(subject(s)), ROT);
-      for (const [i, hit] of s.hits.entries()) {
-        const C = feet(subject(s, hit)),
-          e = s.real(hit);
-        if (e < 0 || e > 1170) continue;
-        impact(s, hit, C, ROT, 26, 8, i);
-        if (e < 720) {
-          const q = e / 720;
-          for (let j = 0; j < 6; j++) {
-            const a = (j / 6) * k.tau + q * 3;
-            pixel(C.x + Math.cos(a) * (12 - q * 7), C.y - q * 15 + Math.sin(a) * 5, ROT, j % 2 ? 3 : 4, 2);
-          }
-        }
-        if (e >= 90 && e < 1040) {
-          skeleton(C, e < 240 ? 0 : e < 430 ? 1 : 2);
-          if (e >= 430) for (const side of [-1, 1]) pixel(C.x + side * 2, C.y - 14, ROT, 3);
-        }
-      }
-    },
-  });
 
   // Antagonize: spiteful pink whispers coil into the victim's head and crack into an angry psychic crown.
   FX.register('antagonize', {
