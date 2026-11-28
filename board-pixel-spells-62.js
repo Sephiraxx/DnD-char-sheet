@@ -858,66 +858,6 @@
     });
   }
 
-  // Animate Dead: a dark grave opens with bright green rim light, a full-square bone-white skeleton claws out and stands amid rising soul motes.
-  FX.register('animate-dead', {
-    palette: NECRO_RIM,
-    travel: 220,
-    beats: (event, kit, travel) => [
-      { at: kit.CAST + travel, stop: 75, target: event.targets?.[0] ?? null, kind: 'hit', power: 0.04 },
-    ],
-    end: (event, travel) => k.CAST + travel + 840,
-    ground(s) {
-      const spot = s.area ? { x: s.area.x, y: s.area.y } : firstTarget(s) ? anchorOf(firstTarget(s)) : casterBase(s);
-      if (!spot) return;
-      const e = s.c.t - k.CAST;
-      if (e < 0) return;
-      const C = k.P(spot);
-      const fade = e > 820 ? 1 - k.clamp((e - 820) / 240) : 1;
-      if (fade <= 0) return;
-      const grave = gravePitSprite();
-      k.blit(grave, C.x - grave.width / 2, C.y - grave.height / 2 + 1, fade);
-      // Pulsing bright green rim halo
-      const pulse = 12.5 + Math.sin(s.c.raw / 120) * 1.2;
-      k.ellipse(C.x, C.y + 1, pulse, pulse * 0.48, NECRO_RIM[0], 3, fade < 0.5 ? 7 : 0);
-      k.ellipse(C.x, C.y, pulse, pulse * 0.48, e < 280 ? NECRO_RIM[5] : NECRO_RIM[3], 1, fade < 0.5 ? 7 : 0);
-    },
-    air(s) {
-      const spot = s.area ? { x: s.area.x, y: s.area.y } : firstTarget(s) ? anchorOf(firstTarget(s)) : casterBase(s);
-      if (!spot) return;
-      const e = s.c.t - k.CAST;
-      if (e < 0) return;
-      const C = k.P(spot);
-      const fade = e > 820 ? 1 - k.clamp((e - 820) / 240) : 1;
-      // Hit mark and grave earth clods on emergence (behind standing skeleton so silhouette stays crisp)
-      const hit = s.hits[0];
-      const real = hit ? s.real(hit) : e - 220;
-      if (real >= 0 && real < 360) {
-        k.drawHit(k.hitStyle('b62-andead', NECRO_RIM, { S: 34, spikes: 6, jag: 0.35 }), { x: C.x, y: C.y - 8 }, real);
-        k.shards({ x: C.x, y: C.y }, real, NECRO_RIM, (s.event.seed || 0) + 5, 8, 18);
-      }
-      // Act 1: clawing out of the grave; Act 2 & 3: full-height skeleton stands tall
-      if (e >= 60 && e < 210) {
-        const claw = skeletonSprite(0);
-        const rise = (1 - k.ease((e - 60) / 150)) * 7;
-        k.blit(claw, C.x - claw.width / 2, C.y - 17 + rise);
-      } else if (e >= 210 && fade > 0) {
-        const skel = skeletonSprite(1);
-        const pop = e < 290 ? (1 - k.back((e - 210) / 80)) * 5 : 0;
-        k.blit(skel, C.x - skel.width / 2, C.y - 23 + pop, fade);
-      }
-      // Green soul motes rising around the skeleton
-      for (let i = 0; i < 10; i++) {
-        const cycle = (e / 560 + k.hash(i, s.event.seed, 7)) % 1;
-        if (e > 840 && cycle > 0.5) continue;
-        const a = i * 1.9 + cycle * 2.2;
-        const mx = C.x + Math.cos(a) * (7 + k.hash(i, s.event.seed, 8) * 7);
-        const my = C.y + 2 - cycle * 26;
-        k.dot(mx, my, NECRO_RIM[0], 4);
-        k.dot(mx, my, i % 2 ? NECRO_RIM[4] : NECRO_RIM[3], 2);
-      }
-    },
-  });
-
   // Glowing faceted pebble sprite (9x8 px, ~1/3 square painted + outline).
   function magicPebbleSprite(flashed) {
     return k.sprite(`b62:pebble:${flashed}`, 9, 8, FORCE, set => {
