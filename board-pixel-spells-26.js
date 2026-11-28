@@ -367,80 +367,6 @@
     },
   });
 
-  // Raise Dead: a sacrificial diamond breaks, a warm soul descends, and a green-gold heartbeat restores the body.
-  FX.register('raise-dead', {
-    palette: LIFE,
-    travel: 520,
-    beats: (event, kit, travel) => beats(event, kit, travel, 'soft', 120),
-    end: endAfter(900),
-    ground(s) {
-      const t = s.c.t - k.CAST;
-      if (t < 0 || t > 1420) return;
-      for (const target of subjects(s)) ring(k.P(feet(target)), 13, 7, LIFE, true);
-    },
-    air(s) {
-      const t = s.c.t - k.CAST;
-      if (t < 0 || t > 1420) return;
-      for (const target of subjects(s)) {
-        const C = k.P(target);
-        if (t < 520) {
-          const q = k.clamp(t / 520),
-            y = C.y - 20 * (1 - q);
-          stamp('diamond', { x: C.x, y: C.y - 17 }, GOLD);
-          k.disc(C.x, y, 4, LIFE[0]);
-          k.disc(C.x, y, 3, LIFE[3]);
-          k.disc(C.x - 1, y - 1, 1, LIFE[5]);
-          for (let i = 0; i < 6; i++) {
-            const a = (i / 6) * k.tau + q * 3;
-            mote(C.x + Math.cos(a) * (15 - q * 11), y + Math.sin(a) * 5, GOLD);
-          }
-        } else if (t < 1100) {
-          const e = t - 520,
-            r = 5 + Math.abs(Math.sin(e / 100)) * 5;
-          ring(C, r, r, LIFE);
-          line({ x: C.x - 7, y: C.y }, { x: C.x - 2, y: C.y }, LIFE, 1, 4, 5);
-          line({ x: C.x - 2, y: C.y }, { x: C.x, y: C.y - 5 }, LIFE, 1, 5, 5);
-          line({ x: C.x, y: C.y - 5 }, { x: C.x + 3, y: C.y + 3 }, LIFE, 1, 5, 8);
-          line({ x: C.x + 3, y: C.y + 3 }, { x: C.x + 7, y: C.y }, LIFE, 1, 4, 5);
-        }
-      }
-      impacts(s, LIFE, 'resurrection', 32, 8);
-      const h = s.hits[0];
-      if (h)
-        for (const target of subjects(s)) {
-          const C = k.P(target);
-          k.shards({ x: C.x, y: C.y - 17 }, s.real(h), GOLD, s.event.seed || 0, 5, 15);
-        }
-    },
-  });
-
-  // Dawn: a broad cylinder of sunlight drops from above, strikes in a white-gold star, and holds as sunbeams.
-  FX.register('dawn', {
-    palette: GOLD,
-    travel: 260,
-    beats: (event, kit, travel) => beats(event, kit, travel, 'blast', 165),
-    end: endAfter(1150),
-    flash: flash(GOLD),
-    ground(s) {
-      column(s, GOLD, 30, 'sun');
-    },
-    air(s) {
-      const p = point(s),
-        t = s.c.t - k.CAST;
-      if (!p || t < 0 || t > 1410) return;
-      const C = k.P(p);
-      if (t < 260) {
-        const y = C.y - 65 * (1 - k.ease(t / 260));
-        ring({ x: C.x, y }, 10, 5, GOLD);
-        line({ x: C.x, y: y - 12 }, { x: C.x, y: y + 12 }, GOLD, 3, 5, 24);
-      }
-      impacts(s, GOLD, 'dawn', 38, 9);
-    },
-    linger(s) {
-      column(s, GOLD, 30, 'sun', true);
-    },
-  });
-
   // Animate Objects: mundane chair, cup, key, coins and blade snap to life, orbit, and bob on violet tethers.
   FX.register('animate-objects', {
     palette: ARC,
@@ -473,61 +399,6 @@
         if (t > 930) ring(T, 5, 3, ARC);
       }
       impacts(s, ARC, 'objects', 26, 6);
-    },
-  });
-
-  // Seeming: separate rose-violet theatre masks and crossing ribbons sweep over every chosen creature.
-  FX.register('seeming', {
-    palette: ROSE,
-    travel: 240,
-    beats: (event, kit, travel) => beats(event, kit, travel, 'soft', 75),
-    end: endAfter(820),
-    air(s) {
-      const t = s.c.t - k.CAST;
-      if (t < 0 || t > 1060) return;
-      for (const target of subjects(s)) {
-        const C = k.P(target);
-        if (t < 760)
-          for (let j = 0; j < 2; j++)
-            for (let i = 0; i < 18; i++) {
-              const a = (i / 18) * k.tau + t / 140 + j * Math.PI;
-              const r = t < 240 ? 15 - k.ease(t / 240) * 7 : 8 + k.clamp((t - 240) / 520) * 8;
-              mote(C.x + Math.cos(a) * r, C.y + Math.sin(a) * 5 + j * 5 - 3, j ? ARC : ROSE, 1, i % 4 ? 3 : 4);
-            }
-        if (t >= 160 && t < 850) {
-          const sway = t > 620 ? (t - 620) / 30 : 0;
-          stamp('mask', { x: C.x - sway, y: C.y - 5 }, ROSE);
-          if (t > 350) stamp('mask', { x: C.x + 10 + sway, y: C.y - 11 }, ARC, 0.4);
-        }
-      }
-      impacts(s, ROSE, 'seeming', 24, 5);
-    },
-  });
-
-  // Holy Weapon: a blade beside the wielder gains a white-gold edge, a sunburst guard, and radiant sparks.
-  FX.register('holy-weapon', {
-    palette: GOLD,
-    travel: 180,
-    beats: (event, kit, travel) => beats(event, kit, travel, 'soft', 85),
-    end: endAfter(880),
-    air(s) {
-      const t = s.c.t - k.CAST;
-      if (t < 0 || t > 1060) return;
-      for (const target of subjects(s)) {
-        const C = k.P(target),
-          B = { x: C.x + 9, y: C.y - 3 };
-        if (t < 850) {
-          stamp('sword', B, GOLD, -0.4);
-          if (t >= 180) {
-            ring({ x: B.x - 1, y: B.y + 4 }, 6, 3, GOLD);
-            for (let i = 0; i < 8; i++) {
-              const a = (i / 8) * k.tau + t / 400;
-              mote(B.x + Math.cos(a) * 10, B.y + Math.sin(a) * 10, GOLD, 1, i % 2 ? 3 : 5);
-            }
-          }
-        }
-      }
-      impacts(s, GOLD, 'holy-weapon', 30, 7);
     },
   });
 
@@ -591,35 +462,6 @@
     },
     linger(s) {
       aura(s, 'life', true);
-    },
-  });
-
-  // Swift Quiver: a leather quiver beside the caster replenishes with paired arrows and tight silver speed trails.
-  FX.register('swift-quiver', {
-    palette: WOOD,
-    travel: 170,
-    beats: (event, kit, travel) => [{ at: kit.CAST + travel, stop: 75, target: null, kind: 'soft', power: 0 }],
-    end: endAfter(900),
-    air(s) {
-      const p = s.pose.hand || s.pose.base,
-        t = s.c.t - k.CAST;
-      if (!p || t < 0 || t > 1070) return;
-      const C = k.P(p),
-        Q = { x: C.x - 9, y: C.y + 2 };
-      if (t < 900) stamp('quiver', Q, WOOD);
-      for (let i = 0; i < 2; i++) {
-        const q = k.clamp((t - 170 - i * 100) / 580);
-        if (q <= 0 || q >= 1) continue;
-        const a = q * k.tau,
-          r = Math.sin(q * Math.PI) * 15;
-        const T = { x: Q.x + (i ? 1 : -1) * (4 + Math.sin(a) * r), y: Q.y - 6 - Math.sin(q * Math.PI) * 16 };
-        stamp('arrow', T, ICE, Math.sin(a) * 0.4);
-        line({ x: T.x + (i ? 6 : -6), y: T.y + 7 }, { x: T.x, y: T.y + 3 }, ICE, 1, 4, 8);
-      }
-      const h = s.hits[0],
-        e = s.real(h);
-      k.drawHit(k.hitStyle('26:quiver', ICE, { S: 24, spikes: 4 }), Q, e);
-      k.shards(Q, e, ICE, s.event.seed || 0, 6, 14);
     },
   });
 

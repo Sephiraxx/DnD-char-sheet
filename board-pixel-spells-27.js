@@ -205,58 +205,6 @@
     },
   });
 
-  // Conjure Volley: one thrown arrow becomes a broad steel rain, slamming the cylinder in three volleys.
-  FX.register('conjure-volley', {
-    palette: STEEL,
-    travel: 440,
-    beats: event => [0, 130, 260].flatMap(dt => group(event, C + 440 + dt, dt ? 65 : 120, 'blast')),
-    end: () => C + 1170,
-    reach: (event, grid) => ({ r: (event.area?.feet || 40) / (grid.feet || 5) + 2, up: 5 }),
-    ground(s) {
-      if (!active(s, C + 1170)) return;
-      const p = centre(s),
-        r = radius(s, 40);
-      const e = s.real(s.hits[0]);
-      if (e < 0) ring(p, r, r, STEEL, 2, 16);
-      else if (e < 380) ring(p, r * (0.7 + 0.3 * k.ease(e / 380)), r * (0.7 + 0.3 * k.ease(e / 380)), STEEL, 3, 16);
-      if (e >= 0)
-        for (let i = 0; i < 17; i++) {
-          const a = k.hash(i, seed(s)) * k.tau,
-            d = r * Math.sqrt(k.hash(i, seed(s), 1)) * 0.92;
-          const at = { x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d };
-          stroke({ x: at.x - 3, y: at.y - 6 }, at, STEEL, 2, 1, 6);
-        }
-    },
-    air(s) {
-      if (!active(s, C + 1170)) return;
-      const p = centre(s),
-        r = radius(s, 40),
-        t = local(s);
-      const arrow = icon('falling-arrow', STEEL, ['44...', '.4...', '..3..', '..3..', '..3..', '.454.', '..4..']);
-      if (t < 200 && s.pose.hand) {
-        const h = k.P(s.pose.hand),
-          q = t / 200;
-        k.blitRotated(arrow, k.mix(h.x, p.x, q), k.mix(h.y, p.y - 48, q), -Math.PI / 4);
-      }
-      for (let wave = 0; wave < 3; wave++) {
-        const dt = t - (200 + wave * 130);
-        if (dt < 0 || dt > 240) continue;
-        const q = dt / 240;
-        for (let i = 0; i < 18; i++) {
-          const a = k.hash(i, seed(s), wave) * k.tau,
-            d = r * Math.sqrt(k.hash(i, seed(s) + 5, wave)) * 0.94;
-          const x = p.x + Math.cos(a) * d,
-            y = p.y + Math.sin(a) * d - (1 - q) * 60;
-          stamp(arrow, { x, y });
-        }
-      }
-      s.hits.forEach(h => {
-        const target = targetOf(s, h);
-        impact(s, h, target ? k.P(target) : p, STEEL, 'volley', 34, 7);
-      });
-    },
-  });
-
   function elementalRamp(event) {
     const e = event.element || '';
     return e === 'water' || e === 'frost'
@@ -462,39 +410,6 @@
     }
   }
 
-  // Hallow: sacred candles seal a wide consecrated circle with a sunburst and a firm golden boundary.
-  FX.register('hallow', {
-    palette: GOLD,
-    travel: 480,
-    beats: () => [beat(C + 480, 130)],
-    end: () => C + 1390,
-    flash: softFlash,
-    ground(s) {
-      if (!active(s, C + 1390)) return;
-      holyWard(s);
-      const p = centre(s);
-      for (let i = 0; i < 8; i++) {
-        const a = (i * k.tau) / 8;
-        stroke(
-          { x: p.x + Math.cos(a) * 8, y: p.y + Math.sin(a) * 8 },
-          { x: p.x + Math.cos(a) * 20, y: p.y + Math.sin(a) * 20 },
-          GOLD,
-          3,
-          1,
-          10,
-        );
-      }
-      ring(p, 8, 8, GOLD, 4);
-    },
-    air(s) {
-      if (!active(s, C + 1390)) return;
-      impact(s, s.hits[0], centre(s), GOLD, 'hallow', 40, 12);
-    },
-    linger(s) {
-      if (s.linger > 0.25) holyWard(s, true);
-    },
-  });
-
   // Contact Other Plane: a vertical violet aperture opens an alien slit-eye; five cold stars answer it.
   FX.register('contact-other-plane', {
     palette: PLANE,
@@ -534,43 +449,6 @@
     },
   });
 
-  // Contagion: a sickly handprint presses into the body; green-black branching lesions pulse outward.
-  FX.register('contagion', {
-    palette: SICK,
-    travel: 140,
-    beats: event => [beat(C + 140, 110, event.targets?.[0] ?? null, 'hit', 0.065)],
-    end: () => C + 910,
-    air(s) {
-      if (!active(s, C + 910)) return;
-      const h = s.hits[0],
-        target = targetOf(s, h);
-      const at = target ? k.P(k.contact(target, s.pose.hand || target)) : centre(s),
-        t = local(s),
-        e = s.real(h);
-      const hand = icon('diseased-hand', SICK, [
-        '..2.2.2..',
-        '..3.3.3.2',
-        '..3.3.3.3',
-        '..3333333',
-        '3.3333333',
-        '.33323332',
-        '..332233.',
-        '...2222..',
-        '...2222..',
-      ]);
-      if (t < 260) stamp(hand, { x: at.x - 5 * (1 - k.clamp(t / 140)), y: at.y });
-      impact(s, h, at, SICK, 'contagion', 30, 8);
-      if (e >= 50 && e < 780)
-        for (let i = 0; i < 5; i++) {
-          const a = (i * k.tau) / 5 + (seed(s) % 4),
-            d = Math.min(12, e / 25);
-          const tip = { x: at.x + Math.cos(a) * d, y: at.y + Math.sin(a) * d };
-          stroke(at, tip, SICK, e < 230 ? 3 : 1, 1, 8);
-          pixel(tip.x, tip.y, SICK, e < 400 ? 4 : 2, 2);
-        }
-    },
-  });
-
   function windField(s, lingering = false) {
     const pts = footprint(s, 100),
       t = local(s);
@@ -588,34 +466,6 @@
       for (let j = 0; j < 6; j++) pixel(k.mix(a.x, b.x, j / 6), k.mix(a.y, b.y, j / 6), WIND, 2, 1);
     }
   }
-
-  // Control Winds: parallel pressure fronts fill the actual cube; leaves and dust race in a common direction.
-  FX.register('control-winds', {
-    palette: WIND,
-    travel: 310,
-    beats: () => [beat(C + 310, 100)],
-    end: () => C + 1380,
-    ground(s) {
-      if (active(s, C + 1380)) windField(s);
-    },
-    air(s) {
-      if (!active(s, C + 1380)) return;
-      const pts = footprint(s, 100),
-        t = local(s);
-      const leaf = icon('wind-leaf', NATURE, ['..4.', '.343', '232.', '.2..']);
-      for (let i = 0; i < 12; i++) {
-        const q = (t / 540 + k.hash(i, seed(s))) % 1,
-          p = quad(pts, q, 0.05 + k.hash(i, seed(s), 1) * 0.9);
-        p.y -= 3 + Math.sin(q * Math.PI) * 8;
-        if (i % 3) stamp(leaf, p);
-        else pixel(p.x, p.y, WIND, 3, 2);
-      }
-      impact(s, s.hits[0], centre(s), WIND, 'wind-pressure', 30, 9);
-    },
-    linger(s) {
-      if (s.linger > 0.25) windField(s, true);
-    },
-  });
 
   function coffer(s) {
     const pts = footprint(s, 5),

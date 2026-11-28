@@ -605,41 +605,6 @@
     },
   });
 
-  // Greater Invisibility: a silver-violet humanoid shell unweaves into transparent checker cutouts.
-  FX.register('greaterinvis', {
-    palette: ARCANE,
-    travel: 240,
-    beats: soft,
-    end: () => 1290,
-    ground(s) {
-      buffGround(s, ARCANE);
-    },
-    air(s) {
-      marks(s, ARCANE, 'invisibility', null, 24, 5);
-      const e = s.c.t - k.CAST;
-      if (e < 0 || e >= 900) return;
-      const frame = Math.min(7, Math.floor(e / 110));
-      const img = k.sprite(`b24:invisibility:${frame}`, 26, 38, ARCANE, set => {
-        for (let y = 3; y < 35; y++)
-          for (let x = 3; x < 23; x++) {
-            const dx = x - 13;
-            const head = Math.hypot(dx, y - 8) < 5;
-            const body = y > 13 && y < 25 && Math.abs(dx) < 7;
-            const legs = y >= 25 && y < 34 && Math.abs(dx) < 6 && Math.abs(dx) > 1;
-            if (!(head || body || legs)) continue;
-            // Clear whole pixel tiles; the underlying figure stays readable through the gaps.
-            if ((Math.floor(x / 2) + Math.floor(y / 2)) % 2 === 0 || y < 3 + frame * 5) continue;
-            set(x, y, Math.abs(dx) > 4 ? 3 : 4);
-          }
-      });
-      recipients(s).forEach(t => {
-        const p = foot(t);
-        k.blit(img, p.x - 13, p.y - 34);
-        if (e >= 540 && e < 850) ring({ x: p.x, y: p.y - 2 }, 12, 4, ARCANE, 4, 4, e / 130);
-      });
-    },
-  });
-
   // Summon Aberration: an alien violet rift births a floating beholderkin with one vast eye and eyestalks.
   FX.register('summon-aberration', {
     palette: VOID,
@@ -750,94 +715,6 @@
         const a = (i * k.tau) / 5 + e / 270;
         speck(p.x + Math.cos(a) * 17, p.y - 13 + Math.sin(a) * 9, el.ramp, 3 + (i % 2), 2);
       }
-    },
-  });
-
-  // Raulothim's Psychic Lance: a translucent pink crystal spear impales the mind; broken thought-rings recoil.
-  FX.register('raulothims-psychic-lance', {
-    palette: MIND,
-    travel: 260,
-    beats: (event, kit, travel) => [
-      { at: kit.CAST + travel, stop: 160, target: event.targets?.[0] ?? null, kind: 'beam', power: 0.07 },
-    ],
-    end: () => 1160,
-    air(s) {
-      const hit = s.hits[0],
-        target = s.targets.find(t => t.id === hit.id) || s.targets[0];
-      const aim = target || s.pose.target;
-      if (!aim) return;
-      const t = k.P(target ? k.contact(target, s.pose.hand || aim) : aim);
-      if (s.pose.hand && s.c.t >= k.CAST && s.c.t < hit.at) {
-        const h = k.P(s.pose.hand),
-          q = (s.c.t - k.CAST) / 260;
-        const dx = t.x - h.x,
-          dy = t.y - h.y,
-          angle = Math.atan2(dy, dx);
-        for (let i = 7; i >= 1; i--) {
-          const u = q - i * 0.035;
-          if (u < 0) continue;
-          speck(k.mix(h.x, t.x, u), k.mix(h.y, t.y, u) + (i % 2 ? 2 : -2), MIND, i < 3 ? 4 : 2);
-        }
-        k.blitRotated(art('lance', MIND), k.mix(h.x, t.x, q), k.mix(h.y, t.y, q), angle, 0.95);
-      }
-      marks(s, MIND, 'lance', t, 40, 10);
-      const real = s.real(hit);
-      if (real >= 0 && real < 500) {
-        const r = 7 + k.ease(k.clamp(real / 450)) * 18;
-        ring({ x: t.x, y: t.y - 4 }, r, r * 0.4, MIND, real < 90 ? 5 : 3, 5, real / 80);
-        if (real < 300) ring({ x: t.x, y: t.y - 4 }, r * 0.6, r * 0.6, VOID, 3, 3, -real / 100);
-      }
-    },
-  });
-
-  // Freedom of Movement: cyan ribbons snap spectral shackles apart, leaving light unimpeded footsteps.
-  FX.register('freedom-of-movement', {
-    palette: AIR,
-    travel: 240,
-    beats: soft,
-    end: () => 1350,
-    ground(s) {
-      buffGround(s, AIR);
-      const e = s.c.t - 540;
-      if (e < 0 || e >= 740) return;
-      recipients(s).forEach(t => {
-        const p = foot(t);
-        for (let i = 0; i < 3; i++) {
-          const q = k.clamp((e - i * 100) / 400);
-          if (q <= 0 || q >= 1) continue;
-          icon('foot', { x: p.x + (i % 2 ? -4 : 4), y: p.y + 4 - q * 18 }, AIR);
-        }
-      });
-    },
-    air(s) {
-      marks(s, AIR, 'freedom', null, 28, 8);
-      const e = s.c.t - k.CAST;
-      if (e < 0 || e >= 960) return;
-      recipients(s).forEach(t => {
-        const p = foot(t),
-          breakage = k.clamp((e - 240) / 260);
-        if (e < 580)
-          for (let i = -1; i <= 1; i += 2) {
-            const x = p.x + i * (6 + k.ease(breakage) * 15),
-              y = p.y - 3 + breakage * 7;
-            ring({ x, y }, 4, 3, STONE, 3, breakage > 0 ? 2 : 0, i);
-            if (breakage === 0)
-              stroke(
-                [
-                  { x: p.x - 3, y: p.y - 3 },
-                  { x: p.x + 3, y: p.y - 3 },
-                ],
-                STONE,
-                2,
-                1,
-                5,
-              );
-          }
-        if (e >= 240 && e < 850) {
-          const turn = (e - 240) / 200;
-          for (let i = 0; i < 3; i++) ring({ x: p.x, y: p.y - 4 - i * 8 }, 12, 4, AIR, 4, 3, turn + i);
-        }
-      });
     },
   });
 })(typeof window !== 'undefined' ? window : globalThis);
