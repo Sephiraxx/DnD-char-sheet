@@ -164,41 +164,6 @@
     return { p, R };
   }
 
-  // Holy Aura: a thirty-foot golden sanctuary, white winged shields and steady halos over the protected figures.
-  FX.register('holy-aura', {
-    palette: GOLD,
-    travel: 220,
-    beats: soft,
-    end: () => 1450,
-    reach: reach(30),
-    ground(s) {
-      if (live(s, 1450) && !(s.pose.linger > 0 && s.c.t >= 520)) aura(s, GOLD, 30);
-    },
-    air(s) {
-      if (!live(s, 1450)) return;
-      subjects(s).forEach(t => {
-        const p = k.P(t),
-          h = add(p, 0, -15);
-        ring(h, 9, 3, GOLD, 4);
-        if (s.c.t >= 520) {
-          stamp(shield(), add(p, 11, -3));
-          for (const side of [-1, 1])
-            for (let j = 0; j < 3; j++)
-              line(add(h, side * (11 + j * 3), 3 + j), add(h, side * (17 + j * 2), -2 + j), GOLD, 4);
-        }
-      });
-      s.hits.forEach(h => impact(s, h, point(s, h), GOLD, 'holy', 26, 5));
-    },
-    linger(s) {
-      if (s.linger <= 0) return;
-      const { p, R } = aura(s, GOLD, 30, true);
-      for (let i = 0; i < 8; i++) {
-        const a = (i * k.tau) / 8;
-        stamp(shield(), add(p, Math.cos(a) * (R - 10), Math.sin(a) * (R - 10)));
-      }
-    },
-  });
-
   function cloneVat() {
     return k.sprite('b36:clone-vat', 43, 65, [...GLASS, ...FLESH.slice(1, 5)], set => {
       for (let y = 5; y < 60; y++)
@@ -323,43 +288,6 @@
       ring(p, R, R, SKY, 2, 12, s.c.raw / 300);
       for (let i = 0; i < 3; i++)
         stamp(cloud(SKY, false, !s.area), add(p, (i - 1) * R * (s.area ? 0.65 : 0.3), -R * 0.5));
-    },
-  });
-
-  // Dominate Monster: a violet thought-link locks a many-pronged crown and an unblinking eye onto the creature's mind.
-  FX.register('dominate-monster', {
-    palette: MIND,
-    travel: 280,
-    beats: soft,
-    end: () => 1480,
-    ground(s) {
-      if (!live(s, 1480)) return;
-      subjects(s).forEach(t => ring(feet(t), 17, 8, MIND, 2, 6, s.c.raw / 120));
-    },
-    air(s) {
-      if (!live(s, 1480)) return;
-      const H = k.P(s.pose.hand || s.pose.base || aim(s));
-      subjects(s).forEach(t => {
-        const p = add(k.P(t), 0, -17),
-          q = k.clamp((s.c.t - C) / 280);
-        if (s.c.t < 950)
-          for (let i = 0; i < 11; i++) {
-            const u = (i / 10) * q;
-            const at = { x: k.mix(H.x, p.x, u), y: k.mix(H.y, p.y, u) - Math.sin(u * Math.PI) * 10 };
-            ring(at, 3, 2, MIND, i % 2 ? 3 : 4);
-          }
-        if (s.c.t >= 580) {
-          line(add(p, -12, 5), add(p, 12, 5), MIND, 3, 2);
-          for (let i = -2; i <= 2; i++) {
-            const a = add(p, i * 5, 4),
-              b = add(p, i * 5, -4 - (2 - Math.abs(i)) * 2);
-            line(a, b, MIND, 4, 2);
-            orb(b, 1, MIND, 5);
-          }
-          stamp(eye(), add(p, 0, -13));
-        }
-      });
-      s.hits.forEach(h => impact(s, h, add(point(s, h), 0, -15), MIND, 'dominate', 27, 5));
     },
   });
 

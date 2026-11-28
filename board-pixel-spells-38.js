@@ -273,46 +273,6 @@
     },
   });
 
-  // Time Ravage: a racing hourglass empties, clock hands snap, and the victim sheds rust-coloured years.
-  FX.register('time-ravage', {
-    palette: TIME,
-    travel: 360,
-    beats: (e, kit, t) => beats(e, kit, t, 170, 'hit', 0.08),
-    end: () => 1320,
-    ground(s) {
-      if (!active(s, 650)) return;
-      const F = foot(subject(s));
-      ring(F, 20, 11, TIME, age(s) < 0 ? 4 : 2, age(s) > 250, s.c.t / 60);
-      for (let i = 0; i < 12; i++) {
-        const a = (i / 12) * k.tau;
-        pixel(F.x + Math.cos(a) * 20, F.y + Math.sin(a) * 11, TIME, 3);
-      }
-    },
-    air(s) {
-      if (!active(s, 650)) return;
-      const T = k.P(subject(s)),
-        e = age(s);
-      if (e < 210) {
-        icon('hourglass', { x: T.x, y: T.y - 9 }, TIME, e < 0 ? 0 : 1);
-        const a = (s.c.t - k.CAST) / 42;
-        stroke(T, { x: T.x + Math.cos(a) * 17, y: T.y + Math.sin(a) * 17 }, TIME, 4, 1, 12);
-      }
-      if (e > 180 && e < 500) icon('skull', { x: T.x, y: T.y - 5 }, TIME);
-      impacts(s, TIME, 'time-ravage', 38, 10);
-      const real = s.real(s.hits[0]);
-      if (real >= 0 && real < 580)
-        for (let i = 0; i < 14; i++) {
-          const q = real / 580;
-          pixel(
-            T.x + (k.hash(i, seed(s)) - 0.5) * 30,
-            T.y - 14 + q * (18 + k.hash(i, seed(s), 1) * 22),
-            TIME,
-            i % 2 ? 2 : 3,
-          );
-        }
-    },
-  });
-
   // Psychic Scream: a silent magenta pressure wave fans out, splitting bright mind silhouettes at the heads.
   FX.register('psychic-scream', {
     palette: MIND,
@@ -346,54 +306,6 @@
           for (let i = 0; i < 3; i++) ring(head, 13 + i * 5 + Math.round(e / 35), 9 + i * 3, MIND, 3, true, i);
       }
       impacts(s, MIND, 'psychic-scream', 42, 8);
-    },
-  });
-
-  // Blade of Disaster: a black planar sword tears into existence and delivers two violet-edged force cuts.
-  FX.register('blade-of-disaster', {
-    palette: VOID,
-    travel: 320,
-    beats: (e, kit, t) =>
-      [0, 1].map(i => ({
-        at: kit.CAST + t + i * 360,
-        stop: 110,
-        target: e.targets?.[0] ?? null,
-        kind: 'hit',
-        power: 0.085,
-      })),
-    end: () => 1540,
-    ground(s) {
-      halo(s, VOID);
-    },
-    air(s) {
-      if (!active(s, 900)) return;
-      const T = k.P(subject(s)),
-        e = age(s),
-        second = e >= 300;
-      const swing = k.clamp((e - (second ? 360 : 0) + 110) / 170);
-      const a = (second ? 1 : -1) * (swing - 0.5) * 2.7;
-      if (e < 670) k.blitRotated(emblem('blade', VOID), T.x + (second ? -1 : 1) * (15 - swing * 21), T.y - 8, a);
-      for (let i = 0; i < s.hits.length; i++) {
-        const hit = s.hits[i],
-          real = s.real(hit);
-        if (real >= 0 && real < 180) {
-          const sign = i ? -1 : 1;
-          stroke(
-            { x: T.x - 18, y: T.y - sign * 18 },
-            { x: T.x + 18, y: T.y + sign * 18 },
-            VOID,
-            real < 45 ? 5 : 3,
-            2,
-            22,
-          );
-        }
-      }
-      impacts(s, VOID, 'blade-of-disaster', 40, 8);
-    },
-    linger(s) {
-      const T = k.P(subject(s));
-      const img = emblem('blade', VOID);
-      k.blit(img, T.x - 21, T.y - 29 + Math.round(Math.sin(s.c.raw / 240) * 2), s.linger);
     },
   });
 
