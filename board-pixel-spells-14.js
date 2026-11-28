@@ -272,39 +272,6 @@
     },
   });
 
-  // Gift of Gab: spoken words rewind into the mouth, then a fresh gold speech bubble replaces them.
-  FX.register('gift-of-gab', {
-    palette: GOLD,
-    travel: 260,
-    beats,
-    end: () => k.CAST + 960,
-    air(s) {
-      const e = s.c.t - k.CAST;
-      if (e < 0 || e > 920) return;
-      const C = k.P(s.pose.hand || s.pose.base || subject(s));
-      const old = e < 260,
-        q = k.clamp(e / 260);
-      const B = { x: C.x + (old ? 21 * (1 - q) : 12), y: C.y - 13 };
-      const bubble = old
-        ? ['.333333333.', '34444444443', '34.22.22.43', '34444444443', '.333333333.', '...33......', '..3........']
-        : ['.333333333.', '34444444443', '345.5.5.543', '34444444443', '.333333333.', '...33......', '..3........'];
-      if (e < 730) stamp(old ? 'old-words' : 'new-words', bubble, old ? MIND : GOLD, B);
-      if (old) {
-        for (let j = 0; j < 2; j++) {
-          const x = C.x + 5 + j * 6;
-          line({ x: x + 3, y: C.y + 3 }, { x, y: C.y + 6 }, GOLD, 4);
-          line({ x, y: C.y + 6 }, { x: x + 3, y: C.y + 9 }, GOLD, 4);
-        }
-      }
-      impact(s, s.hits[0], { x: C.x + 12, y: C.y - 13 }, GOLD, 20, 5);
-      if (e > 300 && e < 800)
-        s.targets.slice(0, 4).forEach((t, i) => {
-          const T = k.P(t);
-          ring({ x: T.x, y: T.y - 9 }, 6, 3, GOLD, 3, true, e / 80 + i);
-        });
-    },
-  });
-
   // Shatter: a silver-violet sonic implosion cracks into expanding pressure rings and sharp fragments.
   FX.register('shatter', {
     palette: THUNDER,
@@ -486,24 +453,6 @@
     impact(s, s.hits[0], { x: H.x + 6, y: H.y - 8 }, ramp, 22, 6);
   }
 
-  // Flame Blade: a white-hot curved scimitar snaps into the hand, shedding orange tongues and embers.
-  FX.register('flame-blade', {
-    palette: FIRE,
-    travel: 60,
-    beats: selfBeat,
-    end: () => k.CAST + 1080,
-    air: s => blade(s, FIRE, false),
-  });
-
-  // Shadow Blade: a solid black-violet psychic sword condenses from curling, inward-drawn darkness.
-  FX.register('shadow-blade', {
-    palette: SHADOW,
-    travel: 90,
-    beats: selfBeat,
-    end: () => k.CAST + 1080,
-    air: s => blade(s, SHADOW, true),
-  });
-
   // Mirror Image: exactly three lavender humanoid doubles fan out and orbit the caster in lockstep.
   FX.register('mirror-image', {
     palette: ARCANE,
@@ -562,45 +511,6 @@
           GOLD,
           { x: T.x, y: T.y - 17 },
         );
-      });
-    },
-  });
-
-  // Invisibility: a silver silhouette is erased bottom-to-top, leaving four empty outline corners.
-  FX.register('invisibility', {
-    palette: WIND,
-    travel: 180,
-    beats,
-    end: () => k.CAST + 980,
-    air(s) {
-      s.hits.forEach((hit, i) => {
-        const T = k.P(subject(s, hit)),
-          e = s.c.t - k.CAST;
-        if (e < 0 || e > 920) return;
-        const f = Math.min(8, Math.floor(e / 65));
-        const img = k.sprite(`14:invisible:${f}`, 17, 18, WIND, set => {
-          FIGURE.forEach((row, y) =>
-            [...row].forEach((v, x) => {
-              if (v !== '.' && y < 16 - f * 2 && (x + y) % 3 !== 0) set(x + 1, y + 1, +v > 3 ? 4 : 2);
-            }),
-          );
-        });
-        k.blit(img, T.x - 8, T.y - 10);
-        const sweep = { x: T.x, y: T.y + 7 - Math.min(1, e / 520) * 20 };
-        if (e < 530) ring(sweep, 9, 2, WIND, 4, true, e / 65);
-        if (e > 420 && e < 830) {
-          const rows = [
-            '33.........33',
-            '3...........3',
-            '.............',
-            '.............',
-            '.............',
-            '3...........3',
-            '33.........33',
-          ];
-          stamp('empty-outline', rows, WIND, T);
-        }
-        impact(s, hit, { x: T.x, y: T.y - 8 }, WIND, 20, 5, i);
       });
     },
   });

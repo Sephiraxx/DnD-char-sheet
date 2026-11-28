@@ -349,41 +349,4 @@
       }
     },
   });
-
-  // Blur: pale-blue contour echoes shear in horizontal bands, wobble out of register, then snap back to one outline.
-  FX.register('blur', {
-    palette: VEIL,
-    travel: 170,
-    beats: soft,
-    end: () => 1320,
-    ground(s) {
-      blessingGround(s, VEIL);
-    },
-    air(s) {
-      subjects(s).forEach((t, i) => {
-        const C = body(t),
-          h = beat(s, i),
-          e = s.c.t - h.at;
-        packet(s, t, VEIL, 4);
-        spark(s, h, C, VEIL, 20, 4);
-        if (e < 0 || e > 740) return;
-        const frame = Math.floor(e / 65) % 4;
-        const settle = 1 - k.ease(k.clamp((e - 500) / 210));
-        // Only narrow contours are painted: the actual miniature remains visible between the echoes.
-        for (const side of [-1, 1]) {
-          const img = k.sprite('b12:blur:' + side + ':' + frame, 29, 31, VEIL, set => {
-            for (let y = 3; y < 28; y++) {
-              const half = y < 9 ? 3 : y < 18 ? 6 : 4;
-              const shear = [0, 2, -1, 1][(Math.floor(y / 4) + frame) % 4];
-              const x = 14 + side * half + shear;
-              set(x, y, y % 4 === 0 ? 4 : 3);
-              if (y > 10 && y < 18) set(x + side, y, 2);
-            }
-          });
-          k.blit(img, C.x - 14 + side * Math.round((3 + (frame % 2) * 2) * settle), C.y - 18);
-        }
-        if (e > 680) ring(feet(t), 10, 4, VEIL, 4, 5);
-      });
-    },
-  });
 })(typeof window !== 'undefined' ? window : globalThis);
