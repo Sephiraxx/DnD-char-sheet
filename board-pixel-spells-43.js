@@ -514,39 +514,6 @@
     },
   });
 
-  // Resistance: a body-sized silver shield rises from a foot ring and contracts into a floor ward.
-  FX.register('resistance', {
-    palette: SILVER,
-    travel: 220,
-    beats: (event, kit, travel) => beat(event, travel, 'soft', 75),
-    end: () => 1420,
-    ground(s) {
-      const t = s.c.t - k.CAST,
-        F = feet(body(s));
-      if (t < 0) return;
-      const r = t < 470 ? 11 : k.mix(11, 5, k.clamp((t - 470) / 260));
-      ring(F.x, F.y, r, r * 0.42, SILVER, 1 - k.clamp((t - 830) / 250));
-      if (t >= 690 && t < 1020) star(F.x, F.y, SILVER, 4, 0.75);
-    },
-    air(s) {
-      const t = s.c.t - k.CAST,
-        C = k.P(body(s)),
-        F = feet(body(s));
-      if (t < 0) return;
-      if (t < 500) show(shield(), C.x, k.mix(F.y + 7, C.y - 2, k.ease(k.clamp(t / 220))));
-      else if (t < 730) {
-        const q = (t - 500) / 230,
-          cy = k.mix(C.y - 2, F.y, q),
-          r = k.mix(9, 3, q);
-        ring(C.x, cy, r, r * 1.1, SILVER);
-        star(C.x, cy, SILVER, Math.max(3, 7 - q * 4));
-      }
-      const e = s.real(s.hits[0]);
-      k.drawHit(k.hitStyle('b43:resist', SILVER, { S: 27, spikes: 4, jag: 0 }), C, e);
-      motes(s, C, SILVER, e - 150, 5, 11);
-    },
-  });
-
   // Chill Touch: an open skeletal ghost hand flies in, grips the body, sheds cold wisps and clenches.
   FX.register('chill-touch', {
     palette: NEC,

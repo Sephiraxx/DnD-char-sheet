@@ -530,69 +530,6 @@
     },
   });
 
-  // Divine Favor: a gold shaft strikes the weapon hand and kindles a tall white-gold radiant blade.
-  FX.register('divine-favor', {
-    palette: GOLD,
-    travel: 200,
-    beats: (event, kit, travel) => selfBeat(event, travel, 80),
-    end: () => 1270,
-    ground(s) {
-      const a = actor(s, true),
-        e = elapsed(s);
-      if (!a || e < 0 || e > 690) return;
-      ring(a.B, 8, 4, GOLD, e < 200 ? 3 : 4);
-    },
-    air(s) {
-      const e = elapsed(s);
-      if (!s.pose.hand || e < 0) return;
-      const H = k.P(s.pose.hand),
-        hand = { x: H.x + 4, y: H.y + 1 };
-      if (e < 260) {
-        const end = k.mix(hand.y - 28, hand.y, k.ease(k.clamp(e / 180)));
-        stroke({ x: hand.x, y: hand.y - 29 }, { x: hand.x, y: end }, GOLD, 3, 4);
-        stroke({ x: hand.x, y: hand.y - 29 }, { x: hand.x, y: end }, GOLD, 5, 2);
-      }
-      if (e >= 170 && e < 690) {
-        icon(
-          'radiant-weapon',
-          [
-            '.............',
-            '......5......',
-            '.....454.....',
-            '.....454.....',
-            '....34543....',
-            '....34543....',
-            '....34543....',
-            '....34543....',
-            '....34543....',
-            '....34543....',
-            '....34543....',
-            '....34543....',
-            '.....454.....',
-            '..444454444..',
-            '..355555553..',
-            '.....454.....',
-            '.....343.....',
-            '.....343.....',
-            '.....444.....',
-            '.............',
-          ],
-          GOLD,
-          { x: hand.x, y: hand.y - 7 },
-        );
-      }
-      const real = s.real(s.hits[0]);
-      if (real >= 0 && real < 520) {
-        k.shards(hand, real, GOLD, s.event.seed, 7, 16);
-        motes(s, hand, GOLD, real - 140, 400, 5, 8);
-      }
-      if (e >= 690) {
-        ring(hand, 4, 4, GOLD, 3, 2, 0.75);
-        spark(hand.x, hand.y, GOLD, 3, 4);
-      }
-    },
-  });
-
   // Find Familiar: a pale flame and smoke puff reveal a broad-eyed, blinking ivory owl on the circle.
   FX.register('find-familiar', {
     palette: VIOLET,

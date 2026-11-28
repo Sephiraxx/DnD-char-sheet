@@ -588,49 +588,6 @@
     },
   });
 
-  // Haste: golden figure afterimages race under a large spinning clock while white speed strokes rake the body.
-  FX.register('haste', {
-    palette: GOLD,
-    travel: 180,
-    beats: soft,
-    end: finish,
-    ground(s) {
-      const e = age(s);
-      if (e < 0) return;
-      ring(feet(s), e < 470 ? 11 : 7, 4, GOLD);
-    },
-    air(s) {
-      const p = body(s),
-        e = age(s);
-      delivery(s, p, GOLD);
-      if (e < 0) return;
-      impact(s, p, GOLD, 'speed');
-      if (e < 480) {
-        const tick = Math.floor(s.c.t / 55) % 3;
-        for (let i = 3; i >= 1; i--)
-          icon('haste-echo', FIGURE, GOLD, { x: p.x - i * 5 - tick, y: p.y + (i % 2) }, (4 - i) / 4);
-        const c = { x: p.x + 1, y: p.y - 10 };
-        ring(c, 8, 8, GOLD, 2, 4);
-        for (let i = 0; i < 4; i++) {
-          const a = (i * Math.PI) / 2;
-          bead({ x: c.x + Math.cos(a) * 6, y: c.y + Math.sin(a) * 6 }, GOLD, 2, 5);
-        }
-        const a = s.c.t / 50;
-        stroke(c, { x: c.x + Math.cos(a) * 5, y: c.y + Math.sin(a) * 5 }, GOLD, 2, 5);
-        stroke(c, { x: c.x + Math.cos(a / 4) * 3, y: c.y + Math.sin(a / 4) * 3 }, GOLD, 2, 3);
-        for (let i = 0; i < 4; i++) {
-          const y = p.y - 3 + i * 4,
-            off = (tick + i) % 3;
-          stroke({ x: p.x - 12 - off, y }, { x: p.x - 5, y }, GOLD, 2, i % 2 ? 4 : 5);
-        }
-        if (tick === 0) stroke({ x: p.x + 4, y: p.y - 1 }, { x: p.x + 4, y: p.y + 7 }, GOLD, 2, 5);
-      } else {
-        arc(p, 7, 9, -Math.PI / 2, Math.PI, GOLD, 2, 4);
-        bead({ x: p.x - 5, y: p.y + 5 }, GOLD, 2, 5);
-      }
-    },
-  });
-
   // Animate Dead: a sickly green rune circle cracks open, a bony hand erupts, and a dark-outlined skeleton rises.
   FX.register('animate-dead', {
     palette: GREEN,
